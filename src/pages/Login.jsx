@@ -1,0 +1,219 @@
+import React, { useState, useEffect } from 'react'
+import { useNavigate, Navigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { Eye, EyeOff, User, Lock, ArrowRight, Shield } from 'lucide-react'
+import toast from 'react-hot-toast'
+import Card, { CardBody } from '../components/UI/Card'
+import Button from '../components/UI/Button'
+import Input from '../components/UI/Input'
+
+const Login = () => {
+  console.log('🔍 Login component rendered - CLEAN VERSION')
+  const navigate = useNavigate()
+  const { login, isAuthenticated, loading: authLoading } = useAuth()
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  useEffect(() => {
+    console.log('🚀 Login component mounted - CLEAN AUTH VERSION')
+    console.log('📍 Current location:', window.location.href)
+    console.log('🔐 Auth loading:', authLoading, 'Authenticated:', isAuthenticated)
+  }, [authLoading, isAuthenticated])
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    console.log('🔐 Clean login attempt started')
+
+    // Validation
+    if (!formData.username || !formData.password) {
+      toast.error('Username dan password harus diisi!')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      console.log('📤 Sending login request to API...')
+      
+      // Use real AuthContext login
+      const user = await login({
+        username: formData.username,
+        password: formData.password
+      })
+
+      console.log('✅ Login successful:', user)
+      toast.success(`Selamat datang, ${user.nama || user.username}!`)
+      
+      // Navigate to dashboard
+      console.log('🏠 Redirecting to dashboard...')
+      navigate('/dashboard', { replace: true })
+
+    } catch (error) {
+      console.error('❌ Login error:', error)
+      
+      // Handle different types of errors
+      if (error.response?.status === 401) {
+        toast.error('Username atau password salah!')
+      } else if (error.response?.status === 500) {
+        toast.error('Server error. Silakan coba lagi.')
+      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
+        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.')
+      } else {
+        toast.error(error.message || 'Terjadi kesalahan saat login')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Show loading if auth is still initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat aplikasi...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect if already authenticated
+  if (isAuthenticated && !authLoading) {
+    return <Navigate to="/dashboard" replace />
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-md">
+        {/* Logo and Title */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <span className="text-white text-2xl font-bold">B</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Bosgil Group</h1>
+          <p className="text-gray-600">Management System</p>
+          <div className="flex items-center justify-center mt-3 space-x-2">
+            <Shield className="w-4 h-4 text-green-600" />
+            <span className="text-green-600 text-sm font-medium">Secure Login</span>
+          </div>
+        </div>
+
+        {/* Login Card */}
+        <Card className="shadow-xl border-0">
+          <CardBody className="p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">Masuk ke Akun</h2>
+              <p className="text-gray-600 text-base">Masukkan kredensial Anda untuk melanjutkan</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Username Field */}
+              <div className="space-y-2">
+                <label htmlFor="username" className="block text-sm font-semibold text-gray-700">
+                  Username
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="username"
+                    name="username"
+                    type="text"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="Masukkan username"
+                    className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-semibold text-gray-700">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Masukkan password"
+                    className="pl-10 pr-12 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
+                    required
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors p-1 rounded"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-5 w-5" />
+                      ) : (
+                        <Eye className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="pt-6">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg shadow-sm text-sm font-semibold transition-all duration-200 ${
+                    loading
+                      ? 'bg-gray-400 cursor-not-allowed text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Memproses...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Masuk</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Footer */}
+            <div className="text-center mt-8">
+              <p className="text-gray-500 text-sm">
+                © 2024 Bosgil Group. All rights reserved.
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+export default Login 
