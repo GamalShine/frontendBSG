@@ -1,240 +1,166 @@
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { useAuth } from '../../contexts/AuthContext'
-import {
+import { 
   Home,
   AlertTriangle,
   CheckSquare,
   DollarSign,
-  MessageCircle,
   Users,
-  Settings,
-  Menu,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
   User,
-  Bell
+  BarChart3,
+  Settings,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react'
+import { useMenu } from '../../contexts/MenuContext'
+import { useAuth } from '../../contexts/AuthContext'
 
-const Sidebar = ({ isOpen, onClose, unreadCount, onCollapse }) => {
-  const { user, logout } = useAuth()
+const iconMap = {
+  Home,
+  AlertTriangle,
+  CheckSquare,
+  DollarSign,
+  Users,
+  User,
+  BarChart3,
+  Settings
+}
+
+const Sidebar = () => {
+  const { menus, checkPermission } = useMenu()
+  const { user } = useAuth()
   const location = useLocation()
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [loggingOut, setLoggingOut] = useState(false)
+  const [expandedMenus, setExpandedMenus] = useState(new Set())
 
-  const navigation = [
-    {
-      name: 'Dashboard',
-      href: '/',
-      icon: Home,
-      current: location.pathname === '/',
-    },
-    {
-      name: 'Komplain',
-      href: '/komplain',
-      icon: AlertTriangle,
-      current: location.pathname.startsWith('/komplain'),
-    },
-    {
-      name: 'Tugas',
-      href: '/tugas',
-      icon: CheckSquare,
-      current: location.pathname.startsWith('/tugas'),
-    },
-    {
-      name: 'Pos Kas',
-      href: '/poskas',
-      icon: DollarSign,
-      current: location.pathname.startsWith('/poskas'),
-    },
-    {
-      name: 'Chat',
-      href: '/chat',
-      icon: MessageCircle,
-      current: location.pathname.startsWith('/chat'),
-      badge: unreadCount > 0 ? unreadCount : null,
-    },
-    {
-      name: 'Users',
-      href: '/users',
-      icon: Users,
-      current: location.pathname.startsWith('/users'),
-    },
-    {
-      name: 'Settings',
-      href: '/settings',
-      icon: Settings,
-      current: location.pathname.startsWith('/settings'),
-    },
-  ]
-
-  const handleLogout = async () => {
-    try {
-      setLoggingOut(true)
-      console.log('🔐 Sidebar: Logout button clicked')
-      await logout()
-    } catch (error) {
-      console.error('Sidebar: Logout error:', error)
-    } finally {
-      setLoggingOut(false)
-    }
+  const toggleMenu = (menuId) => {
+    setExpandedMenus(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(menuId)) {
+        newSet.delete(menuId)
+      } else {
+        newSet.add(menuId)
+      }
+      return newSet
+    })
   }
 
-  const toggleCollapse = () => {
-    const newCollapsedState = !isCollapsed
-    setIsCollapsed(newCollapsedState)
-    if (onCollapse) {
-      onCollapse(newCollapsedState)
+  const isMenuActive = (menuPath) => {
+    return location.pathname === menuPath || location.pathname.startsWith(menuPath + '/')
+  }
+
+  const isChildActive = (children) => {
+    if (!children) return false
+    return children.some(child => isMenuActive(child.path))
+  }
+
+  const renderMenuItem = (menu) => {
+    const IconComponent = iconMap[menu.icon] || Home
+    const isActive = isMenuActive(menu.path)
+    const hasChildren = menu.children && menu.children.length > 0
+    const isExpanded = expandedMenus.has(menu.id)
+    const isChildMenuActive = hasChildren && isChildActive(menu.children)
+
+    // Check if user has permission to view this menu
+    if (!checkPermission(menu.permissions)) {
+      return null
     }
+
+    return (
+      <div key={menu.id}>
+        <Link
+          to={hasChildren ? '#' : menu.path}
+          onClick={hasChildren ? (e) => {
+            e.preventDefault()
+            toggleMenu(menu.id)
+          } : undefined}
+          className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+            isActive || isChildMenuActive
+              ? 'bg-blue-100 text-blue-700 border-r-2 border-blue-600'
+              : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+          }`}
+        >
+          <div className="flex items-center">
+            <IconComponent className="h-5 w-5 mr-3" />
+            <span>{menu.name}</span>
+          </div>
+          {hasChildren && (
+            <div className="flex items-center">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </div>
+          )}
+        </Link>
+
+        {/* Render children */}
+        {hasChildren && isExpanded && (
+          <div className="ml-6 mt-1 space-y-1">
+            {menu.children.map(child => {
+              // Check if user has permission to view this child menu
+              if (!checkPermission(child.permissions)) {
+                return null
+              }
+
+              const isChildActive = isMenuActive(child.path)
+              
+              return (
+                <Link
+                  key={child.id}
+                  to={child.path}
+                  className={`block px-4 py-2 text-sm rounded-lg transition-colors ${
+                    isChildActive
+                      ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-600'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  {child.name}
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
-    <>
-      {/* Mobile sidebar overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div
-        className={`fixed top-0 left-0 bottom-0 z-50 lg:static lg:top-0 lg:translate-x-0 flex flex-col bg-gradient-to-b from-primary-800 to-primary-900 text-white transition-all duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${isCollapsed ? 'w-16' : 'w-64'}`}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-primary-700">
-          {!isCollapsed && (
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                <span className="text-primary-800 font-bold text-lg">B</span>
-              </div>
-              <div>
-                <h1 className="text-lg font-bold">Bosgil Group</h1>
-                <p className="text-xs text-primary-300">Management System</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Collapse/Expand Button */}
-          <button
-            onClick={toggleCollapse}
-            className="p-2 rounded-lg hover:bg-primary-700 transition-colors duration-200"
-            title={isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <ChevronLeft className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-          {navigation.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={`group relative flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                  item.current
-                    ? 'bg-primary-600 text-white shadow-lg'
-                    : 'text-primary-200 hover:bg-primary-700 hover:text-white'
-                }`}
-                onClick={() => {
-                  console.log('🔗 Navigating to:', item.href)
-                  onClose()
-                }}
-              >
-                <Icon className={`h-5 w-5 flex-shrink-0 ${
-                  item.current ? 'text-white' : 'text-primary-300 group-hover:text-white'
-                }`} />
-                {!isCollapsed && (
-                  <>
-                    <span className="ml-3 flex-1">{item.name}</span>
-                    {item.badge && (
-                      <span className="ml-auto inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-                        {item.badge}
-                      </span>
-                    )}
-                  </>
-                )}
-                {isCollapsed && item.badge && (
-                  <span className="absolute -top-1 -right-1 inline-flex items-center justify-center w-4 h-4 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
-                    {item.badge}
-                  </span>
-                )}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                    {item.name}
-                  </div>
-                )}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* User Profile Section */}
-        <div className="border-t border-primary-700 p-4">
-          {!isCollapsed ? (
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {user?.nama || user?.username || 'User'}
-                </p>
-                <p className="text-xs text-primary-300 capitalize">
-                  {user?.role || 'User'}
-                </p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-primary-300 hover:text-white hover:bg-primary-700 rounded-lg transition-colors duration-200"
-                title="Logout"
-              >
-                <LogOut className="h-5 w-5" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center space-y-2">
-              <div className="w-10 h-10 bg-primary-600 rounded-full flex items-center justify-center relative group">
-                <User className="h-5 w-5" />
-                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                  {user?.nama || user?.username || 'User'}
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-primary-300 hover:text-white hover:bg-primary-700 rounded-lg transition-colors duration-200 relative group"
-                title="Logout"
-              >
-                <LogOut className="h-5 w-5" />
-                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-sm rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
-                  Logout
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Collapse Indicator for Mobile */}
-        <div className="lg:hidden p-2">
-          <button
-            onClick={onClose}
-            className="w-full p-2 text-primary-300 hover:text-white hover:bg-primary-700 rounded-lg transition-colors duration-200"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+    <div className="w-64 bg-white border-r border-gray-200 h-full overflow-y-auto">
+      {/* User Info */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center">
+          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <User className="h-6 w-6 text-blue-600" />
+          </div>
+          <div className="ml-3">
+            <p className="text-sm font-medium text-gray-900">
+              {user?.nama || user?.username}
+            </p>
+            <p className="text-xs text-gray-500 capitalize">
+              {user?.role || 'User'}
+            </p>
+          </div>
         </div>
       </div>
-    </>
+
+      {/* Navigation Menu */}
+      <nav className="p-4 space-y-2">
+        {menus.map(renderMenuItem)}
+      </nav>
+
+      {/* Footer */}
+      <div className="absolute bottom-0 w-64 p-4 border-t border-gray-200">
+        <div className="text-center">
+          <p className="text-xs text-gray-500">
+            Bosgil Group © 2024
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            v1.0.0
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }
 

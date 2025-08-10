@@ -1,71 +1,42 @@
-import React, { useState, useEffect } from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import useSocket from '../../hooks/useSocket'
+import { MenuProvider } from '../../contexts/MenuContext'
 import Sidebar from './Sidebar'
 import Header from './Header'
 
-const Layout = () => {
+const Layout = ({ children }) => {
   const { user } = useAuth()
-  const { socket, on } = useSocket()
-  const location = useLocation()
-  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
-
-  // Listen for new messages
-  useEffect(() => {
-    if (!socket) return
-
-    const handleNewMessage = (data) => {
-      setUnreadCount(prev => prev + 1)
-    }
-
-    on('new_message', handleNewMessage)
-
-    return () => {
-      socket.off('new_message', handleNewMessage)
-    }
-  }, [socket, on])
-
-  // Close sidebar on mobile when route changes
-  useEffect(() => {
-    setSidebarOpen(false)
-  }, [location.pathname])
-
-  // Handle sidebar collapse state
-  const handleSidebarCollapse = (collapsed) => {
-    setSidebarCollapsed(collapsed)
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Main container with sidebar and content */}
-      <div className="flex h-screen">
+    <MenuProvider>
+      <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          unreadCount={unreadCount}
-          onCollapse={handleSidebarCollapse}
-        />
+        <div className="hidden lg:flex lg:flex-shrink-0">
+          <Sidebar />
+        </div>
 
-        {/* Main content with header */}
+        {/* Mobile sidebar */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+            <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
+              <Sidebar />
+            </div>
+          </div>
+        )}
+
+        {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header - Fixed at top */}
-          <Header
-            onMenuClick={() => setSidebarOpen(true)}
-            unreadCount={unreadCount}
-          />
-
+          <Header onMenuClick={() => setSidebarOpen(true)} />
+          
           {/* Page content */}
-          <main className="flex-1 overflow-auto p-6">
-            <Outlet />
+          <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+            {children}
           </main>
         </div>
       </div>
-    </div>
+    </MenuProvider>
   )
 }
 

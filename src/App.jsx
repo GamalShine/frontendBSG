@@ -1,11 +1,11 @@
-import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
-import { useAuth } from './contexts/AuthContext'
-import Layout from './components/Layout/Layout'
+import React, { useContext } from 'react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { MenuProvider, useMenu } from './contexts/MenuContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import Layout from './components/Layout/Layout'
 import Login from './pages/Login'
-import TestPage from './pages/TestPage'
 import Dashboard from './pages/Dashboard'
 import KomplainList from './pages/Komplain/KomplainList'
 import KomplainDetail from './pages/Komplain/KomplainDetail'
@@ -16,89 +16,255 @@ import TugasForm from './pages/Tugas/TugasForm'
 import PoskasList from './pages/Poskas/PoskasList'
 import PoskasDetail from './pages/Poskas/PoskasDetail'
 import PoskasForm from './pages/Poskas/PoskasForm'
-import ChatList from './pages/Chat/ChatList'
-import ChatRoom from './pages/Chat/ChatRoom'
-import ChatRoomForm from './pages/Chat/ChatRoomForm'
-import UserList from './pages/Users/UserList'
+import UsersList from './pages/Users/UsersList'
+import UserDetail from './pages/Users/UserDetail'
 import UserForm from './pages/Users/UserForm'
-import Profile from './pages/Profile'
+import Profile from './pages/Profile/Profile'
+import Settings from './pages/Settings/Settings'
 import NotFound from './pages/NotFound'
 
-const PrivateRoute = ({ children }) => {
+// Protected Route Component with Permission Check
+const ProtectedRoute = ({ children, requiredPermissions = [] }) => {
   const { isAuthenticated, loading } = useAuth()
-  
+  const { checkPermission } = useMenu()
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat aplikasi...</p>
+        </div>
       </div>
     )
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
-  
+
+  // Check permissions if required
+  if (requiredPermissions.length > 0 && !checkPermission(requiredPermissions)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return children
 }
 
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route path="/test" element={<TestPage />} />
+      {/* Public Routes */}
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route
-        path="/dashboard"
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      >
-        <Route index element={<Dashboard />} />
-        <Route path="komplain">
-          <Route index element={<KomplainList />} />
-          <Route path="new" element={<KomplainForm />} />
-          <Route path=":id" element={<KomplainDetail />} />
-          <Route path=":id/edit" element={<KomplainForm />} />
-        </Route>
-        <Route path="tugas">
-          <Route index element={<TugasList />} />
-          <Route path="new" element={<TugasForm />} />
-          <Route path=":id" element={<TugasDetail />} />
-          <Route path=":id/edit" element={<TugasForm />} />
-        </Route>
-        <Route path="poskas">
-          <Route index element={<PoskasList />} />
-          <Route path="new" element={<PoskasForm />} />
-          <Route path=":id" element={<PoskasDetail />} />
-          <Route path=":id/edit" element={<PoskasForm />} />
-        </Route>
-        <Route path="chat">
-          <Route index element={<ChatList />} />
-          <Route path="new" element={<ChatRoomForm />} />
-          <Route path=":roomId" element={<ChatRoom />} />
-        </Route>
-        <Route path="users">
-          <Route index element={<UserList />} />
-          <Route path="new" element={<UserForm />} />
-          <Route path=":id/edit" element={<UserForm />} />
-        </Route>
-        <Route path="profile" element={<Profile />} />
-      </Route>
+      
+      {/* Protected Routes */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <Layout>
+            <Dashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Layout>
+            <Dashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Komplain Routes */}
+      <Route path="/komplain" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <KomplainList />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/komplain/new" element={
+        <ProtectedRoute requiredPermissions={['create']}>
+          <Layout>
+            <KomplainForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/komplain/:id" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <KomplainDetail />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/komplain/:id/edit" element={
+        <ProtectedRoute requiredPermissions={['update']}>
+          <Layout>
+            <KomplainForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Tugas Routes */}
+      <Route path="/tugas" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <TugasList />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/tugas/new" element={
+        <ProtectedRoute requiredPermissions={['create']}>
+          <Layout>
+            <TugasForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/tugas/:id" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <TugasDetail />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/tugas/:id/edit" element={
+        <ProtectedRoute requiredPermissions={['update']}>
+          <Layout>
+            <TugasForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Poskas Routes */}
+      <Route path="/poskas" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <PoskasList />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/poskas/new" element={
+        <ProtectedRoute requiredPermissions={['create']}>
+          <Layout>
+            <PoskasForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/poskas/:id" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <PoskasDetail />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/poskas/:id/edit" element={
+        <ProtectedRoute requiredPermissions={['update']}>
+          <Layout>
+            <PoskasForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Users Routes - Admin Only */}
+      <Route path="/users" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <UsersList />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/users/new" element={
+        <ProtectedRoute requiredPermissions={['create']}>
+          <Layout>
+            <UserForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/users/:id" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <UserDetail />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/users/:id/edit" element={
+        <ProtectedRoute requiredPermissions={['update']}>
+          <Layout>
+            <UserForm />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Profile Routes */}
+      <Route path="/profile" element={
+        <ProtectedRoute>
+          <Layout>
+            <Profile />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* Settings Routes - Admin Only */}
+      <Route path="/settings" element={
+        <ProtectedRoute requiredPermissions={['read']}>
+          <Layout>
+            <Settings />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      {/* 404 Route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }
 
-function App() {
+const App = () => {
   return (
-    <AuthProvider>
-      <ErrorBoundary>
-        <AppRoutes />
-      </ErrorBoundary>
-    </AuthProvider>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AuthProvider>
+          <MenuProvider>
+            <AppRoutes />
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#10B981',
+                    secondary: '#fff',
+                  },
+                },
+                error: {
+                  duration: 5000,
+                  iconTheme: {
+                    primary: '#EF4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
+          </MenuProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   )
 }
 

@@ -20,233 +20,38 @@ import { useAuth } from '../contexts/AuthContext'
 import { formatDate } from '../utils/helpers'
 import Card, { CardHeader, CardBody } from '../components/UI/Card'
 import Badge from '../components/UI/Badge'
-import { komplainService } from '../services/komplainService'
-import { tugasService } from '../services/tugasService'
-import { poskasService } from '../services/poskasService'
-import { userService } from '../services/userService'
+import Button from '../components/UI/Button'
 import toast from 'react-hot-toast'
 
 const Dashboard = () => {
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
-    totalKomplain: 0,
-    totalTugas: 0,
-    totalPoskas: 0,
-    totalUsers: 0,
-    unreadMessages: 0
-  })
-  const [recentKomplains, setRecentKomplains] = useState([])
-  const [recentTugas, setRecentTugas] = useState([])
-  const [myKomplains, setMyKomplains] = useState([])
-  const [myTugas, setMyTugas] = useState([])
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        setLoading(true)
-        
-        // Load data based on user role
-        if (user?.role === 'admin' || user?.role === 'owner') {
-          // Admin sees all data
-          const [komplainsRes, tugasRes, poskasRes, usersRes] = await Promise.allSettled([
-            komplainService.getKomplains(),
-            tugasService.getTugas(),
-            poskasService.getPoskas(),
-            userService.getUsers()
-          ])
+  // Debug logging
+  console.log('🔍 Dashboard rendered')
+  console.log('👤 User data:', user)
+  console.log('🎭 User role:', user?.role)
 
-          // Process komplains
-          let komplains = []
-          if (komplainsRes.status === 'fulfilled') {
-            const response = komplainsRes.value
-            if (response.success && response.data) {
-              komplains = response.data
-            } else if (Array.isArray(response)) {
-              komplains = response
-            } else if (response.data && Array.isArray(response.data)) {
-              komplains = response.data
-            }
-          }
+  // Mock data for testing
+  const mockStats = {
+    totalKomplain: 12,
+    totalTugas: 8,
+    totalPoskas: 25,
+    totalUsers: 15,
+    unreadMessages: 3
+  }
 
-          // Process tugas
-          let tugas = []
-          if (tugasRes.status === 'fulfilled') {
-            const response = tugasRes.value
-            if (response.success && response.data) {
-              tugas = response.data
-            } else if (Array.isArray(response)) {
-              tugas = response
-            } else if (response.data && Array.isArray(response.data)) {
-              tugas = response.data
-            }
-          }
+  const mockRecentKomplains = [
+    { id: 1, judul_komplain: 'Masalah Printer', tanggal_pelaporan: new Date(), status: 'menunggu' },
+    { id: 2, judul_komplain: 'Koneksi Internet Lambat', tanggal_pelaporan: new Date(), status: 'diproses' },
+    { id: 3, judul_komplain: 'Software Error', tanggal_pelaporan: new Date(), status: 'selesai' }
+  ]
 
-          // Process poskas
-          let poskas = []
-          if (poskasRes.status === 'fulfilled') {
-            const response = poskasRes.value
-            if (response.success && response.data) {
-              poskas = response.data
-            } else if (Array.isArray(response)) {
-              poskas = response
-            } else if (response.data && Array.isArray(response.data)) {
-              poskas = response.data
-            }
-          }
-
-          // Process users
-          let users = []
-          if (usersRes.status === 'fulfilled') {
-            const response = usersRes.value
-            if (response.success && response.data) {
-              users = response.data
-            } else if (Array.isArray(response)) {
-              users = response
-            } else if (response.data && Array.isArray(response.data)) {
-              users = response.data
-            }
-          }
-
-          setStats({
-            totalKomplain: komplains.length,
-            totalTugas: tugas.length,
-            totalPoskas: poskas.length,
-            totalUsers: users.length,
-            unreadMessages: 0
-          })
-
-          setRecentKomplains(komplains.slice(0, 5))
-          setRecentTugas(tugas.slice(0, 5))
-
-        } else if (user?.role === 'leader') {
-          // Leader sees team data and their own data
-          const [komplainsRes, tugasRes, poskasRes] = await Promise.allSettled([
-            komplainService.getKomplains(),
-            tugasService.getTugas(),
-            poskasService.getPoskas()
-          ])
-
-          let komplains = []
-          let tugas = []
-          let poskas = []
-
-          if (komplainsRes.status === 'fulfilled') {
-            const response = komplainsRes.value
-            if (response.success && response.data) {
-              komplains = response.data
-            } else if (Array.isArray(response)) {
-              komplains = response
-            } else if (response.data && Array.isArray(response.data)) {
-              komplains = response.data
-            }
-          }
-
-          if (tugasRes.status === 'fulfilled') {
-            const response = tugasRes.value
-            if (response.success && response.data) {
-              tugas = response.data
-            } else if (Array.isArray(response)) {
-              tugas = response
-            } else if (response.data && Array.isArray(response.data)) {
-              tugas = response.data
-            }
-          }
-
-          if (poskasRes.status === 'fulfilled') {
-            const response = poskasRes.value
-            if (response.success && response.data) {
-              poskas = response.data
-            } else if (Array.isArray(response)) {
-              poskas = response
-            } else if (response.data && Array.isArray(response.data)) {
-              poskas = response.data
-            }
-          }
-
-          setStats({
-            totalKomplain: komplains.length,
-            totalTugas: tugas.length,
-            totalPoskas: poskas.length,
-            totalUsers: 0,
-            unreadMessages: 0
-          })
-
-          setRecentKomplains(komplains.slice(0, 5))
-          setRecentTugas(tugas.slice(0, 5))
-
-        } else {
-          // Divisi sees only their own data
-          const [myKomplainsRes, myTugasRes, poskasRes] = await Promise.allSettled([
-            komplainService.getKomplains(),
-            tugasService.getTugas(),
-            poskasService.getPoskas()
-          ])
-
-          let allKomplains = []
-          let allTugas = []
-          let poskas = []
-
-          if (myKomplainsRes.status === 'fulfilled') {
-            const response = myKomplainsRes.value
-            if (response.success && response.data) {
-              allKomplains = response.data
-            } else if (Array.isArray(response)) {
-              allKomplains = response
-            } else if (response.data && Array.isArray(response.data)) {
-              allKomplains = response.data
-            }
-          }
-
-          if (myTugasRes.status === 'fulfilled') {
-            const response = myTugasRes.value
-            if (response.success && response.data) {
-              allTugas = response.data
-            } else if (Array.isArray(response)) {
-              allTugas = response
-            } else if (response.data && Array.isArray(response.data)) {
-              allTugas = response.data
-            }
-          }
-
-          if (poskasRes.status === 'fulfilled') {
-            const response = poskasRes.value
-            if (response.success && response.data) {
-              poskas = response.data
-            } else if (Array.isArray(response)) {
-              poskas = response
-            } else if (response.data && Array.isArray(response.data)) {
-              poskas = response.data
-            }
-          }
-
-          // Filter for user's own data
-          const myKomplains = allKomplains.filter(k => k.pelapor_id === user?.id || k.penerima_komplain_id === user?.id)
-          const myTugas = allTugas.filter(t => t.pemberi_tugas_id === user?.id || t.penerima_tugas_id === user?.id)
-          const myPoskas = poskas.filter(p => p.id_user === user?.id)
-
-          setStats({
-            totalKomplain: myKomplains.length,
-            totalTugas: myTugas.length,
-            totalPoskas: myPoskas.length,
-            totalUsers: 0,
-            unreadMessages: 0
-          })
-
-          setMyKomplains(myKomplains.slice(0, 5))
-          setMyTugas(myTugas.slice(0, 5))
-        }
-
-      } catch (error) {
-        console.error('Error loading dashboard data:', error)
-        toast.error('Gagal memuat data dashboard')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadDashboardData()
-  }, [user])
+  const mockRecentTugas = [
+    { id: 1, judul_tugas: 'Update Database', target_selesai: new Date(), status: 'proses' },
+    { id: 2, judul_tugas: 'Backup Server', target_selesai: new Date(), status: 'belum' },
+    { id: 3, judul_tugas: 'Maintenance PC', target_selesai: new Date(), status: 'selesai' }
+  ]
 
   const getStatusBadge = (status) => {
     const variants = {
@@ -269,6 +74,18 @@ const Dashboard = () => {
     return <Badge variant={variants[role] || 'default'}>{role}</Badge>
   }
 
+  // Show loading if no user data
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat data pengguna...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -282,6 +99,7 @@ const Dashboard = () => {
 
   // Admin Dashboard
   if (user?.role === 'admin' || user?.role === 'owner') {
+    console.log('🎯 Rendering Admin Dashboard')
     return (
       <div className="space-y-6">
         {/* Page Header */}
@@ -308,7 +126,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Komplain</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalKomplain}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalKomplain}</p>
                 </div>
               </div>
             </CardBody>
@@ -322,7 +140,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Tugas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalTugas}</p>
                 </div>
               </div>
             </CardBody>
@@ -336,7 +154,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Pos Kas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalPoskas}</p>
                 </div>
               </div>
             </CardBody>
@@ -350,7 +168,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalUsers}</p>
                 </div>
               </div>
             </CardBody>
@@ -418,35 +236,28 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardBody>
-              {recentKomplains.length > 0 ? (
-                <div className="space-y-4">
-                  {recentKomplains.map((komplain) => (
-                    <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {komplain.judul_komplain}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(komplain.tanggal_pelaporan)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(komplain.status)}
+              <div className="space-y-4">
+                {mockRecentKomplains.map((komplain) => (
+                  <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Tidak ada komplain terbaru</p>
-                </div>
-              )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {komplain.judul_komplain}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(komplain.tanggal_pelaporan)}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(komplain.status)}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardBody>
           </Card>
 
@@ -460,35 +271,28 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardBody>
-              {recentTugas.length > 0 ? (
-                <div className="space-y-4">
-                  {recentTugas.map((tugas) => (
-                    <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <CheckSquare className="h-4 w-4 text-blue-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {tugas.judul_tugas}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Target: {formatDate(tugas.target_selesai)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(tugas.status)}
+              <div className="space-y-4">
+                {mockRecentTugas.map((tugas) => (
+                  <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <CheckSquare className="h-4 w-4 text-blue-600" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Tidak ada tugas terbaru</p>
-                </div>
-              )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {tugas.judul_tugas}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Target: {formatDate(tugas.target_selesai)}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(tugas.status)}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardBody>
           </Card>
         </div>
@@ -498,6 +302,7 @@ const Dashboard = () => {
 
   // Leader Dashboard
   if (user?.role === 'leader') {
+    console.log('🎯 Rendering Leader Dashboard')
     return (
       <div className="space-y-6">
         {/* Page Header */}
@@ -524,7 +329,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Komplain Tim</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalKomplain}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalKomplain}</p>
                 </div>
               </div>
             </CardBody>
@@ -538,7 +343,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Tugas Tim</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalTugas}</p>
                 </div>
               </div>
             </CardBody>
@@ -552,7 +357,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Pos Kas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalPoskas}</p>
                 </div>
               </div>
             </CardBody>
@@ -566,7 +371,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Anggota Tim</p>
-                  <p className="text-2xl font-bold text-gray-900">-</p>
+                  <p className="text-2xl font-bold text-gray-900">8</p>
                 </div>
               </div>
             </CardBody>
@@ -614,35 +419,28 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardBody>
-              {recentKomplains.length > 0 ? (
-                <div className="space-y-4">
-                  {recentKomplains.map((komplain) => (
-                    <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-orange-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {komplain.judul_komplain}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(komplain.tanggal_pelaporan)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(komplain.status)}
+              <div className="space-y-4">
+                {mockRecentKomplains.map((komplain) => (
+                  <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                        <AlertTriangle className="h-4 w-4 text-orange-600" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Tidak ada komplain tim</p>
-                </div>
-              )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {komplain.judul_komplain}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {formatDate(komplain.tanggal_pelaporan)}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(komplain.status)}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardBody>
           </Card>
 
@@ -656,35 +454,28 @@ const Dashboard = () => {
               </div>
             </CardHeader>
             <CardBody>
-              {recentTugas.length > 0 ? (
-                <div className="space-y-4">
-                  {recentTugas.map((tugas) => (
-                    <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <CheckSquare className="h-4 w-4 text-blue-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {tugas.judul_tugas}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Target: {formatDate(tugas.target_selesai)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(tugas.status)}
+              <div className="space-y-4">
+                {mockRecentTugas.map((tugas) => (
+                  <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <CheckSquare className="h-4 w-4 text-blue-600" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">Tidak ada tugas tim</p>
-                </div>
-              )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {tugas.judul_tugas}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Target: {formatDate(tugas.target_selesai)}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(tugas.status)}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardBody>
           </Card>
         </div>
@@ -693,6 +484,7 @@ const Dashboard = () => {
   }
 
   // Divisi Dashboard (Default)
+  console.log('🎯 Rendering Divisi Dashboard')
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -719,7 +511,7 @@ const Dashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Komplain Saya</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalKomplain}</p>
+                <p className="text-2xl font-bold text-gray-900">3</p>
               </div>
             </div>
           </CardBody>
@@ -733,7 +525,7 @@ const Dashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tugas Saya</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
+                <p className="text-2xl font-bold text-gray-900">5</p>
               </div>
             </div>
           </CardBody>
@@ -747,7 +539,7 @@ const Dashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Pos Kas Saya</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+                <p className="text-2xl font-bold text-gray-900">12</p>
               </div>
             </div>
           </CardBody>
@@ -761,7 +553,7 @@ const Dashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Notifikasi</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
+                <p className="text-2xl font-bold text-gray-900">{mockStats.unreadMessages}</p>
               </div>
             </div>
           </CardBody>
@@ -809,35 +601,28 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardBody>
-            {myKomplains.length > 0 ? (
-              <div className="space-y-4">
-                {myKomplains.map((komplain) => (
-                  <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="h-4 w-4 text-orange-600" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {komplain.judul_komplain}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(komplain.tanggal_pelaporan)}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {getStatusBadge(komplain.status)}
+            <div className="space-y-4">
+              {mockRecentKomplains.slice(0, 3).map((komplain) => (
+                <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Tidak ada komplain</p>
-              </div>
-            )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {komplain.judul_komplain}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {formatDate(komplain.tanggal_pelaporan)}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(komplain.status)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardBody>
         </Card>
 
@@ -851,35 +636,28 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardBody>
-            {myTugas.length > 0 ? (
-              <div className="space-y-4">
-                {myTugas.map((tugas) => (
-                  <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <CheckSquare className="h-4 w-4 text-blue-600" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {tugas.judul_tugas}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Target: {formatDate(tugas.target_selesai)}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {getStatusBadge(tugas.status)}
+            <div className="space-y-4">
+              {mockRecentTugas.slice(0, 3).map((tugas) => (
+                <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <CheckSquare className="h-4 w-4 text-blue-600" />
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Tidak ada tugas</p>
-              </div>
-            )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {tugas.judul_tugas}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Target: {formatDate(tugas.target_selesai)}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    {getStatusBadge(tugas.status)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardBody>
         </Card>
       </div>
