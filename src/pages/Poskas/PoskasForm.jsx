@@ -29,6 +29,25 @@ const PoskasForm = () => {
         display: block !important;
         border: 1px solid #e5e7eb !important;
       }
+      .image-placeholder {
+        background: #f3f4f6;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+        font-style: italic;
+        margin: 10px 0;
+      }
+      [contenteditable="true"]:empty:before {
+        content: attr(data-placeholder);
+        color: #9ca3af;
+        font-style: italic;
+        pointer-events: none;
+      }
+      [contenteditable="true"]:focus:empty:before {
+        content: "";
+      }
     `;
     document.head.appendChild(style);
     
@@ -45,6 +64,7 @@ const PoskasForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+  const [imageIdMap, setImageIdMap] = useState(new Map()); // Map untuk tracking image ID
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
 
@@ -84,8 +104,15 @@ const PoskasForm = () => {
             return;
           }
           
-          // Add to selected images
-          setSelectedImages(prev => [...prev, file]);
+          // Generate unique ID untuk gambar
+          const imageId = Date.now() + Math.floor(Math.random() * 1000);
+          
+          // Add to selected images dengan ID
+          const imageWithId = { file, id: imageId };
+          setSelectedImages(prev => [...prev, imageWithId]);
+          
+          // Store mapping file -> ID
+          setImageIdMap(prev => new Map(prev.set(file, imageId)));
           
           // Create preview URL and insert image into editor
           const reader = new FileReader();
@@ -95,12 +122,12 @@ const PoskasForm = () => {
             // Add to preview URLs
             setImagePreviewUrls(prev => [...prev, imageUrl]);
             
-            // Create image element for editor
+            // Create image element for editor dengan data-image-id
             const img = document.createElement('img');
             img.src = imageUrl;
             img.alt = 'Pasted image';
             img.className = 'pasted-image';
-            img.setAttribute('data-image-id', file.name); // Add data attribute for ID
+            img.setAttribute('data-image-id', imageId);
             
             // Insert image into editor at cursor position
             const selection = window.getSelection();
@@ -128,47 +155,67 @@ const PoskasForm = () => {
     }
   };
 
-  // Get editor content
+  // Get editor content dengan format [IMG:id] placeholder
   const getEditorContent = () => {
+    if (!editorRef.current) {
+      console.log('🔍 Debug: Editor ref not found');
+      return '';
+    }
+    
+    const content = editorRef.current.innerHTML;
+    console.log('🔍 Debug: Raw editor HTML:', content);
+    
+    if (!content || content.trim() === '') {
+      console.log('🔍 Debug: Editor content is empty');
+      return '';
+    }
+    
+    // Convert HTML content to text dengan [IMG:id] placeholders
+    let processedContent = content;
+    
+    // Replace base64 images dengan [IMG:id] placeholders
+    const imgRegex = /<img[^>]*data-image-id="([^"]*)"[^>]*>/g;
+    let imgMatch;
+    let imageCount = 0;
+    
+    while ((imgMatch = imgRegex.exec(content)) !== null) {
+      const imageId = imgMatch[1];
+      const placeholder = `[IMG:${imageId}]`;
+      processedContent = processedContent.replace(imgMatch[0], placeholder);
+      imageCount++;
+      console.log(`🔍 Debug: Replaced image with placeholder: [IMG:${imageId}]`);
+    }
+    
+    // Remove any remaining HTML tags but keep line breaks
+    processedContent = processedContent
+      .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
+      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
+      .replace(/<\/div>/gi, '') // Remove closing div tags
+      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
+      .replace(/&amp;/g, '&') // Convert &amp; to &
+      .replace(/&lt;/g, '<') // Convert &lt; to <
+      .replace(/&gt;/g, '>') // Convert &gt; to >
+      .replace(/&quot;/g, '"') // Convert &quot; to "
+      .replace(/&#39;/g, "'") // Convert &#39; to '
+      .trim();
+    
+    console.log('🔍 Debug: Final processed content:', processedContent);
+    console.log('🔍 Debug: Content length:', processedContent.length);
+    console.log('🔍 Debug: Images found:', imageCount);
+    
+    return processedContent;
+  };
+
+  // Ensure editor has minimum content
+  const ensureEditorContent = () => {
     if (editorRef.current) {
       const content = editorRef.current.innerHTML;
-      console.log('🔍 Debug: Getting editor content:', content);
-      
-      // Convert HTML content to text with [IMG:id] placeholders
-      let processedContent = content;
-      
-      // Replace base64 images with [IMG:id] placeholders
-      const imgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-      let imgMatch;
-      let imgIndex = 0;
-      
-      while ((imgMatch = imgRegex.exec(content)) !== null) {
-        // Generate a consistent ID that will match the database
-        const timestamp = Date.now();
-        const imgId = timestamp + Math.floor(Math.random() * 1000);
-        const placeholder = `[IMG:${imgId}]`;
-        processedContent = processedContent.replace(imgMatch[0], placeholder);
-        imgIndex++;
+      if (!content || content.trim() === '' || content === '<br>' || content === '<div><br></div>') {
+        editorRef.current.innerHTML = '';
+        console.log('🔍 Debug: Editor content cleared for minimum content');
       }
-      
-      // Remove any remaining HTML tags but keep line breaks
-      processedContent = processedContent
-        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-        .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-        .replace(/<\/div>/gi, '') // Remove closing div tags
-        .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-        .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-        .replace(/&amp;/g, '&') // Convert &amp; to &
-        .replace(/&lt;/g, '<') // Convert &lt; to <
-        .replace(/&gt;/g, '>') // Convert &gt; to >
-        .replace(/&quot;/g, '"') // Convert &quot; to "
-        .replace(/&#39;/g, "'") // Convert &#39; to '
-        .trim();
-      
-      console.log('🔍 Debug: Processed content:', processedContent);
-      return processedContent;
     }
-    return '';
   };
 
   // Handle image selection
@@ -194,7 +241,18 @@ const PoskasForm = () => {
       return;
     }
 
-    setSelectedImages(prev => [...prev, ...validFiles]);
+    // Generate ID untuk setiap gambar
+    const imagesWithIds = validFiles.map(file => ({
+      file,
+      id: Date.now() + Math.floor(Math.random() * 1000)
+    }));
+
+    setSelectedImages(prev => [...prev, ...imagesWithIds]);
+
+    // Store mapping file -> ID
+    validFiles.forEach((file, index) => {
+      setImageIdMap(prev => new Map(prev.set(file, imagesWithIds[index].id)));
+    });
 
     // Create preview URLs
     validFiles.forEach(file => {
@@ -208,8 +266,18 @@ const PoskasForm = () => {
 
   // Remove image
   const removeImage = (index) => {
+    const removedImage = selectedImages[index];
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
     setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    
+    // Remove dari imageIdMap
+    if (removedImage && removedImage.file) {
+      setImageIdMap(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(removedImage.file);
+        return newMap;
+      });
+    }
   };
 
   // Validate form data
@@ -219,16 +287,16 @@ const PoskasForm = () => {
       return false;
     }
     
-    const editorContent = editorRef.current?.innerHTML || '';
-    // Remove base64 images for validation purposes
-    const cleanContent = editorContent.replace(/<img[^>]*src="data:image[^"]*"[^>]*>/g, '').trim();
+    // Get content dari editor dengan format yang benar
+    const editorContent = getEditorContent();
+    console.log('🔍 Debug: Validating editor content:', editorContent);
     
-    if (!cleanContent) {
+    if (!editorContent || editorContent.trim() === '') {
       toast.error('Isi laporan tidak boleh kosong');
       return false;
     }
     
-    if (cleanContent.length < 10) {
+    if (editorContent.trim().length < 10) {
       toast.error('Isi laporan minimal 10 karakter');
       return false;
     }
@@ -236,106 +304,152 @@ const PoskasForm = () => {
     return true;
   };
 
+  // Upload images to server first
+  const uploadImagesToServer = async (images) => {
+    if (images.length === 0) return [];
+
+    console.log('📁 Starting POSKAS image upload...');
+    console.log('📁 Number of images:', images.length);
+
+    const formData = new FormData();
+    
+    images.forEach((imageData, index) => {
+      console.log(`📁 Processing image ${index + 1}:`, {
+        name: imageData.file.name,
+        size: imageData.file.size,
+        id: imageData.id
+      });
+      
+      formData.append('images', imageData.file);
+    });
+
+    try {
+      console.log('📤 Sending upload request to: /api/upload/poskas');
+      
+      const response = await fetch('/api/upload/poskas', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: formData
+      });
+
+      console.log('📥 Response status:', response.status);
+      
+      if (!response.ok) {
+        console.error('❌ Response not OK:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('❌ Error response body:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('📥 Response data:', JSON.stringify(result, null, 2));
+
+      if (result.success) {
+        console.log('✅ POSKAS image upload successful!');
+        console.log('✅ Uploaded files:', result.data);
+        return result.data;
+      } else {
+        console.error('❌ Upload failed:', result.message);
+        toast.error(result.message || 'Gagal mengupload gambar');
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Error uploading POSKAS images:', error);
+      toast.error(`Gagal mengupload gambar: ${error.message}`);
+      return [];
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Get content from editor
-    const editorContent = getEditorContent();
-    const finalFormData = {
-      ...formData,
-      isi_poskas: editorContent
-    };
-    
-    console.log('🔍 Debug: Final form data:', finalFormData);
-    
-    if (!validateForm()) return;
-    
     console.log('🔍 Debug: Form submission started');
-    console.log('🔍 Debug: Selected images:', selectedImages);
-    console.log('🔍 Debug: User info:', user);
     
-    setIsSubmitting(true);
-
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('tanggal_poskas', finalFormData.tanggal_poskas);
-      formDataToSend.append('isi_poskas', finalFormData.isi_poskas);
-
-      // Add images to form data
-      selectedImages.forEach((image, index) => {
-        formDataToSend.append('images', image);
-        console.log('🔍 Debug: Added image', index, ':', image.name, image.size);
-      });
-
-      console.log('🔍 Debug: Sending form data to service...');
-      console.log('🔍 Debug: FormData entries:');
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log('🔍 Debug:', key, ':', value);
-      }
-      
-      // Use the correct service method
-      const response = await poskasService.createPoskasWithImages(formDataToSend);
-      
-      console.log('🔍 Debug: Service response:', response);
-      
-      if (response.success) {
-        toast.success('Laporan pos kas berhasil disimpan');
-        navigate('/poskas');
-      } else {
-        toast.error(response.message || 'Gagal menyimpan laporan');
-      }
-    } catch (error) {
-      console.error('❌ Error submitting poskas:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        config: error.config
-      });
-      
-      // Provide specific error messages based on error type
-      if (error.response?.status === 404) {
-        toast.error('Backend server tidak ditemukan. Pastikan server berjalan di port 3000');
-      } else if (error.response?.status === 401) {
-        toast.error('Sesi Anda telah berakhir. Silakan login ulang');
-        navigate('/login');
-      } else if (error.code === 'ERR_NETWORK') {
-        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server');
-      } else {
-        toast.error('Terjadi kesalahan saat menyimpan laporan: ' + (error.response?.data?.message || error.message));
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handle text-only submission
-  const handleTextOnlySubmit = async (e) => {
-    e.preventDefault();
+    // Ensure editor has proper content
+    ensureEditorContent();
     
-    // Get content from editor
+    // Get content from editor dengan format [IMG:id]
     const editorContent = getEditorContent();
-    const finalFormData = {
-      ...formData,
-      isi_poskas: editorContent
-    };
+    console.log('🔍 Debug: Editor content:', editorContent);
     
-    console.log('🔍 Debug: Text-only submission started');
-    console.log('🔍 Debug: Final form data:', finalFormData);
+    // Double check validation
+    if (!formData.tanggal_poskas) {
+      toast.error('Tanggal laporan harus diisi');
+      return;
+    }
+    
+    if (!editorContent || editorContent.trim() === '') {
+      toast.error('Isi laporan tidak boleh kosong');
+      return;
+    }
+    
+    if (editorContent.trim().length < 10) {
+      toast.error('Isi laporan minimal 10 karakter');
+      return;
+    }
     
     if (!validateForm()) return;
     
     setIsSubmitting(true);
 
     try {
-      console.log('🔍 Debug: Sending text-only data to service...');
-      const response = await poskasService.createPoskas({
-        tanggal_poskas: finalFormData.tanggal_poskas,
-        isi_poskas: finalFormData.isi_poskas
+      // Upload images to server first
+      console.log('📁 Starting image upload process...');
+      const uploadedFiles = await uploadImagesToServer(selectedImages);
+      
+      // Update images array with server URLs
+      const imagesWithServerUrls = selectedImages.map((img, index) => {
+        const uploadedFile = uploadedFiles[index];
+        
+        if (uploadedFile) {
+          console.log(`🖼️ Image ${index + 1}:`, {
+            originalId: img.id,
+            serverUrl: uploadedFile.url,
+            serverPath: uploadedFile.path
+          });
+          
+          return {
+            uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
+            id: img.id,
+            name: `poskas_${img.id}.jpg`,
+            url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+            serverPath: uploadedFile.path // Path dari server
+          };
+        } else {
+          // Fallback jika upload gagal
+          return {
+            uri: `file://temp/${img.id}.jpg`,
+            id: img.id,
+            name: `poskas_${img.id}.jpg`,
+            url: `http://192.168.1.2:3000/uploads/poskas/temp_${img.id}.jpg`,
+            serverPath: `poskas/temp_${img.id}.jpg`
+          };
+        }
       });
+
+      // Buat data sesuai format backend yang sudah ada
+      const finalFormData = {
+        tanggal_poskas: formData.tanggal_poskas,
+        isi_poskas: editorContent,
+        images: imagesWithServerUrls // Kirim sebagai array object, bukan JSON string
+      };
+      
+      console.log('🔍 Debug: Final form data:', finalFormData);
+      console.log('🔍 Debug: Selected images:', selectedImages);
+      console.log('🔍 Debug: User info:', user);
+      console.log('🔍 Debug: Images JSON string:', JSON.stringify(imagesWithServerUrls));
+      console.log('🔍 Debug: Images length:', imagesWithServerUrls.length);
+      
+      // Gunakan service yang sudah ada (tanpa FormData)
+      const response = await poskasService.createPoskas(finalFormData);
       
       console.log('🔍 Debug: Service response:', response);
+      console.log('🔍 Debug: Data sent to service:', finalFormData);
+      console.log('🔍 Debug: Images field type:', typeof finalFormData.images);
+      console.log('🔍 Debug: Images field value:', finalFormData.images);
       
       if (response.success) {
         toast.success('Laporan pos kas berhasil disimpan');
@@ -462,19 +576,30 @@ const PoskasForm = () => {
                     whiteSpace: 'pre-wrap',
                     lineHeight: '1.6'
                   }}
+                  data-placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
                 ></div>
               </div>
               <p className="text-sm text-gray-500 mt-1">
                 Minimal 10 karakter. Gunakan toolbar di atas untuk formatting. 
                 <br />
                 <span className="text-blue-600">💡 Tips: Anda bisa paste gambar langsung ke editor (Ctrl+V)</span>
+                <br />
+                <span className="text-green-600">📝 Format: Gambar akan otomatis diganti dengan [IMG:id] saat disimpan</span>
+                <br />
+                <span className="text-orange-600">⚠️ Note: Gambar akan disimpan sebagai referensi dengan [IMG:id] placeholder</span>
+                <br />
+                <span className="text-purple-600">🔗 Backend: Gambar akan diupload ke server folder uploads/poskas terlebih dahulu</span>
+                <br />
+                <span className="text-indigo-600">📁 Upload: Gambar akan diupload ke /api/upload/poskas sebelum submit data</span>
+                <br />
+                <span className="text-red-600">📱 Mobile: Images akan disimpan sebagai array object dengan URL lengkap untuk mobile</span>
               </p>
             </div>
 
             {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Gambar (Opsional)
+                Upload Gambar (Opsional) - Akan diupload ke server folder uploads/poskas
               </label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 <input
@@ -494,6 +619,12 @@ const PoskasForm = () => {
                 </button>
                 <p className="text-sm text-gray-500 mt-2">
                   Maksimal 5 gambar, ukuran maksimal 10MB per gambar
+                  <br />
+                  <span className="text-orange-600">Gambar akan diupload ke server folder uploads/poskas</span>
+                  <br />
+                  <span className="text-purple-600">Metadata: URI, URL, dan serverPath akan diisi otomatis setelah upload</span>
+                  <br />
+                  <span className="text-red-600">📱 Format: Images akan disimpan sebagai array object dengan URL lengkap untuk mobile</span>
                 </p>
               </div>
 
@@ -502,22 +633,28 @@ const PoskasForm = () => {
                 <div className="mt-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Dipilih:</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {imagePreviewUrls.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                    {imagePreviewUrls.map((url, index) => {
+                      const imageData = selectedImages[index];
+                      return (
+                        <div key={index} className="relative group">
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                          <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                            ID: {imageData?.id}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -526,19 +663,11 @@ const PoskasForm = () => {
             {/* Submit Buttons */}
             <div className="flex space-x-4 pt-6">
               <button
-                type="button"
-                onClick={handleTextOnlySubmit}
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSubmitting ? 'Menyimpan...' : 'Simpan (Tanpa Gambar)'}
-              </button>
-              <button
                 type="submit"
                 disabled={isSubmitting}
                 className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSubmitting ? 'Menyimpan...' : 'Simpan dengan Gambar'}
+                {isSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}
               </button>
             </div>
           </form>
