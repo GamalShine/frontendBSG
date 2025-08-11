@@ -1,366 +1,372 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
 
 const PoskasDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [poskas, setPoskas] = useState(null);
+  const { user } = useAuth();
+  
+  const [poskasData, setPoskasData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [fullScreenImage, setFullScreenImage] = useState(null);
+  const [showFullScreenModal, setShowFullScreenModal] = useState(false);
+  const [contentParts, setContentParts] = useState([]);
 
   useEffect(() => {
-    fetchPoskasDetail();
+    if (id) {
+      fetchPoskasDetail();
+    }
   }, [id]);
+
+  // Process images and content when poskasData changes
+  useEffect(() => {
+    if (poskasData) {
+      const processedImages = processImages(poskasData.images);
+      console.log('🔍 Final processed images:', processedImages);
+      
+      const parts = renderContentWithImages(
+        poskasData.isi_poskas,
+        processedImages
+      );
+      
+      setContentParts(parts);
+    }
+  }, [poskasData]);
 
   const fetchPoskasDetail = async () => {
     try {
       setLoading(true);
       const response = await poskasService.getPoskasById(id);
-      
+
       if (response.success) {
-        console.log('🔍 Debug: Backend response data:', response.data);
-        console.log('🔍 Debug: isi_poskas:', response.data.isi_poskas);
-        console.log('🔍 Debug: images:', response.data.images);
-        console.log('🔍 Debug: images type:', typeof response.data.images);
-        console.log('🔍 Debug: images length:', response.data.images?.length);
-        
-        setPoskas(response.data);
+        setPoskasData(response.data);
       } else {
-        setError(response.message || 'Gagal memuat detail laporan');
-        toast.error(response.message || 'Gagal memuat detail laporan');
+        toast.error('Data POSKAS tidak ditemukan');
+        navigate('/poskas');
       }
     } catch (error) {
       console.error('Error fetching poskas detail:', error);
-      setError('Terjadi kesalahan saat memuat detail laporan');
-      
-      if (error.response?.status === 404) {
-        toast.error('Laporan tidak ditemukan atau backend server tidak berjalan');
-      } else if (error.code === 'ERR_NETWORK') {
-        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server');
-      } else {
-        toast.error('Gagal memuat detail laporan: ' + error.message);
-      }
+      toast.error('Gagal memuat detail POSKAS');
+      navigate('/poskas');
     } finally {
       setLoading(false);
     }
   };
 
-  const parseImages = (imagesString) => {
-    if (!imagesString) {
-      console.log('🔍 Debug: parseImages - No imagesString provided');
-      return [];
-    }
-    try {
-      console.log('🔍 Debug: parseImages - Input:', imagesString);
-      console.log('🔍 Debug: parseImages - Type:', typeof imagesString);
-      
-      // Handle different data types
-      let parsed;
-      if (typeof imagesString === 'string') {
-        // If it's a JSON string, parse it
-        parsed = JSON.parse(imagesString);
-      } else if (Array.isArray(imagesString)) {
-        // If it's already an array, use it directly
-        parsed = imagesString;
-      } else if (typeof imagesString === 'object' && imagesString !== null) {
-        // If it's an object, wrap it in array
-        parsed = [imagesString];
-      } else {
-        // Fallback for other types
-        console.log('🔍 Debug: parseImages - Unknown type, returning empty array');
-        return [];
-      }
-      
-      console.log('🔍 Debug: parseImages - Parsed:', parsed);
-      console.log('🔍 Debug: parseImages - Is Array:', Array.isArray(parsed));
-      
-      // Ensure it's an array and filter out invalid items
-      const result = Array.isArray(parsed) ? parsed : [parsed];
-      const validResult = result.filter(item => 
-        item && typeof item === 'object' && item.url && item.id !== undefined
-      );
-      
-      console.log('🔍 Debug: parseImages - Final result:', validResult);
-      return validResult;
-    } catch (error) {
-      console.error('Error parsing images:', error);
-      return [];
-    }
-  };
-
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
-  const renderContentWithImages = (text, images) => {
-    if (!text) return '';
-    let renderedText = text;
-    
-    console.log('🔍 Debug: renderContentWithImages - Original text:', text);
-    console.log('🔍 Debug: renderContentWithImages - Images:', images);
-    
-    // Check if text contains HTML with base64 images (old format)
-    const hasBase64Images = /<img[^>]*src="data:image[^"]*"[^>]*>/g.test(text);
-    
-    if (hasBase64Images) {
-      console.log('🔍 Debug: Found base64 images in text, keeping as is');
-      return text; // Keep the original HTML with base64 images
-    }
-    
-    // Check if text contains [IMG:xxx] placeholders (new format)
-    const placeholderRegex = /\[IMG:([^\]]+)\]/g;
-    const placeholders = text.match(placeholderRegex);
-    
-    console.log('🔍 Debug: Found placeholders:', placeholders);
-    
-    if (placeholders && placeholders.length > 0 && Array.isArray(images) && images.length > 0) {
-      console.log('🔍 Debug: Found placeholders and images, replacing...');
-      
-      // Replace all placeholders with available images
-      placeholders.forEach((placeholder, index) => {
-        // Try to find matching image by ID first
-        let image = null;
-        
-        // Extract ID from placeholder
-        const placeholderId = placeholder.match(/\[IMG:(.+)\]/)?.[1];
-        console.log('🔍 Debug: Placeholder ID:', placeholderId);
-        
-        // Try to find image by ID
-        if (placeholderId) {
-          image = images.find(img => {
-            if (img && img.id !== undefined && img.id !== null) {
-              return img.id == placeholderId || 
-                     String(img.id) === placeholderId;
-            }
-            return false;
-          });
-        }
-        
-        // If not found by ID, use first available image
-        if (!image && images.length > 0) {
-          image = images[0];
-          console.log('🔍 Debug: Using first available image:', image);
-        }
-        
-        if (image && image.url) {
-          console.log('🔍 Debug: Replacing placeholder with image:', image);
-          const imgTag = `<img src="http://192.168.1.2:3000${image.url}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" />`;
-          renderedText = renderedText.replace(placeholder, imgTag);
-        } else {
-          console.log('🔍 Debug: No matching image for placeholder:', placeholder);
-        }
-      });
-    } else if (placeholders && placeholders.length > 0) {
-      console.log('🔍 Debug: Found placeholders but no images available');
-      // If we have placeholders but no images, show a message
-      placeholders.forEach(placeholder => {
-        const errorMsg = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-2">⚠️ Gambar tidak tersedia</div>';
-        renderedText = renderedText.replace(placeholder, errorMsg);
-      });
-    } else {
-      console.log('🔍 Debug: No placeholders found');
-    }
-    
-    console.log('🔍 Debug: Final rendered text:', renderedText);
-    return renderedText;
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) {
-      return;
+  const handleImagePress = (imageUri) => {
+    setFullScreenImage(imageUri);
+    setShowFullScreenModal(true);
+  };
+
+  // Helper function to safely process images (sama seperti admin)
+  const processImages = (images) => {
+    if (!images) return [];
+    if (typeof images === 'string') {
+      try {
+        return JSON.parse(images);
+      } catch (error) {
+        console.error('Error parsing images JSON:', error);
+        return [];
+      }
+    }
+    return Array.isArray(images) ? images : [];
+  };
+
+  const parseFormattedText = (text) => {
+    let parsedText = text;
+    parsedText = parsedText.replace(/<b>(.*?)<\/b>/g, '**$1**');
+    parsedText = parsedText.replace(/<i>(.*?)<\/i>/g, '*$1*');
+    parsedText = parsedText.replace(/<u>(.*?)<\/u>/g, '__$1__');
+    return parsedText;
+  };
+
+  // Render content with images inline (sama seperti admin)
+  const renderContentWithImages = (content, images = []) => {
+    console.log('🔍 renderContentWithImages called with:');
+    console.log('🔍 content:', content);
+    console.log('🔍 images:', images);
+    
+    if (!content) return null;
+
+    // Ensure images is an array and process if it's a string
+    let imagesArray = [];
+    if (typeof images === 'string') {
+      try {
+        imagesArray = JSON.parse(images);
+      } catch (error) {
+        console.error('❌ Error parsing images in renderContentWithImages:', error);
+        imagesArray = [];
+      }
+    } else if (Array.isArray(images)) {
+      imagesArray = images;
+    }
+    console.log('🔍 imagesArray:', imagesArray);
+
+    const parts = [];
+    let lastIndex = 0;
+
+    // Find all image tags
+    const imageRegex = /\[IMG:(\d+)\]/g;
+    let match;
+
+    while ((match = imageRegex.exec(content)) !== null) {
+      const imageId = parseInt(match[1]);
+      console.log(`🔍 Found image tag: [IMG:${imageId}]`);
+      
+      const image = imagesArray.find((img) => img && img.id === imageId);
+      console.log(`🔍 Looking for image with ID ${imageId}:`, image);
+
+      if (image) {
+        console.log(`✅ Image found for ID ${imageId}:`, image.name);
+        
+        // Add text before image
+        if (match.index > lastIndex) {
+          parts.push({
+            type: 'text',
+            content: parseFormattedText(content.slice(lastIndex, match.index)),
+          });
+        }
+
+        // Add image with server URL if available
+        parts.push({
+          type: 'image',
+          image: {
+            ...image,
+            // Use server URL if available, otherwise fallback to local URI
+            displayUri: image.url || image.uri || '',
+            fallbackUri: image.uri || image.url || '',
+          },
+        });
+
+        lastIndex = match.index + match[0].length;
+      } else {
+        // Image not found for ID
+        console.log(`❌ Image not found for ID: ${imageId}`);
+        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id, name: img?.name })));
+      }
     }
 
-    try {
-      const response = await poskasService.deletePoskas(id);
-      if (response.success) {
-        toast.success('Laporan berhasil dihapus');
-        navigate('/poskas');
-      } else {
-        toast.error(response.message || 'Gagal menghapus laporan');
-      }
-    } catch (error) {
-      console.error('Error deleting poskas:', error);
-      toast.error('Terjadi kesalahan saat menghapus laporan: ' + error.message);
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push({
+        type: 'text',
+        content: parseFormattedText(content.slice(lastIndex)),
+      });
     }
+
+    console.log('🔍 Final parts:', parts);
+    return parts;
+  };
+
+  const openFullScreenImage = (image) => {
+    setFullScreenImage(image.displayUri || image.fallbackUri);
+    setShowFullScreenModal(true);
   };
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex-1 bg-gray-50 flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4">Memuat detail POSKAS...</p>
         </div>
       </div>
     );
   }
 
-  if (error || !poskas) {
+  if (!poskasData) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <h2 className="text-xl font-semibold text-red-800 mb-2">Error</h2>
-            <p className="text-red-600 mb-4">{error || 'Laporan tidak ditemukan'}</p>
-            <div className="space-x-4">
-              <button
-                onClick={fetchPoskasDetail}
-                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-              >
-                Coba Lagi
-              </button>
-              <button
-                onClick={() => navigate('/poskas')}
-                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-              >
-                Kembali ke Daftar
-              </button>
-            </div>
-          </div>
+      <div className="flex-1 bg-gray-50 flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="text-6xl text-gray-400 mb-4">📄</div>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Data Tidak Ditemukan</h1>
+          <p className="text-gray-600 mb-6">Detail POSKAS tidak dapat dimuat</p>
+          <button
+            onClick={() => navigate('/poskas')}
+            className="bg-red-500 px-6 py-3 rounded-lg text-white font-medium hover:bg-red-600 transition-colors"
+          >
+            Kembali
+          </button>
         </div>
       </div>
     );
   }
-
-  const images = parseImages(poskas.images);
-  const hasImages = Array.isArray(images) && images.length > 0;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-6 py-4">
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
+          <button
+            onClick={() => navigate('/poskas')}
+            className="w-10 h-10 bg-gray-100 rounded-full flex justify-center items-center hover:bg-gray-200 transition-colors"
+          >
+            ←
+          </button>
+          <h1 className="text-xl font-bold text-gray-900">Detail POSKAS</h1>
+          <div className="w-10"></div>
+        </div>
+      </div>
+
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-white">
-                  Detail Laporan Pos Kas
-                </h1>
-                <p className="text-blue-100 mt-1">
-                  ID: {poskas.id} • {formatDate(poskas.tanggal_poskas)}
-                </p>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => navigate('/poskas')}
-                  className="px-4 py-2 bg-white bg-opacity-20 text-white rounded-md hover:bg-opacity-30 transition-colors"
-                >
-                  ← Kembali
-                </button>
-                <button
-                  onClick={() => navigate(`/poskas/${id}/edit`)}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                >
-                  Hapus
-                </button>
-              </div>
+        {/* Transaction Summary Card */}
+        <div className="mx-6 mt-6 bg-red-600 rounded-2xl shadow-sm border border-red-300">
+          <div className="p-6">
+            <h2 className="text-lg font-bold text-white mb-2">POSISI KAS OUTLET</h2>
+            <p className="text-white">{formatDate(poskasData.tanggal_poskas)}</p>
+          </div>
+        </div>
+
+        {/* Detail Information */}
+        <div className="p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Informasi Detail</h2>
+
+          <div className="space-y-4">
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-600">Tanggal</span>
+              <span className="text-gray-900 font-medium">{formatDate(poskasData.tanggal_poskas)}</span>
+            </div>
+
+            <div className="flex justify-between py-2 border-b border-gray-100">
+              <span className="text-gray-600">Dibuat oleh</span>
+              <span className="text-gray-900 font-medium">{poskasData.admin_nama || 'Admin'}</span>
+            </div>
+
+            <div className="flex justify-between py-2">
+              <span className="text-gray-600">Waktu Input</span>
+              <span className="text-gray-900 font-medium">{formatDateTime(poskasData.created_at)}</span>
             </div>
           </div>
+        </div>
 
-          {/* Content */}
-          <div className="p-6">
-            {/* Basic Info */}
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
-              {hasImages && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Gambar ({images.length})</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {images.slice(0, 4).map((image, index) => (
-                      <div key={index} className="relative">
-                        <img
-                          src={`http://192.168.1.2:3000${image.url}`}
-                          alt={`Gambar ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                        <div 
-                          className="hidden w-full h-24 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
-                          style={{ display: 'none' }}
+        {/* Isi POSKAS Section - sama seperti admin */}
+        <div className="p-6 border-t border-gray-400">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Isi POSKAS</h2>
+          <div className="w-full min-h-[120px]">
+            {contentParts && contentParts.length > 0 ? (
+              <div className="w-full">
+                {contentParts.map((part, index) => (
+                  <div key={index}>
+                    {part.type === 'text' ? (
+                      <p className="text-gray-800 text-sm leading-5 mb-4 whitespace-pre-wrap">
+                        {part.content}
+                      </p>
+                    ) : part.type === 'image' ? (
+                      <div className="w-full mb-4">
+                        <button
+                          onClick={() => openFullScreenImage(part.image)}
+                          className="w-full cursor-pointer hover:opacity-90 transition-opacity"
                         >
-                          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                          <img
+                            src={part.image.displayUri || part.image.fallbackUri}
+                            alt={part.image.name || 'Gambar POSKAS'}
+                            className="w-full mx-auto"
+                            style={{
+                              height: 'auto',
+                            }}
+                            onError={(e) => {
+                              console.error('Error loading image:', e);
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </button>
+                        <div className="mt-2 flex items-center justify-center w-full">
+                          <span className="text-gray-500 text-xs">🔍 Klik untuk tampilkan full screen</span>
                         </div>
                       </div>
-                    ))}
-                    {images.length > 4 && (
-                      <div className="relative">
-                        <div className="w-full h-24 bg-gray-100 rounded-lg flex items-center justify-center">
-                          <span className="text-gray-500 text-sm">+{images.length - 4} lagi</span>
-                        </div>
-                      </div>
-                    )}
+                    ) : null}
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Isi Laporan</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                {/* Display text with proper line breaks and images */}
-                <div 
-                  className="prose max-w-none whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: renderContentWithImages(poskas.isi_poskas, images) }}
-                />
+                ))}
               </div>
-            </div>
-
-            {/* Full Images Gallery */}
-            {hasImages && (
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Galeri Gambar</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={`http://192.168.1.2:3000${image.url}`}
-                        alt={`Gambar ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                      <div 
-                        className="hidden w-full h-32 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
-                        style={{ display: 'none' }}
-                      >
-                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                        <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm">
-                          Gambar {index + 1}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            ) : (
+              <p className="text-gray-500 text-sm">Tidak ada konten</p>
             )}
           </div>
         </div>
+
+        {/* Additional Notes */}
+        {poskasData.catatan && (
+          <div className="mx-6 mb-6 bg-blue-50 rounded-2xl border border-blue-200">
+            <div className="p-6">
+              <div className="flex items-center mb-3">
+                <span className="text-blue-600 text-xl mr-2">ℹ️</span>
+                <h3 className="text-blue-900 font-bold">Catatan Tambahan</h3>
+              </div>
+              <p className="text-blue-800 leading-6">{poskasData.catatan}</p>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Full Screen Image Modal - sama seperti admin */}
+      {showFullScreenModal && (
+        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+          {/* Header */}
+          <div className="absolute top-0 left-0 right-0 pt-12 pb-4 px-4 flex items-center justify-between z-10">
+            <button
+              onClick={() => setShowFullScreenModal(false)}
+              className="w-10 h-10 bg-black bg-opacity-50 rounded-full flex justify-center items-center text-white hover:bg-opacity-70 transition-colors"
+            >
+              ✕
+            </button>
+            <h2 className="text-white font-bold text-lg">Gambar POSKAS</h2>
+            <button
+              onClick={() => {
+                // Reset zoom to center
+                setShowFullScreenModal(false);
+                setTimeout(() => setShowFullScreenModal(true), 100);
+              }}
+              className="w-10 h-10 bg-black bg-opacity-50 rounded-full flex justify-center items-center text-white hover:bg-opacity-70 transition-colors"
+            >
+              🔄
+            </button>
+          </div>
+
+          {/* Image Container */}
+          <div className="flex-1 flex items-center justify-center p-4">
+            {fullScreenImage && (
+              <img
+                src={fullScreenImage}
+                alt="Gambar POSKAS Full Screen"
+                className="max-w-full max-h-full object-contain"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                }}
+                onError={(error) => {
+                  console.error('Error loading full screen image:', error);
+                }}
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
