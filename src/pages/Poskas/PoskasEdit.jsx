@@ -138,6 +138,7 @@ const PoskasEdit = () => {
             img.src = imageUrl;
             img.alt = 'Pasted image';
             img.className = 'pasted-image';
+            img.setAttribute('data-image-id', file.name); // Add data attribute for ID
             
             // Insert image into editor at cursor position
             const selection = window.getSelection();
@@ -368,7 +369,21 @@ const PoskasEdit = () => {
       // Convert HTML content to text with [IMG:id] placeholders
       let processedContent = content;
       
-      // Remove any HTML tags but keep line breaks and [IMG:id] placeholders
+      // Replace base64 images with [IMG:id] placeholders
+      const imgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
+      let imgMatch;
+      let imgIndex = 0;
+      
+      while ((imgMatch = imgRegex.exec(content)) !== null) {
+        // Generate a consistent ID that will match the database
+        const timestamp = Date.now();
+        const imgId = timestamp + Math.floor(Math.random() * 1000);
+        const placeholder = `[IMG:${imgId}]`;
+        processedContent = processedContent.replace(imgMatch[0], placeholder);
+        imgIndex++;
+      }
+      
+      // Remove any remaining HTML tags but keep line breaks
       processedContent = processedContent
         .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
         .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks

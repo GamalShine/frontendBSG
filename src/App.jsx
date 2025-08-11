@@ -28,7 +28,9 @@ import TugasDetail from './pages/Tugas/TugasDetail'
 import TugasForm from './pages/Tugas/TugasForm'
 import AdminTugasList from './pages/Admin/Tugas/AdminTugasList'
 import AdminTugasDetail from './pages/Admin/Tugas/AdminTugasDetail'
-import KPI from './pages/Tugas/KPI'
+// Daftar Tugas Pages
+import KPI from './pages/DaftarTugas/KPI'
+import TimMerahBiru from './pages/DaftarTugas/TimMerahBiru'
 
 // Keuangan Pages
 import PoskasList from './pages/Poskas/PoskasList'
@@ -358,10 +360,19 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
 
+        {/* Daftar Tugas Routes */}
         <Route path="/tugas/kpi" element={
           <ProtectedRoute requiredPermissions={['read']}>
             <Layout>
               <KPI />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/tugas/tim" element={
+          <ProtectedRoute requiredPermissions={['read']}>
+            <Layout>
+              <TimMerahBiru />
             </Layout>
           </ProtectedRoute>
         } />

@@ -100,6 +100,7 @@ const PoskasForm = () => {
             img.src = imageUrl;
             img.alt = 'Pasted image';
             img.className = 'pasted-image';
+            img.setAttribute('data-image-id', file.name); // Add data attribute for ID
             
             // Insert image into editor at cursor position
             const selection = window.getSelection();
@@ -142,8 +143,9 @@ const PoskasForm = () => {
       let imgIndex = 0;
       
       while ((imgMatch = imgRegex.exec(content)) !== null) {
-        // Generate unique ID for the image
-        const imgId = Date.now() + Math.random().toString(36).substr(2, 9);
+        // Generate a consistent ID that will match the database
+        const timestamp = Date.now();
+        const imgId = timestamp + Math.floor(Math.random() * 1000);
         const placeholder = `[IMG:${imgId}]`;
         processedContent = processedContent.replace(imgMatch[0], placeholder);
         imgIndex++;

@@ -128,5 +128,15 @@ export const ownerPoskasService = {
         } catch (error) {
             throw error.response?.data || error.message
         }
+    },
+
+    // Get poskas detail for owner
+    async getOwnerPoskaDetail(id) {
+        try {
+            const response = await api.get(`/owner/keuangan-poskas/${id}`)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     }
 } 

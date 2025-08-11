@@ -23,6 +23,8 @@ const PoskasDetail = () => {
         console.log('🔍 Debug: Backend response data:', response.data);
         console.log('🔍 Debug: isi_poskas:', response.data.isi_poskas);
         console.log('🔍 Debug: images:', response.data.images);
+        console.log('🔍 Debug: images type:', typeof response.data.images);
+        console.log('🔍 Debug: images length:', response.data.images?.length);
         
         setPoskas(response.data);
       } else {
@@ -54,29 +56,36 @@ const PoskasDetail = () => {
       console.log('🔍 Debug: parseImages - Input:', imagesString);
       console.log('🔍 Debug: parseImages - Type:', typeof imagesString);
       
-      const parsed = JSON.parse(imagesString);
-      console.log('🔍 Debug: parseImages - Parsed:', parsed);
-      console.log('🔍 Debug: parseImages - Is Array:', Array.isArray(parsed));
-      console.log('🔍 Debug: parseImages - Constructor:', parsed?.constructor);
-      console.log('🔍 Debug: parseImages - Length:', parsed?.length);
-      
-      // Check if it's an array-like object or actual array
-      let result = [];
-      if (Array.isArray(parsed)) {
-        result = parsed;
-      } else if (parsed && typeof parsed === 'object' && parsed.length !== undefined) {
-        // Convert array-like object to array
-        result = Array.from(parsed);
-      } else if (parsed && typeof parsed === 'object') {
-        // If it's a single object, wrap it in array
-        result = [parsed];
+      // Handle different data types
+      let parsed;
+      if (typeof imagesString === 'string') {
+        // If it's a JSON string, parse it
+        parsed = JSON.parse(imagesString);
+      } else if (Array.isArray(imagesString)) {
+        // If it's already an array, use it directly
+        parsed = imagesString;
+      } else if (typeof imagesString === 'object' && imagesString !== null) {
+        // If it's an object, wrap it in array
+        parsed = [imagesString];
+      } else {
+        // Fallback for other types
+        console.log('🔍 Debug: parseImages - Unknown type, returning empty array');
+        return [];
       }
       
-      console.log('🔍 Debug: parseImages - Final result:', result);
-      return result;
+      console.log('🔍 Debug: parseImages - Parsed:', parsed);
+      console.log('🔍 Debug: parseImages - Is Array:', Array.isArray(parsed));
+      
+      // Ensure it's an array and filter out invalid items
+      const result = Array.isArray(parsed) ? parsed : [parsed];
+      const validResult = result.filter(item => 
+        item && typeof item === 'object' && item.url && item.id !== undefined
+      );
+      
+      console.log('🔍 Debug: parseImages - Final result:', validResult);
+      return validResult;
     } catch (error) {
       console.error('Error parsing images:', error);
-      console.log('🔍 Debug: parseImages - Error parsing, returning empty array');
       return [];
     }
   };
@@ -108,37 +117,55 @@ const PoskasDetail = () => {
     }
     
     // Check if text contains [IMG:xxx] placeholders (new format)
-    // Use a more flexible regex to catch all possible formats
     const placeholderRegex = /\[IMG:([^\]]+)\]/g;
     const placeholders = text.match(placeholderRegex);
     
     console.log('🔍 Debug: Found placeholders:', placeholders);
     
-    if (placeholders && placeholders.length > 0) {
-      console.log('🔍 Debug: Found placeholders, replacing with images');
+    if (placeholders && placeholders.length > 0 && Array.isArray(images) && images.length > 0) {
+      console.log('🔍 Debug: Found placeholders and images, replacing...');
       
+      // Replace all placeholders with available images
+      placeholders.forEach((placeholder, index) => {
+        // Try to find matching image by ID first
+        let image = null;
+        
+        // Extract ID from placeholder
+        const placeholderId = placeholder.match(/\[IMG:(.+)\]/)?.[1];
+        console.log('🔍 Debug: Placeholder ID:', placeholderId);
+        
+        // Try to find image by ID
+        if (placeholderId) {
+          image = images.find(img => {
+            if (img && img.id !== undefined && img.id !== null) {
+              return img.id == placeholderId || 
+                     String(img.id) === placeholderId;
+            }
+            return false;
+          });
+        }
+        
+        // If not found by ID, use first available image
+        if (!image && images.length > 0) {
+          image = images[0];
+          console.log('🔍 Debug: Using first available image:', image);
+        }
+        
+        if (image && image.url) {
+          console.log('🔍 Debug: Replacing placeholder with image:', image);
+          const imgTag = `<img src="http://192.168.1.2:3000${image.url}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" />`;
+          renderedText = renderedText.replace(placeholder, imgTag);
+        } else {
+          console.log('🔍 Debug: No matching image for placeholder:', placeholder);
+        }
+      });
+    } else if (placeholders && placeholders.length > 0) {
+      console.log('🔍 Debug: Found placeholders but no images available');
       // If we have placeholders but no images, show a message
-      if (!Array.isArray(images) || images.length === 0) {
-        console.log('🔍 Debug: No images available, replacing placeholders with error message');
-        placeholders.forEach(placeholder => {
-          const errorMsg = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-2">⚠️ Gambar tidak tersedia</div>';
-          renderedText = renderedText.replace(placeholder, errorMsg);
-        });
-      } else {
-        // Replace placeholders with actual images
-        placeholders.forEach((placeholder, index) => {
-          const image = images[index];
-          if (image && image.url) {
-            console.log('🔍 Debug: Replacing placeholder with image:', image);
-            const imgTag = `<img src="http://192.168.1.2:3000${image.url}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" />`;
-            renderedText = renderedText.replace(placeholder, imgTag);
-          } else {
-            console.log('🔍 Debug: No matching image for placeholder:', placeholder);
-            const errorMsg = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-2">⚠️ Gambar tidak tersedia</div>';
-            renderedText = renderedText.replace(placeholder, errorMsg);
-          }
-        });
-      }
+      placeholders.forEach(placeholder => {
+        const errorMsg = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-2">⚠️ Gambar tidak tersedia</div>';
+        renderedText = renderedText.replace(placeholder, errorMsg);
+      });
     } else {
       console.log('🔍 Debug: No placeholders found');
     }

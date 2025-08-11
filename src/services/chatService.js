@@ -1,30 +1,21 @@
 import api from './api'
 
 export const chatService = {
-    // Get chat rooms
-    async getChatRooms(params = {}) {
+    // Get chat contacts
+    async getContacts(currentUserId) {
         try {
-            const response = await api.get('/chat/rooms', { params })
+            const response = await api.get(`/chat/contacts?current_user_id=${currentUserId}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get chat room by ID
-    async getChatRoomById(roomId) {
+    // Get or create chat room
+    async getOrCreateRoom(user1Id, user2Id) {
         try {
-            const response = await api.get(`/chat/rooms/${roomId}`)
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Create new chat room
-    async createChatRoom(roomData) {
-        try {
-            const response = await api.post('/chat/rooms', roomData)
+            const roomId = `${Math.min(user1Id, user2Id)}_${Math.max(user1Id, user2Id)}`
+            const response = await api.get(`/chat/room/${roomId}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -34,7 +25,7 @@ export const chatService = {
     // Get messages for a room
     async getMessages(roomId, params = {}) {
         try {
-            const response = await api.get(`/chat/rooms/${roomId}/messages`, { params })
+            const response = await api.get(`/chat/messages/${roomId}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -42,9 +33,14 @@ export const chatService = {
     },
 
     // Send message
-    async sendMessage(roomId, messageData) {
+    async sendMessage(roomId, message, senderId, messageType = 'text') {
         try {
-            const response = await api.post(`/chat/rooms/${roomId}/messages`, messageData)
+            const response = await api.post('/chat/message', {
+                room_id: roomId,
+                sender_id: senderId,
+                message: message,
+                message_type: messageType
+            })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -52,19 +48,21 @@ export const chatService = {
     },
 
     // Mark messages as read
-    async markAsRead(roomId) {
+    async markAsRead(roomId, userId) {
         try {
-            const response = await api.put(`/chat/rooms/${roomId}/read`)
+            const response = await api.put(`/chat/read/${roomId}`, { user_id: userId })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get unread count
-    async getUnreadCount() {
+    // Delete chat room
+    async deleteChatRoom(roomId, userId) {
         try {
-            const response = await api.get('/chat/unread-count')
+            const response = await api.delete(`/chat/room/${roomId}`, {
+                data: { user_id: userId }
+            })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -113,16 +111,6 @@ export const chatGroupService = {
         }
     },
 
-    // Create group (alias)
-    async createGroup(groupData) {
-        try {
-            const response = await api.post('/chat-group', groupData)
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
     // Get group messages
     async getGroupMessages(groupId, params = {}) {
         try {
@@ -136,7 +124,7 @@ export const chatGroupService = {
     // Send group message
     async sendGroupMessage(groupId, messageData) {
         try {
-            const response = await api.post(`/chat-group/${groupId}/messages`, { message: messageData })
+            const response = await api.post(`/chat-group/${groupId}/messages`, messageData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

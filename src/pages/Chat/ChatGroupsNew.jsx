@@ -7,11 +7,13 @@ import {
   Send, 
   Users,
   Plus,
-  Trash2
+  Settings,
+  Trash2,
+  UserPlus
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
-const ChatGroups = () => {
+const ChatGroupsNew = () => {
   const { user } = useAuth()
   const [groups, setGroups] = useState([])
   const [selectedGroup, setSelectedGroup] = useState(null)
@@ -19,6 +21,11 @@ const ChatGroups = () => {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [newGroupData, setNewGroupData] = useState({
+    group_name: '',
+    group_description: ''
+  })
 
   useEffect(() => {
     if (user) {
@@ -34,6 +41,7 @@ const ChatGroups = () => {
       if (response.success) {
         setGroups(response.data || [])
       } else {
+        console.warn('Groups response not successful:', response)
         setGroups([])
       }
     } catch (error) {
@@ -50,11 +58,13 @@ const ChatGroups = () => {
       setLoading(true)
       setSelectedGroup(group)
       
+      // Load group messages
       const messagesResponse = await chatGroupService.getGroupMessages(group.group_id)
       
       if (messagesResponse.success) {
         setMessages(messagesResponse.data || [])
       } else {
+        console.warn('Messages response not successful:', messagesResponse)
         setMessages([])
       }
     } catch (error) {
@@ -77,7 +87,8 @@ const ChatGroups = () => {
       })
       
       if (response.success) {
-        setMessages(prev => [...prev, response.data])
+        const newMessageData = response.data
+        setMessages(prev => [...prev, newMessageData])
         setNewMessage('')
       } else {
         toast.error('Gagal mengirim pesan')
@@ -88,11 +99,65 @@ const ChatGroups = () => {
     }
   }
 
+  const createGroup = async () => {
+    if (!newGroupData.group_name.trim()) {
+      toast.error('Nama grup harus diisi')
+      return
+    }
+
+    try {
+      const response = await chatGroupService.createChatGroup({
+        group_name: newGroupData.group_name.trim(),
+        group_description: newGroupData.group_description.trim(),
+        created_by: user.id
+      })
+      
+      if (response.success) {
+        toast.success('Grup berhasil dibuat')
+        setShowCreateGroup(false)
+        setNewGroupData({ group_name: '', group_description: '' })
+        loadGroups() // Reload groups
+      } else {
+        toast.error('Gagal membuat grup')
+      }
+    } catch (error) {
+      console.error('Error creating group:', error)
+      toast.error('Gagal membuat grup')
+    }
+  }
+
+  const deleteGroup = async (group) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus grup ini?')) {
+      return
+    }
+
+    try {
+      const response = await chatGroupService.deleteChatGroup(group.group_id)
+      if (response.success) {
+        toast.success('Grup berhasil dihapus')
+        if (selectedGroup?.group_id === group.group_id) {
+          setSelectedGroup(null)
+          setMessages([])
+        }
+        loadGroups() // Reload groups
+      } else {
+        toast.error('Gagal menghapus grup')
+      }
+    } catch (error) {
+      console.error('Error deleting group:', error)
+      toast.error('Gagal menghapus grup')
+    }
+  }
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendGroupMessage()
     }
+  }
+
+  const isGroupAdmin = (group) => {
+    return group.created_by === user.id
   }
 
   const formatTime = (dateString) => {
@@ -113,7 +178,15 @@ const ChatGroups = () => {
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Chat Grup</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-800">Chat Grup</h2>
+            <button
+              onClick={() => setShowCreateGroup(true)}
+              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
           <div className="relative">
             <input
               type="text"
@@ -145,18 +218,32 @@ const ChatGroups = () => {
                   selectedGroup?.group_id === group.group_id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                    <Users className="h-5 w-5 text-white" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                      <Users className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">
+                        {group.group_name}
+                      </h3>
+                      <p className="text-sm text-gray-500 truncate">
+                        {group.group_description || 'Tidak ada deskripsi'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">
-                      {group.group_name}
-                    </h3>
-                    <p className="text-sm text-gray-500 truncate">
-                      {group.group_description || 'Tidak ada deskripsi'}
-                    </p>
-                  </div>
+                  {isGroupAdmin(group) && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteGroup(group)
+                      }}
+                      className="p-1 text-red-400 hover:text-red-600"
+                      title="Hapus grup"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))
@@ -170,17 +257,27 @@ const ChatGroups = () => {
           <>
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <Users className="h-5 w-5 text-white" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {selectedGroup.group_name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {selectedGroup.group_description || 'Tidak ada deskripsi'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {selectedGroup.group_name}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {selectedGroup.group_description || 'Tidak ada deskripsi'}
-                  </p>
+                <div className="flex items-center space-x-2">
+                  <button className="p-2 text-gray-400 hover:text-gray-600">
+                    <UserPlus className="h-5 w-5" />
+                  </button>
+                  <button className="p-2 text-gray-400 hover:text-gray-600">
+                    <Settings className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -262,8 +359,57 @@ const ChatGroups = () => {
           </div>
         )}
       </div>
+
+      {/* Create Group Modal */}
+      {showCreateGroup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Buat Grup Baru</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Grup *
+                </label>
+                <input
+                  type="text"
+                  value={newGroupData.group_name}
+                  onChange={(e) => setNewGroupData(prev => ({ ...prev, group_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Masukkan nama grup"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Deskripsi
+                </label>
+                <textarea
+                  value={newGroupData.group_description}
+                  onChange={(e) => setNewGroupData(prev => ({ ...prev, group_description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Masukkan deskripsi grup (opsional)"
+                  rows="3"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-2 mt-6">
+              <button
+                onClick={() => setShowCreateGroup(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={createGroup}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                Buat Grup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-export default ChatGroups 
+export default ChatGroupsNew 
