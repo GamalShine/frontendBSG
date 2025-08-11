@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { 
   Menu, 
@@ -13,6 +13,7 @@ import { getInitials } from '../../utils/helpers'
 
 const Header = ({ onMenuClick, unreadCount }) => {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -22,8 +23,12 @@ const Header = ({ onMenuClick, unreadCount }) => {
       setUserMenuOpen(false) // Close dropdown
       console.log('🔐 Header: Logout button clicked')
       await logout()
+      console.log('✅ Header: Logout successful, redirecting to login...')
+      navigate('/login')
     } catch (error) {
       console.error('Header: Logout error:', error)
+      // Even if logout fails, redirect to login
+      navigate('/login')
     } finally {
       setLoggingOut(false)
     }

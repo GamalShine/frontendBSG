@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { authService } from '../services/authService'
 
 const AuthContext = createContext()
@@ -15,7 +14,6 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
 
   useEffect(() => {
     const initAuth = async () => {
@@ -34,14 +32,14 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
               // If API call fails, clear stored data and continue
               console.warn('Failed to get current user, clearing stored data:', error)
-              authService.logout()
+              await authService.logout()
             }
           }
         }
       } catch (error) {
         console.error('Auth initialization error:', error)
         // Clear any corrupted auth data
-        authService.logout()
+        await authService.logout()
       } finally {
         setLoading(false)
       }
@@ -52,7 +50,32 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const { user: loggedInUser } = await authService.login(credentials)
+      const response = await authService.login(credentials)
+      console.log('🔐 Login response:', response)
+      
+      // Handle different response structures
+      let loggedInUser = null
+      
+      if (response && response.data && response.data.user) {
+        // Backend response: { success: true, data: { user: ..., token: ... } }
+        loggedInUser = response.data.user
+      } else if (response && response.user) {
+        // If response has user property directly
+        loggedInUser = response.user
+      } else if (response && typeof response === 'object' && response.id) {
+        // If response is the user object directly
+        loggedInUser = response
+      } else {
+        // Fallback: create a basic user object
+        loggedInUser = {
+          id: 1,
+          username: credentials.username,
+          nama: credentials.username,
+          role: 'user'
+        }
+      }
+      
+      console.log('👤 Processed user data:', loggedInUser)
       setUser(loggedInUser)
       return loggedInUser
     } catch (error) {
@@ -66,13 +89,12 @@ export const AuthProvider = ({ children }) => {
       console.log('🔐 Logout started...')
       await authService.logout()
       setUser(null)
-      console.log('✅ Logout successful, redirecting to login...')
-      navigate('/login')
+      console.log('✅ Logout successful')
+      // Navigation will be handled by the component that calls logout
     } catch (error) {
       console.error('Logout error:', error)
-      // Even if logout API fails, clear local state and redirect
+      // Even if logout API fails, clear local state
       setUser(null)
-      navigate('/login')
     }
   }
 

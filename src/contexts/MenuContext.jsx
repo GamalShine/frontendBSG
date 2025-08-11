@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useAuth } from './AuthContext'
-import { getMenusByRole, hasPermission } from '../services/menuService'
 
 const MenuContext = createContext()
 
@@ -27,6 +26,286 @@ export const MenuProvider = ({ children }) => {
       setLoading(false)
     }
   }, [isAuthenticated, user])
+
+  const getMenusByRole = (role) => {
+    const baseMenus = [
+      {
+        id: 'dashboard',
+        title: 'Dashboard',
+        path: '/dashboard',
+        icon: 'Home',
+        permissions: ['read']
+      },
+      {
+        id: 'keuangan',
+        title: 'KEUANGAN',
+        icon: 'DollarSign',
+        permissions: ['read'],
+        children: [
+          {
+            id: 'poskas',
+            title: 'POSKAS',
+            path: '/poskas',
+            permissions: ['read', 'create']
+          },
+          {
+            id: 'lap-keu',
+            title: 'LAP. KEU',
+            path: '/keuangan/laporan',
+            permissions: ['read']
+          },
+          {
+            id: 'aneka-grafik',
+            title: 'ANEKA GRAFIK',
+            path: '/keuangan/grafik',
+            permissions: ['read']
+          },
+          {
+            id: 'daftar-gaji',
+            title: 'DAFTAR GAJI',
+            path: '/keuangan/gaji',
+            permissions: ['read']
+          },
+          {
+            id: 'aneka-surat',
+            title: 'ANEKA SURAT',
+            path: '/keuangan/surat',
+            permissions: ['read']
+          }
+        ]
+      },
+      {
+        id: 'sdm',
+        title: 'SDM',
+        icon: 'Users2',
+        permissions: ['read'],
+        children: [
+          {
+            id: 'struktur-jobdesk-sop',
+            title: 'STRUKTUR, JOBDESK & S.O.P.',
+            path: '/sdm/struktur',
+            permissions: ['read']
+          },
+          {
+            id: 'data-tim',
+            title: 'DATA TIM',
+            path: '/sdm/tim',
+            permissions: ['read']
+          }
+        ]
+      },
+      {
+        id: 'daftar-tugas',
+        title: 'DAFTAR TUGAS',
+        icon: 'ClipboardList',
+        permissions: ['read'],
+        children: [
+          {
+            id: 'kpi',
+            title: 'KPI',
+            path: '/tugas/kpi',
+            permissions: ['read']
+          },
+          {
+            id: 'tim-merah-biru',
+            title: 'TIM MERAH/BIRU',
+            path: '/tugas/tim',
+            permissions: ['read']
+          }
+        ]
+      },
+      {
+        id: 'operasional',
+        title: 'OPERASIONAL',
+        icon: 'Building2',
+        permissions: ['read'],
+        children: [
+          {
+            id: 'data-aset',
+            title: 'DATA ASET',
+            path: '/operasional/aset',
+            permissions: ['read']
+          },
+          {
+            id: 'data-supplier',
+            title: 'DATA SUPPLIER',
+            path: '/operasional/supplier',
+            permissions: ['read']
+          },
+          {
+            id: 'data-sewa',
+            title: 'DATA SEWA',
+            path: '/operasional/sewa',
+            permissions: ['read']
+          },
+          {
+            id: 'data-investor',
+            title: 'DATA INVESTOR',
+            path: '/operasional/investor',
+            permissions: ['read']
+          },
+          {
+            id: 'daftar-saran',
+            title: 'DAFTAR SARAN',
+            path: '/operasional/saran',
+            permissions: ['read']
+          },
+          {
+            id: 'daftar-komplain',
+            title: 'DAFTAR KOMPLAIN',
+            path: '/komplain',
+            permissions: ['read']
+          },
+          {
+            id: 'data-bina-lingkungan',
+            title: 'DATA BINA LINGKUNGAN',
+            path: '/operasional/bina-lingkungan',
+            permissions: ['read']
+          }
+        ]
+      },
+      {
+        id: 'marketing',
+        title: 'MARKETING',
+        icon: 'Target',
+        permissions: ['read'],
+        children: [
+          {
+            id: 'data-target',
+            title: 'DATA TARGET',
+            path: '/marketing/target',
+            permissions: ['read']
+          },
+          {
+            id: 'medsos',
+            title: 'MEDSOS',
+            path: '/marketing/medsos',
+            permissions: ['read']
+          }
+        ]
+      },
+      {
+        id: 'chat',
+        title: 'Chat',
+        icon: 'MessageCircle',
+        permissions: ['read'],
+        children: [
+          {
+            id: 'chat-private',
+            title: 'Chat Private',
+            path: '/chat/private',
+            permissions: ['read']
+          },
+          {
+            id: 'chat-groups',
+            title: 'Chat Groups',
+            path: '/chat/groups',
+            permissions: ['read']
+          }
+        ]
+      }
+    ]
+
+    // Admin specific menus
+    if (role === 'admin') {
+      baseMenus.push(
+        {
+          id: 'admin',
+          title: 'Admin Panel',
+          icon: 'Settings',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'admin-komplain',
+              title: 'Kelola Komplain',
+              path: '/admin/komplain',
+              permissions: ['read']
+            },
+            {
+              id: 'admin-tugas',
+              title: 'Kelola Tugas',
+              path: '/admin/tugas',
+              permissions: ['read']
+            },
+            {
+              id: 'admin-pengumuman',
+              title: 'Kelola Pengumuman',
+              path: '/admin/pengumuman',
+              permissions: ['read']
+            },
+            {
+              id: 'admin-training',
+              title: 'Kelola Training',
+              path: '/admin/training',
+              permissions: ['read']
+            },
+            {
+              id: 'admin-users',
+              title: 'Kelola Users',
+              path: '/users',
+              permissions: ['read']
+            },
+            {
+              id: 'admin-profile',
+              title: 'Admin Profile',
+              path: '/admin/profile',
+              permissions: ['read']
+            }
+          ]
+        },
+        {
+          id: 'settings',
+          title: 'Settings',
+          path: '/settings',
+          icon: 'Settings',
+          permissions: ['read']
+        }
+      )
+    }
+
+    // Owner specific menus
+    if (role === 'owner') {
+      baseMenus.push(
+        {
+          id: 'owner',
+          title: 'Owner Panel',
+          icon: 'Crown',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'owner-poskas',
+              title: 'Kelola Pos Kas',
+              path: '/owner/poskas',
+              permissions: ['read']
+            },
+            {
+              id: 'owner-tim',
+              title: 'Kelola Tim',
+              path: '/owner/tim',
+              permissions: ['read']
+            },
+            {
+              id: 'owner-training',
+              title: 'Kelola Training',
+              path: '/owner/training',
+              permissions: ['read']
+            }
+          ]
+        }
+      )
+    }
+
+    // Profile menu for all users
+    baseMenus.push({
+      id: 'profile',
+      title: 'Profile',
+      path: '/profile',
+      icon: 'User',
+      permissions: ['read']
+    })
+
+    return baseMenus
+  }
 
   const loadUserMenus = async () => {
     try {
@@ -62,9 +341,17 @@ export const MenuProvider = ({ children }) => {
   }
 
   const checkPermission = (requiredPermissions) => {
-    if (!user || !requiredPermissions) return false
+    if (!user || !requiredPermissions || requiredPermissions.length === 0) return true
     
-    return hasPermission(user.role, requiredPermissions, permissions)
+    // Admin and owner have all permissions
+    if (user.role === 'admin' || user.role === 'owner') {
+      return true
+    }
+    
+    // For other roles, check if they have the required permissions
+    return requiredPermissions.some(permission => 
+      permissions.includes(permission)
+    )
   }
 
   const getMenuByPath = (path) => {

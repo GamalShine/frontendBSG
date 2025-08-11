@@ -1,308 +1,341 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { 
-  ArrowLeft, Edit, Trash2, Calendar, User, DollarSign, Download, Share2
-} from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { formatDate } from '../../utils/helpers'
-import Card, { CardHeader, CardBody } from '../../components/UI/Card'
-import Button from '../../components/UI/Button'
-import Badge from '../../components/UI/Badge'
-import ContentPreview from '../../components/UI/ContentPreview'
-import { poskasService } from '../../services/poskasService'
-import toast from 'react-hot-toast'
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { poskasService } from '../../services/poskasService';
+import { toast } from 'react-hot-toast';
 
-const PosKasDetail = () => {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const { user } = useAuth()
-  const [poskas, setPoskas] = useState(null)
-  const [loading, setLoading] = useState(true)
+const PoskasDetail = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [poskas, setPoskas] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadPoskas = async () => {
-      try {
-        setLoading(true)
-        const response = await poskasService.getPoskasById(id)
-        console.log('📥 Detail API Response:', response)
-        
-        // Handle different response formats
-        let poskasData = null
-        if (response.success && response.data) {
-          poskasData = response.data
-        } else if (response.data) {
-          poskasData = response.data
-        } else if (response.id) {
-          poskasData = response
-        }
-        
-        setPoskas(poskasData)
-      } catch (error) {
-        console.error('Error loading poskas detail:', error)
-        toast.error('Gagal memuat detail laporan pos kas')
-        navigate('/poskas')
-      } finally {
-        setLoading(false)
-      }
-    }
+    fetchPoskasDetail();
+  }, [id]);
 
-    if (id) {
-      loadPoskas()
+  const fetchPoskasDetail = async () => {
+    try {
+      setLoading(true);
+      const response = await poskasService.getPoskasById(id);
+      
+      if (response.success) {
+        console.log('🔍 Debug: Backend response data:', response.data);
+        console.log('🔍 Debug: isi_poskas:', response.data.isi_poskas);
+        console.log('🔍 Debug: images:', response.data.images);
+        
+        setPoskas(response.data);
+      } else {
+        setError(response.message || 'Gagal memuat detail laporan');
+        toast.error(response.message || 'Gagal memuat detail laporan');
+      }
+    } catch (error) {
+      console.error('Error fetching poskas detail:', error);
+      setError('Terjadi kesalahan saat memuat detail laporan');
+      
+      if (error.response?.status === 404) {
+        toast.error('Laporan tidak ditemukan atau backend server tidak berjalan');
+      } else if (error.code === 'ERR_NETWORK') {
+        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server');
+      } else {
+        toast.error('Gagal memuat detail laporan: ' + error.message);
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [id, navigate])
+  };
+
+  const parseImages = (imagesString) => {
+    if (!imagesString) {
+      console.log('🔍 Debug: parseImages - No imagesString provided');
+      return [];
+    }
+    try {
+      console.log('🔍 Debug: parseImages - Input:', imagesString);
+      console.log('🔍 Debug: parseImages - Type:', typeof imagesString);
+      
+      const parsed = JSON.parse(imagesString);
+      console.log('🔍 Debug: parseImages - Parsed:', parsed);
+      console.log('🔍 Debug: parseImages - Is Array:', Array.isArray(parsed));
+      console.log('🔍 Debug: parseImages - Constructor:', parsed?.constructor);
+      console.log('🔍 Debug: parseImages - Length:', parsed?.length);
+      
+      // Check if it's an array-like object or actual array
+      let result = [];
+      if (Array.isArray(parsed)) {
+        result = parsed;
+      } else if (parsed && typeof parsed === 'object' && parsed.length !== undefined) {
+        // Convert array-like object to array
+        result = Array.from(parsed);
+      } else if (parsed && typeof parsed === 'object') {
+        // If it's a single object, wrap it in array
+        result = [parsed];
+      }
+      
+      console.log('🔍 Debug: parseImages - Final result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error parsing images:', error);
+      console.log('🔍 Debug: parseImages - Error parsing, returning empty array');
+      return [];
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const renderContentWithImages = (text, images) => {
+    if (!text) return '';
+    let renderedText = text;
+    
+    console.log('🔍 Debug: renderContentWithImages - Original text:', text);
+    console.log('🔍 Debug: renderContentWithImages - Images:', images);
+    
+    // Check if text contains HTML with base64 images (old format)
+    const hasBase64Images = /<img[^>]*src="data:image[^"]*"[^>]*>/g.test(text);
+    
+    if (hasBase64Images) {
+      console.log('🔍 Debug: Found base64 images in text, keeping as is');
+      return text; // Keep the original HTML with base64 images
+    }
+    
+    // Check if text contains [IMG:xxx] placeholders (new format)
+    // Use a more flexible regex to catch all possible formats
+    const placeholderRegex = /\[IMG:([^\]]+)\]/g;
+    const placeholders = text.match(placeholderRegex);
+    
+    console.log('🔍 Debug: Found placeholders:', placeholders);
+    
+    if (placeholders && placeholders.length > 0) {
+      console.log('🔍 Debug: Found placeholders, replacing with images');
+      
+      // If we have placeholders but no images, show a message
+      if (!Array.isArray(images) || images.length === 0) {
+        console.log('🔍 Debug: No images available, replacing placeholders with error message');
+        placeholders.forEach(placeholder => {
+          const errorMsg = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-2">⚠️ Gambar tidak tersedia</div>';
+          renderedText = renderedText.replace(placeholder, errorMsg);
+        });
+      } else {
+        // Replace placeholders with actual images
+        placeholders.forEach((placeholder, index) => {
+          const image = images[index];
+          if (image && image.url) {
+            console.log('🔍 Debug: Replacing placeholder with image:', image);
+            const imgTag = `<img src="http://192.168.1.2:3000${image.url}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" />`;
+            renderedText = renderedText.replace(placeholder, imgTag);
+          } else {
+            console.log('🔍 Debug: No matching image for placeholder:', placeholder);
+            const errorMsg = '<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded my-2">⚠️ Gambar tidak tersedia</div>';
+            renderedText = renderedText.replace(placeholder, errorMsg);
+          }
+        });
+      }
+    } else {
+      console.log('🔍 Debug: No placeholders found');
+    }
+    
+    console.log('🔍 Debug: Final rendered text:', renderedText);
+    return renderedText;
+  };
 
   const handleDelete = async () => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) {
-      try {
-        await poskasService.deletePoskas(id)
-        toast.success('Laporan pos kas berhasil dihapus')
-        navigate('/poskas')
-      } catch (error) {
-        console.error('Error deleting poskas:', error)
-        toast.error('Gagal menghapus laporan pos kas')
-      }
+    if (!window.confirm('Apakah Anda yakin ingin menghapus laporan ini?')) {
+      return;
     }
-  }
 
-  const getStatusBadge = (statusDeleted) => {
-    return statusDeleted === 0 ? 
-      <Badge variant="success">Aktif</Badge> : 
-      <Badge variant="danger">Dihapus</Badge>
-  }
+    try {
+      const response = await poskasService.deletePoskas(id);
+      if (response.success) {
+        toast.success('Laporan berhasil dihapus');
+        navigate('/poskas');
+      } else {
+        toast.error(response.message || 'Gagal menghapus laporan');
+      }
+    } catch (error) {
+      console.error('Error deleting poskas:', error);
+      toast.error('Terjadi kesalahan saat menghapus laporan: ' + error.message);
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat detail laporan...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
       </div>
-    )
+    );
   }
 
-  if (!poskas) {
+  if (error || !poskas) {
     return (
-      <div className="text-center py-8">
-        <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Laporan tidak ditemukan</p>
-        <Link to="/poskas" className="text-primary-600 hover:text-primary-700">
-          Kembali ke daftar
-        </Link>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/poskas')}
-            className="flex items-center"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Detail Laporan Pos Kas</h1>
-            <p className="text-gray-600 mt-1">Lihat detail lengkap laporan keuangan</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">Error</h2>
+            <p className="text-red-600 mb-4">{error || 'Laporan tidak ditemukan'}</p>
+            <div className="space-x-4">
+              <button
+                onClick={fetchPoskasDetail}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+              >
+                Coba Lagi
+              </button>
+              <button
+                onClick={() => navigate('/poskas')}
+                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+              >
+                Kembali ke Daftar
+              </button>
+            </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-          <Link to={`/poskas/${id}/edit`}>
-            <Button variant="outline" size="sm">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          </Link>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="text-red-600 hover:text-red-700"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Hapus
-          </Button>
-        </div>
       </div>
+    );
+  }
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Content - Wider for text and images */}
-        <div className="lg:col-span-3">
-          {/* Report Content */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="p-3 bg-blue-100 rounded-lg mr-4">
-                    <DollarSign className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Laporan Pos Kas</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Tanggal: {formatDate(poskas.tanggal_poskas)}
-                    </p>
+  const images = parseImages(poskas.images);
+  const hasImages = Array.isArray(images) && images.length > 0;
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  Detail Laporan Pos Kas
+                </h1>
+                <p className="text-blue-100 mt-1">
+                  ID: {poskas.id} • {formatDate(poskas.tanggal_poskas)}
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => navigate('/poskas')}
+                  className="px-4 py-2 bg-white bg-opacity-20 text-white rounded-md hover:bg-opacity-30 transition-colors"
+                >
+                  ← Kembali
+                </button>
+                <button
+                  onClick={() => navigate(`/poskas/${id}/edit`)}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+                >
+                  Hapus
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            {/* Basic Info */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {hasImages && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Gambar ({images.length})</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {images.slice(0, 4).map((image, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={`http://192.168.1.2:3000${image.url}`}
+                          alt={`Gambar ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div 
+                          className="hidden w-full h-24 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
+                          style={{ display: 'none' }}
+                        >
+                          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </div>
+                    ))}
+                    {images.length > 4 && (
+                      <div className="relative">
+                        <div className="w-full h-24 bg-gray-100 rounded-lg flex items-center justify-center">
+                          <span className="text-gray-500 text-sm">+{images.length - 4} lagi</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {getStatusBadge(poskas.status_deleted)}
-              </div>
-            </CardHeader>
-            <CardBody className="p-6">
-              {/* Content Area - Integrated Text and Images */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Isi Laporan</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                {/* Display text with proper line breaks and images */}
                 <div 
-                  className="prose prose-lg max-w-none text-gray-800 leading-relaxed"
-                  dangerouslySetInnerHTML={{ 
-                    __html: poskas.isi_poskas ? 
-                      poskas.isi_poskas.replace(
-                        /<img([^>]+)>/g, 
-                        '<div class="my-6 text-center"><img$1 class="max-w-full h-auto rounded-lg shadow-md border border-gray-200 inline-block" style="max-height: 400px;"></div>'
-                      ) : 
-                      '<p class="text-gray-500 italic text-center py-8">Tidak ada konten laporan.</p>' 
-                  }}
-                  style={{
-                    fontSize: '16px',
-                    lineHeight: '1.8',
-                    color: '#374151'
-                  }}
+                  className="prose max-w-none whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: renderContentWithImages(poskas.isi_poskas, images) }}
                 />
               </div>
-              
-              {/* Content Stats */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <p className="font-semibold text-blue-800">Panjang Teks</p>
-                    <p className="text-blue-600">
-                      {poskas.isi_poskas ? poskas.isi_poskas.replace(/<[^>]*>/g, '').length : 0} karakter
-                    </p>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <p className="font-semibold text-green-800">Jumlah Gambar</p>
-                    <p className="text-green-600">
-                      {(poskas.isi_poskas?.match(/<img/g) || []).length} gambar
-                    </p>
-                  </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg">
-                    <p className="font-semibold text-purple-800">Dibuat Oleh</p>
-                    <p className="text-purple-600">
-                      {poskas.user_nama || 'Unknown'}
-                    </p>
-                  </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-lg">
-                    <p className="font-semibold text-orange-800">Tanggal Dibuat</p>
-                    <p className="text-orange-600">
-                      {formatDate(poskas.created_at)}
-                    </p>
-                  </div>
+            </div>
+
+            {/* Full Images Gallery */}
+            {hasImages && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Galeri Gambar</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={`http://192.168.1.2:3000${image.url}`}
+                        alt={`Gambar ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div 
+                        className="hidden w-full h-32 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
+                        style={{ display: 'none' }}
+                      >
+                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                        <span className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm">
+                          Gambar {index + 1}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Sidebar - Narrower */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Quick Info */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">Info Laporan</h3>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Tanggal Laporan</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
-                    {formatDate(poskas.tanggal_poskas)}
-                  </p>
-                </div>
-                
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Status</p>
-                  <div className="mt-1">
-                    {getStatusBadge(poskas.status_deleted)}
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Dibuat Oleh</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
-                    {poskas.user_nama || 'Unknown'}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Tanggal Dibuat</p>
-                  <p className="text-sm font-medium text-gray-900 mt-1">
-                    {formatDate(poskas.created_at)}
-                  </p>
-                </div>
-
-                {poskas.updated_at && poskas.updated_at !== poskas.created_at && (
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">Terakhir Diupdate</p>
-                    <p className="text-sm font-medium text-gray-900 mt-1">
-                      {formatDate(poskas.updated_at)}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Actions */}
-          <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold text-gray-900">Aksi</h3>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-3">
-                <Link to={`/poskas/${id}/edit`} className="w-full">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Laporan
-                  </Button>
-                </Link>
-                
-                <Button variant="outline" className="w-full justify-start">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
-                </Button>
-                
-                <Button variant="outline" className="w-full justify-start">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share Laporan
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Hapus Laporan
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
+            )}
+          </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default PosKasDetail 
+export default PoskasDetail; 

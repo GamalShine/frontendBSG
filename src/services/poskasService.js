@@ -1,82 +1,132 @@
 import api from './api'
 
 export const poskasService = {
-    async getPoskas() {
-        const response = await api.get('/keuangan-poskas')
-        return response.data
+    // Get all poskas
+    async getPoskas(params = {}) {
+        try {
+            const response = await api.get('/keuangan-poskas', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     },
 
+    // Get poskas by ID
     async getPoskasById(id) {
-        const response = await api.get(`/keuangan-poskas/${id}`)
-        return response.data
+        try {
+            const response = await api.get(`/keuangan-poskas/${id}`)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     },
 
+    // Create new poskas
     async createPoskas(poskasData) {
-        console.log('📤 Service: Creating FormData...');
-        const formData = new FormData()
-
-        // Add text fields
-        formData.append('tanggal_poskas', poskasData.tanggal_poskas)
-        formData.append('isi_poskas', poskasData.isi_poskas)
-        console.log('📝 Service: Added text fields');
-
-        // Add images if any
-        if (poskasData.images && poskasData.images.length > 0) {
-            console.log('📁 Service: Adding images to FormData:', poskasData.images.length);
-            poskasData.images.forEach((image, index) => {
-                console.log(`   ${index + 1}. ${image.name} (${(image.size / 1024).toFixed(1)} KB)`);
-                formData.append('images', image)
-            })
-        } else {
-            console.log('📁 Service: No images to upload');
+        try {
+            const response = await api.post('/keuangan-poskas', poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
         }
-
-        console.log('📤 Service: Sending request to API...');
-        const response = await api.post('/keuangan-poskas', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        })
-        console.log('📥 Service: Received response:', response.data);
-        return response.data
     },
 
+    // Update poskas
     async updatePoskas(id, poskasData) {
-        const formData = new FormData()
-
-        // Add text fields
-        formData.append('tanggal_poskas', poskasData.tanggal_poskas)
-        formData.append('isi_poskas', poskasData.isi_poskas)
-
-        // Add images if any
-        if (poskasData.images && poskasData.images.length > 0) {
-            poskasData.images.forEach((image, index) => {
-                formData.append('images', image)
-            })
+        try {
+            const response = await api.put(`/keuangan-poskas/${id}`, poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
         }
-
-        const response = await api.put(`/keuangan-poskas/${id}`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        })
-        return response.data
     },
 
+    // Delete poskas
     async deletePoskas(id) {
-        const response = await api.delete(`/keuangan-poskas/${id}`)
-        return response.data
+        try {
+            const response = await api.delete(`/keuangan-poskas/${id}`)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     },
 
-    async getPoskasByDateRange(startDate, endDate) {
-        const response = await api.get('/keuangan-poskas/date-range', {
-            params: { startDate, endDate }
-        })
-        return response.data
+    // Get poskas by user
+    async getPoskasByUser(userId, params = {}) {
+        try {
+            const response = await api.get(`/keuangan-poskas/user/${userId}`, { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     },
 
-    async getPoskasByUser(userId) {
-        const response = await api.get(`/keuangan-poskas/user/${userId}`)
-        return response.data
+    // Upload poskas with images
+    async uploadPoskas(poskasData, images = []) {
+        try {
+            const formData = new FormData()
+            formData.append('data', JSON.stringify(poskasData))
+
+            images.forEach((image, index) => {
+                formData.append(`images`, image)
+            })
+
+            const response = await api.post('/keuangan-poskas/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     },
+
+    // Create poskas with images (FormData)
+    async createPoskasWithImages(formData) {
+        try {
+            const response = await api.post('/keuangan-poskas', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    }
+}
+
+export const ownerPoskasService = {
+    // Get all poskas for owner
+    async getOwnerPoskas(params = {}) {
+        try {
+            const response = await api.get('/owner/keuangan-poskas', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get poskas statistics for owner
+    async getOwnerPoskasStats(params = {}) {
+        try {
+            const response = await api.get('/owner/keuangan-poskas/stats', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get poskas by date range
+    async getOwnerPoskasByDateRange(startDate, endDate, params = {}) {
+        try {
+            const response = await api.get('/owner/keuangan-poskas/date-range', {
+                params: { startDate, endDate, ...params }
+            })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    }
 } 

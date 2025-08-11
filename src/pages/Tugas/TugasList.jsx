@@ -1,299 +1,338 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { tugasService } from '../../services/tugasService'
 import { 
-  CheckSquare, 
-  Plus, 
   Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  Download,
-  Calendar,
+  Plus, 
+  Eye, 
+  Edit, 
+  CheckSquare,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
   User
 } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { formatDate } from '../../utils/helpers'
-import Card, { CardHeader, CardBody } from '../../components/UI/Card'
-import Button from '../../components/UI/Button'
-import Badge from '../../components/UI/Badge'
-import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/UI/Table'
-import { tugasService } from '../../services/tugasService'
 import toast from 'react-hot-toast'
 
 const TugasList = () => {
   const { user } = useAuth()
   const [tugas, setTugas] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [skalaPrioritasFilter, setSkalaPrioritasFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
 
   useEffect(() => {
-    const loadTugas = async () => {
+    loadTugas()
+  }, [currentPage, statusFilter, skalaPrioritasFilter])
+
+  const loadTugas = async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        status: statusFilter,
+        skala_prioritas: skalaPrioritasFilter
+      }
+      
+      // Load tasks based on user role
+      let response
+      if (user.role === 'admin' || user.role === 'owner') {
+        response = await tugasService.getTugas(params)
+      } else {
+        // For regular users, filter by assigned tasks
+        params.penerima_tugas = user.id
+        response = await tugasService.getTugas(params)
+      }
+      
+      if (response.success || response.data) {
+        const data = response.data || response
+        setTugas(data.rows || data || [])
+        setTotalPages(data.totalPages || Math.ceil((data.count || 0) / 10))
+        setTotalItems(data.count || data.length || 0)
+      }
+    } catch (error) {
+      toast.error('Gagal memuat daftar tugas')
+      console.error('Error loading tugas:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSearch = () => {
+    setCurrentPage(1)
+    loadTugas()
+  }
+
+  const handleStatusUpdate = async (id, newStatus) => {
+    try {
+      const response = await tugasService.updateTugas(id, { status: newStatus })
+      if (response.success || response.data) {
+        toast.success('Status tugas berhasil diperbarui')
+        loadTugas()
+      }
+    } catch (error) {
+      toast.error('Gagal memperbarui status tugas')
+      console.error('Error updating status:', error)
+    }
+  }
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'belum':
+        return <Clock className="h-4 w-4 text-yellow-500" />
+      case 'proses':
+        return <AlertTriangle className="h-4 w-4 text-blue-500" />
+      case 'selesai':
+        return <CheckCircle className="h-4 w-4 text-green-500" />
+      case 'revisi':
+        return <XCircle className="h-4 w-4 text-red-500" />
+      default:
+        return <Clock className="h-4 w-4 text-gray-500" />
+    }
+  }
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'belum':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'proses':
+        return 'bg-blue-100 text-blue-800'
+      case 'selesai':
+        return 'bg-green-100 text-green-800'
+      case 'revisi':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getSkalaPrioritasColor = (skalaPrioritas) => {
+    switch (skalaPrioritas) {
+      case 'mendesak':
+        return 'bg-red-100 text-red-800'
+      case 'penting':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'berproses':
+        return 'bg-green-100 text-green-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const canEditTask = (tugas) => {
+    // Admin and owner can edit any task
+    if (user.role === 'admin' || user.role === 'owner') {
+      return true
+    }
+    
+    // Users can edit tasks they created or are assigned to
+    return tugas.pemberi_tugas === user.id || tugas.penerima_tugas === user.id
+  }
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus tugas ini?')) {
       try {
-        setLoading(true)
-        const response = await tugasService.getTugas()
-        const tugasData = response.data || response || []
-        setTugas(tugasData)
+        await tugasService.deleteTugas(id)
+        toast.success('Tugas berhasil dihapus')
+        loadTugas()
       } catch (error) {
-        console.error('Error loading tugas:', error)
-        toast.error('Gagal memuat data tugas')
-      } finally {
-        setLoading(false)
+        toast.error('Gagal menghapus tugas')
+        console.error('Error deleting tugas:', error)
       }
     }
-
-    loadTugas()
-  }, [])
-
-  const getPriorityBadge = (skala_prioritas) => {
-    const variants = {
-      mendesak: 'danger',
-      penting: 'warning',
-      berproses: 'success'
-    }
-    return <Badge variant={variants[skala_prioritas] || 'default'}>{skala_prioritas}</Badge>
-  }
-
-  const getStatusBadge = (status) => {
-    const variants = {
-      belum: 'danger',
-      proses: 'warning',
-      revisi: 'info',
-      selesai: 'success'
-    }
-    return <Badge variant={variants[status] || 'default'}>{status}</Badge>
-  }
-
-  const getDaysRemaining = (targetDate) => {
-    const today = new Date()
-    const target = new Date(targetDate)
-    const diffTime = target - today
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays < 0) {
-      return <span className="text-red-600 font-medium">Terlambat {Math.abs(diffDays)} hari</span>
-    } else if (diffDays === 0) {
-      return <span className="text-orange-600 font-medium">Hari ini</span>
-    } else {
-      return <span className="text-gray-600">{diffDays} hari lagi</span>
-    }
-  }
-
-  const filteredTugas = tugas.filter(tugas => {
-    const matchesSearch = tugas.judul_tugas?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tugas.penerimaTugas?.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         tugas.keterangan_tugas?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || tugas.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat data tugas...</p>
-        </div>
-      </div>
-    )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daftar Tugas</h1>
-          <p className="text-gray-600 mt-1">Kelola semua tugas dan pekerjaan</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Link to="/tugas/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Tugas
-            </Button>
-          </Link>
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Daftar Tugas</h1>
+        <Link
+          to="/tugas/new"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Tambah Tugas</span>
+        </Link>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Cari tugas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="all">Semua Status</option>
-              <option value="belum">Belum Mulai</option>
-              <option value="proses">Sedang Proses</option>
-              <option value="revisi">Revisi</option>
-              <option value="selesai">Selesai</option>
-            </select>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter Lainnya
-            </Button>
+      {/* Search and Filter */}
+      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <input
+              type="text"
+              placeholder="Cari tugas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
-        </CardBody>
-      </Card>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Tugas</p>
-                <p className="text-2xl font-bold text-gray-900">{tugas.length}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Belum Mulai</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {tugas.filter(t => t.status === 'belum').length}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Sedang Proses</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {tugas.filter(t => t.status === 'proses').length}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Selesai</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {tugas.filter(t => t.status === 'selesai').length}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+          
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Semua Status</option>
+            <option value="belum">Belum</option>
+            <option value="proses">Proses</option>
+            <option value="selesai">Selesai</option>
+            <option value="revisi">Revisi</option>
+          </select>
+          
+          <select
+            value={skalaPrioritasFilter}
+            onChange={(e) => setSkalaPrioritasFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Semua Prioritas</option>
+            <option value="mendesak">Mendesak</option>
+            <option value="penting">Penting</option>
+            <option value="berproses">Berproses</option>
+          </select>
+          
+          <button
+            onClick={handleSearch}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+          >
+            <Search className="h-4 w-4" />
+            <span>Cari</span>
+          </button>
+        </div>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-medium text-gray-900">Daftar Tugas</h3>
-        </CardHeader>
-        <CardBody>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Judul Tugas</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Target Selesai</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Prioritas</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTugas.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-gray-900">{t.judul_tugas}</p>
-                      <p className="text-sm text-gray-500 truncate max-w-xs">{t.keterangan_tugas}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <User className="h-4 w-4 text-gray-400 mr-2" />
-                      <p className="text-sm font-medium text-gray-900">{t.penerimaTugas?.nama}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-sm text-gray-900">{formatDate(t.target_selesai)}</p>
-                      <p className="text-xs text-gray-500">{getDaysRemaining(t.target_selesai)}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(t.status)}
-                  </TableCell>
-                  <TableCell>
-                    {getPriorityBadge(t.skala_prioritas)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="default">{t.kategori}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end space-x-2">
-                      <Link to={`/tugas/${t.id}`}>
-                        <Button variant="ghost" size="sm">
+      {/* Tugas List */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Memuat data...</p>
+          </div>
+        ) : tugas.length === 0 ? (
+          <div className="p-8 text-center">
+            <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Tidak ada tugas ditemukan</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tugas
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Prioritas
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Target Selesai
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {tugas.map((tugasItem) => (
+                  <tr key={tugasItem.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {tugasItem.judul_tugas}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {tugasItem.keterangan_tugas?.substring(0, 100)}...
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(tugasItem.status)}`}>
+                        {getStatusIcon(tugasItem.status)}
+                        <span className="ml-1">{tugasItem.status}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSkalaPrioritasColor(tugasItem.skala_prioritas)}`}>
+                        {tugasItem.skala_prioritas}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(tugasItem.target_selesai)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <Link
+                          to={`/tugas/${tugasItem.id}`}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
                           <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link to={`/tugas/${t.id}/edit`}>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {filteredTugas.length === 0 && (
-            <div className="text-center py-8">
-              <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Tidak ada tugas ditemukan</p>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+                        </Link>
+                        {canEditTask(tugasItem) && (
+                          <Link
+                            to={`/tugas/${tugasItem.id}/edit`}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-6 flex justify-between items-center">
+          <div className="text-sm text-gray-700">
+            Menampilkan {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalItems)} dari {totalItems} tugas
+          </div>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Sebelumnya
+            </button>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Selanjutnya
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

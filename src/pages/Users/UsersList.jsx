@@ -1,307 +1,385 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
-  UserCheck,
-  UserX,
-  Shield,
-  Mail
-} from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { formatDate } from '../../utils/helpers'
-import Card, { CardHeader, CardBody } from '../../components/UI/Card'
-import Button from '../../components/UI/Button'
-import Badge from '../../components/UI/Badge'
-import Table, { TableHeader, TableBody, TableRow, TableHead, TableCell } from '../../components/UI/Table'
 import { userService } from '../../services/userService'
+import { 
+  Search, 
+  Plus, 
+  Eye, 
+  Edit, 
+  Trash2,
+  User,
+  Mail,
+  Phone,
+  Shield,
+  CheckCircle,
+  XCircle
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const UsersList = () => {
-  const { user } = useAuth()
   const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
-    const loadUsers = async () => {
+    loadUsers()
+  }, [currentPage, roleFilter, statusFilter])
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page: currentPage,
+        limit: 10,
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter
+      }
+      
+      const response = await userService.getUsers(params)
+      if (response.success) {
+        setUsers(response.data.users || [])
+        setTotalPages(response.data.totalPages || 1)
+      }
+    } catch (error) {
+      toast.error('Gagal memuat daftar users')
+      console.error('Error loading users:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSearch = () => {
+    setCurrentPage(1)
+    loadUsers()
+  }
+
+  const handleStatusToggle = async (id, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
+      const response = await userService.updateStatus(id, newStatus)
+      if (response.success) {
+        toast.success(`Status user berhasil diubah menjadi ${newStatus === 'active' ? 'aktif' : 'tidak aktif'}`)
+        loadUsers()
+      }
+    } catch (error) {
+      toast.error('Gagal mengubah status user')
+      console.error('Error updating status:', error)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus user ini?')) {
       try {
-        setLoading(true)
-        const response = await userService.getUsers()
-        console.log('📥 Users API Response:', response)
-        
-        // Handle different response formats
-        let usersData = []
-        if (response.success && response.data) {
-          usersData = response.data
-        } else if (Array.isArray(response)) {
-          usersData = response
-        } else if (response.data && Array.isArray(response.data)) {
-          usersData = response.data
+        const response = await userService.deleteUser(id)
+        if (response.success) {
+          toast.success('User berhasil dihapus')
+          loadUsers()
         }
-        
-        setUsers(usersData)
       } catch (error) {
-        console.error('Error loading users:', error)
-        toast.error('Gagal memuat data pengguna')
-        setUsers([])
-      } finally {
-        setLoading(false)
+        toast.error('Gagal menghapus user')
+        console.error('Error deleting user:', error)
       }
     }
+  }
 
-    loadUsers()
-  }, [])
-
-  const getRoleBadge = (role) => {
-    const variants = {
-      owner: 'danger',
-      admin: 'warning',
-      leader: 'info',
-      divisi: 'success'
+  const getRoleColor = (role) => {
+    switch (role) {
+      case 'owner':
+        return 'bg-purple-100 text-purple-800'
+      case 'admin':
+        return 'bg-red-100 text-red-800'
+      case 'leader':
+        return 'bg-blue-100 text-blue-800'
+      case 'divisi':
+        return 'bg-green-100 text-green-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
     }
-    return <Badge variant={variants[role] || 'default'}>{role}</Badge>
   }
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      aktif: 'success',
-      nonaktif: 'danger',
-      pending: 'warning'
+  const getRoleText = (role) => {
+    switch (role) {
+      case 'owner':
+        return 'Owner'
+      case 'admin':
+        return 'Admin'
+      case 'leader':
+        return 'Leader'
+      case 'divisi':
+        return 'Divisi'
+      default:
+        return 'Unknown'
     }
-    return <Badge variant={variants[status] || 'default'}>{status}</Badge>
   }
 
-  const getTotalUsers = () => {
-    return users.length
+  const getStatusColor = (status) => {
+    return status === 'active' 
+      ? 'bg-green-100 text-green-800' 
+      : 'bg-red-100 text-red-800'
   }
 
-  const getActiveUsers = () => {
-    return users.filter(u => u.status === 'aktif').length
+  const getStatusIcon = (status) => {
+    return status === 'active' 
+      ? <CheckCircle className="h-4 w-4 text-green-600" />
+      : <XCircle className="h-4 w-4 text-red-600" />
   }
 
-  const getAdmins = () => {
-    return users.filter(u => u.role === 'admin' || u.role === 'owner').length
-  }
-
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         u.email.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesRole = roleFilter === 'all' || u.role === roleFilter
-    return matchesSearch && matchesRole
-  })
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat data pengguna...</p>
-        </div>
-      </div>
-    )
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Daftar Pengguna</h1>
-          <p className="text-gray-600 mt-1">Kelola semua pengguna sistem</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm">
-            <Users className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Link to="/users/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Pengguna
-            </Button>
+    <div className="p-6">
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Daftar Users</h1>
+            <p className="text-gray-600">Kelola semua user dalam sistem</p>
+          </div>
+          <Link
+            to="/users/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Tambah User
           </Link>
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Cari</label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Cari pengguna..."
+                placeholder="Cari nama atau email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="all">Semua Role</option>
+              <option value="">Semua Role</option>
               <option value="owner">Owner</option>
               <option value="admin">Admin</option>
               <option value="leader">Leader</option>
               <option value="divisi">Divisi</option>
             </select>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter Lainnya
-            </Button>
           </div>
-        </CardBody>
-      </Card>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Pengguna</p>
-                <p className="text-2xl font-bold text-gray-900">{getTotalUsers()}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <UserCheck className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pengguna Aktif</p>
-                <p className="text-2xl font-bold text-gray-900">{getActiveUsers()}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <Shield className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Admin</p>
-                <p className="text-2xl font-bold text-gray-900">{getAdmins()}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <UserX className="h-6 w-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Nonaktif</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {users.filter(u => u.status === 'nonaktif').length}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Semua Status</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Tidak Aktif</option>
+            </select>
+          </div>
+          
+          <div className="flex items-end">
+            <button
+              onClick={handleSearch}
+              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Search className="h-4 w-4 inline mr-2" />
+              Cari
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <h3 className="text-lg font-medium text-gray-900">Daftar Pengguna</h3>
-        </CardHeader>
-        <CardBody>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nama</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Last Login</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((u) => (
-                <TableRow key={u.id}>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center mr-3">
-                        <User className="h-4 w-4 text-primary-600" />
+      {/* Users Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  User
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Divisi
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tanggal Daftar
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                    Memuat data...
+                  </td>
+                </tr>
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                    Tidak ada user ditemukan
+                  </td>
+                </tr>
+              ) : (
+                users.map((user) => (
+                  <tr key={user.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.nama}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm text-gray-500">{user.username}</div>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{u.nama}</p>
-                        <p className="text-sm text-gray-500">{u.phone}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleColor(user.role)}`}>
+                        {getRoleText(user.role)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{user.divisi}</div>
+                      <div className="text-sm text-gray-500">{user.jabatan}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        {getStatusIcon(user.status)}
+                        <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(user.status)}`}>
+                          {user.status === 'active' ? 'Aktif' : 'Tidak Aktif'}
+                        </span>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm font-medium text-gray-900">{u.username}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                      <p className="text-sm text-gray-900">{u.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getRoleBadge(u.role)}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(u.status)}
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-gray-900">{formatDate(u.last_login)}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center justify-end space-x-2">
-                      <Link to={`/users/${u.id}`}>
-                        <Button variant="ghost" size="sm">
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {formatDate(user.created_at)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <Link
+                          to={`/users/${user.id}`}
+                          className="p-1 text-blue-600 hover:text-blue-800"
+                          title="Lihat Detail"
+                        >
                           <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Link to={`/users/${u.id}/edit`}>
-                        <Button variant="ghost" size="sm">
+                        </Link>
+                        <Link
+                          to={`/users/${user.id}/edit`}
+                          className="p-1 text-green-600 hover:text-green-800"
+                          title="Edit"
+                        >
                           <Edit className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {filteredUsers.length === 0 && (
-            <div className="text-center py-8">
-              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Tidak ada pengguna ditemukan</p>
+                        </Link>
+                        <button
+                          onClick={() => handleStatusToggle(user.id, user.status)}
+                          className={`p-1 ${
+                            user.status === 'active' 
+                              ? 'text-red-600 hover:text-red-800' 
+                              : 'text-green-600 hover:text-green-800'
+                          }`}
+                          title={user.status === 'active' ? 'Nonaktifkan' : 'Aktifkan'}
+                        >
+                          {user.status === 'active' ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user.id)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 flex justify-between sm:hidden">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Sebelumnya
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Selanjutnya
+                </button>
+              </div>
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Halaman <span className="font-medium">{currentPage}</span> dari{' '}
+                    <span className="font-medium">{totalPages}</span>
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Sebelumnya
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Selanjutnya
+                    </button>
+                  </nav>
+                </div>
+              </div>
             </div>
-          )}
-        </CardBody>
-      </Card>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

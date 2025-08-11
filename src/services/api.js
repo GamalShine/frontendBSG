@@ -1,7 +1,6 @@
 import axios from 'axios'
-import toast from 'react-hot-toast'
 
-const API_BASE_URL = '/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -17,6 +16,9 @@ api.interceptors.request.use(
         const token = localStorage.getItem('token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
+            console.log('🔑 Token added to request:', config.url)
+        } else {
+            console.log('⚠️ No token found for request:', config.url)
         }
         return config
     },
@@ -31,15 +33,16 @@ api.interceptors.response.use(
         return response
     },
     (error) => {
+        console.log('🚨 API Error:', error.config?.url, error.response?.status, error.response?.data)
+
+        // Only handle 401 errors for non-auth endpoints to avoid logout loops
         if (error.response?.status === 401) {
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            window.location.href = '/login'
-            toast.error('Session expired. Please login again.')
-        } else if (error.response?.data?.message) {
-            toast.error(error.response.data.message)
-        } else {
-            toast.error('An error occurred. Please try again.')
+            const url = error.config?.url || ''
+            if (!url.includes('/auth/login') && !url.includes('/auth/register')) {
+                console.warn('Unauthorized request detected:', url)
+                // Don't automatically clear storage or redirect
+                // Let the component handle the error
+            }
         }
         return Promise.reject(error)
     }

@@ -24,9 +24,11 @@ const RichTextEditor = ({
     }
   }, [value, isInitialized])
 
+  // Ensure content is captured whenever the editor changes
   const handleInput = () => {
     if (onChange && editorRef.current) {
       const content = editorRef.current.innerHTML
+      console.log('RichTextEditor: Content changed:', content.substring(0, 100))
       onChange({
         target: {
           name: name,
@@ -36,6 +38,35 @@ const RichTextEditor = ({
     }
   }
 
+  // Ensure content is captured on blur as well
+  const handleBlur = () => {
+    setIsFocused(false)
+    handleInput()
+  }
+
+  // Ensure content is captured on focus
+  const handleFocus = () => {
+    setIsFocused(true)
+    handleInput()
+  }
+
+  // Add function to get current content
+  const getContent = () => {
+    if (editorRef.current) {
+      return editorRef.current.innerHTML
+    }
+    return ''
+  }
+
+  // Expose getContent function to parent
+  useEffect(() => {
+    if (onChange) {
+      // Create a ref to the getContent function
+      const getContentRef = { current: getContent }
+      onChange.getContent = () => getContentRef.current()
+    }
+  }, [onChange])
+
   const handlePaste = (e) => {
     e.preventDefault()
     
@@ -44,30 +75,50 @@ const RichTextEditor = ({
     for (let item of items) {
       if (item.type.indexOf('image') !== -1) {
         const blob = item.getAsFile()
-        const reader = new FileReader()
         
-        reader.onload = (event) => {
-          const img = document.createElement('img')
-          img.src = event.target.result
-          img.style.maxWidth = '100%'
-          img.style.height = 'auto'
-          img.style.margin = '10px 0'
+        // Add file to uploadedFiles state instead of inserting base64
+        setUploadedFiles(prev => {
+          const newFiles = [...prev, blob];
           
-          // Insert image at cursor position
-          const selection = window.getSelection()
-          if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0)
-            range.deleteContents()
-            range.insertNode(img)
-            range.collapse(false)
-          } else {
-            editorRef.current.appendChild(img)
+          // Notify parent component about new files
+          if (onFilesChange) {
+            onFilesChange(newFiles)
           }
           
-          handleInput()
+          return newFiles;
+        })
+        
+        // Insert placeholder instead of base64 image
+        const placeholder = document.createElement('div')
+        placeholder.className = 'image-placeholder'
+        placeholder.style.cssText = `
+          border: 2px dashed #ccc;
+          padding: 20px;
+          margin: 10px 0;
+          text-align: center;
+          background: #f9f9f9;
+          border-radius: 4px;
+          color: #666;
+        `
+        placeholder.innerHTML = `
+          <div>📷 ${blob.name || 'Pasted Image'}</div>
+          <div style="font-size: 12px; margin-top: 5px;">
+            ${(blob.size / 1024).toFixed(1)} KB - Will be uploaded when form is submitted
+          </div>
+        `
+        
+        // Insert placeholder at cursor position
+        const selection = window.getSelection()
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          range.deleteContents()
+          range.insertNode(placeholder)
+          range.collapse(false)
+        } else {
+          editorRef.current.appendChild(placeholder)
         }
         
-        reader.readAsDataURL(blob)
+        handleInput()
         return
       }
     }
@@ -91,20 +142,14 @@ const RichTextEditor = ({
     input.multiple = true
     input.onchange = (e) => {
       const files = Array.from(e.target.files)
-      console.log('📁 Files selected:', files.length);
-      files.forEach((file, index) => {
-        console.log(`   ${index + 1}. ${file.name} (${(file.size / 1024).toFixed(1)} KB)`);
-      });
       
       if (files.length > 0) {
         // Add files to uploadedFiles state
         setUploadedFiles(prev => {
           const newFiles = [...prev, ...files];
-          console.log('📁 Total files in state:', newFiles.length);
           
           // Notify parent component about new files
           if (onFilesChange) {
-            console.log('📤 Notifying parent with files:', newFiles.length);
             onFilesChange(newFiles)
           }
           
@@ -192,8 +237,12 @@ const RichTextEditor = ({
         contentEditable
         onInput={handleInput}
         onPaste={handlePaste}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onKeyUp={handleInput}
+        onKeyDown={handleInput}
+        onMouseUp={handleInput}
+        onMouseDown={handleInput}
         className={`
           border border-gray-300 rounded-b-lg p-3 min-h-[${rows * 1.5}rem] 
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500

@@ -54,7 +54,14 @@ const Login = () => {
       })
 
       console.log('✅ Login successful:', user)
-      toast.success(`Selamat datang, ${user.nama || user.username}!`)
+      
+      // Check if user object exists and has required properties
+      if (user && (user.nama || user.username)) {
+        const displayName = user.nama || user.username || 'User'
+        toast.success(`Selamat datang, ${displayName}!`)
+      } else {
+        toast.success('Login berhasil!')
+      }
       
       // Navigate to dashboard
       console.log('🏠 Redirecting to dashboard...')
@@ -154,60 +161,55 @@ const Login = () => {
                   <input
                     id="password"
                     name="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Masukkan password"
                     className="pl-10 pr-12 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600 transition-colors p-1 rounded"
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-6">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-lg shadow-sm text-sm font-semibold transition-all duration-200 ${
-                    loading
-                      ? 'bg-gray-400 cursor-not-allowed text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 focus:bg-blue-700 text-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                      <span>Memproses...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Masuk</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </div>
+              {/* Login Button */}
+              <Button
+                type="submit"
+                className="w-full py-3 text-lg font-semibold"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    Memproses...
+                  </>
+                ) : (
+                  <>
+                    Masuk
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
+              </Button>
             </form>
 
-            {/* Footer */}
-            <div className="text-center mt-8">
-              <p className="text-gray-500 text-sm">
-                © 2024 Bosgil Group. All rights reserved.
-              </p>
+            {/* Demo Credentials */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</h3>
+              <div className="text-xs text-blue-800 space-y-1">
+                <p><strong>Admin:</strong> admin / password123</p>
+                <p><strong>Owner:</strong> owner / password123</p>
+                <p><strong>User:</strong> user / password123</p>
+              </div>
             </div>
           </CardBody>
         </Card>
