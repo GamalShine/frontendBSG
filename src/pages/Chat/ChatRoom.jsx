@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { chatService } from '../../services/chatService'
@@ -10,6 +10,7 @@ import {
   Phone,
   Video
 } from 'lucide-react'
+import LoadingSpinner from '../../components/UI/LoadingSpinner'
 import toast from 'react-hot-toast'
 
 const ChatRoom = () => {
@@ -21,35 +22,52 @@ const ChatRoom = () => {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [otherUser, setOtherUser] = useState(null)
+  const [sending, setSending] = useState(false)
+  const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    if (roomId) {
+    if (roomId && user?.id) {
       loadRoom()
       loadMessages()
     }
-  }, [roomId])
+  }, [roomId, user])
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   const loadRoom = async () => {
     try {
       setLoading(true)
-      const response = await chatService.getUserRooms(user.id)
+      const response = await chatService.getChatRooms(user.id)
+      console.log('Room response:', response)
+      
       if (response.success) {
         const currentRoom = response.data.find(r => r.room_id === roomId)
         if (currentRoom) {
           setRoom(currentRoom)
           // Determine other user
-          const otherUserId = currentRoom.user1_id === user.id ? currentRoom.user2_id : currentRoom.user1_id
-          // You might need to fetch other user details here
+          const otherUserData = currentRoom.other_user || (currentRoom.user1_id === user.id ? currentRoom.user2 : currentRoom.user1)
+          
           setOtherUser({
-            id: otherUserId,
-            nama: 'User', // This should be fetched from user service
-            username: 'username'
+            id: otherUserData?.id,
+            nama: otherUserData?.nama || 'User',
+            username: otherUserData?.username || 'username',
+            email: otherUserData?.email || 'email@example.com'
           })
+        } else {
+          toast.error('Chat room tidak ditemukan')
+          navigate('/chat')
         }
       }
     } catch (error) {
       toast.error('Gagal memuat data chat room')
       console.error('Error loading room:', error)
+      navigate('/chat')
     } finally {
       setLoading(false)
     }
@@ -58,27 +76,49 @@ const ChatRoom = () => {
   const loadMessages = async () => {
     try {
       const response = await chatService.getMessages(roomId)
+      console.log('Messages response:', response)
+      
       if (response.success) {
-        setMessages(response.data)
+        // Reverse the messages to show oldest first (since backend returns newest first)
+        setMessages(response.data.reverse() || [])
+      } else {
+        setMessages([])
       }
     } catch (error) {
       toast.error('Gagal memuat pesan')
       console.error('Error loading messages:', error)
+      setMessages([])
     }
   }
 
   const sendMessage = async () => {
-    if (!newMessage.trim()) return
+    if (!newMessage.trim() || sending) return
 
     try {
-      const response = await chatService.sendMessage(roomId, newMessage.trim())
+      setSending(true)
+      const response = await chatService.sendMessage(roomId, newMessage.trim(), user.id)
+      console.log('Send message response:', response)
+      
       if (response.success) {
         setMessages(prev => [...prev, response.data])
         setNewMessage('')
+        
+        // Update room's last message
+        if (room) {
+          setRoom(prev => ({
+            ...prev,
+            last_message: newMessage.trim(),
+            last_message_time: new Date().toISOString()
+          }))
+        }
+      } else {
+        toast.error('Gagal mengirim pesan')
       }
     } catch (error) {
       toast.error('Gagal mengirim pesan')
       console.error('Error sending message:', error)
+    } finally {
+      setSending(false)
     }
   }
 
@@ -92,10 +132,7 @@ const ChatRoom = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat chat room...</p>
-        </div>
+        <LoadingSpinner size="large" />
       </div>
     )
   }
@@ -106,7 +143,7 @@ const ChatRoom = () => {
         <div className="text-center">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Chat room tidak ditemukan</h3>
           <button
-            onClick={() => navigate('/chat/private')}
+            onClick={() => navigate('/chat')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Kembali ke Chat
@@ -123,7 +160,7 @@ const ChatRoom = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <button
-              onClick={() => navigate('/chat/private')}
+              onClick={() => navigate('/chat')}
               className="p-2 text-gray-400 hover:text-gray-600 mr-3"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -179,6 +216,7 @@ const ChatRoom = () => {
             </div>
           ))
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
@@ -190,14 +228,19 @@ const ChatRoom = () => {
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Ketik pesan..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={sending}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
           />
           <button
             onClick={sendMessage}
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || sending}
             className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Send className="h-4 w-4" />
+            {sending ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>

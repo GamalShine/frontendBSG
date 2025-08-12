@@ -5,6 +5,7 @@ import { formatDate } from '../../utils/helpers'
 import Card, { CardHeader, CardBody } from '../../components/UI/Card'
 import Button from '../../components/UI/Button'
 import Badge from '../../components/UI/Badge'
+import LoadingSpinner from '../../components/UI/LoadingSpinner'
 import { komplainService } from '../../services/komplainService'
 import toast from 'react-hot-toast'
 
@@ -48,11 +49,8 @@ const KomplainDetail = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat detail komplain...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="large" />
       </div>
     )
   }
@@ -67,62 +65,64 @@ const KomplainDetail = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/komplain')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Kembali
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Detail Komplain</h1>
-            <p className="mt-1 text-sm text-gray-600">
-              Informasi lengkap komplain #{komplain.id}
-            </p>
+      <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={() => navigate('/komplain')}
+                className="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Detail Komplain</h1>
+                <p className="text-gray-600">Informasi lengkap komplain #{komplain.id}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(`/komplain/${id}/edit`)}
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              <Edit className="h-4 w-4" />
+              <span>Edit</span>
+            </button>
           </div>
         </div>
-        <Button
-          onClick={() => navigate(`/komplain/${id}/edit`)}
-        >
-          <Edit className="h-4 w-4 mr-2" />
-          Edit
-        </Button>
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">{komplain.judul_komplain}</h2>
         </div>
         <div className="p-6 space-y-6">
           {/* Status and Priority */}
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Status</label>
               <div className="mt-1">
-                <Badge variant="primary">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {komplain.status}
-                </Badge>
+                </span>
               </div>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Prioritas</label>
               <div className="mt-1">
-                <Badge variant="warning">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                   {komplain.prioritas}
-                </Badge>
+                </span>
               </div>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">Kategori</label>
               <div className="mt-1">
-                <Badge variant="default">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                   {komplain.kategori}
-                </Badge>
+                </span>
               </div>
             </div>
           </div>
@@ -130,25 +130,33 @@ const KomplainDetail = () => {
           {/* Description */}
           <div>
             <label className="text-sm font-medium text-gray-700">Deskripsi</label>
-            <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-              {komplain.deskripsi_komplain}
-            </p>
+            <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm text-gray-900 whitespace-pre-wrap">
+                {komplain.deskripsi_komplain}
+              </p>
+            </div>
           </div>
 
           {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700">Tanggal Pelaporan</label>
-              <p className="mt-1 text-sm text-gray-900">
-                {formatDate(komplain.tanggal_pelaporan)}
-              </p>
+              <div className="mt-1 flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-900">
+                  {formatDate(komplain.tanggal_pelaporan)}
+                </span>
+              </div>
             </div>
             {komplain.target_selesai && (
               <div>
                 <label className="text-sm font-medium text-gray-700">Target Selesai</label>
-                <p className="mt-1 text-sm text-gray-900">
-                  {formatDate(komplain.target_selesai)}
-                </p>
+                <div className="mt-1 flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-900">
+                    {formatDate(komplain.target_selesai)}
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -161,8 +169,8 @@ const KomplainDetail = () => {
                 {JSON.parse(komplain.lampiran).map((file, index) => (
                   <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-primary-100 rounded flex items-center justify-center">
-                        <span className="text-primary-600 text-sm font-medium">
+                      <div className="w-8 h-8 bg-red-100 rounded flex items-center justify-center">
+                        <span className="text-red-600 text-sm font-medium">
                           {file.name.split('.').pop().toUpperCase()}
                         </span>
                       </div>
@@ -177,7 +185,7 @@ const KomplainDetail = () => {
                       href={file.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      className="text-red-600 hover:text-red-700 text-sm font-medium"
                     >
                       Download
                     </a>

@@ -67,9 +67,9 @@ const Header = ({ onMenuClick, unreadCount }) => {
 
           {/* Logout Loading Indicator */}
           {loggingOut && (
-            <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-lg">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              <span className="text-sm text-blue-600">Logging out...</span>
+            <div className="flex items-center space-x-2 px-3 py-2 bg-red-50 rounded-lg">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+              <span className="text-sm text-red-600">Logging out...</span>
             </div>
           )}
 
@@ -80,7 +80,7 @@ const Header = ({ onMenuClick, unreadCount }) => {
               className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100"
               disabled={loggingOut}
             >
-              <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                 {getInitials(user?.nama || user?.username || 'U')}
               </div>
               <div className="hidden md:block text-left">

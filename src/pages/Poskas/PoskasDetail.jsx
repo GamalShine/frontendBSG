@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
+import { ArrowLeft, Calendar, User, Clock, FileText, Eye, RefreshCw, Edit, Trash2, Info } from 'lucide-react';
 
 const PoskasDetail = () => {
   const { id } = useParams();
@@ -189,12 +190,31 @@ const PoskasDetail = () => {
     setShowFullScreenModal(true);
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus data POSKAS ini?')) {
+      return;
+    }
+
+    try {
+      await poskasService.deletePoskas(id);
+      toast.success('Data POSKAS berhasil dihapus');
+      navigate('/poskas');
+    } catch (error) {
+      console.error('Error deleting poskas:', error);
+      toast.error('Gagal menghapus data POSKAS');
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex-1 bg-gray-50 flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="text-gray-600 mt-4">Memuat detail POSKAS...</p>
+      <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-12">
+          <div className="flex justify-center items-center">
+            <div className="text-center">
+              <RefreshCw className="h-12 w-12 animate-spin text-red-600 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg font-medium">Memuat detail POSKAS...</p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -202,162 +222,241 @@ const PoskasDetail = () => {
 
   if (!poskasData) {
     return (
-      <div className="flex-1 bg-gray-50 flex justify-center items-center min-h-screen">
-        <div className="text-center">
-          <div className="text-6xl text-gray-400 mb-4">📄</div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Data Tidak Ditemukan</h1>
-          <p className="text-gray-600 mb-6">Detail POSKAS tidak dapat dimuat</p>
-          <button
-            onClick={() => navigate('/poskas')}
-            className="bg-red-500 px-6 py-3 rounded-lg text-white font-medium hover:bg-red-600 transition-colors"
-          >
-            Kembali
-          </button>
+      <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-12">
+          <div className="text-center">
+            <div className="text-8xl text-gray-300 mb-6">📄</div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Data Tidak Ditemukan</h1>
+            <p className="text-gray-600 text-lg mb-8">Detail POSKAS tidak dapat dimuat</p>
+            <button
+              onClick={() => navigate('/poskas')}
+              className="px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              ← Kembali ke Daftar
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={() => navigate('/poskas')}
-            className="w-10 h-10 bg-gray-100 rounded-full flex justify-center items-center hover:bg-gray-200 transition-colors"
-          >
-            ←
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">Detail POSKAS</h1>
-          <div className="w-10"></div>
+      <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={() => navigate('/poskas')}
+                className="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Detail Pos Kas</h1>
+                <p className="text-gray-600">Posisi Kas Outlet - Informasi Lengkap</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="px-6 py-3 bg-red-500 text-white rounded-full text-sm font-bold">
+                💰 POSKAS
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Transaction Summary Card */}
-        <div className="mx-6 mt-6 bg-red-600 rounded-2xl shadow-sm border border-red-300">
-          <div className="p-6">
-            <h2 className="text-lg font-bold text-white mb-2">POSISI KAS OUTLET</h2>
-            <p className="text-white">{formatDate(poskasData.tanggal_poskas)}</p>
+      {/* Information Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <Calendar className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Tanggal Pos Kas</p>
+              <p className="text-xl font-bold text-gray-900">{formatDate(poskasData.tanggal_poskas)}</p>
+            </div>
           </div>
         </div>
 
-        {/* Detail Information */}
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <User className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Dibuat Oleh</p>
+              <p className="text-xl font-bold text-gray-900">{poskasData.user_nama || poskasData.admin_nama || poskasData.created_by || 'Admin'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Clock className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Waktu Input</p>
+              <p className="text-xl font-bold text-gray-900">{formatDateTime(poskasData.created_at)}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content Section */}
+      <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <FileText className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Isi Pos Kas</h2>
+              <p className="text-gray-600">Detail lengkap posisi kas outlet</p>
+            </div>
+          </div>
+        </div>
+        
         <div className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Informasi Detail</h2>
-
-          <div className="space-y-4">
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-600">Tanggal</span>
-              <span className="text-gray-900 font-medium">{formatDate(poskasData.tanggal_poskas)}</span>
-            </div>
-
-            <div className="flex justify-between py-2 border-b border-gray-100">
-              <span className="text-gray-600">Dibuat oleh</span>
-              <span className="text-gray-900 font-medium">{poskasData.admin_nama || 'Admin'}</span>
-            </div>
-
-            <div className="flex justify-between py-2">
-              <span className="text-gray-600">Waktu Input</span>
-              <span className="text-gray-900 font-medium">{formatDateTime(poskasData.created_at)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Isi POSKAS Section - sama seperti admin */}
-        <div className="p-6 border-t border-gray-400">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Isi POSKAS</h2>
-          <div className="w-full min-h-[120px]">
-            {contentParts && contentParts.length > 0 ? (
-              <div className="w-full">
+          {contentParts && contentParts.length > 0 ? (
+            <div className="bg-white p-6 shadow-sm">
+              <div className="prose max-w-none">
                 {contentParts.map((part, index) => (
                   <div key={index}>
                     {part.type === 'text' ? (
-                      <p className="text-gray-800 text-sm leading-5 mb-4 whitespace-pre-wrap">
-                        {part.content}
-                      </p>
+                      <div className="mb-4">
+                        <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
+                          {part.content}
+                        </p>
+                      </div>
                     ) : part.type === 'image' ? (
-                      <div className="w-full mb-4">
-                        <button
-                          onClick={() => openFullScreenImage(part.image)}
-                          className="w-full cursor-pointer hover:opacity-90 transition-opacity"
-                        >
-                          <img
-                            src={part.image.displayUri || part.image.fallbackUri}
-                            alt={part.image.name || 'Gambar POSKAS'}
-                            className="w-full mx-auto"
-                            style={{
-                              height: 'auto',
-                            }}
-                            onError={(e) => {
-                              console.error('Error loading image:', e);
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </button>
-                        <div className="mt-2 flex items-center justify-center w-full">
-                          <span className="text-gray-500 text-xs">🔍 Klik untuk tampilkan full screen</span>
+                      <div className="mb-6">
+                        <div className="flex justify-start">
+                          <button
+                            onClick={() => openFullScreenImage(part.image)}
+                            className="cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                          >
+                            <img
+                              src={part.image.displayUri || part.image.fallbackUri}
+                              alt={part.image.name || 'Gambar POSKAS'}
+                              className="h-auto max-w-full rounded"
+                              style={{ 
+                                maxHeight: '400px',
+                                objectFit: 'contain'
+                              }}
+                              onError={(e) => {
+                                console.error('Error loading image:', e);
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </button>
                         </div>
                       </div>
                     ) : null}
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-gray-500 text-sm">Tidak ada konten</p>
-            )}
-          </div>
-        </div>
-
-        {/* Additional Notes */}
-        {poskasData.catatan && (
-          <div className="mx-6 mb-6 bg-blue-50 rounded-2xl border border-blue-200">
-            <div className="p-6">
-              <div className="flex items-center mb-3">
-                <span className="text-blue-600 text-xl mr-2">ℹ️</span>
-                <h3 className="text-blue-900 font-bold">Catatan Tambahan</h3>
-              </div>
-              <p className="text-blue-800 leading-6">{poskasData.catatan}</p>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl text-gray-300 mb-4">📄</div>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Tidak ada konten</h3>
+              <p className="text-gray-500">Belum ada data posisi kas yang tersedia</p>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Full Screen Image Modal - sama seperti admin */}
+      {/* Additional Notes */}
+      {poskasData.catatan && (
+        <div className="bg-white rounded-lg shadow-sm border mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Info className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Catatan Tambahan</h3>
+                <p className="text-gray-600">Informasi tambahan terkait posisi kas</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <p className="text-blue-900 leading-relaxed">{poskasData.catatan}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex space-x-4">
+            <button
+              onClick={() => navigate('/poskas')}
+              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            >
+              ← Kembali ke Daftar
+            </button>
+          </div>
+          <div className="flex space-x-4">
+            <button
+              onClick={() => navigate(`/poskas/${id}/edit`)}
+              className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+            >
+              <Edit className="h-4 w-4" />
+              <span>Edit Pos Kas</span>
+            </button>
+            <button
+              onClick={handleDelete}
+              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Hapus</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Full Screen Image Modal */}
       {showFullScreenModal && (
-        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center">
           {/* Header */}
-          <div className="absolute top-0 left-0 right-0 pt-12 pb-4 px-4 flex items-center justify-between z-10">
+          <div className="absolute top-0 left-0 right-0 pt-8 pb-6 px-8 flex items-center justify-between z-10">
             <button
               onClick={() => setShowFullScreenModal(false)}
-              className="w-10 h-10 bg-black bg-opacity-50 rounded-full flex justify-center items-center text-white hover:bg-opacity-70 transition-colors"
+              className="p-3 bg-black bg-opacity-50 rounded-xl flex justify-center items-center text-white hover:bg-opacity-70 transition-all duration-200 shadow-lg"
             >
-              ✕
+              <ArrowLeft className="h-6 w-6" />
             </button>
-            <h2 className="text-white font-bold text-lg">Gambar POSKAS</h2>
+            <h2 className="text-white font-bold text-xl">Gambar POSKAS</h2>
             <button
               onClick={() => {
-                // Reset zoom to center
                 setShowFullScreenModal(false);
                 setTimeout(() => setShowFullScreenModal(true), 100);
               }}
-              className="w-10 h-10 bg-black bg-opacity-50 rounded-full flex justify-center items-center text-white hover:bg-opacity-70 transition-colors"
+              className="p-3 bg-black bg-opacity-50 rounded-xl flex justify-center items-center text-white hover:bg-opacity-70 transition-all duration-200 shadow-lg"
             >
-              🔄
+              <RefreshCw className="h-6 w-6" />
             </button>
           </div>
 
           {/* Image Container */}
-          <div className="flex-1 flex items-center justify-center p-4">
+          <div className="flex-1 flex items-center justify-center p-8">
             {fullScreenImage && (
               <img
                 src={fullScreenImage}
                 alt="Gambar POSKAS Full Screen"
-                className="max-w-full max-h-full object-contain"
+                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
                 style={{
-                  width: '100%',
-                  height: '100%',
+                  maxWidth: '90vw',
+                  maxHeight: '90vh',
+                  width: 'auto',
+                  height: 'auto'
                 }}
                 onError={(error) => {
                   console.error('Error loading full screen image:', error);

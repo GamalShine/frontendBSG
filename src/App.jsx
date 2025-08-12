@@ -14,6 +14,7 @@ import ChatPrivate from './pages/Chat/ChatPrivate'
 import ChatGroups from './pages/Chat/ChatGroups'
 import ChatGroupCreate from './pages/Chat/ChatGroupCreate'
 import ChatRoom from './pages/Chat/ChatRoom'
+import ChatDataViewer from './pages/Chat/ChatDataViewerWithReply'
 
 // Komplain Pages
 import KomplainList from './pages/Komplain/KomplainList'
@@ -43,6 +44,10 @@ import LaporanKeuangan from './pages/Keuangan/LaporanKeuangan'
 import AnekaGrafik from './pages/Keuangan/AnekaGrafik'
 import DaftarGaji from './pages/Keuangan/DaftarGaji'
 import AnekaSurat from './pages/Keuangan/AnekaSurat'
+import OmsetHarian from './pages/Keuangan/OmsetHarian'
+import OmsetHarianList from './pages/Keuangan/OmsetHarianList'
+import OmsetHarianForm from './pages/Keuangan/OmsetHarianForm'
+import OmsetHarianDetail from './pages/Keuangan/OmsetHarianDetail'
 
 // SDM Pages
 import StrukturJobdeskSOP from './pages/SDM/StrukturJobdeskSOP'
@@ -194,6 +199,14 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
 
+        <Route path="/chat/data" element={
+          <ProtectedRoute requiredPermissions={['read']}>
+            <Layout>
+              <ChatDataViewer />
+            </Layout>
+          </ProtectedRoute>
+        } />
+
         {/* Komplain Routes */}
         <Route path="/komplain" element={
           <ProtectedRoute requiredPermissions={['read']}>
@@ -282,6 +295,38 @@ const AppRoutes = () => {
           <ProtectedRoute requiredPermissions={['read']}>
             <Layout>
               <LaporanKeuangan />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/omset-harian" element={
+          <ProtectedRoute requiredPermissions={['read']}>
+            <Layout>
+              <OmsetHarianList />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/omset-harian/new" element={
+          <ProtectedRoute requiredPermissions={['create']}>
+            <Layout>
+              <OmsetHarianForm />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/omset-harian/:id" element={
+          <ProtectedRoute requiredPermissions={['read']}>
+            <Layout>
+              <OmsetHarianDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/omset-harian/:id/edit" element={
+          <ProtectedRoute requiredPermissions={['update']}>
+            <Layout>
+              <OmsetHarianForm />
             </Layout>
           </ProtectedRoute>
         } />

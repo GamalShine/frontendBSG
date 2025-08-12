@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { chatService } from '../../services/chatService'
+import useChatSocket from '../../hooks/useChatSocket'
+import { isDuplicateKeyError, getErrorMessage, extractErrorMessage } from '../../utils/errorHandler'
+import LoadingSpinner from '../../components/UI/LoadingSpinner'
 import { 
   Search, 
   MessageCircle, 
@@ -9,12 +12,15 @@ import {
   User,
   Phone,
   Video,
-  Trash2
+  Trash2,
+  Wifi,
+  WifiOff
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const ChatPrivate = () => {
   const { user } = useAuth()
+  const { joinRoom, leaveRoom, onNewMessage, isConnected } = useChatSocket()
   const [contacts, setContacts] = useState([])
   const [selectedContact, setSelectedContact] = useState(null)
   const [messages, setMessages] = useState([])
@@ -22,23 +28,83 @@ const ChatPrivate = () => {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentRoom, setCurrentRoom] = useState(null)
+  const messagesEndRef = useRef(null)
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadContacts()
     }
   }, [user])
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
   const loadContacts = async () => {
     try {
       setLoading(true)
-      const response = await chatService.getContacts(user.id)
-      if (response.success) {
-        setContacts(response.data)
+      console.log('Loading contacts for user:', user.id)
+      
+      // Get new contacts (users without existing chat rooms)
+      const contactsResponse = await chatService.getContacts(user.id)
+      console.log('Contacts response:', contactsResponse)
+      
+      // Get existing chat rooms
+      const roomsResponse = await chatService.getChatRooms(user.id)
+      console.log('Rooms response:', roomsResponse)
+      
+      let allContacts = []
+      const existingContactIds = new Set() // Track existing contact IDs to avoid duplicates
+      
+      if (roomsResponse.success) {
+        // Convert chat rooms to contact format
+        const existingContacts = roomsResponse.data
+          .filter(room => room && room.room_id && room.other_user) // Filter out invalid rooms
+          .map(room => {
+            const contact = {
+              id: room.other_user.id,
+              nama: room.other_user.nama || room.other_user.username || 'Unknown User',
+              username: room.other_user.username,
+              email: room.other_user.email,
+              role: room.other_user.role,
+              last_message: room.last_message || 'Belum ada pesan',
+              last_message_time: room.last_message_time,
+              room_id: room.room_id,
+              isExistingChat: true
+            }
+            existingContactIds.add(contact.id) // Track this ID
+            return contact
+          })
+        
+        allContacts = [...existingContacts]
       }
+      
+      if (contactsResponse.success) {
+        // Only add new contacts that don't already exist
+        const newContacts = contactsResponse.data
+          .filter(contact => 
+            contact && 
+            contact.id && 
+            !existingContactIds.has(contact.id)
+          )
+          .map(contact => ({
+            ...contact,
+            nama: contact.nama || contact.username || 'Unknown User',
+            last_message: 'Belum ada pesan',
+            last_message_time: null,
+            isExistingChat: false
+          }))
+        
+        allContacts = [...allContacts, ...newContacts]
+      }
+      
+      console.log('All contacts:', allContacts)
+      setContacts(allContacts)
     } catch (error) {
-      toast.error('Gagal memuat daftar kontak')
       console.error('Error loading contacts:', error)
+      toast.error('Gagal memuat daftar kontak')
+      setContacts([])
     } finally {
       setLoading(false)
     }
@@ -49,53 +115,343 @@ const ChatPrivate = () => {
       setLoading(true)
       setSelectedContact(contact)
       
-      // Get or create chat room
-      const roomResponse = await chatService.getOrCreateRoom(user.id, contact.id)
-      if (roomResponse.success) {
-        setCurrentRoom(roomResponse.data)
-        
-        // Load messages
-        const messagesResponse = await chatService.getMessages(roomResponse.data.room_id)
-        if (messagesResponse.success) {
-          setMessages(messagesResponse.data)
-          
-          // Mark messages as read
-          await chatService.markAsRead(roomResponse.data.room_id, user.id)
+      // Leave previous room if exists
+      if (currentRoom) {
+        try {
+          leaveRoom(currentRoom.room_id)
+        } catch (wsError) {
+          console.warn('Error leaving room:', wsError)
         }
       }
+      
+      let roomId
+      let roomData
+      
+      if (contact.isExistingChat && contact.room_id) {
+        // Use existing room
+        roomId = contact.room_id
+        roomData = { room_id: roomId }
+        setCurrentRoom(roomData)
+        console.log('Using existing room:', roomId)
+      } else {
+        // Get or create chat room
+        console.log('Creating new room between user', user.id, 'and contact', contact.id)
+        const roomResponse = await chatService.getOrCreateRoom(user.id, contact.id)
+        console.log('Room creation response:', roomResponse)
+        
+        if (roomResponse.success && roomResponse.data) {
+          roomData = roomResponse.data
+          setCurrentRoom(roomData)
+          roomId = roomData.room_id
+          console.log('New room created:', roomId)
+        } else {
+          console.error('Failed to create room:', roomResponse)
+          throw new Error('Gagal membuat chat room')
+        }
+      }
+      
+      // Try to join the chat room for real-time updates (but don't fail if WebSocket is not available)
+      try {
+        joinRoom(roomId)
+        console.log('Joined room:', roomId)
+      } catch (wsError) {
+        console.warn('WebSocket connection failed, continuing without real-time updates:', wsError)
+      }
+      
+      // Load messages
+      console.log('Loading messages for room:', roomId)
+      const messagesResponse = await chatService.getMessages(roomId)
+      console.log('Messages response:', messagesResponse)
+      
+      if (messagesResponse.success) {
+        // Filter out messages with invalid IDs (like id = 0) and reverse to show oldest first
+        const validMessages = (messagesResponse.data || [])
+          .filter(msg => msg && msg.id !== 0 && msg.id !== null)
+          .reverse() // Show oldest first (since backend returns newest first)
+        
+        console.log('Valid messages loaded:', validMessages.length)
+        setMessages(validMessages)
+        
+        // Mark messages as read
+        try {
+          await chatService.markAsRead(roomId, user.id)
+        } catch (readError) {
+          console.warn('Error marking messages as read:', readError)
+        }
+      } else {
+        console.error('Failed to load messages:', messagesResponse.message)
+        setMessages([])
+      }
+      
+      // Set up real-time message listener (only if WebSocket is connected)
+      let cleanup = null
+      if (isConnected) {
+        try {
+          cleanup = onNewMessage(roomId, (data) => {
+            console.log('Received real-time message:', data)
+            // Only add message if it's from the other user
+            if (data.sender !== user.id) {
+              // Create a temporary message object
+              const tempMessage = {
+                id: Date.now(), // Temporary ID
+                room_id: roomId,
+                sender_id: data.sender,
+                message: data.message,
+                message_type: 'text',
+                is_read: false,
+                created_at: data.timestamp,
+                sender: {
+                  id: data.sender,
+                  nama: contact.nama,
+                  username: contact.username
+                }
+              }
+              
+              setMessages(prev => [...prev, tempMessage])
+              
+              // Update last message in contacts
+              setContacts(prev => 
+                prev.map(c => 
+                  c.id === contact.id 
+                    ? { ...c, last_message: data.message, last_message_time: data.timestamp }
+                    : c
+                )
+              )
+              
+              // Show notification if not focused
+              if (!document.hasFocus()) {
+                toast.success(`Pesan baru dari ${contact.nama}`)
+              }
+            }
+          })
+        } catch (wsError) {
+          console.warn('Failed to set up real-time message listener:', wsError)
+        }
+      }
+      
+      // Store cleanup function
+      setCurrentRoom(prev => ({ ...prev, cleanup }))
+      
     } catch (error) {
-      toast.error('Gagal membuka chat')
       console.error('Error selecting contact:', error)
+      toast.error('Gagal membuka chat')
+      setMessages([])
     } finally {
       setLoading(false)
     }
   }
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !currentRoom) return
+    if (!newMessage.trim() || !currentRoom) {
+      console.log('Cannot send message: no message or no current room')
+      return
+    }
+
+    const messageText = newMessage.trim()
+    setNewMessage('')
+
+    // Declare tempMessage outside try block so it can be accessed in catch block
+    let tempMessage = null
 
     try {
-      const response = await chatService.sendMessage(
-        currentRoom.room_id, 
-        newMessage.trim(), 
-        user.id
-      )
-      if (response.success) {
-        setMessages(prev => [...prev, response.data])
-        setNewMessage('')
-        
-        // Update last message in contacts
+      console.log('Sending message to room:', currentRoom.room_id)
+      
+      // Optimistically add message to UI
+      tempMessage = {
+        id: Date.now(),
+        room_id: currentRoom.room_id,
+        sender_id: user.id,
+        message: messageText,
+        message_type: 'text',
+        is_read: false,
+        created_at: new Date().toISOString(),
+        sender: {
+          id: user.id,
+          nama: user.nama,
+          username: user.username
+        }
+      }
+      
+      setMessages(prev => [...prev, tempMessage])
+      
+      // Update last message in contacts
+      if (selectedContact) {
         setContacts(prev => 
           prev.map(contact => 
             contact.id === selectedContact.id 
-              ? { ...contact, last_message: newMessage.trim() }
+              ? { ...contact, last_message: messageText, last_message_time: new Date().toISOString() }
               : contact
           )
         )
       }
+
+      // Send message to backend
+      const response = await chatService.sendMessage(
+        currentRoom.room_id, 
+        messageText, 
+        user.id
+      )
+      
+      console.log('Send message response:', response)
+      
+      if (response.success && response.data) {
+        // Replace temp message with real message from server
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempMessage.id ? response.data : msg
+          )
+        )
+        console.log('Message sent successfully')
+        
+        // Show success message if it's a fallback
+        if (response.data.isFallback) {
+          toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+        } else {
+          toast.success('Pesan berhasil dikirim!')
+        }
+      } else {
+        console.error('Failed to send message:', response.message)
+        
+        // Handle server errors with auto-retry
+        if (response.isServerError || response.isDatabaseError) {
+          console.log('Server/Database error detected, will retry automatically...')
+          toast.error(response.message)
+          
+          // Multiple retry attempts with increasing delays
+          let retryAttempt = 0
+          const maxRetries = 3
+          const baseDelay = response.isDatabaseError ? 3000 : 2000
+          
+          const attemptRetry = async () => {
+            retryAttempt++
+            const retryDelay = baseDelay * retryAttempt
+            
+            console.log(`🔄 Auto-retry attempt ${retryAttempt}/${maxRetries} in ${retryDelay}ms...`)
+            
+            setTimeout(async () => {
+              try {
+                const retryResponse = await chatService.sendMessage(
+                  currentRoom.room_id, 
+                  messageText, 
+                  user.id
+                )
+                
+                if (retryResponse.success && retryResponse.data) {
+                  // Replace temp message with real message from server
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === tempMessage.id ? retryResponse.data : msg
+                    )
+                  )
+                  toast.success(`Pesan berhasil dikirim setelah ${retryAttempt} percobaan!`)
+                  console.log('Message sent successfully after retry')
+                  
+                  // Show warning if it's a fallback
+                  if (retryResponse.data.isFallback) {
+                    toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+                  }
+                } else if (retryResponse.isServerError || retryResponse.isDatabaseError) {
+                  // If still server/database error and we haven't reached max retries
+                  if (retryAttempt < maxRetries) {
+                    attemptRetry() // Try again
+                  } else {
+                    // Max retries reached, keep temp message as fallback
+                    const fallbackMessage = {
+                      ...tempMessage,
+                      id: `temp_${Date.now()}`,
+                      isFallback: true,
+                      warning: 'Pesan mungkin tidak tersimpan di server'
+                    }
+                    setMessages(prev => 
+                      prev.map(msg => 
+                        msg.id === tempMessage.id ? fallbackMessage : msg
+                      )
+                    )
+                    toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+                    console.error('Max retries reached, keeping message as fallback')
+                  }
+                } else {
+                  // Other error, keep temp message as fallback
+                  const fallbackMessage = {
+                    ...tempMessage,
+                    id: `temp_${Date.now()}`,
+                    isFallback: true,
+                    warning: 'Pesan mungkin tidak tersimpan di server'
+                  }
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === tempMessage.id ? fallbackMessage : msg
+                    )
+                  )
+                  toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+                  console.error('Other error during retry:', retryResponse.message)
+                }
+              } catch (retryError) {
+                console.error(`Auto-retry attempt ${retryAttempt} failed:`, retryError)
+                
+                if (retryAttempt < maxRetries) {
+                  attemptRetry() // Try again
+                } else {
+                  // Max retries reached, keep temp message as fallback
+                  const fallbackMessage = {
+                    ...tempMessage,
+                    id: `temp_${Date.now()}`,
+                    isFallback: true,
+                    warning: 'Pesan mungkin tidak tersimpan di server'
+                  }
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === tempMessage.id ? fallbackMessage : msg
+                    )
+                  )
+                  toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+                  console.error('Max retries reached, keeping message as fallback')
+                }
+              }
+            }, retryDelay)
+          }
+          
+          // Start the retry process
+          attemptRetry()
+          
+          // Keep the temp message for now (will be replaced or kept as fallback)
+          return
+        }
+        
+        // For any other error, keep temp message as fallback
+        const fallbackMessage = {
+          ...tempMessage,
+          id: `temp_${Date.now()}`,
+          isFallback: true,
+          warning: 'Pesan mungkin tidak tersimpan di server'
+        }
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempMessage.id ? fallbackMessage : msg
+          )
+        )
+        toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+        console.error('Non-server error, keeping message as fallback')
+      }
     } catch (error) {
-      toast.error('Gagal mengirim pesan')
       console.error('Error sending message:', error)
+      console.error('Error details:', extractErrorMessage(error))
+      
+      // For any error, keep temp message as fallback
+      if (tempMessage) {
+        const fallbackMessage = {
+          ...tempMessage,
+          id: `temp_${Date.now()}`,
+          isFallback: true,
+          warning: 'Pesan mungkin tidak tersimpan di server'
+        }
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.id === tempMessage.id ? fallbackMessage : msg
+          )
+        )
+        toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
+      }
     }
   }
 
@@ -114,6 +470,14 @@ const ChatPrivate = () => {
     }
 
     try {
+      // Leave the room
+      leaveRoom(currentRoom.room_id)
+      
+      // Clean up message listener
+      if (currentRoom.cleanup) {
+        currentRoom.cleanup()
+      }
+      
       const response = await chatService.deleteChatRoom(currentRoom.room_id, user.id)
       if (response.success) {
         toast.success('Chat berhasil dihapus')
@@ -123,8 +487,8 @@ const ChatPrivate = () => {
         loadContacts() // Reload contacts to update the list
       }
     } catch (error) {
-      toast.error('Gagal menghapus chat')
       console.error('Error deleting chat:', error)
+      toast.error('Gagal menghapus chat')
     }
   }
 
@@ -155,8 +519,8 @@ const ChatPrivate = () => {
   }
 
   const filteredContacts = contacts.filter(contact =>
-    contact.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contact.username.toLowerCase().includes(searchTerm.toLowerCase())
+    (contact.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (contact.username || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
@@ -165,14 +529,23 @@ const ChatPrivate = () => {
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800">Chat Pribadi</h2>
-          <div className="mt-3 relative">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-800">Chat Pribadi</h2>
+            <div className="flex items-center space-x-2">
+              {isConnected ? (
+                <Wifi className="h-4 w-4 text-green-500" title="Terhubung" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-red-500" title="Terputus" />
+              )}
+            </div>
+          </div>
+          <div className="relative">
             <input
               type="text"
               placeholder="Cari kontak..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
             />
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
           </div>
@@ -182,29 +555,34 @@ const ChatPrivate = () => {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center items-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <LoadingSpinner size="medium" />
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="p-4 text-center text-gray-500">
               {searchTerm ? 'Tidak ada kontak yang ditemukan' : 'Tidak ada kontak'}
             </div>
           ) : (
-            filteredContacts.map((contact) => (
+            filteredContacts.map((contact, index) => (
               <div
-                key={contact.id}
+                key={`${contact.id}-${contact.isExistingChat ? 'existing' : 'new'}-${index}`}
                 onClick={() => selectContact(contact)}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedContact?.id === contact.id ? 'bg-blue-50 border-blue-200' : ''
                 }`}
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
                     <User className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {contact.nama}
+                        {contact.nama || contact.username || 'User'}
+                        {contact.isExistingChat && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                            Chat
+                          </span>
+                        )}
                       </h3>
                       {contact.last_message_time && (
                         <span className="text-xs text-gray-500">
@@ -236,10 +614,10 @@ const ChatPrivate = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {selectedContact.nama}
+                      {selectedContact.nama || selectedContact.username || 'User'}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {selectedContact.role}
+                      {selectedContact.role || 'User'}
                     </p>
                   </div>
                 </div>
@@ -265,7 +643,7 @@ const ChatPrivate = () => {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {loading ? (
                 <div className="flex justify-center items-center h-32">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                  <LoadingSpinner size="medium" />
                 </div>
               ) : messages.length === 0 ? (
                 <div className="text-center text-gray-500 mt-8">
@@ -284,9 +662,14 @@ const ChatPrivate = () => {
                         message.sender_id === user.id
                           ? 'bg-blue-500 text-white'
                           : 'bg-gray-200 text-gray-900'
-                      }`}
+                      } ${message.isFallback ? 'border-2 border-yellow-400' : ''}`}
                     >
                       <p className="text-sm">{message.message}</p>
+                      {message.isFallback && (
+                        <p className="text-xs text-yellow-600 font-medium mt-1">
+                          ⚠️ {message.warning}
+                        </p>
+                      )}
                       <p className={`text-xs mt-1 ${
                         message.sender_id === user.id ? 'text-blue-100' : 'text-gray-500'
                       }`}>
@@ -296,6 +679,7 @@ const ChatPrivate = () => {
                   </div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
@@ -312,7 +696,7 @@ const ChatPrivate = () => {
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Send className="h-4 w-4" />
                 </button>

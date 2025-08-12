@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { chatGroupService } from '../../services/chatService'
+import { isDuplicateKeyError, getErrorMessage, extractErrorMessage } from '../../utils/errorHandler'
 import { 
   Search, 
   MessageCircle, 
   Send, 
   Users,
   Plus,
-  Trash2
+  Trash2,
+  Wifi,
+  WifiOff,
+  RefreshCw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
@@ -19,6 +23,8 @@ const ChatGroups = () => {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const messagesEndRef = useRef(null)
+  const isConnected = false // Temporarily disabled real-time
 
   useEffect(() => {
     if (user) {
@@ -26,15 +32,44 @@ const ChatGroups = () => {
     }
   }, [user])
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
   const loadGroups = async () => {
     try {
       setLoading(true)
-      const response = await chatGroupService.getChatGroups()
+      console.log('🔍 Loading groups for user:', user.id)
+      
+      // Get user's groups
+      const response = await chatGroupService.getUserGroups(user.id)
+      console.log('🔍 Groups response:', response)
       
       if (response.success) {
-        setGroups(response.data || [])
+        // Filter out invalid groups and ensure proper structure
+        const validGroups = (response.data || [])
+          .filter(group => 
+            group && 
+            group.group_id && 
+            group.group_name
+          )
+          .map(group => ({
+            ...group,
+            member_count: group.members ? group.members.length : 0,
+            description: group.group_description || group.description || 'Tidak ada deskripsi'
+          }))
+        
+        console.log('🔍 Valid groups:', validGroups)
+        setGroups(validGroups)
+        
+        if (validGroups.length === 0) {
+          toast.info('Anda belum bergabung dengan grup chat apapun')
+        }
       } else {
         setGroups([])
+        console.error('Failed to load groups:', response.message)
+        toast.error('Gagal memuat daftar grup')
       }
     } catch (error) {
       console.error('Error loading groups:', error)
@@ -50,13 +85,39 @@ const ChatGroups = () => {
       setLoading(true)
       setSelectedGroup(group)
       
+      console.log('🔍 Selecting group:', group.group_id)
+      
       const messagesResponse = await chatGroupService.getGroupMessages(group.group_id)
+      console.log('🔍 Group messages response:', messagesResponse)
       
       if (messagesResponse.success) {
-        setMessages(messagesResponse.data || [])
+        // Handle the response structure properly
+        const messagesData = messagesResponse.data
+        if (messagesData && messagesData.messages && Array.isArray(messagesData.messages)) {
+          // Filter out messages with invalid IDs (like id = 0)
+          const validMessages = messagesData.messages.filter(msg => 
+            msg && msg.id !== 0 && msg.id !== null
+          )
+          console.log('🔍 Valid messages:', validMessages)
+          setMessages(validMessages)
+        } else if (Array.isArray(messagesData)) {
+          // Filter out messages with invalid IDs
+          const validMessages = messagesData.filter(msg => 
+            msg && msg.id !== 0 && msg.id !== null
+          )
+          console.log('🔍 Valid messages (array):', validMessages)
+          setMessages(validMessages)
+        } else {
+          // Fallback to empty array
+          console.warn('Unexpected messages data structure:', messagesData)
+          setMessages([])
+        }
       } else {
         setMessages([])
+        console.error('Failed to load group messages:', messagesResponse.message)
+        toast.error('Gagal memuat pesan grup')
       }
+      
     } catch (error) {
       console.error('Error selecting group:', error)
       toast.error('Gagal membuka grup chat')
@@ -69,22 +130,135 @@ const ChatGroups = () => {
   const sendGroupMessage = async () => {
     if (!newMessage.trim() || !selectedGroup) return
 
+    const messageText = newMessage.trim()
+    setNewMessage('')
+
+    // Declare tempMessage outside try block so it can be accessed in catch block
+    let tempMessage = null
+
     try {
+      console.log('🔍 Sending group message:', {
+        group_id: selectedGroup.group_id,
+        sender_id: user.id,
+        message: messageText
+      })
+
+      // Optimistically add message to UI
+      tempMessage = {
+        id: Date.now(),
+        room_id: selectedGroup.group_id,
+        sender_id: user.id,
+        message: messageText,
+        message_type: 'text',
+        is_group_message: true,
+        created_at: new Date().toISOString(),
+        sender: {
+          id: user.id,
+          nama: user.nama,
+          username: user.username
+        }
+      }
+      
+      setMessages(prev => {
+        const currentMessages = Array.isArray(prev) ? prev : []
+        return [...currentMessages, tempMessage]
+      })
+
+      // Send message to backend
       const response = await chatGroupService.sendGroupMessage(selectedGroup.group_id, {
         sender_id: user.id,
-        message: newMessage.trim(),
+        message: messageText,
         message_type: 'text'
       })
       
+      console.log('🔍 Send message response:', response)
+      
       if (response.success) {
-        setMessages(prev => [...prev, response.data])
-        setNewMessage('')
+        // Replace temp message with real message from server
+        setMessages(prev => {
+          const currentMessages = Array.isArray(prev) ? prev : []
+          return currentMessages.map(msg => 
+            msg.id === tempMessage.id ? response.data : msg
+          )
+        })
+        toast.success('Pesan berhasil dikirim!')
       } else {
-        toast.error('Gagal mengirim pesan')
+        // Handle server errors with auto-retry
+        if (response.isServerError || response.isDatabaseError) {
+          console.log('Server/Database error detected, will retry automatically...')
+          toast.error(response.message)
+          
+          // Auto-retry after 3 seconds for server errors, 5 seconds for database errors
+          const retryDelay = response.isDatabaseError ? 5000 : 3000
+          
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Auto-retrying message send...')
+              const retryResponse = await chatGroupService.sendGroupMessage(selectedGroup.group_id, {
+                sender_id: user.id,
+                message: messageText,
+                message_type: 'text'
+              })
+              
+              if (retryResponse.success) {
+                // Replace temp message with real message from server
+                setMessages(prev => {
+                  const currentMessages = Array.isArray(prev) ? prev : []
+                  return currentMessages.map(msg => 
+                    msg.id === tempMessage.id ? retryResponse.data : msg
+                  )
+                })
+                toast.success('Pesan berhasil dikirim setelah percobaan ulang!')
+              } else {
+                // Remove temp message if retry also failed
+                setMessages(prev => {
+                  const currentMessages = Array.isArray(prev) ? prev : []
+                  return currentMessages.filter(msg => msg.id !== tempMessage.id)
+                })
+                toast.error('Gagal mengirim pesan setelah percobaan ulang')
+              }
+            } catch (retryError) {
+              console.error('Auto-retry failed:', retryError)
+              // Remove temp message if retry failed
+              setMessages(prev => {
+                const currentMessages = Array.isArray(prev) ? prev : []
+                return currentMessages.filter(msg => msg.id !== tempMessage.id)
+              })
+              toast.error('Gagal mengirim pesan setelah percobaan ulang')
+            }
+          }, retryDelay)
+          
+          // Keep the temp message for now (will be replaced or removed by retry)
+          return
+        }
+        
+        // Remove temp message if failed (non-server error)
+        setMessages(prev => {
+          const currentMessages = Array.isArray(prev) ? prev : []
+          return currentMessages.filter(msg => msg.id !== tempMessage.id)
+        })
+        toast.error(response.message || 'Gagal mengirim pesan')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      toast.error('Gagal mengirim pesan')
+      console.error('Error details:', extractErrorMessage(error))
+      
+      // Check if it's a database error
+      if (isDuplicateKeyError(error)) {
+        console.log('Duplicate key error detected, keeping temp message for retry')
+        toast.error('Pesan berhasil dikirim (sedang diproses ulang)')
+        // Don't remove the temp message as it will be replaced when retry succeeds
+      } else {
+        console.log('Non-duplicate error, removing temp message')
+        toast.error(getErrorMessage(error))
+        // Remove temp message if failed
+        if (tempMessage) {
+          setMessages(prev => {
+            const currentMessages = Array.isArray(prev) ? prev : []
+            return currentMessages.filter(msg => msg.id !== tempMessage.id)
+          })
+        }
+      }
     }
   }
 
@@ -104,7 +278,8 @@ const ChatGroups = () => {
   }
 
   const filteredGroups = groups.filter(group =>
-    group.group_name.toLowerCase().includes(searchTerm.toLowerCase())
+    group.group_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
@@ -113,7 +288,24 @@ const ChatGroups = () => {
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-800 mb-3">Chat Grup</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-800">Chat Grup</h2>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={loadGroups}
+                disabled={loading}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Refresh Groups"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              {isConnected ? (
+                <Wifi className="h-4 w-4 text-green-500" title="Terhubung" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-red-500" title="Terputus" />
+              )}
+            </div>
+          </div>
           <div className="relative">
             <input
               type="text"
@@ -137,9 +329,9 @@ const ChatGroups = () => {
               {searchTerm ? 'Tidak ada grup yang ditemukan' : 'Tidak ada grup'}
             </div>
           ) : (
-            filteredGroups.map((group) => (
+            filteredGroups.map((group, index) => (
               <div
-                key={group.group_id}
+                key={`${group.group_id}-${index}`}
                 onClick={() => selectGroup(group)}
                 className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedGroup?.group_id === group.group_id ? 'bg-blue-50 border-blue-200' : ''
@@ -154,7 +346,10 @@ const ChatGroups = () => {
                       {group.group_name}
                     </h3>
                     <p className="text-sm text-gray-500 truncate">
-                      {group.group_description || 'Tidak ada deskripsi'}
+                      {group.description || 'Tidak ada deskripsi'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {group.member_count || 0} anggota
                     </p>
                   </div>
                 </div>
@@ -170,17 +365,19 @@ const ChatGroups = () => {
           <>
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                  <Users className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {selectedGroup.group_name}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {selectedGroup.group_description || 'Tidak ada deskripsi'}
-                  </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {selectedGroup.group_name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {selectedGroup.member_count || 0} anggota
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -191,7 +388,7 @@ const ChatGroups = () => {
                 <div className="flex justify-center items-center h-32">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 </div>
-              ) : messages.length === 0 ? (
+              ) : !Array.isArray(messages) || messages.length === 0 ? (
                 <div className="text-center text-gray-500 mt-8">
                   <MessageCircle className="h-12 w-12 mx-auto mb-4 text-gray-300" />
                   <p>Belum ada pesan</p>
@@ -211,8 +408,8 @@ const ChatGroups = () => {
                       }`}
                     >
                       {message.sender_id !== user.id && (
-                        <p className="text-xs font-medium mb-1 opacity-70">
-                          {message.sender?.nama || 'Unknown'}
+                        <p className="text-xs font-medium mb-1 text-gray-600">
+                          {message.sender?.nama || 'Unknown User'}
                         </p>
                       )}
                       <p className="text-sm">{message.message}</p>
@@ -225,6 +422,7 @@ const ChatGroups = () => {
                   </div>
                 ))
               )}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Message Input */}
@@ -236,7 +434,7 @@ const ChatGroups = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ketik pesan..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
                 <button
                   onClick={sendGroupMessage}

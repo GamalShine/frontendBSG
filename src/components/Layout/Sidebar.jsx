@@ -126,8 +126,8 @@ const Sidebar = () => {
           } : undefined}
           className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
             isActive || isChildMenuActive
-              ? 'bg-blue-700 text-white border-r-2 border-blue-300'
-              : 'text-white hover:bg-blue-600 hover:text-white'
+              ? 'bg-red-700 text-white border-r-2 border-red-300'
+              : 'text-white hover:bg-red-600 hover:text-white'
           }`}
         >
           <div className="flex items-center">
@@ -162,8 +162,8 @@ const Sidebar = () => {
                   to={child.path || '#'}
                   className={`block px-4 py-2 text-sm rounded-lg transition-colors ${
                     isChildActive
-                      ? 'bg-blue-600 text-white border-l-2 border-blue-300'
-                      : 'text-white hover:bg-blue-600 hover:text-white'
+                      ? 'bg-red-600 text-white border-l-2 border-red-300'
+                      : 'text-white hover:bg-red-600 hover:text-white'
                   }`}
                 >
                   {child.title}
@@ -177,11 +177,11 @@ const Sidebar = () => {
   }
 
   return (
-    <div className="w-64 bg-blue-800 border-r border-blue-700 h-full flex flex-col">
+    <div className="w-64 bg-red-800 border-r border-red-700 h-full flex flex-col">
       {/* User Info */}
-      <div className="p-4 border-b border-blue-700 flex-shrink-0">
+      <div className="p-4 border-b border-red-700 flex-shrink-0">
         <div className="flex items-center">
-          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
             <User className="h-6 w-6 text-white" />
           </div>
           <div className="ml-3">
@@ -203,7 +203,7 @@ const Sidebar = () => {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-blue-700 flex-shrink-0">
+      <div className="p-4 border-t border-red-700 flex-shrink-0">
         <div className="text-center">
           <p className="text-xs text-white">
             Bosgil Group © 2024

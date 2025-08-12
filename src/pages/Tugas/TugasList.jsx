@@ -89,7 +89,7 @@ const TugasList = () => {
       case 'belum':
         return <Clock className="h-4 w-4 text-yellow-500" />
       case 'proses':
-        return <AlertTriangle className="h-4 w-4 text-blue-500" />
+        return <AlertTriangle className="h-4 w-4 text-red-500" />
       case 'selesai':
         return <CheckCircle className="h-4 w-4 text-green-500" />
       case 'revisi':
@@ -168,10 +168,10 @@ const TugasList = () => {
         <h1 className="text-2xl font-bold text-gray-900">Daftar Tugas</h1>
         <Link
           to="/tugas/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>Tambah Tugas</span>
+          <span>Tambah Tugas Pertama</span>
         </Link>
       </div>
 
@@ -185,14 +185,14 @@ const TugasList = () => {
               placeholder="Cari tugas..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>
           
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
           >
             <option value="">Semua Status</option>
             <option value="belum">Belum</option>
@@ -226,7 +226,7 @@ const TugasList = () => {
       <div className="bg-white rounded-lg shadow-sm border">
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
             <p className="mt-2 text-gray-600">Memuat data...</p>
           </div>
         ) : tugas.length === 0 ? (
@@ -287,7 +287,7 @@ const TugasList = () => {
                       <div className="flex space-x-2">
                         <Link
                           to={`/tugas/${tugasItem.id}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-red-600 hover:text-red-900"
                         >
                           <Eye className="h-4 w-4" />
                         </Link>

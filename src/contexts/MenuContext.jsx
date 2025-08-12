@@ -49,6 +49,12 @@ export const MenuProvider = ({ children }) => {
             permissions: ['read', 'create']
           },
           {
+            id: 'omset-harian',
+            title: 'OMSET HARIAN',
+            path: '/keuangan/omset-harian',
+            permissions: ['read', 'create', 'update', 'delete']
+          },
+          {
             id: 'lap-keu',
             title: 'LAP. KEU',
             path: '/keuangan/laporan',
@@ -200,6 +206,12 @@ export const MenuProvider = ({ children }) => {
             id: 'chat-groups',
             title: 'Chat Groups',
             path: '/chat/groups',
+            permissions: ['read']
+          },
+          {
+            id: 'chat-data',
+            title: 'Data Chat',
+            path: '/chat/data',
             permissions: ['read']
           }
         ]

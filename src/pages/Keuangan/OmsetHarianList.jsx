@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { poskasService } from '../../services/poskasService';
+import { omsetHarianService } from '../../services/omsetHarianService';
 import { toast } from 'react-hot-toast';
 import { 
   Plus, 
@@ -17,204 +17,97 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
 
-const PoskasList = () => {
-  const { user } = useAuth()
-  const [poskas, setPoskas] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [dateFilter, setDateFilter] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalItems, setTotalItems] = useState(0)
+const OmsetHarianList = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const [omsetHarian, setOmsetHarian] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [stats, setStats] = useState({
-    totalPoskas: 0,
-    totalThisMonth: 0,
-    totalThisYear: 0
-  })
+    total_records: 0,
+    total_this_month: 0,
+    total_this_year: 0
+  });
 
   useEffect(() => {
-    loadPoskas()
-    loadStats()
-  }, [currentPage, dateFilter])
-
-  // Test API connection
-  const testApiConnection = async () => {
-    try {
-      console.log('🧪 Testing API connection...')
-      const response = await fetch('http://localhost:3000/api/keuangan-poskas', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      })
-      
-      const data = await response.json()
-      console.log('🧪 API Test Response:', data)
-      
-      if (response.ok) {
-        console.log('✅ API connection successful')
-      } else {
-        console.error('❌ API connection failed:', data)
-      }
-    } catch (error) {
-      console.error('❌ API test error:', error)
+    if (user) {
+      loadOmsetHarian();
+      loadStats();
     }
-  }
+  }, [user, currentPage, searchTerm, dateFilter]);
 
-  // Call test on component mount
-  useEffect(() => {
-    testApiConnection()
-  }, [])
-
-  const loadPoskas = async () => {
+  const loadOmsetHarian = async () => {
     try {
-      setLoading(true)
-      const params = {
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
-        date: dateFilter
-      }
+      setLoading(true);
+      const response = await omsetHarianService.getAllOmsetHarian(
+        currentPage,
+        10,
+        searchTerm,
+        dateFilter
+      );
       
-      console.log('🔄 Loading poskas with params:', params)
-      console.log('👤 User role:', user.role, 'User ID:', user.id)
-      
-      // Load poskas based on user role
-      let response
-      if (user.role === 'admin' || user.role === 'owner') {
-        console.log('🔑 Admin/Owner - loading all poskas')
-        response = await poskasService.getPoskas(params)
+      if (response.success) {
+        setOmsetHarian(response.data);
+        setTotalPages(response.pagination.totalPages);
+        setTotalItems(response.pagination.totalItems);
       } else {
-        console.log('👤 Regular user - loading user-specific poskas')
-        response = await poskasService.getPoskasByUser(user.id, params)
-      }
-      
-      console.log('📦 Poskas response:', response)
-      
-      if (response.success || response.data) {
-        const data = response.data || response
-        console.log('📋 Poskas data:', data)
-        
-        // Handle different response structures
-        const poskasData = Array.isArray(data) ? data : (data.rows || data || [])
-        console.log('📊 Final poskas data:', poskasData)
-        
-        setPoskas(poskasData)
-        
-        // Handle pagination
-        if (data.totalPages) {
-          setTotalPages(data.totalPages)
-        } else if (data.count) {
-          setTotalPages(Math.ceil(data.count / 10))
-        } else {
-          setTotalPages(1)
-        }
-        
-        setTotalItems(data.count || data.length || poskasData.length || 0)
-      } else {
-        console.warn('⚠️ Poskas response not successful:', response)
-        setPoskas([])
-        setTotalPages(1)
-        setTotalItems(0)
+        toast.error('Gagal memuat data omset harian');
       }
     } catch (error) {
-      console.error('❌ Error loading poskas:', error)
-      toast.error('Gagal memuat daftar pos kas')
-      setPoskas([])
-      setTotalPages(1)
-      setTotalItems(0)
+      console.error('Error loading omset harian:', error);
+      toast.error('Gagal memuat data omset harian');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadStats = async () => {
     try {
-      console.log('📊 Loading stats for user:', user.id)
-      const response = await poskasService.getPoskasByUser(user.id, { limit: 1000 })
-      console.log('📈 Stats response:', response)
-      
-      if (response.success || response.data) {
-        const data = response.data || response
-        const poskasData = Array.isArray(data) ? data : (data.rows || data || [])
-        console.log('📊 Stats data:', poskasData)
-        
-        const now = new Date()
-        const thisMonth = now.getMonth()
-        const thisYear = now.getFullYear()
-        
-        const thisMonthPoskas = poskasData.filter(item => {
-          const itemDate = new Date(item.tanggal_poskas)
-          return itemDate.getMonth() === thisMonth && itemDate.getFullYear() === thisYear
-        })
-        
-        const thisYearPoskas = poskasData.filter(item => {
-          const itemDate = new Date(item.tanggal_poskas)
-          return itemDate.getFullYear() === thisYear
-        })
-        
-        const statsData = {
-          totalPoskas: poskasData.length,
-          totalThisMonth: thisMonthPoskas.length,
-          totalThisYear: thisYearPoskas.length
-        }
-        
-        console.log('📊 Calculated stats:', statsData)
-        setStats(statsData)
-      } else {
-        console.warn('⚠️ Stats response not successful:', response)
-        setStats({
-          totalPoskas: 0,
-          totalThisMonth: 0,
-          totalThisYear: 0
-        })
+      const response = await omsetHarianService.getStats();
+      if (response.success) {
+        setStats(response.data);
       }
     } catch (error) {
-      console.error('❌ Error loading stats:', error)
-      setStats({
-        totalPoskas: 0,
-        totalThisMonth: 0,
-        totalThisYear: 0
-      })
+      console.error('Error loading stats:', error);
     }
-  }
-
-  const handleSearch = () => {
-    setCurrentPage(1)
-    loadPoskas()
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    const date = new Date(dateString)
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+  };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus laporan pos kas ini?')) {
-      try {
-        console.log('🗑️ Deleting poskas with ID:', id)
-        const response = await poskasService.deletePoskas(id)
-        console.log('✅ Delete response:', response)
-        
-        if (response.success) {
-          toast.success('Laporan pos kas berhasil dihapus')
-          loadPoskas()
-          loadStats()
-        } else {
-          toast.error(response.message || 'Gagal menghapus laporan pos kas')
-        }
-      } catch (error) {
-        console.error('❌ Error deleting poskas:', error)
-        toast.error('Gagal menghapus laporan pos kas')
-      }
+    if (!window.confirm('Apakah Anda yakin ingin menghapus data omset harian ini?')) {
+      return;
     }
-  }
+
+    try {
+      await omsetHarianService.deleteOmsetHarian(id);
+      toast.success('Data omset harian berhasil dihapus');
+      loadOmsetHarian();
+      loadStats();
+    } catch (error) {
+      console.error('Error deleting omset harian:', error);
+      toast.error('Gagal menghapus data omset harian');
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const truncateText = (text, maxLength = 100) => {
+    if (!text) return '-';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -223,15 +116,15 @@ const PoskasList = () => {
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Pos Kas</h1>
-              <p className="text-gray-600">Kelola data posisi kas outlet</p>
+              <h1 className="text-2xl font-bold text-gray-900">Omset Harian</h1>
+              <p className="text-gray-600">Kelola data omset harian outlet</p>
             </div>
             <Link
-              to="/poskas/new"
+              to="/keuangan/omset-harian/new"
               className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
               <Plus className="h-4 w-4" />
-              <span>Tambah Pos Kas</span>
+              <span>Tambah Omset</span>
             </Link>
           </div>
         </div>
@@ -242,11 +135,11 @@ const PoskasList = () => {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <DollarSign className="h-5 w-5 text-blue-600" />
+              <Calendar className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Pos Kas</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+              <p className="text-sm font-medium text-gray-500">Total Omset</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_records || 0}</p>
             </div>
           </div>
         </div>
@@ -258,7 +151,7 @@ const PoskasList = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalThisMonth}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_this_month || 0}</p>
             </div>
           </div>
         </div>
@@ -270,7 +163,7 @@ const PoskasList = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Tahun Ini</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalThisYear}</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_this_year || 0}</p>
             </div>
           </div>
         </div>
@@ -289,7 +182,7 @@ const PoskasList = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Cari pos kas..."
+                  placeholder="Cari omset harian..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
@@ -314,11 +207,14 @@ const PoskasList = () => {
 
             <div className="flex items-end">
               <button
-                onClick={handleSearch}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                onClick={() => {
+                  setSearchTerm('');
+                  setDateFilter('');
+                }}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
               >
-                <Search className="h-4 w-4" />
-                <span>Cari</span>
+                <RefreshCw className="h-4 w-4" />
+                <span>Reset</span>
               </button>
             </div>
           </div>
@@ -328,25 +224,22 @@ const PoskasList = () => {
       {/* Data Table */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Daftar Pos Kas</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Daftar Omset Harian</h2>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center">
-            <LoadingSpinner />
-            <p className="text-gray-600">Memuat data...</p>
-          </div>
-        ) : poskas.length === 0 ? (
+          <LoadingSpinner />
+        ) : omsetHarian.length === 0 ? (
           <div className="p-8 text-center">
             <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</h3>
-            <p className="text-gray-500 mb-4">Belum ada data pos kas yang tersedia</p>
+            <p className="text-gray-500 mb-4">Belum ada data omset harian yang tersedia</p>
             <Link
-              to="/poskas/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              to="/keuangan/omset-harian/new"
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
             >
               <Plus className="h-4 w-4" />
-              <span>Tambah Pos Kas Pertama</span>
+              <span>Tambah Omset Pertama</span>
             </Link>
           </div>
         ) : (
@@ -359,7 +252,7 @@ const PoskasList = () => {
                       Tanggal
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Isi Pos Kas
+                      Isi Omset
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Dibuat Oleh
@@ -370,44 +263,35 @@ const PoskasList = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {poskas.map((poskasItem) => (
-                    <tr key={poskasItem.id} className="hover:bg-gray-50">
+                  {omsetHarian.map((omset) => (
+                    <tr key={omset.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(poskasItem.tanggal_poskas)}
+                        {formatDate(omset.tanggal_omset)}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         <div className="max-w-xs">
-                          {poskasItem.isi_poskas ? (
-                            <div 
-                              className="truncate"
-                              dangerouslySetInnerHTML={{ 
-                                __html: poskasItem.isi_poskas.length > 150 
-                                  ? poskasItem.isi_poskas.substring(0, 150) + '...' 
-                                  : poskasItem.isi_poskas 
-                              }}
-                            />
-                          ) : '-'}
+                          {truncateText(omset.isi_omset, 150)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {poskasItem.user_nama || poskasItem.admin_nama || poskasItem.created_by || 'Admin'}
+                        {omset.user_nama || 'Admin'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
                           <Link
-                            to={`/poskas/${poskasItem.id}`}
+                            to={`/keuangan/omset-harian/${omset.id}`}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
                           <Link
-                            to={`/poskas/${poskasItem.id}/edit`}
+                            to={`/keuangan/omset-harian/${omset.id}/edit`}
                             className="text-green-600 hover:text-green-900"
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
                           <button
-                            onClick={() => handleDelete(poskasItem.id)}
+                            onClick={() => handleDelete(omset.id)}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -454,6 +338,6 @@ const PoskasList = () => {
       </div>
     </div>
   );
-}
+};
 
-export default PoskasList 
+export default OmsetHarianList; 

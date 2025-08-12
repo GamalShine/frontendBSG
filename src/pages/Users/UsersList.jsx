@@ -147,7 +147,7 @@ const UsersList = () => {
           </div>
           <Link
             to="/users/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
           >
             <Plus className="h-4 w-4 mr-2" />
             Tambah User
@@ -168,7 +168,7 @@ const UsersList = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -178,7 +178,7 @@ const UsersList = () => {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
               <option value="">Semua Role</option>
               <option value="owner">Owner</option>
@@ -204,7 +204,7 @@ const UsersList = () => {
           <div className="flex items-end">
             <button
               onClick={handleSearch}
-              className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
             >
               <Search className="h-4 w-4 inline mr-2" />
               Cari
@@ -258,7 +258,7 @@ const UsersList = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <User className="h-5 w-5 text-blue-600" />
+                          <User className="h-5 w-5 text-red-600" />
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{user.nama}</div>
@@ -298,7 +298,7 @@ const UsersList = () => {
                         </Link>
                         <Link
                           to={`/users/${user.id}/edit`}
-                          className="p-1 text-green-600 hover:text-green-800"
+                          className="p-1 text-red-600 hover:text-red-800"
                           title="Edit"
                         >
                           <Edit className="h-4 w-4" />

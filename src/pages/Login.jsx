@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate, Navigate } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Eye, EyeOff, Lock, User, ArrowRight } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { Eye, EyeOff, User, Lock, ArrowRight, Shield } from 'lucide-react'
+import LoadingSpinner from '../components/UI/LoadingSpinner'
 import toast from 'react-hot-toast'
 import Card, { CardBody } from '../components/UI/Card'
 import Button from '../components/UI/Button'
@@ -17,12 +18,6 @@ const Login = () => {
   })
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  useEffect(() => {
-    console.log('🚀 Login component mounted - CLEAN AUTH VERSION')
-    console.log('📍 Current location:', window.location.href)
-    console.log('🔐 Auth loading:', authLoading, 'Authenticated:', isAuthenticated)
-  }, [authLoading, isAuthenticated])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -88,11 +83,8 @@ const Login = () => {
   // Show loading if auth is still initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat aplikasi...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingSpinner size="large" />
       </div>
     )
   }
@@ -103,11 +95,11 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
             <span className="text-white text-2xl font-bold">B</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Bosgil Group</h1>
@@ -143,7 +135,7 @@ const Login = () => {
                     value={formData.username}
                     onChange={handleChange}
                     placeholder="Masukkan username"
-                    className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
+                    className="pl-10 pr-4 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
                     required
                   />
                 </div>
@@ -165,7 +157,7 @@ const Login = () => {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Masukkan password"
-                    className="pl-10 pr-12 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
+                    className="pl-10 pr-12 py-3 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 text-gray-900 placeholder-gray-500"
                     required
                   />
                   <button
@@ -203,9 +195,9 @@ const Login = () => {
             </form>
 
             {/* Demo Credentials */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-semibold text-blue-900 mb-2">Demo Credentials:</h3>
-              <div className="text-xs text-blue-800 space-y-1">
+            <div className="mt-6 p-4 bg-red-50 rounded-lg">
+              <h3 className="text-sm font-semibold text-red-900 mb-2">Demo Credentials:</h3>
+              <div className="text-xs text-red-800 space-y-1">
                 <p><strong>Admin:</strong> admin / password123</p>
                 <p><strong>Owner:</strong> owner / password123</p>
                 <p><strong>User:</strong> user / password123</p>

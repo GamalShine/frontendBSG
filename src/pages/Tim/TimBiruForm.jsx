@@ -10,7 +10,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  Shield
+  Shield,
+  Award
 } from 'lucide-react'
 import Card, { CardHeader, CardBody } from '../../components/UI/Card'
 import Button from '../../components/UI/Button'
@@ -178,171 +179,162 @@ const TimBiruForm = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Link to="/tim/biru">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Kembali
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {isEditMode ? 'Edit Anggota Tim Biru' : 'Tambah Anggota Tim Biru'}
-            </h1>
-            <p className="text-gray-600">
-              {isEditMode ? 'Perbarui informasi anggota tim' : 'Tambah anggota baru ke Tim Biru'}
-            </p>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Header Section */}
+      <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-4">
+            <Link to="/tim/biru">
+              <button className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {isEditMode ? 'Edit Anggota Tim Biru' : 'Tambah Anggota Tim Biru'}
+              </h1>
+              <p className="text-gray-600">
+                {isEditMode ? 'Perbarui informasi anggota tim' : 'Tambah anggota baru ke Tim Biru'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Form */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Informasi Anggota</h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Nama Lengkap *
-                      </label>
-                      <Input
-                        name="nama"
-                        value={formData.nama}
-                        onChange={handleChange}
-                        placeholder="Masukkan nama lengkap..."
-                        error={errors.nama}
-                      />
-                    </div>
+      {/* Form Section */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <form onSubmit={handleSubmit}>
+          {/* Informasi Anggota */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <User className="h-5 w-5 text-blue-600" />
+              </div>
+              <label className="text-lg font-semibold text-gray-900">
+                Informasi Anggota
+              </label>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Lengkap *
+                </label>
+                <input
+                  name="nama"
+                  value={formData.nama}
+                  onChange={handleChange}
+                  placeholder="Masukkan nama lengkap..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {errors.nama && <p className="text-red-500 text-sm mt-1">{errors.nama}</p>}
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Divisi *
-                      </label>
-                      <Select
-                        name="divisi"
-                        value={formData.divisi}
-                        onChange={handleChange}
-                        error={errors.divisi}
-                        placeholder="Pilih Divisi"
-                        options={divisiOptions}
-                      />
-                    </div>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Divisi *
+                </label>
+                <select
+                  name="divisi"
+                  value={formData.divisi}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Pilih Divisi</option>
+                  {divisiOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.divisi && <p className="text-red-500 text-sm mt-1">{errors.divisi}</p>}
+              </div>
+            </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Posisi/Jabatan *
-                      </label>
-                      <Select
-                        name="posisi"
-                        value={formData.posisi}
-                        onChange={handleChange}
-                        error={errors.posisi}
-                        placeholder="Pilih Posisi"
-                        options={posisiOptions}
-                      />
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Posisi/Jabatan *
+                </label>
+                <select
+                  name="posisi"
+                  value={formData.posisi}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Pilih Posisi</option>
+                  {posisiOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.posisi && <p className="text-red-500 text-sm mt-1">{errors.posisi}</p>}
+              </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Prestasi *
-                      </label>
-                      <Input
-                        name="prestasi"
-                        value={formData.prestasi}
-                        onChange={handleChange}
-                        placeholder="Masukkan prestasi yang diraih..."
-                        error={errors.prestasi}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Keterangan
-                    </label>
-                    <textarea
-                      name="keterangan"
-                      value={formData.keterangan}
-                      onChange={handleChange}
-                      placeholder="Masukkan keterangan tambahan..."
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Prestasi *
+                </label>
+                <input
+                  name="prestasi"
+                  value={formData.prestasi}
+                  onChange={handleChange}
+                  placeholder="Masukkan prestasi yang diraih..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {errors.prestasi && <p className="text-red-500 text-sm mt-1">{errors.prestasi}</p>}
+              </div>
+            </div>
           </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Team Info */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Informasi Tim Biru</h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 bg-blue-600 rounded-full"></div>
-                    <span className="text-sm font-medium text-gray-900">Tim Prestasi</span>
-                  </div>
-                  <div className="text-sm text-gray-600">
-                    Tim Biru adalah tim yang mencatat dan mengelola prestasi karyawan dalam perusahaan. Data prestasi ini digunakan untuk evaluasi kinerja dan pengembangan karir.
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Actions */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Aksi</h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-3">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Menyimpan...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        {isEditMode ? 'Update Anggota' : 'Simpan Anggota'}
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Link to="/tim/biru">
-                    <Button variant="outline" className="w-full">
-                      Batal
-                    </Button>
-                  </Link>
-                </div>
-              </CardBody>
-            </Card>
+          {/* Keterangan */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Award className="h-5 w-5 text-green-600" />
+              </div>
+              <label className="text-lg font-semibold text-gray-900">
+                Keterangan
+              </label>
+            </div>
+            
+            <textarea
+              name="keterangan"
+              value={formData.keterangan}
+              onChange={handleChange}
+              placeholder="Masukkan keterangan tambahan..."
+              rows={4}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
-        </div>
-      </form>
+
+          {/* Submit Buttons */}
+          <div className="flex space-x-4 p-6">
+            <button
+              type="button"
+              onClick={() => navigate('/tim/biru')}
+              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span>{saving ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
-  )
+  );
 }
 
 export default TimBiruForm 

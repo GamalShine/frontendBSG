@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { 
-  AlertTriangle, 
-  CheckSquare, 
-  DollarSign, 
-  MessageCircle,
   TrendingUp, 
-  TrendingDown,
+  TrendingDown, 
+  Users, 
+  Calendar,
+  DollarSign,
+  AlertTriangle,
+  CheckCircle,
   Clock,
-  User,
-  Users,
-  Shield,
-  BarChart3,
-  FileText,
-  Settings,
-  Bell,
+  ArrowRight,
   Award,
-  AlertCircle
-} from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+  AlertCircle,
+  BarChart3,
+  CheckSquare,
+  User,
+  Bell,
+  MessageCircle,
+  Shield
+} from 'lucide-react';
+import LoadingSpinner from '../components/UI/LoadingSpinner';
 import { formatDate } from '../utils/helpers'
 import Card, { CardHeader, CardBody } from '../components/UI/Card'
 import Badge from '../components/UI/Badge'
@@ -214,10 +216,7 @@ const Dashboard = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat data pengguna...</p>
-        </div>
+        <LoadingSpinner size="large" />
       </div>
     )
   }
@@ -225,10 +224,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat dashboard...</p>
-        </div>
+        <LoadingSpinner size="large" />
       </div>
     )
   }
@@ -252,22 +248,51 @@ const Dashboard = () => {
           </div>
         </div>
         
-        {/* Admin Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+        {/* Pengumuman Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Pengumuman Terbaru</h3>
+              <div className="flex items-center space-x-2">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Komplain</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalKomplain}</p>
+                <Link to="/pengumuman">
+                  <Button variant="ghost" size="sm">Lihat Semua</Button>
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <div className="relative">
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Bell className="h-4 w-4 text-blue-600" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      Selamat Datang di Sistem Bosgil Group
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Sistem manajemen terintegrasi untuk mengelola komplain, tugas, keuangan, dan komunikasi tim.
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {formatDate(new Date())}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </CardBody>
-          </Card>
-
+            </div>
+          </CardBody>
+        </Card>
+        
+        {/* Admin Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="hover:shadow-lg transition-shadow">
             <CardBody className="p-6">
               <div className="flex items-center">
@@ -286,11 +311,11 @@ const Dashboard = () => {
             <CardBody className="p-6">
               <div className="flex items-center">
                 <div className="p-3 bg-green-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                  <MessageCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Pos Kas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+                  <p className="text-sm font-medium text-gray-600">Chat</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
                 </div>
               </div>
             </CardBody>
@@ -300,39 +325,11 @@ const Dashboard = () => {
             <CardBody className="p-6">
               <div className="flex items-center">
                 <div className="p-3 bg-purple-100 rounded-lg">
-                  <Users className="h-6 w-6 text-purple-600" />
+                  <DollarSign className="h-6 w-6 text-purple-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Award className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Tim Biru</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTimBiru}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Tim Merah</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTimMerah}</p>
+                  <p className="text-sm font-medium text-gray-600">Omset Harian</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
                 </div>
               </div>
             </CardBody>
@@ -345,66 +342,13 @@ const Dashboard = () => {
                   <BarChart3 className="h-6 w-6 text-orange-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Sistem Status</p>
-                  <p className="text-2xl font-bold text-green-600">Online</p>
+                  <p className="text-sm font-medium text-gray-600">Settings</p>
+                  <p className="text-2xl font-bold text-gray-900">-</p>
                 </div>
               </div>
             </CardBody>
           </Card>
         </div>
-
-        {/* Admin Quick Actions */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-xl font-semibold text-gray-900">Aksi Cepat</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-7 gap-4">
-              <Link to="/komplain/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <AlertTriangle className="h-6 w-6 text-red-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah Komplain</span>
-                </div>
-              </Link>
-              <Link to="/tugas/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <CheckSquare className="h-6 w-6 text-blue-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Buat Tugas</span>
-                </div>
-              </Link>
-              <Link to="/poskas/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <DollarSign className="h-6 w-6 text-green-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah Pos Kas</span>
-                </div>
-              </Link>
-              <Link to="/users/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <User className="h-6 w-6 text-purple-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah User</span>
-                </div>
-              </Link>
-              <Link to="/tim/biru/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <Award className="h-6 w-6 text-blue-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah Tim Biru</span>
-                </div>
-              </Link>
-              <Link to="/tim/merah/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <AlertCircle className="h-6 w-6 text-red-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah Tim Merah</span>
-                </div>
-              </Link>
-              <Link to="/training">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <BarChart3 className="h-6 w-6 text-orange-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Data Training</span>
-                </div>
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
 
         {/* Recent Activities */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -513,24 +457,53 @@ const Dashboard = () => {
             {getRoleBadge(user?.role)}
             <Badge variant="info">Team Leader</Badge>
           </div>
-      </div>
+        </div>
 
-        {/* Leader Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-orange-600" />
+        {/* Pengumuman Section */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Pengumuman Terbaru</h3>
+              <div className="flex items-center space-x-2">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                 </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Komplain Tim</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalKomplain}</p>
+                <Link to="/pengumuman">
+                  <Button variant="ghost" size="sm">Lihat Semua</Button>
+                </Link>
+              </div>
+            </div>
+          </CardHeader>
+          <CardBody>
+            <div className="relative">
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Bell className="h-4 w-4 text-blue-600" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      Selamat Datang di Sistem Bosgil Group
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Sistem manajemen terintegrasi untuk mengelola komplain, tugas, keuangan, dan komunikasi tim.
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {formatDate(new Date())}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </CardBody>
-          </Card>
+            </div>
+          </CardBody>
+        </Card>
 
+        {/* Leader Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="hover:shadow-lg transition-shadow">
             <CardBody className="p-6">
               <div className="flex items-center">
@@ -538,7 +511,7 @@ const Dashboard = () => {
                   <CheckSquare className="h-6 w-6 text-blue-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Tugas Tim</p>
+                  <p className="text-sm font-medium text-gray-600">Total Tugas</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
                 </div>
               </div>
@@ -549,39 +522,11 @@ const Dashboard = () => {
             <CardBody className="p-6">
               <div className="flex items-center">
                 <div className="p-3 bg-green-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                  <MessageCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Pos Kas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Award className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Tim Biru</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTimBiru}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-red-100 rounded-lg">
-                  <AlertCircle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Tim Merah</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTimMerah}</p>
+                  <p className="text-sm font-medium text-gray-600">Chat</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
                 </div>
               </div>
             </CardBody>
@@ -591,63 +536,30 @@ const Dashboard = () => {
             <CardBody className="p-6">
               <div className="flex items-center">
                 <div className="p-3 bg-purple-100 rounded-lg">
-                  <Users className="h-6 w-6 text-purple-600" />
+                  <DollarSign className="h-6 w-6 text-purple-600" />
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Anggota Tim</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTimBiru + stats.totalTimMerah}</p>
+                  <p className="text-sm font-medium text-gray-600">Omset Harian</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardBody className="p-6">
+              <div className="flex items-center">
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <BarChart3 className="h-6 w-6 text-orange-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Settings</p>
+                  <p className="text-2xl font-bold text-gray-900">-</p>
                 </div>
               </div>
             </CardBody>
           </Card>
         </div>
-
-        {/* Leader Quick Actions */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-xl font-semibold text-gray-900">Aksi Tim</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <Link to="/komplain/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <AlertTriangle className="h-6 w-6 text-orange-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Buat Komplain</span>
-                </div>
-              </Link>
-              <Link to="/tugas/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <CheckSquare className="h-6 w-6 text-blue-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Assign Tugas</span>
-                </div>
-              </Link>
-              <Link to="/poskas/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <DollarSign className="h-6 w-6 text-green-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Laporan Keuangan</span>
-                </div>
-              </Link>
-              <Link to="/tim/biru/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <Award className="h-6 w-6 text-blue-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah Tim Biru</span>
-                </div>
-              </Link>
-              <Link to="/tim/merah/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <AlertCircle className="h-6 w-6 text-red-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Tambah Tim Merah</span>
-                </div>
-              </Link>
-              <Link to="/training">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <BarChart3 className="h-6 w-6 text-orange-500 mr-3" />
-                  <span className="text-sm font-medium text-gray-900">Data Training</span>
-                </div>
-              </Link>
-            </div>
-          </CardBody>
-        </Card>
 
         {/* Recent Activities */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -757,22 +669,51 @@ const Dashboard = () => {
         </div>
       </div>
       
-      {/* Divisi Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <AlertTriangle className="h-6 w-6 text-orange-600" />
+      {/* Pengumuman Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Pengumuman Terbaru</h3>
+            <div className="flex items-center space-x-2">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Komplain Saya</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalKomplain}</p>
+              <Link to="/pengumuman">
+                <Button variant="ghost" size="sm">Lihat Semua</Button>
+              </Link>
+            </div>
+          </div>
+        </CardHeader>
+        <CardBody>
+          <div className="relative">
+            <div className="space-y-4">
+              <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
+                <div className="flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Bell className="h-4 w-4 text-blue-600" />
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900">
+                    Selamat Datang di Sistem Bosgil Group
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Sistem manajemen terintegrasi untuk mengelola komplain, tugas, keuangan, dan komunikasi tim.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {formatDate(new Date())}
+                  </p>
+                </div>
               </div>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </CardBody>
+      </Card>
 
+      {/* Divisi Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="hover:shadow-lg transition-shadow">
           <CardBody className="p-6">
             <div className="flex items-center">
@@ -780,7 +721,7 @@ const Dashboard = () => {
                 <CheckSquare className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Tugas Saya</p>
+                <p className="text-sm font-medium text-gray-600">Total Tugas</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
               </div>
             </div>
@@ -791,11 +732,11 @@ const Dashboard = () => {
           <CardBody className="p-6">
             <div className="flex items-center">
               <div className="p-3 bg-green-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-green-600" />
+                <MessageCircle className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pos Kas Saya</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+                <p className="text-sm font-medium text-gray-600">Chat</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
               </div>
             </div>
           </CardBody>
@@ -805,51 +746,30 @@ const Dashboard = () => {
           <CardBody className="p-6">
             <div className="flex items-center">
               <div className="p-3 bg-purple-100 rounded-lg">
-                <Bell className="h-6 w-6 text-purple-600" />
+                <DollarSign className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Notifikasi</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
+                <p className="text-sm font-medium text-gray-600">Omset Harian</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="hover:shadow-lg transition-shadow">
+          <CardBody className="p-6">
+            <div className="flex items-center">
+              <div className="p-3 bg-orange-100 rounded-lg">
+                <BarChart3 className="h-6 w-6 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Settings</p>
+                <p className="text-2xl font-bold text-gray-900">-</p>
               </div>
             </div>
           </CardBody>
         </Card>
       </div>
-
-      {/* Divisi Quick Actions */}
-        <Card>
-          <CardHeader>
-          <h3 className="text-xl font-semibold text-gray-900">Aksi Cepat</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Link to="/komplain/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <AlertTriangle className="h-6 w-6 text-orange-500 mr-3" />
-                <span className="text-sm font-medium text-gray-900">Buat Komplain</span>
-                </div>
-              </Link>
-              <Link to="/poskas/new">
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                  <DollarSign className="h-6 w-6 text-green-500 mr-3" />
-                <span className="text-sm font-medium text-gray-900">Laporan Keuangan</span>
-              </div>
-            </Link>
-            <Link to="/profile">
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                <User className="h-6 w-6 text-purple-500 mr-3" />
-                <span className="text-sm font-medium text-gray-900">Update Profile</span>
-              </div>
-            </Link>
-            <Link to="/chat">
-              <div className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
-                <MessageCircle className="h-6 w-6 text-blue-500 mr-3" />
-                <span className="text-sm font-medium text-gray-900">Chat</span>
-              </div>
-            </Link>
-          </div>
-        </CardBody>
-      </Card>
 
       {/* My Activities */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

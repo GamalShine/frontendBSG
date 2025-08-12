@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
+import { ArrowLeft, Calendar, FileText, RefreshCw, Save } from 'lucide-react';
 
 const PoskasForm = () => {
   const navigate = useNavigate();
@@ -415,7 +416,7 @@ const PoskasForm = () => {
             uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
             id: img.id,
             name: `poskas_${img.id}.jpg`,
-            url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+            url: `http://192.168.30.21:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
             serverPath: uploadedFile.path // Path dari server
           };
         } else {
@@ -424,7 +425,7 @@ const PoskasForm = () => {
             uri: `file://temp/${img.id}.jpg`,
             id: img.id,
             name: `poskas_${img.id}.jpg`,
-            url: `http://192.168.1.2:3000/uploads/poskas/temp_${img.id}.jpg`,
+            url: `http://192.168.30.21:3000/uploads/poskas/temp_${img.id}.jpg`,
             serverPath: `poskas/temp_${img.id}.jpg`
           };
         }
@@ -483,195 +484,107 @@ const PoskasForm = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">
-              Laporan Pos Kas
-            </h1>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      {/* Header Section */}
+      <div className="bg-white rounded-lg shadow-sm border mb-6">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-4">
             <button
               onClick={() => navigate('/poskas')}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
             >
-              ← Kembali
+              <ArrowLeft className="h-4 w-4" />
             </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Tanggal */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal Laporan
-              </label>
-              <input
-                type="date"
-                value={formData.tanggal_poskas}
-                onChange={(e) => setFormData(prev => ({ ...prev, tanggal_poskas: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-
-            {/* Rich Text Editor */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Isi Laporan <span className="text-red-500">*</span>
-              </label>
-              <div className="border border-gray-300 rounded-md">
-                {/* Toolbar */}
-                <div className="bg-gray-50 px-3 py-2 border-b border-gray-300 flex items-center space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand('bold')}
-                    className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                    title="Bold"
-                  >
-                    <strong>B</strong>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand('italic')}
-                    className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                    title="Italic"
-                  >
-                    <em>I</em>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand('underline')}
-                    className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                    title="Underline"
-                  >
-                    <u>U</u>
-                  </button>
-                  <div className="w-px h-6 bg-gray-300"></div>
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand('insertUnorderedList')}
-                    className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                    title="Bullet List"
-                  >
-                    • List
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => document.execCommand('insertOrderedList')}
-                    className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                    title="Numbered List"
-                  >
-                    1. List
-                  </button>
-                </div>
-                
-                {/* Editor */}
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorChange}
-                  onPaste={handleEditorPaste}
-                  className="min-h-[200px] px-3 py-2 focus:outline-none"
-                  placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
-                  style={{ 
-                    whiteSpace: 'pre-wrap',
-                    lineHeight: '1.6'
-                  }}
-                  data-placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
-                ></div>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Minimal 10 karakter. Gunakan toolbar di atas untuk formatting. 
-                <br />
-                <span className="text-blue-600">💡 Tips: Anda bisa paste gambar langsung ke editor (Ctrl+V)</span>
-                <br />
-                <span className="text-green-600">📝 Format: Gambar akan otomatis diganti dengan [IMG:id] saat disimpan</span>
-                <br />
-                <span className="text-orange-600">⚠️ Note: Gambar akan disimpan sebagai referensi dengan [IMG:id] placeholder</span>
-                <br />
-                <span className="text-purple-600">🔗 Backend: Gambar akan diupload ke server folder uploads/poskas terlebih dahulu</span>
-                <br />
-                <span className="text-indigo-600">📁 Upload: Gambar akan diupload ke /api/upload/poskas sebelum submit data</span>
-                <br />
-                <span className="text-red-600">📱 Mobile: Images akan disimpan sebagai array object dengan URL lengkap untuk mobile</span>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {isEditMode ? 'Edit Pos Kas' : 'Tambah Pos Kas'}
+              </h1>
+              <p className="text-gray-600">
+                {isEditMode ? 'Perbarui data posisi kas' : 'Tambah data posisi kas baru'}
               </p>
             </div>
-
-            {/* Image Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Gambar (Opsional) - Akan diupload ke server folder uploads/poskas
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  Pilih Gambar
-                </button>
-                <p className="text-sm text-gray-500 mt-2">
-                  Maksimal 5 gambar, ukuran maksimal 10MB per gambar
-                  <br />
-                  <span className="text-orange-600">Gambar akan diupload ke server folder uploads/poskas</span>
-                  <br />
-                  <span className="text-purple-600">Metadata: URI, URL, dan serverPath akan diisi otomatis setelah upload</span>
-                  <br />
-                  <span className="text-red-600">📱 Format: Images akan disimpan sebagai array object dengan URL lengkap untuk mobile</span>
-                </p>
-              </div>
-
-              {/* Image Previews */}
-              {imagePreviewUrls.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Dipilih:</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {imagePreviewUrls.map((url, index) => {
-                      const imageData = selectedImages[index];
-                      return (
-                        <div key={index} className="relative group">
-                          <img
-                            src={url}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-32 object-cover rounded-lg"
-                          />
-                          <div className="absolute bottom-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                            ID: {imageData?.id}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Submit Buttons */}
-            <div className="flex space-x-4 pt-6">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
+      </div>
+
+      {/* Form Section */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <form onSubmit={handleSubmit}>
+          {/* Tanggal Pos Kas */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <Calendar className="h-5 w-5 text-red-600" />
+              </div>
+              <label className="text-lg font-semibold text-gray-900">
+                Tanggal Pos Kas
+              </label>
+            </div>
+            <input
+              type="date"
+              name="tanggal_poskas"
+              value={formData.tanggal_poskas}
+              onChange={handleInputChange}
+              required
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Pilih tanggal untuk posisi kas ini
+            </p>
+          </div>
+
+          {/* Isi Pos Kas Editor */}
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FileText className="h-5 w-5 text-green-600" />
+              </div>
+              <label className="text-lg font-semibold text-gray-900">
+                Isi Pos Kas
+              </label>
+            </div>
+            
+            <div className="space-y-4">
+              <div
+                ref={editorRef}
+                contentEditable
+                data-placeholder="Masukkan isi posisi kas... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+                onInput={handleEditorChange}
+                onPaste={handleEditorPaste}
+                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                style={{ whiteSpace: 'pre-wrap' }}
+                dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_poskas } : undefined}
+              />
+              
+              <p className="text-sm text-gray-500">
+                💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
+              </p>
+            </div>
+          </div>
+
+          {/* Submit Buttons */}
+          <div className="flex space-x-4 p-6">
+            <button
+              type="button"
+              onClick={() => navigate('/poskas')}
+              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
