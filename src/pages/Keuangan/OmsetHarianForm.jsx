@@ -83,10 +83,31 @@ const OmsetHarianForm = () => {
       
       if (response.success && response.data) {
         const omsetData = response.data;
+        
+        // Process existing images to match new format
+        let processedImages = [];
+        if (omsetData.images) {
+          try {
+            const parsedImages = JSON.parse(omsetData.images);
+            if (Array.isArray(parsedImages)) {
+              processedImages = parsedImages.map(img => ({
+                uri: img.uri || `file://temp/${img.id}.jpg`,
+                id: img.id,
+                name: img.name || `omset_${img.id}.jpg`,
+                url: img.url || `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+                serverPath: img.serverPath || `uploads/omset-harian/temp_${img.id}.jpg`
+              }));
+            }
+          } catch (error) {
+            console.error('Error parsing existing images:', error);
+            processedImages = [];
+          }
+        }
+        
         setFormData({
           tanggal_omset: omsetData.tanggal_omset,
           isi_omset: omsetData.isi_omset,
-          images: omsetData.images ? JSON.parse(omsetData.images) : []
+          images: processedImages
         });
       } else {
         toast.error('Gagal memuat data omset harian');
@@ -232,15 +253,19 @@ const OmsetHarianForm = () => {
         
         if (uploadedFile) {
           return {
+            uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
             id: img.id,
-            url: uploadedFile.url,
-            filename: uploadedFile.filename
+            name: `omset_${img.id}.jpg`,
+            url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+            serverPath: uploadedFile.url // Path dari server
           };
         } else {
           return {
+            uri: `file://temp/${img.id}.jpg`,
             id: img.id,
-            url: img.url,
-            filename: img.filename
+            name: `omset_${img.id}.jpg`,
+            url: `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+            serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
           };
         }
       });

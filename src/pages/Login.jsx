@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, User, ArrowRight } from 'lucide-react'
+import { useNavigate, Navigate } from 'react-router-dom'
+import { Eye, EyeOff, Lock, User, ArrowRight, Shield } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import LoadingSpinner from '../components/UI/LoadingSpinner'
 import toast from 'react-hot-toast'

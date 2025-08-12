@@ -179,9 +179,18 @@ const OmsetHarianDetail = () => {
           });
         }
 
-        // Add image with complete server URL
-        const baseUrl = 'http://localhost:3000'; // Backend URL
-        const imageUrl = image.url ? `${baseUrl}${image.url}` : '';
+        // Add image with complete server URL - handle both relative and absolute URLs
+        let imageUrl = '';
+        if (image.url) {
+          if (image.url.startsWith('http')) {
+            // Already absolute URL
+            imageUrl = image.url;
+          } else {
+            // Relative URL, add base URL
+            const baseUrl = 'http://192.168.1.2:3000';
+            imageUrl = `${baseUrl}${image.url}`;
+          }
+        }
         
         parts.push({
           type: 'image',
@@ -214,8 +223,21 @@ const OmsetHarianDetail = () => {
   };
 
   const openFullScreenImage = (image) => {
-    const baseUrl = 'http://localhost:3000'; // Backend URL
-    const imageUrl = image.url ? `${baseUrl}${image.url}` : image.displayUri || image.fallbackUri;
+    // Handle both relative and absolute URLs
+    let imageUrl = '';
+    if (image.url) {
+      if (image.url.startsWith('http')) {
+        // Already absolute URL
+        imageUrl = image.url;
+      } else {
+        // Relative URL, add base URL
+        const baseUrl = 'http://192.168.1.2:3000';
+        imageUrl = `${baseUrl}${image.url}`;
+      }
+    } else {
+      imageUrl = image.displayUri || image.fallbackUri;
+    }
+    
     setFullScreenImage(imageUrl);
     setShowFullScreenModal(true);
   };

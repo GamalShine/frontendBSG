@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
@@ -7,7 +7,9 @@ import { ArrowLeft, Calendar, FileText, RefreshCw, Save } from 'lucide-react';
 
 const PoskasForm = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { user } = useAuth();
+  const isEditMode = Boolean(id);
   
   // Add CSS for editor images
   useEffect(() => {
@@ -66,10 +68,65 @@ const PoskasForm = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [imageIdMap, setImageIdMap] = useState(new Map()); // Map untuk tracking image ID
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
 
+  // Load existing data if in edit mode
+  useEffect(() => {
+    if (isEditMode && id) {
+      loadExistingData();
+    }
+  }, [isEditMode, id]);
+
+  const loadExistingData = async () => {
+    try {
+      setLoading(true);
+      const response = await poskasService.getPoskasById(id);
+      
+      if (response.success) {
+        const data = response.data;
+        setFormData({
+          tanggal_poskas: data.tanggal_poskas || new Date().toISOString().split('T')[0],
+          isi_poskas: data.isi_poskas || '',
+          images: data.images || []
+        });
+        
+        // Process existing images if any
+        if (data.images && Array.isArray(data.images)) {
+          const processedImages = data.images.map((img, index) => ({
+            file: null, // We don't have the actual file in edit mode
+            id: img.id || Date.now() + index,
+            name: img.name || `existing_image_${index}`
+          }));
+          setSelectedImages(processedImages);
+          
+          // Set preview URLs from existing image URLs
+          const urls = data.images.map(img => img.url || img.uri || '');
+          setImagePreviewUrls(urls.filter(url => url));
+        }
+      } else {
+        toast.error('Gagal memuat data yang akan diedit');
+        navigate('/poskas');
+      }
+    } catch (error) {
+      console.error('Error loading existing data:', error);
+      toast.error('Gagal memuat data yang akan diedit');
+      navigate('/poskas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle text editor changes
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const handleEditorChange = (e) => {
     const content = e.target.innerHTML;
     console.log('🔍 Debug: Editor content changed:', content);
@@ -397,66 +454,83 @@ const PoskasForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Upload images to server first
-      console.log('📁 Starting image upload process...');
-      const uploadedFiles = await uploadImagesToServer(selectedImages);
-      
-      // Update images array with server URLs
-      const imagesWithServerUrls = selectedImages.map((img, index) => {
-        const uploadedFile = uploadedFiles[index];
+      if (isEditMode) {
+        // Update existing poskas
+        const response = await poskasService.updatePoskas(id, {
+          tanggal_poskas: formData.tanggal_poskas,
+          isi_poskas: editorContent,
+          images: formData.images
+        });
         
-        if (uploadedFile) {
-          console.log(`🖼️ Image ${index + 1}:`, {
-            originalId: img.id,
-            serverUrl: uploadedFile.url,
-            serverPath: uploadedFile.path
-          });
-          
-          return {
-            uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
-            id: img.id,
-            name: `poskas_${img.id}.jpg`,
-            url: `http://192.168.30.21:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
-            serverPath: uploadedFile.path // Path dari server
-          };
+        if (response.success) {
+          toast.success('Laporan pos kas berhasil diperbarui');
+          navigate('/poskas');
         } else {
-          // Fallback jika upload gagal
-          return {
-            uri: `file://temp/${img.id}.jpg`,
-            id: img.id,
-            name: `poskas_${img.id}.jpg`,
-            url: `http://192.168.30.21:3000/uploads/poskas/temp_${img.id}.jpg`,
-            serverPath: `poskas/temp_${img.id}.jpg`
-          };
+          toast.error(response.message || 'Gagal memperbarui laporan');
         }
-      });
-
-      // Buat data sesuai format backend yang sudah ada
-      const finalFormData = {
-        tanggal_poskas: formData.tanggal_poskas,
-        isi_poskas: editorContent,
-        images: imagesWithServerUrls // Kirim sebagai array object, bukan JSON string
-      };
-      
-      console.log('🔍 Debug: Final form data:', finalFormData);
-      console.log('🔍 Debug: Selected images:', selectedImages);
-      console.log('🔍 Debug: User info:', user);
-      console.log('🔍 Debug: Images JSON string:', JSON.stringify(imagesWithServerUrls));
-      console.log('🔍 Debug: Images length:', imagesWithServerUrls.length);
-      
-      // Gunakan service yang sudah ada (tanpa FormData)
-      const response = await poskasService.createPoskas(finalFormData);
-      
-      console.log('🔍 Debug: Service response:', response);
-      console.log('🔍 Debug: Data sent to service:', finalFormData);
-      console.log('🔍 Debug: Images field type:', typeof finalFormData.images);
-      console.log('🔍 Debug: Images field value:', finalFormData.images);
-      
-      if (response.success) {
-        toast.success('Laporan pos kas berhasil disimpan');
-        navigate('/poskas');
       } else {
-        toast.error(response.message || 'Gagal menyimpan laporan');
+        // Create new poskas (existing logic)
+        // Upload images to server first
+        console.log('📁 Starting image upload process...');
+        const uploadedFiles = await uploadImagesToServer(selectedImages);
+        
+        // Update images array with server URLs
+        const imagesWithServerUrls = selectedImages.map((img, index) => {
+          const uploadedFile = uploadedFiles[index];
+          
+          if (uploadedFile) {
+            console.log(`🖼️ Image ${index + 1}:`, {
+              originalId: img.id,
+              serverUrl: uploadedFile.url,
+              serverPath: uploadedFile.path
+            });
+            
+            return {
+              uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
+              id: img.id,
+              name: `poskas_${img.id}.jpg`,
+              url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+              serverPath: uploadedFile.path // Path dari server
+            };
+          } else {
+            // Fallback jika upload gagal
+            return {
+              uri: `file://temp/${img.id}.jpg`,
+              id: img.id,
+              name: `poskas_${img.id}.jpg`,
+              url: `http://192.168.1.2:3000/uploads/poskas/temp_${img.id}.jpg`,
+              serverPath: `poskas/temp_${img.id}.jpg`
+            };
+          }
+        });
+
+        // Buat data sesuai format backend yang sudah ada
+        const finalFormData = {
+          tanggal_poskas: formData.tanggal_poskas,
+          isi_poskas: editorContent,
+          images: imagesWithServerUrls // Kirim sebagai array object, bukan JSON string
+        };
+        
+        console.log('🔍 Debug: Final form data:', finalFormData);
+        console.log('🔍 Debug: Selected images:', selectedImages);
+        console.log('🔍 Debug: User info:', user);
+        console.log('🔍 Debug: Images JSON string:', JSON.stringify(imagesWithServerUrls));
+        console.log('🔍 Debug: Images length:', imagesWithServerUrls.length);
+        
+        // Gunakan service yang sudah ada (tanpa FormData)
+        const response = await poskasService.createPoskas(finalFormData);
+        
+        console.log('🔍 Debug: Service response:', response);
+        console.log('🔍 Debug: Data sent to service:', finalFormData);
+        console.log('🔍 Debug: Images field type:', typeof finalFormData.images);
+        console.log('🔍 Debug: Images field value:', finalFormData.images);
+        
+        if (response.success) {
+          toast.success('Laporan pos kas berhasil disimpan');
+          navigate('/poskas');
+        } else {
+          toast.error(response.message || 'Gagal menyimpan laporan');
+        }
       }
     } catch (error) {
       console.error('❌ Error submitting poskas:', error);
@@ -481,7 +555,24 @@ const PoskasForm = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }
+
+  if (loading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="bg-white rounded-lg shadow-sm border p-12">
+          <div className="flex justify-center items-center">
+            <div className="text-center">
+              <RefreshCw className="h-12 w-12 animate-spin text-red-600 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg font-medium">
+                {isEditMode ? 'Memuat data untuk diedit...' : 'Memuat form...'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
