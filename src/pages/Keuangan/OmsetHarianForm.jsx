@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { omsetHarianService } from '../../services/omsetHarianService';
 import { toast } from 'react-hot-toast';
+import { getEnvironmentConfig } from '../../config/environment';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -18,6 +19,7 @@ const OmsetHarianForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const envConfig = getEnvironmentConfig();
   
   const [formData, setFormData] = useState({
     tanggal_omset: new Date().toISOString().split('T')[0],
@@ -383,7 +385,7 @@ const OmsetHarianForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `omset_${img.id}.jpg`,
-                url: `http://192.168.0.116:3000${uploadedFile.url}`,
+                url: `http://${envConfig.BASE_URL}${uploadedFile.url}`,
                 serverPath: uploadedFile.url
               };
             } else {
@@ -391,7 +393,7 @@ const OmsetHarianForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `omset_${img.id}.jpg`,
-                url: `http://192.168.0.116:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+                url: `http://${envConfig.BASE_URL}/uploads/omset-harian/temp_${img.id}.jpg`,
                 serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
               };
             }
@@ -412,7 +414,7 @@ const OmsetHarianForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `omset_${img.id}.jpg`,
-              url: `http://192.168.0.116:3000${uploadedFile.url}`,
+              url: `http://${envConfig.BASE_URL}${uploadedFile.url}`,
               serverPath: uploadedFile.url
             };
           } else {
@@ -420,7 +422,7 @@ const OmsetHarianForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `omset_${img.id}.jpg`,
-              url: `http://192.168.0.116:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+              url: `http://${envConfig.BASE_URL}/uploads/omset-harian/temp_${img.id}.jpg`,
               serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
             };
           }
@@ -469,7 +471,7 @@ const OmsetHarianForm = () => {
     });
 
     try {
-      const response = await fetch('/api/upload/omset-harian', {
+      const response = await fetch(`${envConfig.API_BASE_URL}/upload/omset-harian`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

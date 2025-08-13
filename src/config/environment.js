@@ -2,13 +2,13 @@
 const ENV_CONFIG = {
     // Development Environment
     development: {
-        BASE_URL: 'http://localhost:3000',
-        API_BASE_URL: 'http://localhost:3000/api',
+        BASE_URL: 'http://192.168.38.162:3000',
+        API_BASE_URL: 'http://192.168.38.162:3000/api',
         FRONTEND_URL: 'http://localhost:5173',
         UPLOAD_URLS: {
-            POSKAS_IMAGES: 'http://localhost:3000/uploads/images/poskas',
-            GENERAL_IMAGES: 'http://localhost:3000/uploads/images',
-            DOCUMENTS: 'http://localhost:3000/uploads/documents',
+            POSKAS_IMAGES: 'http://192.168.38.162:3000/uploads/images/poskas',
+            GENERAL_IMAGES: 'http://192.168.38.162:3000/uploads/images',
+            DOCUMENTS: 'http://192.168.38.162:3000/uploads/documents',
         },
     },
 

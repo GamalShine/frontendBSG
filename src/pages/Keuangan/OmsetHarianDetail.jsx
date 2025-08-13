@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { omsetHarianService } from '../../services/omsetHarianService';
 import { toast } from 'react-hot-toast';
+import { getEnvironmentConfig } from '../../config/environment';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -20,6 +21,7 @@ const OmsetHarianDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const envConfig = getEnvironmentConfig();
   
   const [omsetData, setOmsetData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -187,6 +189,8 @@ const OmsetHarianDetail = () => {
             imageUrl = image.url;
           } else {
             // Relative URL, add base URL
+            const imageBaseUrl = envConfig.BASE_URL;
+            imageUrl = `${imageBaseUrl}${image.url}`;
             const baseUrl = 'http://192.168.1.2:3000';
             imageUrl = `${baseUrl}${image.url}`;
           }
@@ -231,7 +235,7 @@ const OmsetHarianDetail = () => {
         imageUrl = image.url;
       } else {
         // Relative URL, add base URL
-        const baseUrl = 'http://192.168.0.116:3000';
+        const baseUrl = envConfig.BASE_URL;
         imageUrl = `${baseUrl}${image.url}`;
       }
     } else {
