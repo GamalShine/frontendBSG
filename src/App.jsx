@@ -47,6 +47,8 @@ import OmsetHarian from './pages/Keuangan/OmsetHarian'
 import OmsetHarianList from './pages/Keuangan/OmsetHarianList'
 import OmsetHarianForm from './pages/Keuangan/OmsetHarianForm'
 import OmsetHarianDetail from './pages/Keuangan/OmsetHarianDetail'
+import LaporanKeuanganForm from './pages/Keuangan/LaporanKeuanganForm'
+import LaporanKeuanganDetail from './pages/Keuangan/LaporanKeuanganDetail'
 
 // SDM Pages
 import StrukturJobdeskSOP from './pages/SDM/StrukturJobdeskSOP'
@@ -286,6 +288,30 @@ const AppRoutes = () => {
           <ProtectedRoute requiredPermissions={['read']}>
             <Layout>
               <LaporanKeuangan />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/laporan/add" element={
+          <ProtectedRoute requiredPermissions={['create']}>
+            <Layout>
+              <LaporanKeuanganForm />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/laporan/:id" element={
+          <ProtectedRoute requiredPermissions={['read']}>
+            <Layout>
+              <LaporanKeuanganDetail />
+            </Layout>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/keuangan/laporan/:id/edit" element={
+          <ProtectedRoute requiredPermissions={['update']}>
+            <Layout>
+              <LaporanKeuanganForm />
             </Layout>
           </ProtectedRoute>
         } />
