@@ -42,7 +42,7 @@ const PoskasEdit = () => {
         // Replace [IMG:id] placeholders with actual image tags for editor
         if (Array.isArray(parsedImages)) {
           parsedImages.forEach((image, index) => {
-            const imgTag = `<img src="http://192.168.1.2:3000${image.url}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" />`;
+            const imgTag = `<img src="http://192.168.38.223:3000${image.url}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" />`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
             editorContent = editorContent.replace(placeholderRegex, imgTag);
           });
@@ -552,7 +552,7 @@ const PoskasEdit = () => {
                   {existingImages.map((image, index) => (
                     <div key={index} className="relative group">
                       <img
-                        src={`http://192.168.1.2:3000${image.url}`}
+                        src={`http://192.168.38.223:3000${image.url}`}
                         alt={`Existing ${index + 1}`}
                         className="w-full h-32 object-cover rounded-lg"
                         onError={(e) => {

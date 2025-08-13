@@ -489,7 +489,7 @@ const PoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+              url: `http://192.168.38.223:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
               serverPath: uploadedFile.path // Path dari server
             };
           } else {
@@ -498,7 +498,7 @@ const PoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `http://192.168.1.2:3000/uploads/poskas/temp_${img.id}.jpg`,
+              url: `http://192.168.38.223:3000/uploads/poskas/temp_${img.id}.jpg`,
               serverPath: `poskas/temp_${img.id}.jpg`
             };
           }

@@ -94,7 +94,7 @@ const OmsetHarianForm = () => {
                 uri: img.uri || `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: img.name || `omset_${img.id}.jpg`,
-                url: img.url || `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+                url: img.url || `http://192.168.38.223:3000/uploads/omset-harian/temp_${img.id}.jpg`,
                 serverPath: img.serverPath || `uploads/omset-harian/temp_${img.id}.jpg`
               }));
             }
@@ -256,7 +256,7 @@ const OmsetHarianForm = () => {
             uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
             id: img.id,
             name: `omset_${img.id}.jpg`,
-            url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+            url: `http://192.168.38.223:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
             serverPath: uploadedFile.url // Path dari server
           };
         } else {
@@ -264,7 +264,7 @@ const OmsetHarianForm = () => {
             uri: `file://temp/${img.id}.jpg`,
             id: img.id,
             name: `omset_${img.id}.jpg`,
-            url: `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+            url: `http://192.168.38.223:3000/uploads/omset-harian/temp_${img.id}.jpg`,
             serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
           };
         }

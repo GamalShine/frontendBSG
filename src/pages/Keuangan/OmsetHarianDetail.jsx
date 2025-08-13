@@ -187,7 +187,7 @@ const OmsetHarianDetail = () => {
             imageUrl = image.url;
           } else {
             // Relative URL, add base URL
-            const baseUrl = 'http://192.168.1.2:3000';
+            const baseUrl = 'http://192.168.38.223:3000';
             imageUrl = `${baseUrl}${image.url}`;
           }
         }
@@ -231,7 +231,7 @@ const OmsetHarianDetail = () => {
         imageUrl = image.url;
       } else {
         // Relative URL, add base URL
-        const baseUrl = 'http://192.168.1.2:3000';
+        const baseUrl = 'http://192.168.38.223:3000';
         imageUrl = `${baseUrl}${image.url}`;
       }
     } else {
