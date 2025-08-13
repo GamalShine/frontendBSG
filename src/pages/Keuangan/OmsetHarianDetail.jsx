@@ -191,6 +191,8 @@ const OmsetHarianDetail = () => {
             // Relative URL, add base URL
             const imageBaseUrl = envConfig.BASE_URL;
             imageUrl = `${imageBaseUrl}${image.url}`;
+            const baseUrl = 'http://192.168.1.2:3000';
+            imageUrl = `${baseUrl}${image.url}`;
           }
         }
         

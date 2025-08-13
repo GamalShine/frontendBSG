@@ -145,7 +145,7 @@ const OmsetHarianForm = () => {
                 uri: img.uri || `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: img.name || `omset_${img.id}.jpg`,
-                url: img.url || `${envConfig.BASE_URL}/uploads/omset-harian/temp_${img.id}.jpg`,
+                url: img.url || `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
                 serverPath: img.serverPath || `uploads/omset-harian/temp_${img.id}.jpg`
               }));
             }
@@ -173,7 +173,7 @@ const OmsetHarianForm = () => {
                 imageUrl = image.url;
               } else {
                 // Relative URL, add base URL
-                imageUrl = `http://${envConfig.BASE_URL}${image.url}`;
+                imageUrl = `http://192.168.1.2:3000${image.url}`;
               }
             }
             
