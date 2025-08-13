@@ -1,4 +1,5 @@
 import api from './api';
+import { API_ENDPOINTS } from '../config/constants';
 
 export const omsetHarianService = {
     // Get all omset harian with pagination and filters
@@ -12,7 +13,7 @@ export const omsetHarianService = {
             if (search) params.append('search', search);
             if (date) params.append('date', date);
 
-            const response = await api.get(`/omset-harian?${params}`);
+            const response = await api.get(`${API_ENDPOINTS.OMSET_HARIAN.LIST}?${params}`);
             return response.data;
         } catch (error) {
             console.error('Error fetching omset harian:', error);
@@ -23,7 +24,7 @@ export const omsetHarianService = {
     // Get omset harian by ID
     async getOmsetHarianById(id) {
         try {
-            const response = await api.get(`/omset-harian/${id}`);
+            const response = await api.get(API_ENDPOINTS.OMSET_HARIAN.BY_ID(id));
             return response.data;
         } catch (error) {
             console.error('Error fetching omset harian by ID:', error);
@@ -34,7 +35,7 @@ export const omsetHarianService = {
     // Create new omset harian
     async createOmsetHarian(data) {
         try {
-            const response = await api.post('/omset-harian', data);
+            const response = await api.post(API_ENDPOINTS.OMSET_HARIAN.LIST, data);
             return response.data;
         } catch (error) {
             console.error('Error creating omset harian:', error);
@@ -45,7 +46,7 @@ export const omsetHarianService = {
     // Update omset harian
     async updateOmsetHarian(id, data) {
         try {
-            const response = await api.put(`/omset-harian/${id}`, data);
+            const response = await api.put(API_ENDPOINTS.OMSET_HARIAN.BY_ID(id), data);
             return response.data;
         } catch (error) {
             console.error('Error updating omset harian:', error);
@@ -56,7 +57,7 @@ export const omsetHarianService = {
     // Delete omset harian
     async deleteOmsetHarian(id) {
         try {
-            const response = await api.delete(`/omset-harian/${id}`);
+            const response = await api.delete(API_ENDPOINTS.OMSET_HARIAN.BY_ID(id));
             return response.data;
         } catch (error) {
             console.error('Error deleting omset harian:', error);

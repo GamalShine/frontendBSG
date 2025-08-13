@@ -1,50 +1,51 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const komplainService = {
-    // Get all komplain
+    // Get all complaints
     async getKomplain(params = {}) {
         try {
-            const response = await api.get('/daftar-komplain', { params })
+            const response = await api.get(API_ENDPOINTS.COMPLAINTS.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get komplain by ID
+    // Get complaint by ID
     async getKomplainById(id) {
         try {
-            const response = await api.get(`/daftar-komplain/${id}`)
+            const response = await api.get(API_ENDPOINTS.COMPLAINTS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Create new komplain
+    // Create new complaint
     async createKomplain(komplainData) {
         try {
-            const response = await api.post('/daftar-komplain', komplainData)
+            const response = await api.post(API_ENDPOINTS.COMPLAINTS.LIST, komplainData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update komplain
+    // Update complaint
     async updateKomplain(id, komplainData) {
         try {
-            const response = await api.put(`/daftar-komplain/${id}`, komplainData)
+            const response = await api.put(API_ENDPOINTS.COMPLAINTS.BY_ID(id), komplainData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Delete komplain
+    // Delete complaint
     async deleteKomplain(id) {
         try {
-            const response = await api.delete(`/daftar-komplain/${id}`)
+            const response = await api.delete(API_ENDPOINTS.COMPLAINTS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

@@ -1,4 +1,5 @@
 import api from './api'
+import { API_ENDPOINTS, API_CONFIG } from '../config/constants'
 
 export const uploadService = {
     // Upload single file
@@ -8,11 +9,11 @@ export const uploadService = {
             formData.append('file', file)
             formData.append('type', type)
 
-            const response = await api.post('/upload', formData, {
+            const response = await api.post(API_ENDPOINTS.UPLOAD.GENERAL, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                timeout: 30000, // 30 seconds for upload
+                timeout: API_CONFIG.TIMEOUT.UPLOAD,
             })
             return response.data
         } catch (error) {
@@ -29,11 +30,11 @@ export const uploadService = {
             })
             formData.append('type', type)
 
-            const response = await api.post('/upload/multiple', formData, {
+            const response = await api.post(API_ENDPOINTS.UPLOAD.GENERAL, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
-                timeout: 60000, // 60 seconds for multiple uploads
+                timeout: API_CONFIG.TIMEOUT.UPLOAD,
             })
             return response.data
         } catch (error) {
@@ -41,78 +42,28 @@ export const uploadService = {
         }
     },
 
-    // Upload image for specific module
-    async uploadImage(file, module, moduleId = null) {
-        try {
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('module', module)
-            if (moduleId) {
-                formData.append('module_id', moduleId)
-            }
+    // Upload image specifically
+    async uploadImage(file) {
+        return this.uploadFile(file, 'image')
+    },
 
-            const response = await api.post('/upload/image', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-                timeout: 30000,
+    // Upload document specifically
+    async uploadDocument(file) {
+        return this.uploadFile(file, 'document')
+    },
+
+    // Get file URL
+    getFileUrl(filename, type = 'general') {
+        const baseUrl = API_CONFIG.BASE_URL.replace('/api', '')
+        return `${baseUrl}/uploads/${type}/${filename}`
+    },
+
+    // Delete file
+    async deleteFile(filename, type = 'general') {
+        try {
+            const response = await api.delete(`${API_ENDPOINTS.UPLOAD.GENERAL}/${filename}`, {
+                data: { type }
             })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Upload document
-    async uploadDocument(file, module, moduleId = null) {
-        try {
-            const formData = new FormData()
-            formData.append('file', file)
-            formData.append('module', module)
-            if (moduleId) {
-                formData.append('module_id', moduleId)
-            }
-
-            const response = await api.post('/upload/document', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-                timeout: 30000,
-            })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Delete uploaded file
-    async deleteFile(fileId) {
-        try {
-            const response = await api.delete(`/upload/${fileId}`)
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get file info
-    async getFileInfo(fileId) {
-        try {
-            const response = await api.get(`/upload/${fileId}`)
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get files by module
-    async getFilesByModule(module, moduleId = null) {
-        try {
-            const params = { module }
-            if (moduleId) {
-                params.module_id = moduleId
-            }
-            const response = await api.get('/upload/module', { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

@@ -1,79 +1,78 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const pengumumanService = {
-    // Get all pengumuman
+    // Get all announcements
     async getPengumuman(params = {}) {
         try {
-            const response = await api.get('/pengumuman', { params })
+            const response = await api.get(API_ENDPOINTS.ANNOUNCEMENTS.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get pengumuman by ID
+    // Get announcement by ID
     async getPengumumanById(id) {
         try {
-            const response = await api.get(`/pengumuman/${id}`)
+            const response = await api.get(API_ENDPOINTS.ANNOUNCEMENTS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Create new pengumuman
+    // Create new announcement
     async createPengumuman(pengumumanData) {
         try {
-            const response = await api.post('/pengumuman', pengumumanData)
+            const response = await api.post(API_ENDPOINTS.ANNOUNCEMENTS.LIST, pengumumanData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update pengumuman
+    // Update announcement
     async updatePengumuman(id, pengumumanData) {
         try {
-            const response = await api.put(`/pengumuman/${id}`, pengumumanData)
+            const response = await api.put(API_ENDPOINTS.ANNOUNCEMENTS.BY_ID(id), pengumumanData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Delete pengumuman
+    // Delete announcement
     async deletePengumuman(id) {
         try {
-            const response = await api.delete(`/pengumuman/${id}`)
+            const response = await api.delete(API_ENDPOINTS.ANNOUNCEMENTS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get active pengumuman
+    // Get active announcements
     async getActivePengumuman(params = {}) {
         try {
-            const response = await api.get('/pengumuman/active', { params })
+            const response = await api.get(`${API_ENDPOINTS.ANNOUNCEMENTS.LIST}/active`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get pengumuman by priority
+    // Get announcements by priority
     async getPengumumanByPriority(priority, params = {}) {
         try {
-            const response = await api.get(`/pengumuman/priority/${priority}`, { params })
+            const response = await api.get(`${API_ENDPOINTS.ANNOUNCEMENTS.LIST}/priority/${priority}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
-    }
-}
+    },
 
-export const adminPengumumanService = {
-    // Get all pengumuman for admin
+    // Admin specific endpoints
     async getAdminPengumuman(params = {}) {
         try {
             const response = await api.get('/admin/pengumuman', { params })
@@ -83,7 +82,6 @@ export const adminPengumumanService = {
         }
     },
 
-    // Create pengumuman as admin
     async createAdminPengumuman(pengumumanData) {
         try {
             const response = await api.post('/admin/pengumuman', pengumumanData)
@@ -93,7 +91,6 @@ export const adminPengumumanService = {
         }
     },
 
-    // Update pengumuman as admin
     async updateAdminPengumuman(id, pengumumanData) {
         try {
             const response = await api.put(`/admin/pengumuman/${id}`, pengumumanData)
@@ -103,7 +100,6 @@ export const adminPengumumanService = {
         }
     },
 
-    // Delete pengumuman as admin
     async deleteAdminPengumuman(id) {
         try {
             const response = await api.delete(`/admin/pengumuman/${id}`)
@@ -113,8 +109,7 @@ export const adminPengumumanService = {
         }
     },
 
-    // Get pengumuman statistics
-    async getPengumumanStats(params = {}) {
+    async getAdminPengumumanStats(params = {}) {
         try {
             const response = await api.get('/admin/pengumuman/stats', { params })
             return response.data

@@ -16,6 +16,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
+import { API_ENDPOINTS, API_CONFIG } from '../../config/constants';
 
 const PoskasList = () => {
   const { user } = useAuth()
@@ -42,7 +43,7 @@ const PoskasList = () => {
   const testApiConnection = async () => {
     try {
       console.log('🧪 Testing API connection...')
-      const response = await fetch('http://localhost:3000/api/keuangan-poskas', {
+      const response = await fetch(API_CONFIG.getUrl(API_ENDPOINTS.POSKAS.LIST), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

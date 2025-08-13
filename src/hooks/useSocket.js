@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { io } from 'socket.io-client'
 import { useAuth } from '../contexts/AuthContext'
+import { API_CONFIG } from '../config/constants'
 import toast from 'react-hot-toast'
 
 const useSocket = () => {
@@ -15,7 +16,10 @@ const useSocket = () => {
         const token = localStorage.getItem('token')
         if (!user) return
 
-        const newSocket = io('http://localhost:3000', {
+        // Extract base URL from WebSocket URL for Socket.IO
+        const baseUrl = API_CONFIG.getWsUrl().replace('ws://', 'http://').replace('wss://', 'https://')
+
+        const newSocket = io(baseUrl, {
             auth: {
                 token: localStorage.getItem('token'),
             },

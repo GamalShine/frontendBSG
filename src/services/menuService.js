@@ -1,10 +1,11 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const menuService = {
     // Get all menu items
     async getMenuItems(params = {}) {
         try {
-            const response = await api.get('/pic-menu', { params })
+            const response = await api.get(API_ENDPOINTS.MENU.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -14,7 +15,7 @@ export const menuService = {
     // Get menu item by ID
     async getMenuItemById(id) {
         try {
-            const response = await api.get(`/pic-menu/${id}`)
+            const response = await api.get(API_ENDPOINTS.MENU.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -24,7 +25,7 @@ export const menuService = {
     // Create new menu item
     async createMenuItem(menuData) {
         try {
-            const response = await api.post('/pic-menu', menuData)
+            const response = await api.post(API_ENDPOINTS.MENU.LIST, menuData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -34,7 +35,7 @@ export const menuService = {
     // Update menu item
     async updateMenuItem(id, menuData) {
         try {
-            const response = await api.put(`/pic-menu/${id}`, menuData)
+            const response = await api.put(API_ENDPOINTS.MENU.BY_ID(id), menuData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -44,7 +45,7 @@ export const menuService = {
     // Delete menu item
     async deleteMenuItem(id) {
         try {
-            const response = await api.delete(`/pic-menu/${id}`)
+            const response = await api.delete(API_ENDPOINTS.MENU.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -99,260 +100,11 @@ export const menuService = {
         } catch (error) {
             throw error.response?.data || error.message
         }
-    },
-
-    // Get user permissions
-    async getUserPermissions(userId) {
-        try {
-            const response = await api.get(`/pic-menu/permissions/${userId}`)
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Update user permissions
-    async updateUserPermissions(userId, permissions) {
-        try {
-            const response = await api.put(`/pic-menu/permissions/${userId}`, { permissions })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get role permissions
-    async getRolePermissions(role) {
-        try {
-            const response = await api.get(`/pic-menu/role-permissions/${role}`)
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Update role permissions
-    async updateRolePermissions(role, permissions) {
-        try {
-            const response = await api.put(`/pic-menu/role-permissions/${role}`, { permissions })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get menu tree
-    async getMenuTree(params = {}) {
-        try {
-            const response = await api.get('/pic-menu/tree', { params })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get menu breadcrumb
-    async getMenuBreadcrumb(path) {
-        try {
-            const response = await api.get(`/pic-menu/breadcrumb`, { params: { path } })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Search menu items
-    async searchMenuItems(query, params = {}) {
-        try {
-            const response = await api.get('/pic-menu/search', {
-                params: { q: query, ...params }
-            })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get menu suggestions
-    async getMenuSuggestions(query, params = {}) {
-        try {
-            const response = await api.get('/pic-menu/suggestions', {
-                params: { q: query, ...params }
-            })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Export menu data
-    async exportMenuData(params = {}) {
-        try {
-            const response = await api.get('/pic-menu/export', {
-                params,
-                responseType: 'blob'
-            })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Import menu data
-    async importMenuData(file) {
-        try {
-            const formData = new FormData()
-            formData.append('menu', file)
-
-            const response = await api.post('/pic-menu/import', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
-            })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Reset menu to default
-    async resetMenuToDefault() {
-        try {
-            const response = await api.post('/pic-menu/reset')
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
     }
 }
 
-// Default menu structure based on roles - Updated to match backend features
+// Default menu configuration
 export const defaultMenus = {
-    owner: [
-        {
-            id: 1,
-            name: 'Dashboard',
-            path: '/dashboard',
-            icon: 'Home',
-            order: 1,
-            permissions: ['read']
-        },
-        {
-            id: 2,
-            name: 'Chat',
-            path: '/chat',
-            icon: 'MessageCircle',
-            order: 2,
-            permissions: ['read', 'create'],
-            children: [
-                { id: 21, name: 'Private Chat', path: '/chat/private', permissions: ['read', 'create'] },
-                { id: 22, name: 'Group Chat', path: '/chat/groups', permissions: ['read', 'create'] },
-                { id: 23, name: 'Buat Group', path: '/chat/groups/create', permissions: ['create'] }
-            ]
-        },
-        {
-            id: 3,
-            name: 'Komplain',
-            path: '/komplain',
-            icon: 'AlertTriangle',
-            order: 3,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 31, name: 'Daftar Komplain', path: '/komplain', permissions: ['read'] },
-                { id: 32, name: 'Buat Komplain', path: '/komplain/new', permissions: ['create'] },
-                { id: 33, name: 'Admin Komplain', path: '/admin/komplain', permissions: ['read', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 4,
-            name: 'Tugas',
-            path: '/tugas',
-            icon: 'CheckSquare',
-            order: 4,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 41, name: 'Daftar Tugas', path: '/tugas', permissions: ['read'] },
-                { id: 42, name: 'Buat Tugas', path: '/tugas/new', permissions: ['create'] },
-                { id: 43, name: 'Admin Tugas', path: '/admin/tugas', permissions: ['read', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 5,
-            name: 'Keuangan',
-            path: '/keuangan',
-            icon: 'DollarSign',
-            order: 5,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 51, name: 'Pos Kas', path: '/poskas', permissions: ['read', 'create'] },
-                { id: 52, name: 'Owner Pos Kas', path: '/owner/poskas', permissions: ['read', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 6,
-            name: 'Pengumuman',
-            path: '/pengumuman',
-            icon: 'Megaphone',
-            order: 6,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 61, name: 'Daftar Pengumuman', path: '/pengumuman', permissions: ['read'] },
-                { id: 62, name: 'Admin Pengumuman', path: '/admin/pengumuman', permissions: ['read', 'create', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 7,
-            name: 'Tim Management',
-            path: '/tim',
-            icon: 'Users',
-            order: 7,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 71, name: 'Tim Merah', path: '/tim/merah', permissions: ['read', 'create', 'update', 'delete'] },
-                { id: 72, name: 'Tim Biru', path: '/tim/biru', permissions: ['read', 'create', 'update', 'delete'] },
-                { id: 73, name: 'Owner Tim', path: '/owner/tim', permissions: ['read', 'create', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 8,
-            name: 'Training',
-            path: '/training',
-            icon: 'GraduationCap',
-            order: 8,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 81, name: 'Data Training', path: '/training', permissions: ['read'] },
-                { id: 82, name: 'Admin Training', path: '/admin/training', permissions: ['read', 'create', 'update', 'delete'] },
-                { id: 83, name: 'Owner Training', path: '/owner/training', permissions: ['read', 'create', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 9,
-            name: 'Users',
-            path: '/users',
-            icon: 'UserCheck',
-            order: 9,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 91, name: 'Daftar Users', path: '/users', permissions: ['read'] },
-                { id: 92, name: 'Tambah User', path: '/users/new', permissions: ['create'] },
-                { id: 93, name: 'Admin Profile', path: '/admin/profile', permissions: ['read', 'update'] }
-            ]
-        },
-        {
-            id: 10,
-            name: 'Settings',
-            path: '/settings',
-            icon: 'Settings',
-            order: 10,
-            permissions: ['read', 'update'],
-            children: [
-                { id: 101, name: 'Pengaturan Sistem', path: '/settings/system', permissions: ['read', 'update'] },
-                { id: 102, name: 'Manajemen Role', path: '/settings/roles', permissions: ['read', 'create', 'update', 'delete'] }
-            ]
-        }
-    ],
-
     admin: [
         {
             id: 1,
@@ -364,41 +116,127 @@ export const defaultMenus = {
         },
         {
             id: 2,
-            name: 'Chat',
-            path: '/chat',
-            icon: 'MessageCircle',
+            name: 'Users',
+            path: '/users',
+            icon: 'Users',
             order: 2,
-            permissions: ['read', 'create'],
+            permissions: ['read', 'create', 'update', 'delete'],
             children: [
-                { id: 21, name: 'Private Chat', path: '/chat/private', permissions: ['read', 'create'] },
-                { id: 22, name: 'Group Chat', path: '/chat/groups', permissions: ['read', 'create'] },
-                { id: 23, name: 'Buat Group', path: '/chat/groups/create', permissions: ['create'] }
+                { id: 21, name: 'Daftar Users', path: '/users', permissions: ['read'] },
+                { id: 22, name: 'Tambah User', path: '/users/new', permissions: ['create'] }
             ]
         },
         {
             id: 3,
-            name: 'Komplain',
-            path: '/komplain',
-            icon: 'AlertTriangle',
+            name: 'Tugas',
+            path: '/admin/tugas',
+            icon: 'CheckSquare',
             order: 3,
             permissions: ['read', 'create', 'update', 'delete'],
             children: [
-                { id: 31, name: 'Daftar Komplain', path: '/komplain', permissions: ['read'] },
-                { id: 32, name: 'Buat Komplain', path: '/komplain/new', permissions: ['create'] },
-                { id: 33, name: 'Admin Komplain', path: '/admin/komplain', permissions: ['read', 'update', 'delete'] }
+                { id: 31, name: 'Daftar Tugas', path: '/admin/tugas', permissions: ['read'] },
+                { id: 32, name: 'Tambah Tugas', path: '/admin/tugas/new', permissions: ['create'] }
             ]
         },
         {
             id: 4,
-            name: 'Tugas',
-            path: '/tugas',
-            icon: 'CheckSquare',
+            name: 'Komplain',
+            path: '/admin/komplain',
+            icon: 'AlertTriangle',
             order: 4,
+            permissions: ['read', 'update'],
+            children: [
+                { id: 41, name: 'Daftar Komplain', path: '/admin/komplain', permissions: ['read'] }
+            ]
+        },
+        {
+            id: 5,
+            name: 'Pengumuman',
+            path: '/admin/pengumuman',
+            icon: 'Megaphone',
+            order: 5,
             permissions: ['read', 'create', 'update', 'delete'],
             children: [
-                { id: 41, name: 'Daftar Tugas', path: '/tugas', permissions: ['read'] },
-                { id: 42, name: 'Buat Tugas', path: '/tugas/new', permissions: ['create'] },
-                { id: 43, name: 'Admin Tugas', path: '/admin/tugas', permissions: ['read', 'update', 'delete'] }
+                { id: 51, name: 'Daftar Pengumuman', path: '/admin/pengumuman', permissions: ['read'] },
+                { id: 52, name: 'Tambah Pengumuman', path: '/admin/pengumuman/new', permissions: ['create'] }
+            ]
+        },
+        {
+            id: 6,
+            name: 'Training',
+            path: '/admin/training',
+            icon: 'BookOpen',
+            order: 6,
+            permissions: ['read', 'create', 'update', 'delete'],
+            children: [
+                { id: 61, name: 'Daftar Training', path: '/admin/training', permissions: ['read'] },
+                { id: 62, name: 'Tambah Training', path: '/admin/training/new', permissions: ['create'] }
+            ]
+        },
+        {
+            id: 7,
+            name: 'Settings',
+            path: '/settings',
+            icon: 'Settings',
+            order: 7,
+            permissions: ['read', 'update'],
+            children: [
+                { id: 71, name: 'Pengaturan Sistem', path: '/settings', permissions: ['read', 'update'] }
+            ]
+        },
+        {
+            id: 8,
+            name: 'Profile',
+            path: '/admin/profile',
+            icon: 'User',
+            order: 8,
+            permissions: ['read', 'update'],
+            children: [
+                { id: 81, name: 'Data Pribadi', path: '/admin/profile', permissions: ['read', 'update'] }
+            ]
+        }
+    ],
+    owner: [
+        {
+            id: 1,
+            name: 'Dashboard',
+            path: '/dashboard',
+            icon: 'Home',
+            order: 1,
+            permissions: ['read']
+        },
+        {
+            id: 2,
+            name: 'Poskas',
+            path: '/owner/poskas',
+            icon: 'DollarSign',
+            order: 2,
+            permissions: ['read'],
+            children: [
+                { id: 21, name: 'Daftar Poskas', path: '/owner/poskas', permissions: ['read'] }
+            ]
+        },
+        {
+            id: 3,
+            name: 'Tim',
+            path: '/owner/tim',
+            icon: 'Users',
+            order: 3,
+            permissions: ['read'],
+            children: [
+                { id: 31, name: 'Tim Merah', path: '/owner/tim/merah', permissions: ['read'] },
+                { id: 32, name: 'Tim Biru', path: '/owner/tim/biru', permissions: ['read'] }
+            ]
+        },
+        {
+            id: 4,
+            name: 'Training',
+            path: '/owner/training',
+            icon: 'BookOpen',
+            order: 4,
+            permissions: ['read'],
+            children: [
+                { id: 41, name: 'Daftar Training', path: '/owner/training', permissions: ['read'] }
             ]
         },
         {
@@ -407,62 +245,25 @@ export const defaultMenus = {
             path: '/keuangan',
             icon: 'DollarSign',
             order: 5,
-            permissions: ['read', 'create', 'update'],
+            permissions: ['read', 'create'],
             children: [
-                { id: 51, name: 'Pos Kas', path: '/poskas', permissions: ['read', 'create'] }
+                { id: 51, name: 'Omset Harian', path: '/omset-harian', permissions: ['read', 'create'] },
+                { id: 52, name: 'Laporan Keuangan', path: '/laporan-keuangan', permissions: ['read', 'create'] }
             ]
         },
         {
             id: 6,
-            name: 'Pengumuman',
-            path: '/pengumuman',
-            icon: 'Megaphone',
+            name: 'Profile',
+            path: '/profile',
+            icon: 'User',
             order: 6,
-            permissions: ['read', 'create', 'update', 'delete'],
+            permissions: ['read', 'update'],
             children: [
-                { id: 61, name: 'Daftar Pengumuman', path: '/pengumuman', permissions: ['read'] },
-                { id: 62, name: 'Admin Pengumuman', path: '/admin/pengumuman', permissions: ['read', 'create', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 7,
-            name: 'Tim Management',
-            path: '/tim',
-            icon: 'Users',
-            order: 7,
-            permissions: ['read', 'create', 'update', 'delete'],
-            children: [
-                { id: 71, name: 'Tim Merah', path: '/tim/merah', permissions: ['read', 'create', 'update', 'delete'] },
-                { id: 72, name: 'Tim Biru', path: '/tim/biru', permissions: ['read', 'create', 'update', 'delete'] }
-            ]
-        },
-        {
-            id: 8,
-            name: 'Training',
-            path: '/training',
-            icon: 'GraduationCap',
-            order: 8,
-            permissions: ['read', 'create', 'update'],
-            children: [
-                { id: 81, name: 'Data Training', path: '/training', permissions: ['read'] },
-                { id: 82, name: 'Admin Training', path: '/admin/training', permissions: ['read', 'create', 'update'] }
-            ]
-        },
-        {
-            id: 9,
-            name: 'Users',
-            path: '/users',
-            icon: 'UserCheck',
-            order: 9,
-            permissions: ['read', 'create', 'update'],
-            children: [
-                { id: 91, name: 'Daftar Users', path: '/users', permissions: ['read'] },
-                { id: 92, name: 'Tambah User', path: '/users/new', permissions: ['create'] },
-                { id: 93, name: 'Admin Profile', path: '/admin/profile', permissions: ['read', 'update'] }
+                { id: 61, name: 'Data Pribadi', path: '/profile', permissions: ['read', 'update'] },
+                { id: 62, name: 'Ubah Password', path: '/profile/password', permissions: ['update'] }
             ]
         }
     ],
-
     leader: [
         {
             id: 1,
@@ -481,7 +282,7 @@ export const defaultMenus = {
             permissions: ['read', 'create'],
             children: [
                 { id: 21, name: 'Private Chat', path: '/chat/private', permissions: ['read', 'create'] },
-                { id: 22, name: 'Group Chat', path: '/chat/groups', permissions: ['read', 'create'] }
+                { id: 22, name: 'Group Chat', path: '/chat/groups', permissions: ['read'] }
             ]
         },
         {
@@ -490,9 +291,9 @@ export const defaultMenus = {
             path: '/komplain',
             icon: 'AlertTriangle',
             order: 3,
-            permissions: ['read', 'create', 'update'],
+            permissions: ['read', 'create'],
             children: [
-                { id: 31, name: 'Daftar Komplain', path: '/komplain', permissions: ['read'] },
+                { id: 31, name: 'Komplain Saya', path: '/komplain', permissions: ['read'] },
                 { id: 32, name: 'Buat Komplain', path: '/komplain/new', permissions: ['create'] }
             ]
         },
@@ -502,10 +303,10 @@ export const defaultMenus = {
             path: '/tugas',
             icon: 'CheckSquare',
             order: 4,
-            permissions: ['read', 'create', 'update'],
+            permissions: ['read', 'update'],
             children: [
-                { id: 41, name: 'Daftar Tugas', path: '/tugas', permissions: ['read'] },
-                { id: 42, name: 'Buat Tugas', path: '/tugas/new', permissions: ['create'] }
+                { id: 41, name: 'Tugas Saya', path: '/tugas', permissions: ['read'] },
+                { id: 42, name: 'Update Status', path: '/tugas/update', permissions: ['update'] }
             ]
         },
         {
@@ -516,7 +317,7 @@ export const defaultMenus = {
             order: 5,
             permissions: ['read', 'create'],
             children: [
-                { id: 51, name: 'Pos Kas', path: '/poskas', permissions: ['read', 'create'] }
+                { id: 51, name: 'Pos Kas Saya', path: '/poskas', permissions: ['read', 'create'] }
             ]
         },
         {
@@ -532,30 +333,17 @@ export const defaultMenus = {
         },
         {
             id: 7,
-            name: 'Tim',
-            path: '/tim',
-            icon: 'Users',
-            order: 7,
-            permissions: ['read'],
-            children: [
-                { id: 71, name: 'Tim Merah', path: '/tim/merah', permissions: ['read'] },
-                { id: 72, name: 'Tim Biru', path: '/tim/biru', permissions: ['read'] }
-            ]
-        },
-        {
-            id: 8,
             name: 'Profile',
             path: '/profile',
             icon: 'User',
-            order: 8,
+            order: 7,
             permissions: ['read', 'update'],
             children: [
-                { id: 81, name: 'Data Pribadi', path: '/profile', permissions: ['read', 'update'] },
-                { id: 82, name: 'Ubah Password', path: '/profile/password', permissions: ['update'] }
+                { id: 71, name: 'Data Pribadi', path: '/profile', permissions: ['read', 'update'] },
+                { id: 72, name: 'Ubah Password', path: '/profile/password', permissions: ['update'] }
             ]
         }
     ],
-
     divisi: [
         {
             id: 1,

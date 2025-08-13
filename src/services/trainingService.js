@@ -1,10 +1,11 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const trainingService = {
     // Get all training
     async getTraining(params = {}) {
         try {
-            const response = await api.get('/admin/training', { params })
+            const response = await api.get(API_ENDPOINTS.TRAINING.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -14,7 +15,7 @@ export const trainingService = {
     // Get training by ID
     async getTrainingById(id) {
         try {
-            const response = await api.get(`/admin/training/${id}`)
+            const response = await api.get(API_ENDPOINTS.TRAINING.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -24,7 +25,7 @@ export const trainingService = {
     // Create new training
     async createTraining(trainingData) {
         try {
-            const response = await api.post('/admin/training', trainingData)
+            const response = await api.post(API_ENDPOINTS.TRAINING.LIST, trainingData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -34,7 +35,7 @@ export const trainingService = {
     // Update training
     async updateTraining(id, trainingData) {
         try {
-            const response = await api.put(`/admin/training/${id}`, trainingData)
+            const response = await api.put(API_ENDPOINTS.TRAINING.BY_ID(id), trainingData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -44,7 +45,7 @@ export const trainingService = {
     // Delete training
     async deleteTraining(id) {
         try {
-            const response = await api.delete(`/admin/training/${id}`)
+            const response = await api.delete(API_ENDPOINTS.TRAINING.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -54,7 +55,7 @@ export const trainingService = {
     // Get training by type
     async getTrainingByType(type, params = {}) {
         try {
-            const response = await api.get(`/admin/training/type/${type}`, { params })
+            const response = await api.get(API_ENDPOINTS.TRAINING.BY_TYPE(type), { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -64,7 +65,7 @@ export const trainingService = {
     // Get training statistics
     async getTrainingStats(params = {}) {
         try {
-            const response = await api.get('/admin/training/stats', { params })
+            const response = await api.get(API_ENDPOINTS.TRAINING.STATS, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -76,7 +77,7 @@ export const ownerTrainingService = {
     // Get all training for owner
     async getOwnerTraining(params = {}) {
         try {
-            const response = await api.get('/owner/training', { params })
+            const response = await api.get(API_ENDPOINTS.TRAINING.OWNER, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -86,7 +87,7 @@ export const ownerTrainingService = {
     // Get training statistics for owner
     async getOwnerTrainingStats(params = {}) {
         try {
-            const response = await api.get('/owner/training/stats', { params })
+            const response = await api.get(API_ENDPOINTS.TRAINING.OWNER_STATS, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -96,7 +97,7 @@ export const ownerTrainingService = {
     // Get training by status
     async getOwnerTrainingByStatus(status, params = {}) {
         try {
-            const response = await api.get(`/owner/training/status/${status}`, { params })
+            const response = await api.get(API_ENDPOINTS.TRAINING.OWNER_BY_STATUS(status), { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

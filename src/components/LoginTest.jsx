@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { LogIn, TestTube, CheckCircle, XCircle } from 'lucide-react'
 import api from '../services/api'
+import { API_ENDPOINTS } from '../config/constants'
 
 const LoginTest = () => {
   const [testResults, setTestResults] = useState([])
@@ -17,7 +18,7 @@ const LoginTest = () => {
     try {
       // Test 1: Login
       console.log('🧪 Test 1: Login...')
-      const loginResponse = await api.post('/auth/login', credentials)
+      const loginResponse = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials)
       
       if (loginResponse.data.success) {
         const token = loginResponse.data.data.token
@@ -35,7 +36,7 @@ const LoginTest = () => {
         formData.append('tanggal_poskas', '2024-01-15')
         formData.append('isi_poskas', 'Test laporan pos kas dari login test')
 
-        const poskasResponse = await api.post('/keuangan-poskas', formData, {
+        const poskasResponse = await api.post(API_ENDPOINTS.POSKAS.LIST, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
@@ -59,20 +60,20 @@ const LoginTest = () => {
         setTestResults(prev => [...prev, {
           name: 'Login',
           success: false,
-          message: loginResponse.data.message
+          message: loginResponse.data.message || 'Login failed'
         }])
       }
 
     } catch (error) {
-      console.error('❌ Test failed:', error)
+      console.error('❌ Test error:', error)
       setTestResults(prev => [...prev, {
-        name: error.config?.url?.includes('login') ? 'Login' : 'Create Poskas',
+        name: 'Test Execution',
         success: false,
-        message: error.response?.data?.message || error.message
+        message: error.message || 'Test execution failed'
       }])
+    } finally {
+      setIsTesting(false)
     }
-
-    setIsTesting(false)
   }
 
   return (

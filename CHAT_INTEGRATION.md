@@ -76,8 +76,8 @@ The chat functionality has been successfully integrated with the backend databas
 ## Environment Configuration
 
 The WebSocket service uses the following environment variables:
-- `VITE_API_URL` - Backend API URL (default: http://localhost:3000/api)
-- `VITE_WS_URL` - WebSocket URL (default: ws://localhost:3000)
+- `VITE_API_URL` - Backend API URL (default: http://192.168.38.223:3000/api)
+- `VITE_WS_URL` - WebSocket URL (default: ws://192.168.38.223:3000)
 
 ## Usage
 

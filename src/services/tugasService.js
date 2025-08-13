@@ -1,79 +1,78 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const tugasService = {
-    // Get all tugas
+    // Get all tasks
     async getTugas(params = {}) {
         try {
-            const response = await api.get('/daftar-tugas', { params })
+            const response = await api.get(API_ENDPOINTS.TASKS.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get tugas by ID
+    // Get task by ID
     async getTugasById(id) {
         try {
-            const response = await api.get(`/daftar-tugas/${id}`)
+            const response = await api.get(API_ENDPOINTS.TASKS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Create new tugas
+    // Create new task
     async createTugas(tugasData) {
         try {
-            const response = await api.post('/daftar-tugas', tugasData)
+            const response = await api.post(API_ENDPOINTS.TASKS.LIST, tugasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update tugas
+    // Update task
     async updateTugas(id, tugasData) {
         try {
-            const response = await api.put(`/daftar-tugas/${id}`, tugasData)
+            const response = await api.put(API_ENDPOINTS.TASKS.BY_ID(id), tugasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Delete tugas
+    // Delete task
     async deleteTugas(id) {
         try {
-            const response = await api.delete(`/daftar-tugas/${id}`)
+            const response = await api.delete(API_ENDPOINTS.TASKS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get tugas by status
+    // Get tasks by status
     async getTugasByStatus(status, params = {}) {
         try {
-            const response = await api.get(`/daftar-tugas/status/${status}`, { params })
+            const response = await api.get(`${API_ENDPOINTS.TASKS.LIST}/status/${status}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Get tugas by user
+    // Get tasks by user
     async getTugasByUser(userId, params = {}) {
         try {
-            const response = await api.get(`/daftar-tugas/user/${userId}`, { params })
+            const response = await api.get(`${API_ENDPOINTS.TASKS.LIST}/user/${userId}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
-    }
-}
+    },
 
-export const adminTugasService = {
-    // Get all tugas for admin
+    // Admin specific endpoints
     async getAdminTugas(params = {}) {
         try {
             const response = await api.get('/admin-tugas', { params })
@@ -83,7 +82,6 @@ export const adminTugasService = {
         }
     },
 
-    // Get tugas by ID for admin
     async getAdminTugasById(id) {
         try {
             const response = await api.get(`/admin-tugas/${id}`)
@@ -93,8 +91,40 @@ export const adminTugasService = {
         }
     },
 
-    // Get tugas statistics
-    async getTugasStats(params = {}) {
+    async getAdminTugasStats(params = {}) {
+        try {
+            const response = await api.get('/admin-tugas/stats', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    }
+}
+
+// Admin Tugas Service for backward compatibility
+export const adminTugasService = {
+    // Get all admin tugas
+    async getAdminTugas(params = {}) {
+        try {
+            const response = await api.get('/admin-tugas', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get admin tugas by ID
+    async getAdminTugasById(id) {
+        try {
+            const response = await api.get(`/admin-tugas/${id}`)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get admin tugas stats
+    async getAdminTugasStats(params = {}) {
         try {
             const response = await api.get('/admin-tugas/stats', { params })
             return response.data
@@ -103,40 +133,30 @@ export const adminTugasService = {
         }
     },
 
-    // Update tugas status
-    async updateTugasStatus(tugasId, status) {
-        try {
-            const response = await api.put(`/admin-tugas/${tugasId}/status`, { status })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
     // Update tugas by admin
-    async updateTugasByAdmin(tugasId, tugasData) {
+    async updateTugasByAdmin(id, tugasData) {
         try {
-            const response = await api.put(`/admin-tugas/${tugasId}`, tugasData)
+            const response = await api.put(`/admin-tugas/${id}`, tugasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Assign tugas to user
-    async assignTugas(tugasId, userId) {
+    // Delete tugas by admin
+    async deleteTugasByAdmin(id) {
         try {
-            const response = await api.put(`/admin-tugas/${tugasId}/assign`, { user_id: userId })
+            const response = await api.delete(`/admin-tugas/${id}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Delete tugas
-    async deleteTugas(tugasId) {
+    // Create tugas by admin
+    async createTugasByAdmin(tugasData) {
         try {
-            const response = await api.delete(`/admin-tugas/${tugasId}`)
+            const response = await api.post('/admin-tugas', tugasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

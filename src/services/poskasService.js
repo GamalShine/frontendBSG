@@ -1,10 +1,11 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const poskasService = {
     // Get all poskas
     async getPoskas(params = {}) {
         try {
-            const response = await api.get('/keuangan-poskas', { params })
+            const response = await api.get(API_ENDPOINTS.POSKAS.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -14,7 +15,7 @@ export const poskasService = {
     // Get poskas by ID
     async getPoskasById(id) {
         try {
-            const response = await api.get(`/keuangan-poskas/${id}`)
+            const response = await api.get(API_ENDPOINTS.POSKAS.BY_ID(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -24,7 +25,7 @@ export const poskasService = {
     // Create new poskas
     async createPoskas(poskasData) {
         try {
-            const response = await api.post('/keuangan-poskas', poskasData)
+            const response = await api.post(API_ENDPOINTS.POSKAS.LIST, poskasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -34,7 +35,7 @@ export const poskasService = {
     // Update poskas
     async updatePoskas(id, poskasData) {
         try {
-            const response = await api.put(`/keuangan-poskas/${id}`, poskasData)
+            const response = await api.put(API_ENDPOINTS.POSKAS.UPDATE(id), poskasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -44,7 +45,7 @@ export const poskasService = {
     // Delete poskas
     async deletePoskas(id) {
         try {
-            const response = await api.delete(`/keuangan-poskas/${id}`)
+            const response = await api.delete(API_ENDPOINTS.POSKAS.DELETE(id))
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -54,7 +55,7 @@ export const poskasService = {
     // Get poskas by user
     async getPoskasByUser(userId, params = {}) {
         try {
-            const response = await api.get(`/keuangan-poskas/user/${userId}`, { params })
+            const response = await api.get(`${API_ENDPOINTS.POSKAS.LIST}/user/${userId}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -62,19 +63,12 @@ export const poskasService = {
     },
 
     // Upload poskas with images
-    async uploadPoskas(poskasData, images = []) {
+    async uploadPoskasWithImages(formData) {
         try {
-            const formData = new FormData()
-            formData.append('data', JSON.stringify(poskasData))
-
-            images.forEach((image, index) => {
-                formData.append(`images`, image)
-            })
-
-            const response = await api.post('/keuangan-poskas/upload', formData, {
+            const response = await api.post(API_ENDPOINTS.POSKAS.UPLOAD, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             })
             return response.data
         } catch (error) {
@@ -82,23 +76,21 @@ export const poskasService = {
         }
     },
 
-    // Create poskas with images (FormData)
-    async createPoskasWithImages(formData) {
+    // Create poskas with file upload
+    async createPoskasWithUpload(formData) {
         try {
-            const response = await api.post('/keuangan-poskas', formData, {
+            const response = await api.post(API_ENDPOINTS.POSKAS.LIST, formData, {
                 headers: {
-                    'Content-Type': 'multipart/form-data'
-                }
+                    'Content-Type': 'multipart/form-data',
+                },
             })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
-    }
-}
+    },
 
-export const ownerPoskasService = {
-    // Get all poskas for owner
+    // Owner specific endpoints
     async getOwnerPoskas(params = {}) {
         try {
             const response = await api.get('/owner/keuangan-poskas', { params })
@@ -108,7 +100,6 @@ export const ownerPoskasService = {
         }
     },
 
-    // Get poskas statistics for owner
     async getOwnerPoskasStats(params = {}) {
         try {
             const response = await api.get('/owner/keuangan-poskas/stats', { params })
@@ -118,11 +109,14 @@ export const ownerPoskasService = {
         }
     },
 
-    // Get poskas by date range
     async getOwnerPoskasByDateRange(startDate, endDate, params = {}) {
         try {
             const response = await api.get('/owner/keuangan-poskas/date-range', {
-                params: { startDate, endDate, ...params }
+                params: {
+                    startDate,
+                    endDate,
+                    ...params
+                }
             })
             return response.data
         } catch (error) {
@@ -130,8 +124,7 @@ export const ownerPoskasService = {
         }
     },
 
-    // Get poskas detail for owner
-    async getOwnerPoskaDetail(id) {
+    async getOwnerPoskasById(id) {
         try {
             const response = await api.get(`/owner/keuangan-poskas/${id}`)
             return response.data

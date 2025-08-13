@@ -1,10 +1,11 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const settingsService = {
     // Get all settings
     async getSettings() {
         try {
-            const response = await api.get('/settings')
+            const response = await api.get(API_ENDPOINTS.SETTINGS.LIST)
             return {
                 success: true,
                 data: response.data
@@ -21,7 +22,7 @@ export const settingsService = {
     // Update settings
     async updateSettings(settings) {
         try {
-            const response = await api.put('/settings', settings)
+            const response = await api.put(API_ENDPOINTS.SETTINGS.LIST, settings)
             return {
                 success: true,
                 data: response.data,
@@ -57,7 +58,7 @@ export const settingsService = {
     // Get specific setting
     async getSetting(key) {
         try {
-            const response = await api.get(`/settings/${key}`)
+            const response = await api.get(API_ENDPOINTS.SETTINGS.BY_ID(key))
             return {
                 success: true,
                 data: response.data
@@ -74,7 +75,7 @@ export const settingsService = {
     // Update specific setting
     async updateSetting(key, value) {
         try {
-            const response = await api.put(`/settings/${key}`, { value })
+            const response = await api.put(API_ENDPOINTS.SETTINGS.BY_ID(key), { value })
             return {
                 success: true,
                 data: response.data,

@@ -1,23 +1,30 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
+import { uploadService } from '../../services/uploadService';
 import { toast } from 'react-hot-toast';
-import { getEnvironmentConfig } from '../../config/environment';
 import { 
   ArrowLeft, 
-  Calendar, 
-  FileText, 
-  Save,
-  RefreshCw
+  Save, 
+  Upload, 
+  Image as ImageIcon,
+  Trash2,
+  Eye,
+  X,
+  Plus,
+  Download
 } from 'lucide-react';
+import LoadingSpinner from '../../components/UI/LoadingSpinner';
+import { API_CONFIG } from '../../config/constants';
 
 const PoskasEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const envConfig = getEnvironmentConfig();
+  const { user } = useAuth();
   
-  console.log('🔍 Environment config loaded:', envConfig);
-  console.log('🔍 BASE_URL:', envConfig.BASE_URL);
+  console.log('🔍 Environment config loaded:', API_CONFIG);
+  console.log('🔍 BASE_URL:', API_CONFIG.BASE_URL);
   
   const [formData, setFormData] = useState({
     tanggal_poskas: '',
@@ -151,7 +158,7 @@ const PoskasEdit = () => {
         console.log('🔍 Images field value:', poskas.images);
         
         // Parse existing images first
-        const parsedImages = parseImages(poskas.images);
+        const parsedImages = parseImagesString(poskas.images);
         console.log('🔍 Parsed images:', parsedImages);
         setExistingImages(parsedImages);
         
@@ -167,7 +174,7 @@ const PoskasEdit = () => {
         // Replace [IMG:id] placeholders with actual image tags for editor
         if (Array.isArray(parsedImages)) {
           console.log('🔍 Processing parsed images for editor:', parsedImages);
-          console.log('🔍 Environment config:', envConfig);
+          console.log('🔍 Environment config:', API_CONFIG);
           parsedImages.forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
@@ -179,14 +186,14 @@ const PoskasEdit = () => {
                 imageUrl = image.url;
               } else {
                 // Relative URL, add base URL
-                imageUrl = `${envConfig.BASE_URL}${image.url}`;
+                imageUrl = `${API_CONFIG.BASE_URL}${image.url}`;
               }
             }
             
             console.log(`🔍 Image ${index + 1}:`, {
               originalUrl: image.url,
               constructedUrl: imageUrl,
-              baseUrl: envConfig.BASE_URL,
+              baseUrl: API_CONFIG.BASE_URL,
               id: image.id
             });
             
@@ -241,54 +248,24 @@ const PoskasEdit = () => {
     }
   };
 
-  const parseImages = (imagesString) => {
-    console.log('🔍 parseImages called with:', imagesString);
-    
-    if (!imagesString) {
-      console.log('🔍 No images string provided');
-      return [];
-    }
+  // Parse images string to array
+  const parseImagesString = (imagesString) => {
+    if (!imagesString) return [];
     
     try {
-      let parsed;
+      console.log('🔍 Parsing images string:', imagesString);
+      let result = JSON.parse(imagesString);
       
-      if (typeof imagesString === 'string') {
-        // Try to parse JSON string
-        parsed = JSON.parse(imagesString);
-        console.log('🔍 Successfully parsed JSON string:', parsed);
-      } else if (Array.isArray(imagesString)) {
-        // Already an array
-        parsed = imagesString;
-        console.log('🔍 Images already an array:', parsed);
-      } else if (typeof imagesString === 'object') {
-        // Already an object, wrap in array
-        parsed = [imagesString];
-        console.log('🔍 Images wrapped in array:', parsed);
-      } else {
-        console.log('🔍 Unknown images format:', typeof imagesString);
-        return [];
+      if (!Array.isArray(result)) {
+        console.warn('⚠️ Images string is not an array, converting...');
+        result = [result];
       }
       
-      // Ensure it's an array and fix URLs
-      let result = Array.isArray(parsed) ? parsed : [parsed];
-      
-      // Check if result contains string instead of objects
-      if (result.length === 1 && typeof result[0] === 'string') {
-        console.log('🔍 Found string in array, parsing again:', result[0]);
-        try {
-          const reParsed = JSON.parse(result[0]);
-          result = Array.isArray(reParsed) ? reParsed : [reParsed];
-          console.log('🔍 Re-parsed result:', result);
-        } catch (reParseError) {
-          console.error('❌ Error re-parsing:', reParseError);
-          return [];
-        }
-      }
-      
-      // Fix URLs - replace old IP with localhost
+      // Fix URLs - replace old IP with current base URL
       result = result.map(image => {
         if (image.url && image.url.includes('192.168.0.116:3000')) {
-          const fixedUrl = image.url.replace('http://192.168.0.116:3000', 'http://localhost:3000');
+          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+          const fixedUrl = image.url.replace('http://192.168.0.116:3000', baseUrl);
           console.log(`🔍 Fixed URL: ${image.url} -> ${fixedUrl}`);
           return { ...image, url: fixedUrl };
         }
@@ -649,46 +626,33 @@ const PoskasEdit = () => {
         formData.append('images', image); // Use 'images' field name as expected by backend
         
         // Upload to server
-        const response = await fetch(`${envConfig.BASE_URL}/api/upload/poskas`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: formData
-        });
+        const response = await uploadService.uploadFile(formData);
         
-        if (response.ok) {
-          const result = await response.json();
-          console.log('🔍 Upload response:', result);
+        if (response.success && response.data && response.data.length > 0) {
+          const uploadedFile = response.data[0]; // Get first uploaded file
           
-          if (result.success && result.data && result.data.length > 0) {
-            const uploadedFile = result.data[0]; // Get first uploaded file
-            
-            // Use stored ID if available, otherwise generate new one
-            let imageId;
-            if (newImageIds[i]) {
-              imageId = newImageIds[i];
-              console.log(`🔍 Using stored ID for uploaded image ${i + 1}: ${imageId}`);
-            } else {
-              const timestamp = Date.now();
-              imageId = timestamp + Math.floor(Math.random() * 1000);
-              console.log(`🔍 Generated new ID for uploaded image ${i + 1}: ${imageId}`);
-            }
-            
-            uploadedImages.push({
-              uri: `file://temp/${imageId}.jpg`,
-              id: imageId,
-              name: `poskas_${imageId}.jpg`,
-              url: uploadedFile.url,
-              serverPath: uploadedFile.path
-            });
-            
-            console.log(`✅ Uploaded new image: ${image.name} -> ${uploadedFile.url} with ID: ${imageId}`);
+          // Use stored ID if available, otherwise generate new one
+          let imageId;
+          if (newImageIds[i]) {
+            imageId = newImageIds[i];
+            console.log(`🔍 Using stored ID for uploaded image ${i + 1}: ${imageId}`);
           } else {
-            console.error(`❌ Upload response invalid:`, result);
+            const timestamp = Date.now();
+            imageId = timestamp + Math.floor(Math.random() * 1000);
+            console.log(`🔍 Generated new ID for uploaded image ${i + 1}: ${imageId}`);
           }
+          
+          uploadedImages.push({
+            uri: `file://temp/${imageId}.jpg`,
+            id: imageId,
+            name: `poskas_${imageId}.jpg`,
+            url: uploadedFile.url,
+            serverPath: uploadedFile.path
+          });
+          
+          console.log(`✅ Uploaded new image: ${image.name} -> ${uploadedFile.url} with ID: ${imageId}`);
         } else {
-          console.error(`❌ Failed to upload image: ${image.name}`, response.status);
+          console.error(`❌ Upload response invalid:`, response);
         }
       } catch (error) {
         console.error(`❌ Error uploading image ${image.name}:`, error);
@@ -762,7 +726,7 @@ const PoskasEdit = () => {
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-8 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <LoadingSpinner className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
             <p className="text-gray-600">Memuat data...</p>
           </div>
         </div>
@@ -942,7 +906,7 @@ const PoskasEdit = () => {
                       imageUrl = image.url;
                     } else {
                       // Relative URL, add base URL
-                      imageUrl = `${envConfig.BASE_URL}${image.url}`;
+                      imageUrl = `${API_CONFIG.BASE_URL}${image.url}`;
                     }
                   }
                   
@@ -951,7 +915,7 @@ const PoskasEdit = () => {
                   console.log(`🔍 Existing image ${index + 1} display:`, {
                     originalUrl: image.url,
                     constructedUrl: imageUrl,
-                    baseUrl: envConfig.BASE_URL,
+                    baseUrl: API_CONFIG.BASE_URL,
                     imageData: image,
                     isUsedInEditor
                   });
@@ -1089,7 +1053,7 @@ const PoskasEdit = () => {
               className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <LoadingSpinner className="h-4 w-4" />
               ) : (
                 <Save className="h-4 w-4" />
               )}

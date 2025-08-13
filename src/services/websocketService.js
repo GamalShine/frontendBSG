@@ -1,4 +1,5 @@
 import { toast } from 'react-hot-toast'
+import { API_CONFIG } from '../config/constants'
 
 class WebSocketService {
     constructor() {
@@ -17,7 +18,7 @@ class WebSocketService {
         }
 
         this.userId = userId
-        const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000'
+        const wsUrl = API_CONFIG.getWsUrl()
 
         try {
             console.log('🔌 Attempting to connect to WebSocket:', wsUrl)
@@ -67,11 +68,7 @@ class WebSocketService {
             }
         } catch (error) {
             console.error('Error creating WebSocket connection:', error)
-            // Don't show error toast on initial connection failure
-            // Only show if we were previously connected
-            if (this.isConnected) {
-                toast.error('Gagal terhubung ke server real-time')
-            }
+            toast.error('Gagal membuat koneksi WebSocket')
         }
     }
 

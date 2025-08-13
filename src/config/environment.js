@@ -1,58 +1,39 @@
-// Environment Configuration
-const ENV_CONFIG = {
-    // Development Environment
-    development: {
-        BASE_URL: 'http://192.168.38.162:3000',
-        API_BASE_URL: 'http://192.168.38.162:3000/api',
-        FRONTEND_URL: 'http://localhost:5173',
-        UPLOAD_URLS: {
-            POSKAS_IMAGES: 'http://192.168.38.162:3000/uploads/images/poskas',
-            GENERAL_IMAGES: 'http://192.168.38.162:3000/uploads/images',
-            DOCUMENTS: 'http://192.168.38.162:3000/uploads/documents',
-        },
-    },
-
-    // Production Environment
-    production: {
-        BASE_URL: 'https://your-production-domain.com',
-        API_BASE_URL: 'https://your-production-domain.com/api',
-        FRONTEND_URL: 'https://your-production-domain.com',
-        UPLOAD_URLS: {
-            POSKAS_IMAGES: 'https://your-production-domain.com/uploads/images/poskas',
-            GENERAL_IMAGES: 'https://your-production-domain.com/uploads/images',
-            DOCUMENTS: 'https://your-production-domain.com/uploads/documents',
-        },
-    },
-
-    // Staging Environment
-    staging: {
-        BASE_URL: 'https://your-staging-domain.com',
-        API_BASE_URL: 'https://your-staging-domain.com/api',
-        FRONTEND_URL: 'https://your-staging-domain.com',
-        UPLOAD_URLS: {
-            POSKAS_IMAGES: 'https://your-staging-domain.com/uploads/images/poskas',
-            GENERAL_IMAGES: 'https://your-staging-domain.com/uploads/images',
-            DOCUMENTS: 'https://your-staging-domain.com/uploads/documents',
-        },
-    },
-};
+// Environment Configuration - Updated to use centralized config
+import { API_CONFIG, isDevelopment, isProduction } from './constants.js';
 
 // Get current environment
 const getCurrentEnvironment = () => {
-    if (import.meta.env.DEV) return 'development';
-    if (import.meta.env.PROD) return 'production';
+    if (isDevelopment()) return 'development';
+    if (isProduction()) return 'production';
     return 'development'; // Default fallback
 };
 
 // Get configuration for current environment
 export const getEnvironmentConfig = () => {
     const env = getCurrentEnvironment();
-    return ENV_CONFIG[env] || ENV_CONFIG.development;
+
+    // Use centralized config from constants.js
+    return {
+        BASE_URL: API_CONFIG.BASE_URL,
+        API_BASE_URL: API_CONFIG.BASE_URL,
+        FRONTEND_URL: API_CONFIG.FRONTEND_URL,
+        UPLOAD_URLS: {
+            POSKAS_IMAGES: `${API_CONFIG.BASE_URL.replace('/api', '')}/uploads/images/poskas`,
+            GENERAL_IMAGES: `${API_CONFIG.BASE_URL.replace('/api', '')}/uploads/images`,
+            DOCUMENTS: `${API_CONFIG.BASE_URL.replace('/api', '')}/uploads/documents`,
+        },
+    };
 };
 
-// Helper functions
-export const isDevelopment = () => getCurrentEnvironment() === 'development';
-export const isProduction = () => getCurrentEnvironment() === 'production';
-export const isStaging = () => getCurrentEnvironment() === 'staging';
+// Re-export from constants for backward compatibility
+export { isDevelopment, isProduction };
+
+// Environment detection helpers
+export const isDevelopmentEnv = () => isDevelopment();
+export const isProductionEnv = () => isProduction();
+export const isStagingEnv = () => import.meta.env.MODE === 'staging';
+
+// Get current environment name
+export const getCurrentEnv = () => getCurrentEnvironment();
 
 export default getEnvironmentConfig; 

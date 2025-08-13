@@ -5,14 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   define: {
-    'process.env.VITE_API_URL': JSON.stringify('http://localhost:3000'),
+    // Gunakan environment variable dengan fallback
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://192.168.38.223:3000'),
   },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_BASE_URL || 'http://192.168.38.223:3000',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
       },
     },
   },

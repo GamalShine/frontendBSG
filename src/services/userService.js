@@ -1,10 +1,11 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const userService = {
     // Get all users
     async getUsers(params = {}) {
         try {
-            const response = await api.get('/users', { params })
+            const response = await api.get(API_ENDPOINTS.USERS.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -14,7 +15,7 @@ export const userService = {
     // Get user by ID
     async getUserById(id) {
         try {
-            const response = await api.get(`/users/${id}`)
+            const response = await api.get(`${API_ENDPOINTS.USERS.LIST}/${id}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -24,17 +25,17 @@ export const userService = {
     // Get current user profile
     async getCurrentUser() {
         try {
-            const response = await api.get('/users/profile')
+            const response = await api.get(API_ENDPOINTS.USERS.PROFILE)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update current user profile
-    async updateCurrentUser(userData) {
+    // Update user profile
+    async updateProfile(userData) {
         try {
-            const response = await api.put('/users/update', userData)
+            const response = await api.put(API_ENDPOINTS.USERS.UPDATE, userData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -44,7 +45,7 @@ export const userService = {
     // Create new user
     async createUser(userData) {
         try {
-            const response = await api.post('/users', userData)
+            const response = await api.post(API_ENDPOINTS.USERS.LIST, userData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -54,7 +55,7 @@ export const userService = {
     // Update user
     async updateUser(id, userData) {
         try {
-            const response = await api.put(`/users/${id}`, userData)
+            const response = await api.put(`${API_ENDPOINTS.USERS.LIST}/${id}`, userData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -64,7 +65,7 @@ export const userService = {
     // Delete user
     async deleteUser(id) {
         try {
-            const response = await api.delete(`/users/${id}`)
+            const response = await api.delete(`${API_ENDPOINTS.USERS.LIST}/${id}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -74,7 +75,7 @@ export const userService = {
     // Get users by role
     async getUsersByRole(role, params = {}) {
         try {
-            const response = await api.get(`/users/role/${role}`, { params })
+            const response = await api.get(`${API_ENDPOINTS.USERS.LIST}/role/${role}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -84,36 +85,34 @@ export const userService = {
     // Get users by status
     async getUsersByStatus(status, params = {}) {
         try {
-            const response = await api.get(`/users/status/${status}`, { params })
+            const response = await api.get(`${API_ENDPOINTS.USERS.LIST}/status/${status}`, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update user status
-    async updateUserStatus(id, status) {
+    // Change user password
+    async changePassword(passwordData) {
         try {
-            const response = await api.put(`/users/${id}/status`, { status })
+            const response = await api.put('/users/change-password', passwordData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update user role
-    async updateUserRole(id, role) {
+    // Get user statistics
+    async getUserStats(params = {}) {
         try {
-            const response = await api.put(`/users/${id}/role`, { role })
+            const response = await api.get('/users/stats', { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
-    }
-}
+    },
 
-export const adminProfileService = {
-    // Get admin profile
+    // Admin specific endpoints
     async getAdminProfile() {
         try {
             const response = await api.get('/admin/profile')
@@ -123,17 +122,15 @@ export const adminProfileService = {
         }
     },
 
-    // Update admin profile
-    async updateAdminProfile(profileData) {
+    async updateAdminProfile(adminData) {
         try {
-            const response = await api.put('/admin/profile', profileData)
+            const response = await api.put('/admin/profile', adminData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Change admin password
     async changeAdminPassword(passwordData) {
         try {
             const response = await api.post('/admin/profile/change-password', passwordData)

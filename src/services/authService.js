@@ -1,4 +1,5 @@
 import api from './api'
+import { API_ENDPOINTS } from '../config/constants'
 
 export const authService = {
     // Check if user is authenticated
@@ -7,27 +8,20 @@ export const authService = {
         return !!token
     },
 
-    // Get stored user from localStorage
-    getStoredUser() {
-        const user = localStorage.getItem('user')
-        return user ? JSON.parse(user) : null
-    },
-
-    // Get current user from API
     async getCurrentUser() {
         try {
-            const response = await api.get('/auth/me')
-            // Backend returns: { success: true, data: userObject }
-            return response.data.data || response.data
+            const response = await api.get(API_ENDPOINTS.USERS.PROFILE)
+            return response.data
         } catch (error) {
-            throw error.response?.data || error.message
+            console.error('Error getting current user:', error)
+            throw error
         }
     },
 
     // Login
     async login(credentials) {
         try {
-            const response = await api.post('/auth/login', credentials)
+            const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials)
             console.log('🔐 Raw login response:', response)
 
             // Store token and user data
@@ -61,25 +55,22 @@ export const authService = {
     // Logout
     async logout() {
         try {
-            const response = await api.post('/auth/logout')
-            // Clear stored data
-            localStorage.removeItem('token')
-            localStorage.removeItem('user')
-            return response.data
+            await api.post(API_ENDPOINTS.AUTH.LOGOUT)
         } catch (error) {
-            // Clear stored data even if API call fails
+            console.error('Logout error:', error)
+        } finally {
             localStorage.removeItem('token')
             localStorage.removeItem('user')
-            throw error.response?.data || error.message
         }
     },
 
     // Register
     async register(userData) {
         try {
-            const response = await api.post('/auth/register', userData)
+            const response = await api.post(API_ENDPOINTS.AUTH.REGISTER, userData)
             return response.data
         } catch (error) {
+            console.error('Register error:', error)
             throw error.response?.data || error.message
         }
     },
@@ -87,10 +78,14 @@ export const authService = {
     // Refresh token
     async refreshToken() {
         try {
-            const response = await api.post('/auth/refresh')
+            const response = await api.post(API_ENDPOINTS.AUTH.REFRESH_TOKEN)
+            if (response.data && response.data.token) {
+                localStorage.setItem('token', response.data.token)
+            }
             return response.data
         } catch (error) {
-            throw error.response?.data || error.message
+            console.error('Token refresh error:', error)
+            throw error
         }
     },
 
