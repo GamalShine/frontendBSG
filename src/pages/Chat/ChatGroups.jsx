@@ -42,7 +42,7 @@ const ChatGroups = () => {
       setLoading(true)
       console.log('🔍 Loading groups for user:', user.id)
       
-      // Get user's groups
+      // Get user's groups using the correct endpoint
       const response = await chatGroupService.getUserGroups(user.id)
       console.log('🔍 Groups response:', response)
       

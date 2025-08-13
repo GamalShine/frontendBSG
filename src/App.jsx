@@ -14,7 +14,6 @@ import ChatPrivate from './pages/Chat/ChatPrivate'
 import ChatGroups from './pages/Chat/ChatGroups'
 import ChatGroupCreate from './pages/Chat/ChatGroupCreate'
 import ChatRoom from './pages/Chat/ChatRoom'
-import ChatDataViewer from './pages/Chat/ChatDataViewerWithReply'
 
 // Komplain Pages
 import KomplainList from './pages/Komplain/KomplainList'
@@ -195,14 +194,6 @@ const AppRoutes = () => {
           <ProtectedRoute requiredPermissions={['read']}>
             <Layout>
               <ChatRoom />
-            </Layout>
-          </ProtectedRoute>
-        } />
-
-        <Route path="/chat/data" element={
-          <ProtectedRoute requiredPermissions={['read']}>
-            <Layout>
-              <ChatDataViewer />
             </Layout>
           </ProtectedRoute>
         } />

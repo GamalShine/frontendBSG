@@ -192,7 +192,7 @@ export const MenuProvider = ({ children }) => {
       },
       {
         id: 'chat',
-        title: 'Chat',
+        title: 'CHAT',
         icon: 'MessageCircle',
         permissions: ['read'],
         children: [
@@ -206,12 +206,6 @@ export const MenuProvider = ({ children }) => {
             id: 'chat-groups',
             title: 'Chat Groups',
             path: '/chat/groups',
-            permissions: ['read']
-          },
-          {
-            id: 'chat-data',
-            title: 'Data Chat',
-            path: '/chat/data',
             permissions: ['read']
           }
         ]

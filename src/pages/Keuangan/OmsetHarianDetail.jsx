@@ -169,7 +169,7 @@ const OmsetHarianDetail = () => {
       console.log(`🔍 Looking for image with ID ${imageId}:`, image);
 
       if (image) {
-        console.log(`✅ Image found for ID ${imageId}:`, image.filename || image.name);
+        console.log(`✅ Image found for ID ${imageId}`);
         
         // Add text before image
         if (match.index > lastIndex) {
@@ -187,7 +187,7 @@ const OmsetHarianDetail = () => {
             imageUrl = image.url;
           } else {
             // Relative URL, add base URL
-            const baseUrl = 'http://192.168.38.223:3000';
+            const baseUrl = 'http://192.168.1.2:3000';
             imageUrl = `${baseUrl}${image.url}`;
           }
         }
@@ -206,7 +206,7 @@ const OmsetHarianDetail = () => {
       } else {
         // Image not found for ID
         console.log(`❌ Image not found for ID: ${imageId}`);
-        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id, name: img?.filename || img?.name })));
+        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id })));
       }
     }
 
@@ -231,7 +231,7 @@ const OmsetHarianDetail = () => {
         imageUrl = image.url;
       } else {
         // Relative URL, add base URL
-        const baseUrl = 'http://192.168.38.223:3000';
+        const baseUrl = 'http://192.168.0.116:3000';
         imageUrl = `${baseUrl}${image.url}`;
       }
     } else {
@@ -388,9 +388,6 @@ const OmsetHarianDetail = () => {
                           e.target.style.display = 'none';
                         }}
                       />
-                      <p className="text-sm text-gray-500 mt-2 italic">
-                        {part.image.filename || part.image.name || 'Gambar omset'}
-                      </p>
                     </button>
                   </div>
                 );
