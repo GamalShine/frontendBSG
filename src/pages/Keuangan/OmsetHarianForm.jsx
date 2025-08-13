@@ -38,6 +38,55 @@ const OmsetHarianForm = () => {
     }
   }, [id]);
 
+  // Update editor content when formData changes
+  useEffect(() => {
+    if (editorRef.current && formData.isi_omset && isEditMode) {
+      console.log('🔍 Setting editor content:', formData.isi_omset);
+      
+      // Small delay to ensure CSS is applied
+      setTimeout(() => {
+        editorRef.current.innerHTML = formData.isi_omset;
+        
+        // Check if images are present in the editor
+        const imagesInEditor = editorRef.current.querySelectorAll('img');
+        console.log('🔍 Images found in editor after setting content:', imagesInEditor.length);
+        imagesInEditor.forEach((img, index) => {
+          console.log(`🔍 Image ${index + 1} in editor:`, {
+            src: img.src,
+            dataImageId: img.getAttribute('data-image-id'),
+            className: img.className,
+            width: img.width,
+            height: img.height,
+            display: img.style.display,
+            visibility: img.style.visibility
+          });
+          
+          // Add error handling for image loading
+          img.onerror = () => {
+            console.error(`❌ Failed to load image ${index + 1}:`, img.src);
+            // Show error placeholder
+            img.style.border = '2px solid red';
+            img.style.backgroundColor = '#fee';
+            img.alt = 'Gambar gagal dimuat';
+          };
+          
+          img.onload = () => {
+            console.log(`✅ Successfully loaded image ${index + 1}:`, img.src);
+            // Ensure image is visible
+            img.style.display = 'block';
+            img.style.visibility = 'visible';
+          };
+          
+          // Force image to be visible
+          img.style.display = 'block';
+          img.style.visibility = 'visible';
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+        });
+      }, 200); // Increased delay to ensure everything is ready
+    }
+  }, [formData.isi_omset, isEditMode]);
+
   // Add CSS for editor
   useEffect(() => {
     const style = document.createElement('style');
@@ -94,7 +143,7 @@ const OmsetHarianForm = () => {
                 uri: img.uri || `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: img.name || `omset_${img.id}.jpg`,
-                url: img.url || `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+                url: img.url || `http://192.168.0.116:3000/uploads/omset-harian/temp_${img.id}.jpg`,
                 serverPath: img.serverPath || `uploads/omset-harian/temp_${img.id}.jpg`
               }));
             }
@@ -104,11 +153,61 @@ const OmsetHarianForm = () => {
           }
         }
         
+        // Convert text with [IMG:id] placeholders to HTML for editor
+        let editorContent = omsetData.isi_omset || '';
+        console.log('🔍 Original editor content:', editorContent);
+        
+        // Replace [IMG:id] placeholders with actual image tags for editor
+        if (Array.isArray(processedImages)) {
+          console.log('🔍 Processing parsed images for editor:', processedImages);
+          processedImages.forEach((image, index) => {
+            console.log(`🔍 Processing image ${index + 1}:`, image);
+            
+            // Construct the correct image URL
+            let imageUrl = '';
+            if (image.url) {
+              if (image.url.startsWith('http')) {
+                // Already absolute URL
+                imageUrl = image.url;
+              } else {
+                // Relative URL, add base URL
+                imageUrl = `http://192.168.0.116:3000${image.url}`;
+              }
+            }
+            
+            console.log(`🔍 Image ${index + 1}:`, {
+              originalUrl: image.url,
+              constructedUrl: imageUrl,
+              id: image.id
+            });
+            
+            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
+            const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
+            
+            // Check if this placeholder exists in content
+            const matches = editorContent.match(placeholderRegex);
+            console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
+            
+            if (matches) {
+              editorContent = editorContent.replace(placeholderRegex, imageHtmlTag);
+              console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
+            } else {
+              console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
+            }
+          });
+        }
+        
+        // Convert line breaks to <br> tags for editor
+        editorContent = editorContent.replace(/\n/g, '<br>');
+        console.log('🔍 Final editor content:', editorContent);
+        
         setFormData({
-          tanggal_omset: omsetData.tanggal_omset,
-          isi_omset: omsetData.isi_omset,
+          tanggal_omset: omsetData.tanggal_omset ? new Date(omsetData.tanggal_omset).toISOString().split('T')[0] : '',
+          isi_omset: editorContent,
           images: processedImages
         });
+        
+        console.log('🔍 Set form data with tanggal_omset:', omsetData.tanggal_omset ? new Date(omsetData.tanggal_omset).toISOString().split('T')[0] : '');
       } else {
         toast.error('Gagal memuat data omset harian');
         navigate('/keuangan/omset-harian');
@@ -195,14 +294,32 @@ const OmsetHarianForm = () => {
     const content = editorRef.current.innerHTML;
     if (!content || content.trim() === '') return '';
     
-    let processedContent = content;
-    const imgRegex = /<img[^>]*data-image-id="([^"]*)"[^>]*>/g;
-    let imgMatch;
+    console.log('🔍 Debug: Getting editor content:', content);
     
-    while ((imgMatch = imgRegex.exec(content)) !== null) {
-      const imageId = imgMatch[1];
-      const placeholder = `[IMG:${imageId}]`;
+    let processedContent = content;
+    
+    // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
+    const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
+    processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
+      console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
+      return `[IMG:${imageId}]`;
+    });
+    
+    // Then, replace base64 images with [IMG:id] placeholders
+    const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
+    let imgMatch;
+    let imgIndex = 0;
+    
+    while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
+      // Generate new ID for base64 images
+      const timestamp = Date.now();
+      const imgId = timestamp + Math.floor(Math.random() * 1000);
+      console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
+      
+      const placeholder = `[IMG:${imgId}]`;
       processedContent = processedContent.replace(imgMatch[0], placeholder);
+      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
+      imgIndex++;
     }
     
     // Remove any remaining HTML tags but keep line breaks
@@ -219,6 +336,7 @@ const OmsetHarianForm = () => {
       .replace(/&#39;/g, "'") // Convert &#39; to '
       .trim();
     
+    console.log('🔍 Debug: Processed content:', processedContent);
     return processedContent;
   };
 
@@ -244,37 +362,78 @@ const OmsetHarianForm = () => {
     setIsSubmitting(true);
 
     try {
-      // Upload images to server first if there are pasted images
-      const uploadedFiles = await uploadImagesToServer(selectedImages);
+      let imagesWithServerUrls = [];
       
-      // Update images array with server URLs
-      const imagesWithServerUrls = selectedImages.map((img, index) => {
-        const uploadedFile = uploadedFiles[index];
+      if (isEditMode) {
+        // In edit mode, preserve existing images
+        console.log('🔍 Debug: Edit mode - preserving existing images');
+        imagesWithServerUrls = formData.images || [];
         
-        if (uploadedFile) {
-          return {
-            uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
-            id: img.id,
-            name: `omset_${img.id}.jpg`,
-            url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
-            serverPath: uploadedFile.url // Path dari server
-          };
-        } else {
-          return {
-            uri: `file://temp/${img.id}.jpg`,
-            id: img.id,
-            name: `omset_${img.id}.jpg`,
-            url: `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
-            serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
-          };
+        // Upload new images if any
+        if (selectedImages.length > 0) {
+          console.log('🔍 Debug: Uploading new images in edit mode');
+          const uploadedFiles = await uploadImagesToServer(selectedImages);
+          
+          // Add new uploaded images to existing ones
+          const newImages = selectedImages.map((img, index) => {
+            const uploadedFile = uploadedFiles[index];
+            
+            if (uploadedFile) {
+              return {
+                uri: `file://temp/${img.id}.jpg`,
+                id: img.id,
+                name: `omset_${img.id}.jpg`,
+                url: `http://192.168.0.116:3000${uploadedFile.url}`,
+                serverPath: uploadedFile.url
+              };
+            } else {
+              return {
+                uri: `file://temp/${img.id}.jpg`,
+                id: img.id,
+                name: `omset_${img.id}.jpg`,
+                url: `http://192.168.0.116:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+                serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
+              };
+            }
+          });
+          
+          imagesWithServerUrls = [...imagesWithServerUrls, ...newImages];
         }
-      });
+      } else {
+        // In create mode, upload all selected images
+        console.log('🔍 Debug: Create mode - uploading all images');
+        const uploadedFiles = await uploadImagesToServer(selectedImages);
+        
+        imagesWithServerUrls = selectedImages.map((img, index) => {
+          const uploadedFile = uploadedFiles[index];
+          
+          if (uploadedFile) {
+            return {
+              uri: `file://temp/${img.id}.jpg`,
+              id: img.id,
+              name: `omset_${img.id}.jpg`,
+              url: `http://192.168.0.116:3000${uploadedFile.url}`,
+              serverPath: uploadedFile.url
+            };
+          } else {
+            return {
+              uri: `file://temp/${img.id}.jpg`,
+              id: img.id,
+              name: `omset_${img.id}.jpg`,
+              url: `http://192.168.0.116:3000/uploads/omset-harian/temp_${img.id}.jpg`,
+              serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
+            };
+          }
+        });
+      }
       
       const submitData = {
         tanggal_omset: formData.tanggal_omset,
         isi_omset: editorContent,
         images: imagesWithServerUrls
       };
+      
+      console.log('🔍 Debug: Submit data:', submitData);
       
       if (isEditMode) {
         await omsetHarianService.updateOmsetHarian(id, submitData);
@@ -391,12 +550,19 @@ const OmsetHarianForm = () => {
               type="date"
               name="tanggal_omset"
               value={formData.tanggal_omset}
-              onChange={handleInputChange}
+              onChange={isEditMode ? () => {} : handleInputChange}
+              readOnly={isEditMode}
+              disabled={isEditMode}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                isEditMode ? 'bg-gray-50 text-gray-600 cursor-not-allowed' : ''
+              }`}
             />
             <p className="text-sm text-gray-500 mt-2">
-              Pilih tanggal untuk omset harian ini
+              {isEditMode 
+                ? 'Tanggal tidak dapat diubah karena sudah terdaftar saat pembuatan laporan'
+                : 'Pilih tanggal untuk omset harian ini'
+              }
             </p>
           </div>
 

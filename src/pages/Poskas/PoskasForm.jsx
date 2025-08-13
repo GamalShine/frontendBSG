@@ -4,11 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, FileText, RefreshCw, Save } from 'lucide-react';
+import { getEnvironmentConfig } from '../../config/environment';
 
 const PoskasForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const envConfig = getEnvironmentConfig();
   const isEditMode = Boolean(id);
   
   // Add CSS for editor images
@@ -489,7 +491,7 @@ const PoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `http://192.168.1.2:3000${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
+              url: `${envConfig.BASE_URL}${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
               serverPath: uploadedFile.path // Path dari server
             };
           } else {
@@ -498,7 +500,7 @@ const PoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `http://192.168.1.2:3000/uploads/poskas/temp_${img.id}.jpg`,
+              url: `${envConfig.BASE_URL}/uploads/poskas/temp_${img.id}.jpg`,
               serverPath: `poskas/temp_${img.id}.jpg`
             };
           }

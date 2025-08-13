@@ -26,6 +26,7 @@ const PoskasList = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [selectedItems, setSelectedItems] = useState([]) // State untuk selected items
   const [stats, setStats] = useState({
     totalPoskas: 0,
     totalThisMonth: 0,
@@ -216,6 +217,49 @@ const PoskasList = () => {
     }
   }
 
+  // Handle checkbox selection
+  const handleCheckboxChange = (id) => {
+    setSelectedItems(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(itemId => itemId !== id)
+      } else {
+        return [...prev, id]
+      }
+    })
+  }
+
+  // Handle select all checkbox
+  const handleSelectAll = () => {
+    if (selectedItems.length === poskas.length) {
+      setSelectedItems([])
+    } else {
+      setSelectedItems(poskas.map(item => item.id))
+    }
+  }
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) {
+      toast.error('Pilih item yang akan dihapus')
+      return
+    }
+
+    if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedItems.length} laporan pos kas yang dipilih?`)) {
+      try {
+        const deletePromises = selectedItems.map(id => poskasService.deletePoskas(id))
+        await Promise.all(deletePromises)
+        
+        toast.success(`${selectedItems.length} laporan pos kas berhasil dihapus`)
+        setSelectedItems([])
+        loadPoskas()
+        loadStats()
+      } catch (error) {
+        console.error('❌ Error bulk deleting poskas:', error)
+        toast.error('Gagal menghapus beberapa laporan pos kas')
+      }
+    }
+  }
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -328,7 +372,23 @@ const PoskasList = () => {
       {/* Data Table */}
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Daftar Pos Kas</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">Daftar Pos Kas</h2>
+            {selectedItems.length > 0 && (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  {selectedItems.length} item dipilih
+                </span>
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span>Hapus ({selectedItems.length})</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -356,6 +416,14 @@ const PoskasList = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.length === poskas.length && poskas.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tanggal
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -372,6 +440,14 @@ const PoskasList = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {poskas.map((poskasItem) => (
                     <tr key={poskasItem.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(poskasItem.id)}
+                          onChange={() => handleCheckboxChange(poskasItem.id)}
+                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        />
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(poskasItem.tanggal_poskas)}
                       </td>

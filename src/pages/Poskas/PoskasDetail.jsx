@@ -4,11 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, User, Clock, FileText, Eye, RefreshCw, Edit, Trash2, Info } from 'lucide-react';
+import { getEnvironmentConfig } from '../../config/environment';
 
 const PoskasDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const envConfig = getEnvironmentConfig();
   
   const [poskasData, setPoskasData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ const PoskasDetail = () => {
       console.log(`🔍 Looking for image with ID ${imageId}:`, image);
 
       if (image) {
-        console.log(`✅ Image found for ID ${imageId}:`, image.name);
+        console.log(`✅ Image found for ID ${imageId}`);
         
         // Add text before image
         if (match.index > lastIndex) {
@@ -160,7 +162,18 @@ const PoskasDetail = () => {
           image: {
             ...image,
             // Use server URL if available, otherwise fallback to local URI
-            displayUri: image.url || image.uri || '',
+            displayUri: (() => {
+              if (image.url) {
+                if (image.url.startsWith('http')) {
+                  // Already absolute URL
+                  return image.url;
+                } else {
+                  // Relative URL, add base URL
+                  return `${envConfig.BASE_URL}${image.url}`;
+                }
+              }
+              return image.uri || '';
+            })(),
             fallbackUri: image.uri || image.url || '',
           },
         });
@@ -169,7 +182,7 @@ const PoskasDetail = () => {
       } else {
         // Image not found for ID
         console.log(`❌ Image not found for ID: ${imageId}`);
-        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id, name: img?.name })));
+        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id })));
       }
     }
 
@@ -341,7 +354,7 @@ const PoskasDetail = () => {
                           >
                             <img
                               src={part.image.displayUri || part.image.fallbackUri}
-                              alt={part.image.name || 'Gambar POSKAS'}
+                              alt="Gambar POSKAS"
                               className="h-auto max-w-full rounded"
                               style={{ 
                                 maxHeight: '400px',
