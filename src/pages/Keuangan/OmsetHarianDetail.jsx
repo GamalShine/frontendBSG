@@ -38,8 +38,14 @@ const OmsetHarianDetail = () => {
   // Process images and content when omsetData changes
   useEffect(() => {
     if (omsetData) {
+      console.log('🔍 🔍 🔍 OMSET DATA LOADED:', omsetData);
+      console.log('🔍 🔍 🔍 Images field:', omsetData.images);
+      console.log('🔍 🔍 🔍 Images field type:', typeof omsetData.images);
+      console.log('🔍 🔍 🔍 Environment config:', envConfig);
+      console.log('🔍 🔍 🔍 BASE_URL:', envConfig.BASE_URL);
+      
       const processedImages = processImages(omsetData.images);
-      console.log('🔍 Final processed images:', processedImages);
+      console.log('🔍 🔍 🔍 Final processed images:', processedImages);
       
       const parts = renderContentWithImages(
         omsetData.isi_omset,
@@ -52,17 +58,24 @@ const OmsetHarianDetail = () => {
 
   const loadOmsetHarian = async () => {
     try {
+      console.log('🔍 🔍 🔍 Loading omset harian with ID:', id);
       setLoading(true);
       const response = await omsetHarianService.getOmsetHarianById(id);
       
+      console.log('🔍 🔍 🔍 API Response:', response);
+      console.log('🔍 🔍 🔍 Response success:', response.success);
+      console.log('🔍 🔍 🔍 Response data:', response.data);
+      
       if (response.success && response.data) {
+        console.log('🔍 🔍 🔍 Setting omset data:', response.data);
         setOmsetData(response.data);
       } else {
+        console.error('❌ ❌ ❌ API response indicates failure:', response);
         toast.error('Gagal memuat data omset harian');
         navigate('/keuangan/omset-harian');
       }
     } catch (error) {
-      console.error('Error loading omset harian:', error);
+      console.error('❌ ❌ ❌ Error loading omset harian:', error);
       toast.error('Gagal memuat data omset harian');
       navigate('/keuangan/omset-harian');
     } finally {
@@ -114,16 +127,73 @@ const OmsetHarianDetail = () => {
 
   // Helper function to safely process images
   const processImages = (images) => {
-    if (!images) return [];
+    console.log('🔍 🔍 🔍 processImages called with:', images);
+    console.log('🔍 🔍 🔍 Images type:', typeof images);
+    console.log('🔍 🔍 🔍 Images is null/undefined:', images === null || images === undefined);
+    
+    if (!images) {
+      console.log('🔍 🔍 🔍 No images data, returning empty array');
+      return [];
+    }
+    
+    let processedImages = [];
+    
     if (typeof images === 'string') {
+      console.log('🔍 🔍 🔍 Images is string, attempting to parse JSON');
       try {
-        return JSON.parse(images);
+        processedImages = JSON.parse(images);
+        console.log('🔍 🔍 🔍 Successfully parsed images string:', processedImages);
       } catch (error) {
-        console.error('Error parsing images JSON:', error);
+        console.error('❌ ❌ ❌ Error parsing images JSON:', error);
+        console.error('❌ ❌ ❌ Raw string content:', images);
+        // If JSON parsing fails, try to treat it as a single image URL
+        if (images.trim()) {
+          processedImages = [{ url: images, name: images.split('/').pop() || 'image' }];
+          console.log('🔍 🔍 🔍 Treated string as single image URL:', processedImages);
+        } else {
+          console.log('🔍 🔍 🔍 Empty string, returning empty array');
+          return [];
+        }
+      }
+    } else if (Array.isArray(images)) {
+      console.log('🔍 🔍 🔍 Images is already an array');
+      processedImages = images;
+    } else if (typeof images === 'object' && images !== null) {
+      // If it's a single object, wrap it in an array
+      console.log('🔍 🔍 🔍 Images is single object, wrapping in array');
+      processedImages = [images];
+    } else {
+      console.warn('⚠️ ⚠️ ⚠️ Unknown images format:', typeof images);
+      return [];
+    }
+    
+    // Ensure it's always an array
+    if (!Array.isArray(processedImages)) {
+      if (processedImages && typeof processedImages === 'object' && processedImages !== null) {
+        processedImages = [processedImages];
+        console.log('🔍 🔍 🔍 Converted single object to array');
+      } else {
+        console.warn('⚠️ ⚠️ ⚠️ Invalid images data, returning empty array');
         return [];
       }
     }
-    return Array.isArray(images) ? images : [];
+    
+    console.log('🔍 🔍 🔍 Final processed images array:', processedImages);
+    console.log('🔍 🔍 🔍 Array length:', processedImages.length);
+    
+    // Log each image details
+    processedImages.forEach((img, index) => {
+      console.log(`🔍 🔍 🔍 Image ${index + 1}:`, {
+        id: img?.id,
+        url: img?.url,
+        uri: img?.uri,
+        name: img?.name,
+        filename: img?.filename,
+        serverPath: img?.serverPath
+      });
+    });
+    
+    return processedImages;
   };
 
   const parseFormattedText = (text) => {
@@ -136,36 +206,62 @@ const OmsetHarianDetail = () => {
 
   // Render content with images inline
   const renderContentWithImages = (content, images = []) => {
-    console.log('🔍 renderContentWithImages called with:');
-    console.log('🔍 content:', content);
-    console.log('🔍 images:', images);
+    console.log('🔍 🔍 🔍 renderContentWithImages called with:');
+    console.log('🔍 🔍 🔍 content:', content);
+    console.log('🔍 🔍 🔍 content type:', typeof content);
+    console.log('🔍 🔍 🔍 content length:', content ? content.length : 0);
+    console.log('🔍 🔍 🔍 images:', images);
+    console.log('🔍 🔍 🔍 images type:', typeof images);
+    console.log('🔍 🔍 🔍 images length:', Array.isArray(images) ? images.length : 'not array');
     
-    if (!content) return null;
+    if (!content) {
+      console.log('🔍 🔍 🔍 No content, returning null');
+      return null;
+    }
 
     // Ensure images is an array and process if it's a string
     let imagesArray = [];
     if (typeof images === 'string') {
+      console.log('🔍 🔍 🔍 Images is string in renderContentWithImages, attempting to parse');
       try {
         imagesArray = JSON.parse(images);
+        console.log('🔍 🔍 🔍 Successfully parsed images string in renderContentWithImages:', imagesArray);
       } catch (error) {
-        console.error('❌ Error parsing images in renderContentWithImages:', error);
-        imagesArray = [];
+        console.error('❌ ❌ ❌ Error parsing images in renderContentWithImages:', error);
+        // If JSON parsing fails, try to treat it as a single image URL
+        if (images.trim()) {
+          imagesArray = [{ url: images, name: images.split('/').pop() || 'image' }];
+          console.log('🔍 🔍 🔍 Treated string as single image URL in renderContentWithImages:', imagesArray);
+        } else {
+          imagesArray = [];
+        }
       }
     } else if (Array.isArray(images)) {
       imagesArray = images;
+      console.log('🔍 🔍 🔍 Images is already an array in renderContentWithImages');
+    } else if (typeof images === 'object' && images !== null) {
+      // If it's a single object, wrap it in an array
+      imagesArray = [images];
+      console.log('🔍 🔍 🔍 Single object wrapped in array in renderContentWithImages');
+    } else {
+      console.warn('⚠️ ⚠️ ⚠️ Unknown images format in renderContentWithImages:', typeof images);
+      imagesArray = [];
     }
-    console.log('🔍 imagesArray:', imagesArray);
+    console.log('🔍 🔍 🔍 Final imagesArray:', imagesArray);
+    console.log('🔍 🔍 🔍 imagesArray length:', imagesArray.length);
 
     const parts = [];
     let lastIndex = 0;
 
-    // Find all image tags
-    const imageRegex = /\[IMG:(\d+)\]/g;
-    let match;
+    // First, try to find [IMG:id] placeholders (for backward compatibility)
+    const imagePlaceholderRegex = /\[IMG:(\d+)\]/g;
+    let placeholderMatch;
+    let hasPlaceholders = false;
 
-    while ((match = imageRegex.exec(content)) !== null) {
-      const imageId = parseInt(match[1]);
-      console.log(`🔍 Found image tag: [IMG:${imageId}]`);
+    while ((placeholderMatch = imagePlaceholderRegex.exec(content)) !== null) {
+      hasPlaceholders = true;
+      const imageId = parseInt(placeholderMatch[1]);
+      console.log(`🔍 Found image placeholder: [IMG:${imageId}]`);
       
       const image = imagesArray.find((img) => img && img.id === imageId);
       console.log(`🔍 Looking for image with ID ${imageId}:`, image);
@@ -174,55 +270,130 @@ const OmsetHarianDetail = () => {
         console.log(`✅ Image found for ID ${imageId}`);
         
         // Add text before image
-        if (match.index > lastIndex) {
+        if (placeholderMatch.index > lastIndex) {
           parts.push({
             type: 'text',
-            content: parseFormattedText(content.slice(lastIndex, match.index)),
+            content: parseFormattedText(content.slice(lastIndex, placeholderMatch.index)),
           });
         }
 
-        // Add image with complete server URL - handle both relative and absolute URLs
+        // Add image with complete server URL
         let imageUrl = '';
         if (image.url) {
+          console.log(`🔍 🔍 🔍 Processing image URL for ID ${imageId}:`, image.url);
           if (image.url.startsWith('http')) {
             // Already absolute URL
             imageUrl = image.url;
+            console.log(`🔍 🔍 🔍 Image ${imageId} already has absolute URL:`, imageUrl);
           } else {
             // Relative URL, add base URL
-            const imageBaseUrl = envConfig.BASE_URL;
-            imageUrl = `${imageBaseUrl}${image.url}`;
-            const baseUrl = 'http://192.168.1.2:3000';
-            imageUrl = `${baseUrl}${image.url}`;
+            const baseUrl = envConfig.BASE_URL.replace('/api', '');
+            imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
+            console.log(`🔍 🔍 🔍 Image ${imageId} constructed URL:`, {
+              originalUrl: image.url,
+              baseUrl: baseUrl,
+              finalUrl: imageUrl
+            });
           }
+        } else {
+          console.log(`🔍 🔍 🔍 Image ${imageId} has no URL field`);
         }
+        
+        console.log(`🔍 🔍 🔍 Final image URL for ID ${imageId}:`, imageUrl);
         
         parts.push({
           type: 'image',
           image: {
             ...image,
-            // Use complete server URL
             displayUri: imageUrl,
             fallbackUri: imageUrl,
           },
         });
 
-        lastIndex = match.index + match[0].length;
+        lastIndex = placeholderMatch.index + placeholderMatch[0].length;
       } else {
-        // Image not found for ID
         console.log(`❌ Image not found for ID: ${imageId}`);
         console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id })));
       }
     }
 
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push({
-        type: 'text',
-        content: parseFormattedText(content.slice(lastIndex)),
+    // If no placeholders found, try to find HTML img tags
+    if (!hasPlaceholders) {
+      console.log('🔍 🔍 🔍 No [IMG:id] placeholders found, looking for HTML img tags');
+      
+      // Create a temporary div to parse HTML content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = content;
+      
+      const imgTags = tempDiv.querySelectorAll('img');
+      console.log(`🔍 🔍 🔍 Found ${imgTags.length} HTML img tags`);
+      
+      imgTags.forEach((imgTag, index) => {
+        const imgSrc = imgTag.getAttribute('src');
+        const imgAlt = imgTag.getAttribute('alt') || `Gambar ${index + 1}`;
+        const dataImageId = imgTag.getAttribute('data-image-id');
+        
+        console.log(`🔍 🔍 🔍 HTML img tag ${index + 1}:`, { 
+          src: imgSrc, 
+          alt: imgAlt, 
+          dataImageId,
+          outerHTML: imgTag.outerHTML 
+        });
+        
+        if (imgSrc) {
+          // Add text before image if any
+          const imgIndex = content.indexOf(imgTag.outerHTML);
+          console.log(`🔍 🔍 🔍 Image ${index + 1} found at index:`, imgIndex);
+          
+          if (imgIndex > lastIndex) {
+            parts.push({
+              type: 'text',
+              content: parseFormattedText(content.slice(lastIndex, imgIndex)),
+            });
+          }
+          
+          // Add image
+          parts.push({
+            type: 'image',
+            image: {
+              id: dataImageId || index,
+              name: imgAlt,
+              url: imgSrc,
+              displayUri: imgSrc,
+              fallbackUri: imgSrc,
+            },
+          });
+          
+          lastIndex = imgIndex + imgTag.outerHTML.length;
+          console.log(`🔍 🔍 🔍 Updated lastIndex to:`, lastIndex);
+        }
       });
     }
 
-    console.log('🔍 Final parts:', parts);
+    // Add remaining text
+    if (lastIndex < content.length) {
+      const remainingText = content.slice(lastIndex);
+      console.log('🔍 🔍 🔍 Adding remaining text:', remainingText);
+      parts.push({
+        type: 'text',
+        content: parseFormattedText(remainingText),
+      });
+    }
+
+    console.log('🔍 🔍 🔍 Final parts array:', parts);
+    console.log('🔍 🔍 🔍 Parts count:', parts.length);
+    parts.forEach((part, index) => {
+      console.log(`🔍 🔍 🔍 Part ${index + 1}:`, {
+        type: part.type,
+        contentLength: part.type === 'text' ? part.content.length : 'N/A',
+        imageData: part.type === 'image' ? {
+          id: part.image.id,
+          url: part.image.url,
+          displayUri: part.image.displayUri
+        } : 'N/A'
+      });
+    });
+    
     return parts;
   };
 
@@ -235,13 +406,14 @@ const OmsetHarianDetail = () => {
         imageUrl = image.url;
       } else {
         // Relative URL, add base URL
-        const baseUrl = envConfig.BASE_URL;
-        imageUrl = `${baseUrl}${image.url}`;
+        const baseUrl = envConfig.BASE_URL.replace('/api', '');
+        imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
       }
     } else {
       imageUrl = image.displayUri || image.fallbackUri;
     }
     
+    console.log('🔍 Opening full screen image with URL:', imageUrl);
     setFullScreenImage(imageUrl);
     setShowFullScreenModal(true);
   };
@@ -389,7 +561,24 @@ const OmsetHarianDetail = () => {
                         style={{ maxHeight: '500px' }}
                         onError={(e) => {
                           console.error('❌ Image failed to load:', part.image.displayUri);
+                          console.error('❌ Image data:', part.image);
+                          // Show error placeholder
                           e.target.style.display = 'none';
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'p-8 text-center bg-red-50 border-2 border-red-200 rounded-lg';
+                          errorDiv.innerHTML = `
+                            <div class="text-red-600 mb-2">
+                              <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                              </svg>
+                            </div>
+                            <p class="text-red-800 font-medium">Gambar gagal dimuat</p>
+                            <p class="text-red-600 text-sm">URL: ${part.image.displayUri}</p>
+                          `;
+                          e.target.parentNode.appendChild(errorDiv);
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Image loaded successfully:', part.image.displayUri);
                         }}
                       />
                     </button>
@@ -411,6 +600,25 @@ const OmsetHarianDetail = () => {
               className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Kembali
+            </button>
+            
+            {/* Debug button for testing */}
+            <button
+              onClick={() => {
+                console.log('🔍 🔍 🔍 DEBUG BUTTON CLICKED');
+                console.log('🔍 🔍 🔍 Current omsetData:', omsetData);
+                console.log('🔍 🔍 🔍 Current contentParts:', contentParts);
+                if (omsetData) {
+                  console.log('🔍 🔍 🔍 Testing image processing...');
+                  const processedImages = processImages(omsetData.images);
+                  console.log('🔍 🔍 🔍 Test processed images:', processedImages);
+                  const testParts = renderContentWithImages(omsetData.isi_omset, processedImages);
+                  console.log('🔍 🔍 🔍 Test content parts:', testParts);
+                }
+              }}
+              className="px-6 py-3 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Debug Images
             </button>
           </div>
           <div className="flex space-x-4">

@@ -8,6 +8,17 @@ export const authService = {
         return !!token
     },
 
+    // Get stored user data
+    getStoredUser() {
+        try {
+            const userData = localStorage.getItem('user')
+            return userData ? JSON.parse(userData) : null
+        } catch (error) {
+            console.error('Error parsing stored user data:', error)
+            return null
+        }
+    },
+
     async getCurrentUser() {
         try {
             const response = await api.get(API_ENDPOINTS.USERS.PROFILE)
@@ -92,10 +103,32 @@ export const authService = {
     // Verify token
     async verifyToken() {
         try {
-            const response = await api.get('/auth/verify')
+            const response = await api.get(API_ENDPOINTS.AUTH.VERIFY_TOKEN)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
+        }
+    },
+
+    // Check if token is valid
+    async isTokenValid() {
+        try {
+            const token = localStorage.getItem('token')
+            if (!token) return false
+            
+            // Try to verify with backend first
+            try {
+                const response = await api.get(API_ENDPOINTS.AUTH.VERIFY_TOKEN)
+                return response.status === 200
+            } catch (error) {
+                console.warn('Token verification endpoint not available, using fallback validation')
+                // Fallback: check if token exists and has valid format
+                // Most JWT tokens are in format: header.payload.signature
+                return token.split('.').length === 3
+            }
+        } catch (error) {
+            console.error('Token validation error:', error)
+            return false
         }
     },
 

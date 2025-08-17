@@ -27,13 +27,23 @@ const PoskasDetail = () => {
   // Process images and content when poskasData changes
   useEffect(() => {
     if (poskasData) {
+      console.log('🔍 Processing poskasData:', poskasData);
+      console.log('🔍 Raw images data:', poskasData.images);
+      console.log('🔍 Images data type:', typeof poskasData.images);
+      console.log('🔍 Images data length:', poskasData.images?.length);
+      console.log('🔍 Images data constructor:', poskasData.images?.constructor?.name);
+      
       const processedImages = processImages(poskasData.images);
       console.log('🔍 Final processed images:', processedImages);
+      console.log('🔍 Processed images count:', processedImages.length);
       
       const parts = renderContentWithImages(
         poskasData.isi_poskas,
         processedImages
       );
+      
+      console.log('🔍 Final content parts:', parts);
+      console.log('🔍 Content parts count:', parts.length);
       
       setContentParts(parts);
     }
@@ -45,7 +55,12 @@ const PoskasDetail = () => {
       const response = await poskasService.getPoskasById(id);
 
       if (response.success) {
-        setPoskasData(response.data);
+        const poskasData = response.data;
+        console.log('🔍 Raw poskas data:', poskasData);
+        console.log('🔍 Raw images data:', poskasData.images);
+        console.log('🔍 Raw images type:', typeof poskasData.images);
+        
+        setPoskasData(poskasData);
       } else {
         toast.error('Data POSKAS tidak ditemukan');
         navigate('/poskas');
@@ -89,16 +104,102 @@ const PoskasDetail = () => {
 
   // Helper function to safely process images (sama seperti admin)
   const processImages = (images) => {
+    console.log('🔍 processImages called with:', images);
+    console.log('🔍 images type:', typeof images);
+    console.log('🔍 images isArray:', Array.isArray(images));
+    
     if (!images) return [];
-    if (typeof images === 'string') {
+    
+    let imagesArray = [];
+    
+    // If images is already an array, use it directly
+    if (Array.isArray(images)) {
+      imagesArray = images;
+      console.log('✅ Images is already an array, using directly');
+    } else if (typeof images === 'string') {
       try {
-        return JSON.parse(images);
+        // Clean the string first - remove extra quotes if they exist
+        let cleanImages = images.trim();
+        
+        // Remove extra quotes if the string is wrapped in quotes
+        if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
+          cleanImages = cleanImages.slice(1, -1);
+        }
+        
+        // Unescape the string
+        cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        
+        console.log('🔍 Original images string:', images);
+        console.log('🔍 Cleaned images string:', cleanImages);
+        
+        // Parse JSON
+        const parsed = JSON.parse(cleanImages);
+        console.log('🔍 Parsed result:', parsed);
+        console.log('🔍 Parsed type:', typeof parsed);
+        console.log('🔍 Parsed isArray:', Array.isArray(parsed));
+        
+        if (parsed && typeof parsed === 'object' && parsed !== null) {
+          if (Array.isArray(parsed)) {
+            imagesArray = parsed;
+            console.log('✅ Using parsed array directly');
+          } else {
+            // Single object, wrap in array
+            imagesArray = [parsed];
+            console.log('✅ Single object wrapped in array');
+          }
+        } else {
+          console.log('ℹ️ Parsed result is not an object, skipping:', parsed);
+          return [];
+        }
       } catch (error) {
-        console.error('Error parsing images JSON:', error);
+        console.error('❌ Error parsing JSON:', error);
         return [];
       }
+    } else if (images && typeof images === 'object' && images !== null) {
+      // Single object, wrap in array
+      imagesArray = [images];
+      console.log('✅ Single object wrapped in array');
+    } else {
+      console.log('ℹ️ Invalid images format:', typeof images);
+      return [];
     }
-    return Array.isArray(images) ? images : [];
+    
+    // Ensure imagesArray is actually an array
+    if (!Array.isArray(imagesArray)) {
+      console.error('❌ imagesArray is not an array:', imagesArray);
+      return [];
+    }
+    
+    console.log('🔍 Final images array:', imagesArray);
+    
+    // Fix old IP addresses in image URLs
+    return imagesArray.map(image => {
+      if (image && image.url) {
+        let fixedUrl = image.url;
+        
+        // Fix double http:// issue
+        if (fixedUrl.startsWith('http://http://')) {
+          fixedUrl = fixedUrl.replace('http://http://', 'http://');
+          console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${fixedUrl}`);
+        }
+        
+        // Fix old IP addresses
+        if (fixedUrl.includes('192.168.30.124:3000')) {
+          const baseUrl = envConfig.BASE_URL.replace('/api', '');
+          fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+          console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
+        } else if (fixedUrl.includes('192.168.30.124:3000')) {
+          const baseUrl = envConfig.BASE_URL.replace('/api', '');
+          fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+          console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
+        }
+        
+        const processedImg = { ...image, url: fixedUrl };
+        console.log('🔍 Processed image object:', processedImg);
+        return processedImg;
+      }
+      return image;
+    });
   };
 
   const parseFormattedText = (text) => {
@@ -114,35 +215,92 @@ const PoskasDetail = () => {
     console.log('🔍 renderContentWithImages called with:');
     console.log('🔍 content:', content);
     console.log('🔍 images:', images);
+    console.log('🔍 images type:', typeof images);
+    console.log('🔍 images isArray:', Array.isArray(images));
     
     if (!content) return null;
 
     // Ensure images is an array and process if it's a string
     let imagesArray = [];
-    if (typeof images === 'string') {
+    
+    // If images is already an array, use it directly
+    if (Array.isArray(images)) {
+      imagesArray = images;
+      console.log('🔍 Images is already an array in renderContentWithImages');
+    } else if (typeof images === 'string') {
       try {
-        imagesArray = JSON.parse(images);
+        // Clean the string first - remove extra quotes if they exist
+        let cleanImages = images.trim();
+        
+        // Remove extra quotes if the string is wrapped in quotes
+        if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
+          cleanImages = cleanImages.slice(1, -1);
+        }
+        
+        // Unescape the string
+        cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        
+        console.log('🔍 Original images string in renderContentWithImages:', images);
+        console.log('🔍 Cleaned images string in renderContentWithImages:', cleanImages);
+        
+        // Parse JSON
+        const parsed = JSON.parse(cleanImages);
+        console.log('🔍 Parsed result in renderContentWithImages:', parsed);
+        console.log('🔍 Parsed type in renderContentWithImages:', typeof parsed);
+        console.log('🔍 Parsed isArray in renderContentWithImages:', Array.isArray(parsed));
+        
+        if (parsed && typeof parsed === 'object' && parsed !== null) {
+          if (Array.isArray(parsed)) {
+            imagesArray = parsed;
+            console.log('✅ Using parsed array directly in renderContentWithImages');
+          } else {
+            // Single object, wrap in array
+            imagesArray = [parsed];
+            console.log('✅ Single object wrapped in array in renderContentWithImages');
+          }
+        } else {
+          console.log('ℹ️ Parsed result is not an object in renderContentWithImages:', parsed);
+          imagesArray = [];
+        }
       } catch (error) {
-        console.error('❌ Error parsing images in renderContentWithImages:', error);
+        console.error('❌ Error parsing JSON in renderContentWithImages:', error);
         imagesArray = [];
       }
-    } else if (Array.isArray(images)) {
-      imagesArray = images;
+    } else if (images && typeof images === 'object' && images !== null) {
+      // Single object, wrap in array
+      imagesArray = [images];
+      console.log('✅ Converted object to array in renderContentWithImages');
+    } else {
+      console.log('ℹ️ Invalid images format in renderContentWithImages:', typeof images);
+      imagesArray = [];
     }
-    console.log('🔍 imagesArray:', imagesArray);
+    
+    // Ensure imagesArray is actually an array
+    if (!Array.isArray(imagesArray)) {
+      console.error('❌ imagesArray is not an array in renderContentWithImages:', imagesArray);
+      imagesArray = [];
+    }
+    
+    console.log('🔍 Final imagesArray:', imagesArray);
 
     const parts = [];
     let lastIndex = 0;
 
     // Find all image tags
-    const imageRegex = /\[IMG:(\d+)\]/g;
+    const imageRegex = /\[IMG:(\d+(?:\.\d+)?)\]/g;
     let match;
 
     while ((match = imageRegex.exec(content)) !== null) {
-      const imageId = parseInt(match[1]);
+      const imageId = match[1];
       console.log(`🔍 Found image tag: [IMG:${imageId}]`);
       
-      const image = imagesArray.find((img) => img && img.id === imageId);
+      // Try to find image by ID (handle both integer and float IDs)
+      const image = imagesArray.find((img) => {
+        if (!img || !img.id) return false;
+        // Convert both to strings for comparison to handle float IDs
+        return String(img.id) === String(imageId);
+      });
+      
       console.log(`🔍 Looking for image with ID ${imageId}:`, image);
 
       if (image) {
@@ -157,24 +315,96 @@ const PoskasDetail = () => {
         }
 
         // Add image with server URL if available
+        const displayUri = (() => {
+          if (image.url) {
+            let imageUrl = image.url;
+            
+            // Fix double http:// issue
+            if (imageUrl.startsWith('http://http://')) {
+              imageUrl = imageUrl.replace('http://http://', 'http://');
+              console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${imageUrl}`);
+            }
+            
+            // Fix old IP addresses
+            if (imageUrl.includes('192.168.30.124:3000')) {
+              const baseUrl = envConfig.BASE_URL.replace('/api', '');
+              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+              console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
+            } else if (imageUrl.includes('192.168.30.124:3000')) {
+              const baseUrl = envConfig.BASE_URL.replace('/api', '');
+              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+              console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
+            }
+            
+            if (imageUrl.startsWith('http')) {
+              // Already absolute URL, but check if it has /api in wrong place
+              if (imageUrl.includes('/api/uploads/')) {
+                // Remove /api from upload URLs
+                imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
+                console.log(`🔍 Fixed /api in upload URL: ${image.url} -> ${imageUrl}`);
+              }
+              console.log(`🔍 Using absolute URL: ${imageUrl}`);
+              return imageUrl;
+            } else {
+              // Relative URL, add base URL without /api
+              const baseUrl = envConfig.BASE_URL.replace('/api', '');
+              const fullUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+              console.log(`🔍 Using relative URL with base: ${fullUrl}`);
+              return fullUrl;
+            }
+          }
+          console.log(`🔍 No URL found, using URI: ${image.uri || 'none'}`);
+          return image.uri || '';
+        })();
+
+        const fallbackUri = (() => {
+          if (image.uri) {
+            console.log(`🔍 Using URI as fallback: ${image.uri}`);
+            return image.uri;
+          }
+          if (image.url) {
+            let imageUrl = image.url;
+            
+            // Fix double http:// issue for fallback too
+            if (imageUrl.startsWith('http://http://')) {
+              imageUrl = imageUrl.replace('http://http://', 'http://');
+            }
+            
+            // Fix old IP addresses for fallback too
+            if (imageUrl.includes('192.168.30.124:3000')) {
+              const baseUrl = envConfig.BASE_URL.replace('/api', '');
+              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+            } else if (imageUrl.includes('192.168.30.124:3000')) {
+              const baseUrl = envConfig.BASE_URL.replace('/api', '');
+              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+            }
+            
+            // Check if it has /api in wrong place
+            if (imageUrl.includes('/api/uploads/')) {
+              // Remove /api from upload URLs
+              imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
+              console.log(`🔍 Fixed /api in fallback upload URL: ${image.url} -> ${imageUrl}`);
+            }
+            
+            console.log(`🔍 Using URL as fallback: ${imageUrl}`);
+            return imageUrl;
+          }
+          console.log(`🔍 No fallback URI available`);
+          return '';
+        })();
+
+        console.log(`🔍 Final image data for ID ${imageId}:`, {
+          displayUri,
+          fallbackUri,
+          originalImage: image
+        });
+
         parts.push({
           type: 'image',
           image: {
             ...image,
-            // Use server URL if available, otherwise fallback to local URI
-            displayUri: (() => {
-              if (image.url) {
-                if (image.url.startsWith('http')) {
-                  // Already absolute URL
-                  return image.url;
-                } else {
-                  // Relative URL, add base URL
-                  return `${envConfig.BASE_URL}${image.url}`;
-                }
-              }
-              return image.uri || '';
-            })(),
-            fallbackUri: image.uri || image.url || '',
+            displayUri,
+            fallbackUri,
           },
         });
 
@@ -183,6 +413,21 @@ const PoskasDetail = () => {
         // Image not found for ID
         console.log(`❌ Image not found for ID: ${imageId}`);
         console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id })));
+        
+        // Still add the placeholder as text so it's visible
+        if (match.index > lastIndex) {
+          parts.push({
+            type: 'text',
+            content: parseFormattedText(content.slice(lastIndex, match.index)),
+          });
+        }
+        
+        parts.push({
+          type: 'text',
+          content: `[Gambar tidak ditemukan: ${imageId}]`,
+        });
+        
+        lastIndex = match.index + match[0].length;
       }
     }
 
@@ -194,7 +439,9 @@ const PoskasDetail = () => {
       });
     }
 
-    console.log('🔍 Final parts:', parts);
+    console.log('🔍 Final content parts:', parts);
+    console.log('🔍 Content parts count:', parts.length);
+    
     return parts;
   };
 
@@ -360,9 +607,33 @@ const PoskasDetail = () => {
                                 maxHeight: '400px',
                                 objectFit: 'contain'
                               }}
+                              onLoad={() => {
+                                console.log('✅ Image loaded successfully:', part.image.displayUri || part.image.fallbackUri);
+                              }}
                               onError={(e) => {
-                                console.error('Error loading image:', e);
+                                console.error('❌ Error loading image:', e.target.src);
+                                console.error('🔍 Image data:', part.image);
+                                console.error('🔍 Display URI:', part.image.displayUri);
+                                console.error('🔍 Fallback URI:', part.image.fallbackUri);
                                 e.target.style.display = 'none';
+                                
+                                // Check if parent already has error placeholder
+                                const parent = e.target.parentNode;
+                                if (!parent.querySelector('.error-placeholder')) {
+                                  // Show error placeholder
+                                  const errorDiv = document.createElement('div');
+                                  errorDiv.className = 'error-placeholder w-full h-32 flex items-center justify-center text-gray-400 bg-gray-100 rounded-lg';
+                                  errorDiv.innerHTML = `
+                                    <div class="text-center">
+                                      <svg class="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                      <p class="text-xs text-gray-500">Gambar tidak dapat dimuat</p>
+                                      <p class="text-xs text-gray-400">${part.image.displayUri || part.image.fallbackUri || 'No URL'}</p>
+                                    </div>
+                                  `;
+                                  parent.appendChild(errorDiv);
+                                }
                               }}
                             />
                           </button>
@@ -471,9 +742,25 @@ const PoskasDetail = () => {
                   width: 'auto',
                   height: 'auto'
                 }}
-                onError={(error) => {
-                  console.error('Error loading full screen image:', error);
-                }}
+                                 onError={(error) => {
+                   console.error('Error loading full screen image:', error);
+                   // Show error message in modal
+                   const modal = document.querySelector('.fixed.inset-0');
+                   if (modal) {
+                     const errorDiv = document.createElement('div');
+                     errorDiv.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-95';
+                     errorDiv.innerHTML = `
+                       <div class="text-center text-white">
+                         <svg class="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                         </svg>
+                         <p class="text-lg font-medium">Gambar tidak dapat dimuat</p>
+                         <p class="text-sm text-gray-300 mt-2">URL: ${fullScreenImage}</p>
+                       </div>
+                     `;
+                     modal.appendChild(errorDiv);
+                   }
+                 }}
               />
             )}
           </div>

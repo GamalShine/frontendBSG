@@ -63,7 +63,7 @@ export const MenuProvider = ({ children }) => {
           {
             id: 'aneka-grafik',
             title: 'ANEKA GRAFIK',
-            path: '/keuangan/grafik',
+            path: '/keuangan/aneka-grafik',
             permissions: ['read']
           },
           {

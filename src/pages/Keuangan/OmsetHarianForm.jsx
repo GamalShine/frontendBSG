@@ -31,6 +31,7 @@ const OmsetHarianForm = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+  const [usedInEditor, setUsedInEditor] = useState(new Set()); // Track which images are used in editor
   const editorRef = useRef(null);
 
   useEffect(() => {
@@ -42,6 +43,14 @@ const OmsetHarianForm = () => {
 
   // Update editor content when formData changes
   useEffect(() => {
+    console.log('🔍 useEffect triggered with:', {
+      hasEditorRef: !!editorRef.current,
+      hasIsiOmset: !!formData.isi_omset,
+      isEditMode,
+      imagesCount: formData.images?.length || 0,
+      images: formData.images
+    });
+    
     if (editorRef.current && formData.isi_omset && isEditMode) {
       console.log('🔍 Setting editor content:', formData.isi_omset);
       
@@ -52,42 +61,71 @@ const OmsetHarianForm = () => {
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
         console.log('🔍 Images found in editor after setting content:', imagesInEditor.length);
-        imagesInEditor.forEach((img, index) => {
-          console.log(`🔍 Image ${index + 1} in editor:`, {
-            src: img.src,
-            dataImageId: img.getAttribute('data-image-id'),
-            className: img.className,
-            width: img.width,
-            height: img.height,
-            display: img.style.display,
-            visibility: img.style.visibility
-          });
-          
-          // Add error handling for image loading
-          img.onerror = () => {
-            console.error(`❌ Failed to load image ${index + 1}:`, img.src);
-            // Show error placeholder
-            img.style.border = '2px solid red';
-            img.style.backgroundColor = '#fee';
-            img.alt = 'Gambar gagal dimuat';
-          };
-          
-          img.onload = () => {
-            console.log(`✅ Successfully loaded image ${index + 1}:`, img.src);
-            // Ensure image is visible
-            img.style.display = 'block';
-            img.style.visibility = 'visible';
-          };
-          
-          // Force image to be visible
-          img.style.display = 'block';
-          img.style.visibility = 'visible';
-          img.style.maxWidth = '100%';
-          img.style.height = 'auto';
-        });
-      }, 200); // Increased delay to ensure everything is ready
+        
+        if (imagesInEditor.length === 0) {
+          console.log('🔍 No images found in editor, checking if we need to render from formData.images');
+          // If no images in editor but we have images in formData, try to render them
+          if (formData.images && Array.isArray(formData.images) && formData.images.length > 0) {
+            console.log('🔍 Rendering images from formData.images:', formData.images);
+            formData.images.forEach((image, index) => {
+              if (image && image.url) {
+                console.log(`🔍 Creating image element for image ${index + 1}:`, image);
+                
+                const img = document.createElement('img');
+                img.src = image.url;
+                img.alt = `Gambar ${index + 1}`;
+                img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm';
+                img.setAttribute('data-image-id', image.id);
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.margin = '10px 0';
+                img.style.borderRadius = '4px';
+                img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                img.style.display = 'block';
+                img.style.visibility = 'visible';
+                
+                // Add error handling
+                img.onerror = () => {
+                  console.error(`❌ Failed to load image ${index + 1}:`, image.url);
+                  img.style.border = '2px solid red';
+                  img.style.backgroundColor = '#fee';
+                  img.alt = 'Gambar gagal dimuat';
+                  img.style.padding = '20px';
+                  img.style.textAlign = 'center';
+                  img.style.fontSize = '12px';
+                  img.style.color = '#666';
+                };
+
+                img.onload = () => {
+                  console.log(`✅ Successfully loaded image ${index + 1}:`, image.url);
+                  img.style.display = 'block';
+                  img.style.visibility = 'visible';
+                };
+
+                // Force image to be visible
+                img.style.display = 'block';
+                img.style.visibility = 'visible';
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                
+                // Append image to editor
+                editorRef.current.appendChild(img);
+                
+                // Add a line break after image
+                const br = document.createElement('br');
+                editorRef.current.appendChild(br);
+                
+                console.log(`✅ Image ${index + 1} appended to editor`);
+              }
+            });
+          }
+        }
+        
+        // Update usedInEditor state after setting content
+        updateUsedInEditor();
+      }, 300); // Increased delay to ensure everything is ready
     }
-  }, [formData.isi_omset, isEditMode]);
+  }, [formData.isi_omset, formData.images, isEditMode]);
 
   // Add CSS for editor
   useEffect(() => {
@@ -134,33 +172,93 @@ const OmsetHarianForm = () => {
       
       if (response.success && response.data) {
         const omsetData = response.data;
+        console.log('🔍 Raw omset data:', omsetData);
+        console.log('🔍 Raw images data:', omsetData.images);
+        console.log('🔍 Raw images type:', typeof omsetData.images);
         
         // Process existing images to match new format
         let processedImages = [];
         if (omsetData.images) {
           try {
             const parsedImages = JSON.parse(omsetData.images);
+            console.log('🔍 Parsed images from OmsetHarianForm:', parsedImages);
+            console.log('🔍 Parsed type:', typeof parsedImages);
+            console.log('🔍 Parsed isArray:', Array.isArray(parsedImages));
+            console.log('🔍 Parsed constructor:', parsedImages?.constructor?.name);
+            
             if (Array.isArray(parsedImages)) {
-              processedImages = parsedImages.map(img => ({
-                uri: img.uri || `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: img.name || `omset_${img.id}.jpg`,
-                url: img.url || `http://192.168.1.2:3000/uploads/omset-harian/temp_${img.id}.jpg`,
-                serverPath: img.serverPath || `uploads/omset-harian/temp_${img.id}.jpg`
-              }));
+              processedImages = parsedImages;
+            } else if (parsedImages && typeof parsedImages === 'object' && parsedImages !== null) {
+              // Check if it's actually an array-like object or a single object
+              if (parsedImages.length !== undefined && typeof parsedImages.length === 'number') {
+                // It's an array-like object, convert to array
+                processedImages = Array.from(parsedImages);
+                console.log('🔍 Converted array-like object to array in OmsetHarianForm');
+              } else {
+                // If it's a single object, wrap it in an array
+                processedImages = [parsedImages];
+                console.log('🔍 Single object wrapped in array in OmsetHarianForm');
+              }
+            } else {
+              console.log('ℹ️ Parsed images is not an array or object in OmsetHarianForm:', parsedImages);
+              processedImages = [];
+            }
+            
+            console.log('🔍 Final processed images array:', processedImages);
+            
+            if (Array.isArray(processedImages)) {
+              processedImages = processedImages.map(img => {
+                console.log('🔍 Processing image object:', img);
+                
+                // Fix double http:// issue in existing URLs
+                let fixedUrl = img.url;
+                if (fixedUrl) {
+                  // Fix double http:// issue
+                  if (fixedUrl.startsWith('http://http://')) {
+                    fixedUrl = fixedUrl.replace('http://http://', 'http://');
+                    console.log(`🔍 Fixed double http:// in existing URL: ${img.url} -> ${fixedUrl}`);
+                  }
+                  
+                  // Fix old IP addresses
+                  if (fixedUrl.includes('192.168.30.124:3000')) {
+                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                    fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
+                  } else if (fixedUrl.includes('192.168.30.124:3000')) {
+                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                    fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
+                  }
+                }
+                
+                const processedImg = {
+                  uri: img.uri || `file://temp/${img.id}.jpg`,
+                  id: img.id,
+                  name: img.name || `omset_${img.id}.jpg`,
+                  url: fixedUrl || `${envConfig.BASE_URL.replace('/api', '')}/uploads/omset-harian/temp_${img.id}.jpg`,
+                  serverPath: img.serverPath || `uploads/omset-harian/temp_${img.id}.jpg`
+                };
+                
+                console.log('🔍 Processed image object:', processedImg);
+                return processedImg;
+              });
             }
           } catch (error) {
             console.error('Error parsing existing images:', error);
             processedImages = [];
           }
         }
+
+        console.log('🔍 Final processed images before setting form data:', processedImages);
+        console.log('🔍 Environment config:', envConfig);
+        console.log('🔍 BASE_URL:', envConfig.BASE_URL);
         
         // Convert text with [IMG:id] placeholders to HTML for editor
         let editorContent = omsetData.isi_omset || '';
         console.log('🔍 Original editor content:', editorContent);
         
         // Replace [IMG:id] placeholders with actual image tags for editor
-        if (Array.isArray(processedImages)) {
+        if (Array.isArray(processedImages) && processedImages.length > 0) {
           console.log('🔍 Processing parsed images for editor:', processedImages);
           processedImages.forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
@@ -168,13 +266,35 @@ const OmsetHarianForm = () => {
             // Construct the correct image URL
             let imageUrl = '';
             if (image.url) {
-              if (image.url.startsWith('http')) {
-                // Already absolute URL
-                imageUrl = image.url;
+              // Fix double http:// issue
+              let cleanUrl = image.url;
+              if (cleanUrl.startsWith('http://http://')) {
+                cleanUrl = cleanUrl.replace('http://http://', 'http://');
+                console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${cleanUrl}`);
+              }
+              
+              // Fix old IP addresses
+              if (cleanUrl.includes('192.168.30.124:3000')) {
+                const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                cleanUrl = cleanUrl.replace('http://192.168.30.124:3000', baseUrl);
+                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
+              } else if (cleanUrl.includes('192.168.30.124:3000')) {
+                const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                cleanUrl = cleanUrl.replace('http://192.168.30.124:3000', baseUrl);
+                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
+              }
+              
+              if (cleanUrl.startsWith('http') || cleanUrl.startsWith('data:')) {
+                // Already absolute URL or data URL
+                imageUrl = cleanUrl;
               } else {
                 // Relative URL, add base URL
-                imageUrl = `http://192.168.1.2:3000${image.url}`;
+                const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                imageUrl = `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
               }
+            } else if (image.uri && image.uri.startsWith('file://temp/')) {
+              // Handle temp file URIs
+              imageUrl = image.uri;
             }
             
             console.log(`🔍 Image ${index + 1}:`, {
@@ -195,8 +315,13 @@ const OmsetHarianForm = () => {
               console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
             } else {
               console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
+              // If no placeholder found, append image at the end
+              editorContent += imageHtmlTag;
+              console.log(`➕ Appended image ${image.id} to content since no placeholder found`);
             }
           });
+        } else {
+          console.log('⚠️ No processed images to render in editor');
         }
         
         // Convert line breaks to <br> tags for editor
@@ -209,7 +334,17 @@ const OmsetHarianForm = () => {
           images: processedImages
         });
         
-        console.log('🔍 Set form data with tanggal_omset:', omsetData.tanggal_omset ? new Date(omsetData.tanggal_omset).toISOString().split('T')[0] : '');
+        console.log('🔍 Set form data with:', {
+          tanggal_omset: omsetData.tanggal_omset ? new Date(omsetData.tanggal_omset).toISOString().split('T')[0] : '',
+          isi_omset_length: editorContent.length,
+          images_count: processedImages.length,
+          images: processedImages
+        });
+        
+        // Update usedInEditor state after loading data
+        setTimeout(() => {
+          updateUsedInEditor();
+        }, 500); // Wait for editor content to be set
       } else {
         toast.error('Gagal memuat data omset harian');
         navigate('/keuangan/omset-harian');
@@ -229,6 +364,22 @@ const OmsetHarianForm = () => {
       ...prev,
       isi_omset: content
     }));
+    
+    // Update usedInEditor state
+    updateUsedInEditor();
+  };
+
+  // Update usedInEditor state by scanning editor content
+  const updateUsedInEditor = () => {
+    if (editorRef.current) {
+      const content = editorRef.current.innerHTML;
+      const imgPlaceholderRegex = /\[IMG:(\d+)\]/g;
+      const matches = [...content.matchAll(imgPlaceholderRegex)];
+      const usedIds = new Set(matches.map(match => parseInt(match[1])));
+      
+      console.log('🔍 Used in editor IDs:', usedIds);
+      setUsedInEditor(usedIds);
+    }
   };
 
   const handleEditorPaste = async (e) => {
@@ -367,9 +518,20 @@ const OmsetHarianForm = () => {
       let imagesWithServerUrls = [];
       
       if (isEditMode) {
-        // In edit mode, preserve existing images
-        console.log('🔍 Debug: Edit mode - preserving existing images');
-        imagesWithServerUrls = formData.images || [];
+        // In edit mode, only preserve images that are still used in editor
+        console.log('🔍 Debug: Edit mode - filtering images by usage in editor');
+        console.log('🔍 Debug: Used in editor IDs:', usedInEditor);
+        console.log('🔍 Debug: All formData images:', formData.images);
+        
+        // Filter existing images to only include those still used in editor
+        const usedExistingImages = (formData.images || []).filter(img => {
+          const isUsed = usedInEditor.has(img.id);
+          console.log(`🔍 Image ${img.id} used in editor: ${isUsed}`);
+          return isUsed;
+        });
+        
+        console.log('🔍 Debug: Filtered existing images:', usedExistingImages);
+        imagesWithServerUrls = usedExistingImages;
         
         // Upload new images if any
         if (selectedImages.length > 0) {
@@ -385,7 +547,7 @@ const OmsetHarianForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `omset_${img.id}.jpg`,
-                url: `http://${envConfig.BASE_URL}${uploadedFile.url}`,
+                url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
                 serverPath: uploadedFile.url
               };
             } else {
@@ -393,7 +555,7 @@ const OmsetHarianForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `omset_${img.id}.jpg`,
-                url: `http://${envConfig.BASE_URL}/uploads/omset-harian/temp_${img.id}.jpg`,
+                url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/omset-harian/temp_${img.id}.jpg`,
                 serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
               };
             }
@@ -414,7 +576,7 @@ const OmsetHarianForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `omset_${img.id}.jpg`,
-              url: `http://${envConfig.BASE_URL}${uploadedFile.url}`,
+              url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
               serverPath: uploadedFile.url
             };
           } else {
@@ -422,20 +584,48 @@ const OmsetHarianForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `omset_${img.id}.jpg`,
-              url: `http://${envConfig.BASE_URL}/uploads/omset-harian/temp_${img.id}.jpg`,
+              url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/omset-harian/temp_${img.id}.jpg`,
               serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
             };
           }
         });
       }
       
+      // Ensure all image URLs are properly formatted
+      const finalImages = imagesWithServerUrls.map(img => {
+        if (img && img.url) {
+          let fixedUrl = img.url;
+          
+          // Fix double http:// issue
+          if (fixedUrl.startsWith('http://http://')) {
+            fixedUrl = fixedUrl.replace('http://http://', 'http://');
+            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
+          }
+          
+          // Fix old IP addresses
+          if (fixedUrl.includes('192.168.30.124:3000')) {
+            const baseUrl = envConfig.BASE_URL.replace('/api', '');
+            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
+          } else if (fixedUrl.includes('192.168.30.124:3000')) {
+            const baseUrl = envConfig.BASE_URL.replace('/api', '');
+            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
+          }
+          
+          return { ...img, url: fixedUrl };
+        }
+        return img;
+      });
+      
       const submitData = {
         tanggal_omset: formData.tanggal_omset,
         isi_omset: editorContent,
-        images: imagesWithServerUrls
+        images: finalImages
       };
       
       console.log('🔍 Debug: Submit data:', submitData);
+      console.log('🔍 Debug: Final images with fixed URLs:', finalImages);
       
       if (isEditMode) {
         await omsetHarianService.updateOmsetHarian(id, submitData);
@@ -460,6 +650,88 @@ const OmsetHarianForm = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const newSelectedImages = [];
+    const newImagePreviewUrls = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Gambar terlalu besar. Maksimal 10MB');
+        continue;
+      }
+
+      if (selectedImages.length + newSelectedImages.length >= 5) {
+        toast.error('Maksimal 5 gambar per laporan');
+        break;
+      }
+
+      const imageId = Date.now() + Math.floor(Math.random() * 1000);
+      newSelectedImages.push({ file, id: imageId });
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newImagePreviewUrls.push(e.target.result);
+        if (newSelectedImages.length === files.length) {
+          setSelectedImages(prev => [...prev, ...newSelectedImages]);
+          setImagePreviewUrls(prev => [...prev, ...newImagePreviewUrls]);
+          toast.success('Gambar berhasil ditambahkan');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = (index) => {
+    const newSelectedImages = selectedImages.filter((_, i) => i !== index);
+    const newImagePreviewUrls = imagePreviewUrls.filter((_, i) => i !== index);
+    setSelectedImages(newSelectedImages);
+    setImagePreviewUrls(newImagePreviewUrls);
+  };
+
+  // Remove image from editor by ID
+  const removeImageFromEditor = (imageId) => {
+    if (editorRef.current) {
+      // Remove image placeholder from editor content
+      const content = editorRef.current.innerHTML;
+      const placeholderRegex = new RegExp(`\\[IMG:${imageId}\\]`, 'g');
+      const newContent = content.replace(placeholderRegex, '');
+      editorRef.current.innerHTML = newContent;
+      
+      // Update formData
+      setFormData(prev => ({
+        ...prev,
+        isi_omset: newContent
+      }));
+      
+      // Update usedInEditor state
+      updateUsedInEditor();
+      
+      toast.success('Gambar berhasil dihapus dari editor');
+    }
+  };
+
+  const insertImage = (imageUrl, imageId) => {
+    const placeholder = `[IMG:${imageId}]`;
+    const newContent = editorRef.current.innerHTML.replace(placeholder, `<img src="${imageUrl}" alt="Gambar ${imageId}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${imageId}" />`);
+    editorRef.current.innerHTML = newContent;
+    
+    // Update formData
+    setFormData(prev => ({
+      ...prev,
+      isi_omset: newContent
+    }));
+    
+    // Update usedInEditor state
+    updateUsedInEditor();
+    
+    // Trigger input to update formData
+    const event = new Event('input', { bubbles: true });
+    editorRef.current.dispatchEvent(event);
   };
 
   const uploadImagesToServer = async (images) => {
@@ -596,6 +868,137 @@ const OmsetHarianForm = () => {
               </p>
             </div>
           </div>
+
+          {/* Image Management Section - Only show in edit mode */}
+          {isEditMode && (
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <ImageIcon className="h-5 w-5 text-blue-600" />
+                </div>
+                <label className="text-lg font-semibold text-gray-900">
+                  Gambar
+                </label>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Upload Gambar Baru
+                  </label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="cursor-pointer inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+                    >
+                      <Upload className="h-5 w-5" />
+                      <span>Pilih Gambar</span>
+                    </label>
+                    <p className="text-sm text-gray-500 mt-2">
+                      Maksimal 5 gambar, format JPG, PNG, GIF
+                    </p>
+                  </div>
+                </div>
+
+                {/* New Images Preview */}
+                {selectedImages.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar Baru</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {selectedImages.map((image, index) => (
+                        <div key={index} className="relative">
+                          <img
+                            src={imagePreviewUrls[index]}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-20 object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+            {/* Existing Images */}
+            {formData.images && formData.images.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Ada</h3>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  {formData.images.map((image, index) => {
+                    // Ensure proper URL construction
+                    let imageUrl = image.url;
+                    if (imageUrl) {
+                      // Fix double http:// issue
+                      if (imageUrl.startsWith('http://http://')) {
+                        imageUrl = imageUrl.replace('http://http://', 'http://');
+                      }
+                      
+                      // Fix old IP addresses
+                      if (imageUrl.includes('192.168.30.124:3000')) {
+                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                        imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+                      } else if (imageUrl.includes('192.168.30.124:3000')) {
+                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                        imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+                      }
+                      
+                      // If relative URL, add base URL
+                      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
+                        imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                      }
+                    }
+                    
+                    return (
+                      <div key={index} className="relative">
+                        <img
+                          src={imageUrl}
+                          alt={image.name || `Gambar ${index + 1}`}
+                          className="w-full h-20 object-cover rounded-lg cursor-pointer hover:opacity-75"
+                          onClick={() => insertImage(imageUrl, image.id)}
+                          onError={(e) => {
+                            console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
+                            e.target.style.border = '2px solid red';
+                            e.target.style.backgroundColor = '#fee';
+                            e.target.alt = 'Gambar gagal dimuat';
+                            e.target.style.padding = '20px';
+                            e.target.style.textAlign = 'center';
+                            e.target.style.fontSize = '10px';
+                            e.target.style.color = '#666';
+                          }}
+                          onLoad={() => {
+                            console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-xs opacity-0 hover:opacity-100">Klik untuk sisipkan</span>
+                        </div>
+                        <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded">
+                          {image.name || `IMG ${index + 1}`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
           {/* Submit Buttons */}
           <div className="flex space-x-4 p-6">

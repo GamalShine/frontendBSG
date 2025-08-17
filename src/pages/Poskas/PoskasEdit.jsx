@@ -13,7 +13,9 @@ import {
   Eye,
   X,
   Plus,
-  Download
+  Download,
+  Calendar,
+  FileText
 } from 'lucide-react';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
 import { API_CONFIG } from '../../config/constants';
@@ -96,6 +98,13 @@ const PoskasEdit = () => {
 
   // Update editor content when formData changes
   useEffect(() => {
+    console.log('🔍 useEffect triggered with:', {
+      hasEditorRef: !!editorRef.current,
+      hasIsiPoskas: !!formData.isi_poskas,
+      imagesCount: existingImages?.length || 0,
+      images: existingImages
+    });
+    
     if (editorRef.current && formData.isi_poskas) {
       console.log('🔍 Setting editor content:', formData.isi_poskas);
       
@@ -106,45 +115,109 @@ const PoskasEdit = () => {
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
         console.log('🔍 Images found in editor after setting content:', imagesInEditor.length);
-        imagesInEditor.forEach((img, index) => {
-          console.log(`🔍 Image ${index + 1} in editor:`, {
-            src: img.src,
-            dataImageId: img.getAttribute('data-image-id'),
-            className: img.className,
-            width: img.width,
-            height: img.height,
-            display: img.style.display,
-            visibility: img.style.visibility
-          });
-          
-          // Add error handling for image loading
-          img.onerror = () => {
-            console.error(`❌ Failed to load image ${index + 1}:`, img.src);
-            // Show error placeholder
-            img.style.border = '2px solid red';
-            img.style.backgroundColor = '#fee';
-            img.alt = 'Gambar gagal dimuat';
-          };
-          
-          img.onload = () => {
-            console.log(`✅ Successfully loaded image ${index + 1}:`, img.src);
-            // Ensure image is visible
+        
+        if (imagesInEditor.length === 0) {
+          console.log('🔍 No images found in editor, checking if we need to render from existingImages');
+          // If no images in editor but we have images in existingImages, try to render them
+          if (existingImages && Array.isArray(existingImages) && existingImages.length > 0) {
+            console.log('🔍 Rendering images from existingImages:', existingImages);
+            existingImages.forEach((image, index) => {
+              if (image && (image.url || image.uri)) {
+                console.log(`🔍 Creating image element for image ${index + 1}:`, image);
+                
+                const img = document.createElement('img');
+                img.src = image.url || image.uri;
+                img.alt = `Gambar ${index + 1}`;
+                img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm editor-image';
+                img.setAttribute('data-image-id', image.id);
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.margin = '10px 0';
+                img.style.borderRadius = '4px';
+                img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                img.style.display = 'block';
+                img.style.visibility = 'visible';
+                
+                // Add error handling
+                img.onerror = () => {
+                  console.error(`❌ Failed to load image ${index + 1}:`, image.url || image.uri);
+                  img.style.border = '2px solid red';
+                  img.style.backgroundColor = '#fee';
+                  img.alt = 'Gambar gagal dimuat';
+                  img.style.padding = '20px';
+                  img.style.textAlign = 'center';
+                  img.style.fontSize = '12px';
+                  img.style.color = '#666';
+                };
+
+                img.onload = () => {
+                  console.log(`✅ Successfully loaded image ${index + 1}:`, image.url || image.uri);
+                  img.style.display = 'block';
+                  img.style.visibility = 'visible';
+                };
+
+                // Insert image into editor
+                editorRef.current.appendChild(img);
+                console.log(`➕ Inserted image ${index + 1} into editor`);
+                
+                // Add line break after image
+                const br = document.createElement('br');
+                editorRef.current.appendChild(br);
+              }
+            });
+          } else {
+            console.log('⚠️ No images in existingImages to render');
+          }
+        } else {
+          console.log('🔍 Processing existing images in editor');
+          // Process existing images in editor
+          imagesInEditor.forEach((img, index) => {
+            console.log(`🔍 Image ${index + 1} in editor:`, {
+              src: img.src,
+              dataImageId: img.getAttribute('data-image-id'),
+              className: img.className,
+              width: img.width,
+              height: img.height,
+              display: img.style.display,
+              visibility: img.style.visibility
+            });
+            
+            // Add error handling for image loading
+            img.onerror = () => {
+              console.error(`❌ Failed to load image ${index + 1}:`, img.src);
+              // Show error placeholder
+              img.style.border = '2px solid red';
+              img.style.backgroundColor = '#fee';
+              img.alt = 'Gambar gagal dimuat';
+              img.style.padding = '20px';
+              img.style.textAlign = 'center';
+              img.style.fontSize = '12px';
+              img.style.color = '#666';
+            };
+            
+            img.onload = () => {
+              console.log(`✅ Successfully loaded image ${index + 1}:`, img.src);
+              // Ensure image is visible
+              img.style.display = 'block';
+              img.style.visibility = 'visible';
+            };
+            
+            // Force image to be visible
             img.style.display = 'block';
             img.style.visibility = 'visible';
-          };
-          
-          // Force image to be visible
-          img.style.display = 'block';
-          img.style.visibility = 'visible';
-          img.style.maxWidth = '100%';
-          img.style.height = 'auto';
-        });
+            img.style.maxWidth = '100%';
+            img.style.height = 'auto';
+            img.style.margin = '10px 0';
+            img.style.borderRadius = '4px';
+            img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          });
+        }
         
         // Update used images tracking
         updateUsedInEditor();
-      }, 200); // Increased delay to ensure everything is ready
+      }, 300); // Increased delay to ensure everything is ready
     }
-  }, [formData.isi_poskas]);
+  }, [formData.isi_poskas, existingImages]);
 
   const fetchPoskasDetail = async () => {
     try {
@@ -154,6 +227,7 @@ const PoskasEdit = () => {
       if (response.success) {
         const poskas = response.data;
         console.log('🔍 Raw poskas data from API:', poskas);
+        console.log('🔍 Raw tanggal_poskas:', poskas.tanggal_poskas);
         console.log('🔍 Images field type:', typeof poskas.images);
         console.log('🔍 Images field value:', poskas.images);
         
@@ -171,62 +245,69 @@ const PoskasEdit = () => {
         const placeholders = [...editorContent.matchAll(imgPlaceholderRegex)];
         console.log('🔍 Found image placeholders in content:', placeholders);
         
-        // Replace [IMG:id] placeholders with actual image tags for editor
-        if (Array.isArray(parsedImages)) {
-          console.log('🔍 Processing parsed images for editor:', parsedImages);
-          console.log('🔍 Environment config:', API_CONFIG);
-          parsedImages.forEach((image, index) => {
+                 // Replace [IMG:id] placeholders with actual image tags for editor
+         if (Array.isArray(parsedImages)) {
+           console.log('🔍 Processing parsed images for editor:', parsedImages);
+           console.log('🔍 Environment config:', API_CONFIG);
+           parsedImages.filter(image => {
+             // Filter out images without valid URLs
+             if (!image || (!image.url && !image.uri)) {
+               console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
+               return false;
+             }
+             return true;
+           }).forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
-            // Construct the correct image URL
-            let imageUrl = '';
-            if (image.url) {
-              if (image.url.startsWith('http')) {
-                // Already absolute URL
-                imageUrl = image.url;
-              } else {
-                // Relative URL, add base URL
-                imageUrl = `${API_CONFIG.BASE_URL}${image.url}`;
-              }
-            }
-            
-            console.log(`🔍 Image ${index + 1}:`, {
-              originalUrl: image.url,
-              constructedUrl: imageUrl,
-              baseUrl: API_CONFIG.BASE_URL,
-              id: image.id
-            });
-            
-            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="editor-image" data-image-id="${image.id}" />`;
-            const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
-            
-            // Check if this placeholder exists in content
-            const matches = editorContent.match(placeholderRegex);
-            console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
-            
-            if (matches) {
-              editorContent = editorContent.replace(placeholderRegex, imageHtmlTag);
-              console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
-            } else {
-              console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
-            }
-          });
-        }
-        
-        // Convert line breaks to <br> tags for editor
-        editorContent = editorContent.replace(/\n/g, '<br>');
-        console.log('🔍 Final editor content:', editorContent);
-        
-        // Check if there are any img tags in the final content
-        const imgTagRegex = /<img[^>]*>/g;
-        const imgTags = editorContent.match(imgTagRegex);
-        console.log('🔍 Final img tags in content:', imgTags);
-        
-        setFormData({
-          tanggal_poskas: poskas.tanggal_poskas ? new Date(poskas.tanggal_poskas).toISOString().split('T')[0] : '',
-          isi_poskas: editorContent,
-          images: poskas.images || []
-        });
+                         // Construct the correct image URL
+             let imageUrl = '';
+             if (image.url) {
+               if (image.url.startsWith('http') || image.url.startsWith('data:')) {
+                 // Already absolute URL or data URL
+                 imageUrl = image.url;
+               } else {
+                 // Relative URL, add base URL
+                 const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+                 imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
+               }
+             } else if (image.uri) {
+               imageUrl = image.uri;
+             }
+             
+             console.log(`🔍 Final image URL for editor: ${imageUrl}`);
+             
+             // Replace [IMG:id] placeholder with actual image tag
+             const placeholder = `[IMG:${image.id}]`;
+             if (editorContent.includes(placeholder)) {
+               console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
+               const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
+               editorContent = editorContent.replace(placeholder, imgTag);
+             } else {
+               console.log(`⚠️ Placeholder ${placeholder} not found in content`);
+             }
+           });
+         }
+         
+         console.log('🔍 Final editor content after image replacement:', editorContent);
+         
+         // Process tanggal_poskas
+         const originalTanggal = poskas.tanggal_poskas;
+         const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
+         
+         console.log('🔍 Tanggal processing:', {
+           original: originalTanggal,
+           processed: processedTanggal,
+           originalType: typeof originalTanggal,
+           isDate: originalTanggal instanceof Date
+         });
+         
+         // Set the processed content
+         setFormData(prev => ({
+           ...prev,
+           tanggal_poskas: processedTanggal,
+           isi_poskas: editorContent,
+           images: parsedImages
+         }));
         
       } else {
         setError(response.message || 'Gagal memuat detail laporan');
@@ -254,29 +335,121 @@ const PoskasEdit = () => {
     
     try {
       console.log('🔍 Parsing images string:', imagesString);
-      let result = JSON.parse(imagesString);
+      console.log('🔍 imagesString type:', typeof imagesString);
+      console.log('🔍 imagesString isArray:', Array.isArray(imagesString));
       
-      if (!Array.isArray(result)) {
-        console.warn('⚠️ Images string is not an array, converting...');
-        result = [result];
+      let result;
+      
+      // Handle different formats
+      if (Array.isArray(imagesString)) {
+        // If it's already an array, use it directly
+        result = imagesString;
+        console.log('🔍 Images is already an array, using directly');
+      } else if (typeof imagesString === 'string') {
+        // Try to parse the string as JSON
+        try {
+          // Clean the string first - remove extra quotes if they exist
+          let cleanImages = imagesString.trim();
+          
+          // Remove extra quotes if the string is wrapped in quotes
+          if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
+            cleanImages = cleanImages.slice(1, -1);
+          }
+          
+          // Unescape the string
+          cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+          
+          console.log('🔍 Cleaned images string:', cleanImages);
+          
+          result = JSON.parse(cleanImages);
+          console.log('🔍 Successfully parsed string as JSON:', result);
+        } catch (parseError) {
+          console.log('ℹ️ Failed to parse string as JSON, treating as single image name:', parseError);
+          // If it's not valid JSON, treat it as a single image name
+          result = [{ name: imagesString, url: imagesString }];
+        }
+      } else if (typeof imagesString === 'object' && imagesString !== null) {
+        // If it's a single object, wrap it in an array
+        result = [imagesString];
+        console.log('🔍 Single object wrapped in array');
+      } else {
+        console.log('ℹ️ Unknown images format:', typeof imagesString);
+        return [];
       }
       
-      // Fix URLs - replace old IP with current base URL
-      result = result.map(image => {
-        if (image.url && image.url.includes('192.168.0.116:3000')) {
-          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-          const fixedUrl = image.url.replace('http://192.168.0.116:3000', baseUrl);
-          console.log(`🔍 Fixed URL: ${image.url} -> ${fixedUrl}`);
-          return { ...image, url: fixedUrl };
+      // Ensure result is an array
+      if (!Array.isArray(result)) {
+        console.log('ℹ️ Parsed result is not an array, converting...');
+        if (result && typeof result === 'object' && result !== null) {
+          result = [result];
+          console.log('🔍 Converted single object to array');
+        } else {
+          console.log('ℹ️ Invalid images data, returning empty array');
+          return [];
         }
-        return image;
+      }
+      
+      // Filter out invalid images and fix URLs
+      result = result.filter(image => {
+        if (!image || typeof image !== 'object') {
+          console.log('ℹ️ Invalid image object:', image);
+          return false;
+        }
+        return true;
+      }).map(image => {
+        // Ensure image has required properties
+        const validImage = {
+          id: image.id || Date.now() + Math.random(),
+          name: image.name || `image_${Date.now()}`,
+          url: image.url || '',
+          uri: image.uri || '',
+          serverPath: image.serverPath || ''
+        };
+        
+        // Fix URLs - replace old IP with current base URL
+        if (validImage.url) {
+          let fixedUrl = validImage.url;
+          
+          // Fix double http:// issue
+          if (fixedUrl.startsWith('http://http://')) {
+            fixedUrl = fixedUrl.replace('http://http://', 'http://');
+            console.log(`🔍 Fixed double http:// URL: ${validImage.url} -> ${fixedUrl}`);
+          }
+          
+          // Fix old IP addresses
+          if (fixedUrl.includes('192.168.30.124:3000')) {
+            const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
+          } else if (fixedUrl.includes('192.168.30.124:3000')) {
+            const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
+          }
+          
+          validImage.url = fixedUrl;
+        }
+        
+        // Ensure URL is absolute
+        if (validImage.url && !validImage.url.startsWith('http') && !validImage.url.startsWith('data:')) {
+          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+          validImage.url = `${baseUrl}${validImage.url.startsWith('/') ? '' : '/'}${validImage.url}`;
+        } else if (validImage.url && validImage.url.startsWith('http')) {
+          // Check if absolute URL has /api in wrong place
+          if (validImage.url.includes('/api/uploads/')) {
+            // Remove /api from upload URLs
+            validImage.url = validImage.url.replace('/api/uploads/', '/uploads/');
+            console.log(`🔍 Fixed /api in absolute upload URL: ${image.url} -> ${validImage.url}`);
+          }
+        }
+        
+        return validImage;
       });
       
-      console.log('🔍 Final parsed images array:', result);
+      console.log('🔍 Final parsed images:', result);
       return result;
     } catch (error) {
-      console.error('❌ Error parsing images:', error);
-      console.error('❌ Images string was:', imagesString);
+      console.error('❌ Error parsing images string:', error);
       return [];
     }
   };
@@ -292,7 +465,14 @@ const PoskasEdit = () => {
       let match;
       
       while ((match = existingImgRegex.exec(content)) !== null) {
-        usedIds.add(parseInt(match[1]));
+        const imageId = parseInt(match[1]);
+        // Only add if the image exists and has a valid URL
+        const imageExists = existingImages.some(img => 
+          img && img.id === imageId && (img.url || img.uri)
+        );
+        if (imageExists) {
+          usedIds.add(imageId);
+        }
       }
       
       setUsedInEditor(usedIds);
@@ -450,9 +630,31 @@ const PoskasEdit = () => {
   // Add image to editor
   const addImageToEditor = (image) => {
     if (editorRef.current) {
+      // Construct the correct image URL
+      let imageUrl = '';
+      if (image.url) {
+        if (image.url.startsWith('http') || image.url.startsWith('data:')) {
+          // Already absolute URL or data URL
+          imageUrl = image.url;
+        } else {
+          // Relative URL, add base URL
+          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+          imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
+        }
+      } else if (image.uri) {
+        // Fallback to uri if url is not available
+        imageUrl = image.uri;
+      }
+      
+      if (!imageUrl) {
+        console.error('❌ No valid URL for image:', image);
+        toast.error('Gambar tidak memiliki URL yang valid');
+        return;
+      }
+      
       const imgElement = document.createElement('img');
-      imgElement.src = image.url;
-      imgElement.alt = `Existing ${image.name}`;
+      imgElement.src = imageUrl;
+      imgElement.alt = `Existing ${image.name || 'image'}`;
       imgElement.className = 'editor-image';
       imgElement.setAttribute('data-image-id', image.id);
 
@@ -538,7 +740,7 @@ const PoskasEdit = () => {
         let allImagesData = [];
         
         // Add existing images
-        const allExistingImages = existingImages.filter(img => img && img.id);
+        const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
         allImagesData = [...allExistingImages];
         
         // Upload new images if any
@@ -570,9 +772,9 @@ const PoskasEdit = () => {
         // Save without images - use text-only logic
         console.log('🔍 Debug: Saving without images...');
         
-        // Prepare existing images data
-        const allExistingImages = existingImages.filter(img => img && img.id);
-        console.log('🔍 Debug: All existing images to preserve (text-only):', allExistingImages);
+                 // Prepare existing images data
+         const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
+         console.log('🔍 Debug: All existing images to preserve (text-only):', allExistingImages);
 
         console.log('🔍 Debug: Sending text-only data to service...');
         const response = await poskasService.updatePoskas(id, {
@@ -812,81 +1014,212 @@ const PoskasEdit = () => {
             </p>
           </div>
 
-          {/* Isi Laporan Editor */}
-          <div className="p-6 border-b border-gray-200">
+          {/* Existing Images Section */}
+          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <FileText className="h-5 w-5 text-green-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <ImageIcon className="h-5 w-5 text-blue-600" />
               </div>
               <label className="text-lg font-semibold text-gray-900">
-                Isi Laporan Pos Kas
+                Gambar yang Ada ({existingImages.filter(image => image && (image.url || image.uri)).length})
               </label>
             </div>
             
-            <div className="space-y-4">
-              {/* Toolbar */}
-              <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => document.execCommand('bold')}
-                  className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                  title="Bold"
-                >
-                  <strong>B</strong>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => document.execCommand('italic')}
-                  className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                  title="Italic"
-                >
-                  <em>I</em>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => document.execCommand('underline')}
-                  className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                  title="Underline"
-                >
-                  <u>U</u>
-                </button>
-                <div className="w-px h-6 bg-gray-300"></div>
-                <button
-                  type="button"
-                  onClick={() => document.execCommand('insertUnorderedList')}
-                  className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                  title="Bullet List"
-                >
-                  • List
-                </button>
-                <button
-                  type="button"
-                  onClick={() => document.execCommand('insertOrderedList')}
-                  className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                  title="Numbered List"
-                >
-                  1. List
-                </button>
+            {existingImages.filter(image => image && (image.url || image.uri)).length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {existingImages.filter(image => {
+                  // Filter out images without valid URLs
+                  if (!image || (!image.url && !image.uri)) {
+                    console.log(`⚠️ Skipping image - no valid URL:`, image);
+                    return false;
+                  }
+                  return true;
+                }).map((image, index) => {
+                  // Construct the correct image URL
+                  let imageUrl = '';
+                  if (image.url) {
+                    if (image.url.startsWith('http') || image.url.startsWith('data:')) {
+                      // Already absolute URL or data URL, but check if it has /api in wrong place
+                      imageUrl = image.url;
+                      if (imageUrl.includes('/api/uploads/')) {
+                        // Remove /api from upload URLs
+                        imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
+                        console.log(`🔍 Fixed /api in existing image display URL: ${image.url} -> ${imageUrl}`);
+                      }
+                    } else {
+                      // Relative URL, add base URL
+                      const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+                      imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
+                    }
+                  } else if (image.uri) {
+                    // Fallback to uri if url is not available
+                    imageUrl = image.uri;
+                  }
+                  
+                  const isUsedInEditor = usedInEditor.has(image.id);
+                  
+                  console.log(`🔍 Existing image ${index + 1} display:`, {
+                    originalUrl: image.url,
+                    uri: image.uri,
+                    constructedUrl: imageUrl,
+                    baseUrl: API_CONFIG.BASE_URL,
+                    imageData: image,
+                    isUsedInEditor
+                  });
+                  
+                  // Only render if we have a valid URL
+                  if (!imageUrl) {
+                    console.warn(`⚠️ No valid URL for image ${index + 1}:`, image);
+                    return null;
+                  }
+                  
+                  return (
+                    <div key={index} className="relative group">
+                      <div className={`relative ${isUsedInEditor ? 'ring-2 ring-green-500' : 'ring-2 ring-gray-300'}`}>
+                        <img
+                          src={imageUrl}
+                          alt={`Existing ${index + 1}`}
+                          className="w-full h-32 object-cover rounded-lg"
+                          onError={(e) => {
+                            console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                          onLoad={() => {
+                            console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
+                          }}
+                        />
+                        <div 
+                          className="hidden w-full h-32 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
+                          style={{ display: 'none' }}
+                        >
+                          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        
+                        {/* Status indicator */}
+                        <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${
+                          isUsedInEditor 
+                            ? 'bg-green-500 text-white' 
+                            : 'bg-gray-500 text-white'
+                        }`}>
+                          {isUsedInEditor ? '✓ Digunakan' : 'Tidak digunakan'}
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div className="absolute top-2 right-2 flex space-x-1">
+                        {!isUsedInEditor && (
+                          <button
+                            type="button"
+                            onClick={() => addImageToEditor(image)}
+                            className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Tambah ke editor"
+                          >
+                            +
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(index)}
+                          className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Hapus gambar"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      
+                      {/* Click to insert overlay */}
+                      {!isUsedInEditor && (
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
+                          <div className="text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="text-sm font-medium">Klik untuk sisipkan</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              
-              {/* Editor */}
-              <div
-                ref={editorRef}
-                contentEditable
-                onInput={handleEditorChange}
-                onPaste={handleEditorPaste}
-                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
-                style={{ 
-                  whiteSpace: 'pre-wrap',
-                  lineHeight: '1.6'
-                }}
-              ></div>
-              
-              <p className="text-sm text-gray-500">
-                💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-4xl text-gray-300 mb-2">📷</div>
+                <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
+              </div>
+            )}
+            
+            {existingImages.filter(image => image && (image.url || image.uri)).length > 0 && (
+              <p className="text-sm text-gray-500 mt-4">
+                💡 Gambar dengan border hijau sedang digunakan di editor. Klik tombol "+" untuk menambahkan gambar ke editor.
               </p>
+            )}
+          </div>
+
+          {/* Content Editor */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            {/* Toolbar */}
+            <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => document.execCommand('bold')}
+                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Bold"
+              >
+                <strong>B</strong>
+              </button>
+              <button
+                type="button"
+                onClick={() => document.execCommand('italic')}
+                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Italic"
+              >
+                <em>I</em>
+              </button>
+              <button
+                type="button"
+                onClick={() => document.execCommand('underline')}
+                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Underline"
+              >
+                <u>U</u>
+              </button>
+              <div className="w-px h-6 bg-gray-300"></div>
+              <button
+                type="button"
+                onClick={() => document.execCommand('insertUnorderedList')}
+                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Bullet List"
+              >
+                • List
+              </button>
+              <button
+                type="button"
+                onClick={() => document.execCommand('insertOrderedList')}
+                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Numbered List"
+              >
+                1. List
+              </button>
             </div>
+            
+            {/* Editor */}
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleEditorChange}
+              onPaste={handleEditorPaste}
+              className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
+              style={{ 
+                whiteSpace: 'pre-wrap',
+                lineHeight: '1.6'
+              }}
+            ></div>
+            
+            <p className="text-sm text-gray-500">
+              💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
+            </p>
           </div>
 
           {/* Hidden sections for existing images and upload */}
@@ -894,31 +1227,49 @@ const PoskasEdit = () => {
             {/* Existing Images */}
             <div style={{ display: 'none' }}>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Gambar yang Ada ({existingImages.length})
+                Gambar yang Ada ({existingImages.filter(image => image && (image.url || image.uri)).length})
               </label>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {existingImages.map((image, index) => {
+                {existingImages.filter(image => {
+                  // Filter out images without valid URLs
+                  if (!image || (!image.url && !image.uri)) {
+                    console.warn(`⚠️ Skipping image ${index + 1} - no valid URL:`, image);
+                    return false;
+                  }
+                  return true;
+                }).map((image, index) => {
                   // Construct the correct image URL
                   let imageUrl = '';
                   if (image.url) {
-                    if (image.url.startsWith('http')) {
-                      // Already absolute URL
+                    if (image.url.startsWith('http') || image.url.startsWith('data:')) {
+                      // Already absolute URL or data URL
                       imageUrl = image.url;
                     } else {
                       // Relative URL, add base URL
-                      imageUrl = `${API_CONFIG.BASE_URL}${image.url}`;
+                      const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+                      imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
                     }
+                  } else if (image.uri) {
+                    // Fallback to uri if url is not available
+                    imageUrl = image.uri;
                   }
                   
                   const isUsedInEditor = usedInEditor.has(image.id);
                   
                   console.log(`🔍 Existing image ${index + 1} display:`, {
                     originalUrl: image.url,
+                    uri: image.uri,
                     constructedUrl: imageUrl,
                     baseUrl: API_CONFIG.BASE_URL,
                     imageData: image,
                     isUsedInEditor
                   });
+                  
+                  // Only render if we have a valid URL
+                  if (!imageUrl) {
+                    console.warn(`⚠️ No valid URL for image ${index + 1}:`, image);
+                    return null;
+                  }
                   
                   return (
                     <div key={index} className="relative group">
@@ -980,9 +1331,16 @@ const PoskasEdit = () => {
                   );
                 })}
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                Gambar dengan border hijau sedang digunakan di editor. Klik tombol "+" untuk menambahkan gambar ke editor.
-              </p>
+              {existingImages.filter(image => image && (image.url || image.uri)).length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-4xl text-gray-300 mb-2">📷</div>
+                  <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-2">
+                  Gambar dengan border hijau sedang digunakan di editor. Klik tombol "+" untuk menambahkan gambar ke editor.
+                </p>
+              )}
             </div>
 
             {/* New Image Upload */}

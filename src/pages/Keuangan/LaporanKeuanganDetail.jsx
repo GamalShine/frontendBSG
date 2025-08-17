@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../services/laporanKeuanganService';
 import { toast } from 'react-hot-toast';
+import { getEnvironmentConfig } from '../../config/environment';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -20,6 +21,7 @@ const LaporanKeuanganDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const envConfig = getEnvironmentConfig();
   
   const [laporanData, setLaporanData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -108,15 +110,82 @@ const LaporanKeuanganDetail = () => {
   // Helper function to safely process images
   const processImages = (images) => {
     if (!images) return [];
+    
+    let processedImages = [];
+    
     if (typeof images === 'string') {
       try {
-        return JSON.parse(images);
+        processedImages = JSON.parse(images);
+        console.log('🔍 Successfully parsed images string:', processedImages);
       } catch (error) {
         console.error('Error parsing images JSON:', error);
+        // If JSON parsing fails, try to treat it as a single image URL
+        if (images.trim()) {
+          processedImages = [{ url: images, name: images.split('/').pop() || 'image' }];
+          console.log('🔍 Treated string as single image URL:', processedImages);
+        } else {
+          return [];
+        }
+      }
+    } else if (Array.isArray(images)) {
+      processedImages = images;
+      console.log('🔍 Images is already an array');
+    } else if (typeof images === 'object' && images !== null) {
+      // If it's a single object, wrap it in an array
+      processedImages = [images];
+      console.log('🔍 Single object wrapped in array');
+    } else {
+      console.warn('⚠️ Unknown images format:', typeof images);
+      return [];
+    }
+    
+    // Ensure it's always an array
+    if (!Array.isArray(processedImages)) {
+      if (processedImages && typeof processedImages === 'object' && processedImages !== null) {
+        processedImages = [processedImages];
+        console.log('🔍 Converted single object to array');
+      } else {
+        console.warn('⚠️ Invalid images data, returning empty array');
         return [];
       }
     }
-    return Array.isArray(images) ? images : [];
+    
+         // Fix URLs for all images
+     return processedImages.map(img => {
+       if (img && img.url) {
+         let fixedUrl = img.url;
+         
+         // Fix double http:// issue
+         if (fixedUrl.startsWith('http://http://')) {
+           fixedUrl = fixedUrl.replace('http://http://', 'http://');
+           console.log(`🔍 Fixed double http:// in detail: ${img.url} -> ${fixedUrl}`);
+         }
+         
+         // Fix old IP addresses and localhost issues
+         if (fixedUrl.includes('192.168.30.124:3000')) {
+           const baseUrl = envConfig.BASE_URL.replace('/api', '');
+           fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
+         } else if (fixedUrl.includes('192.168.30.124:3000')) {
+           const baseUrl = envConfig.BASE_URL.replace('/api', '');
+           fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
+         } else if (fixedUrl.includes('localhost:5173')) {
+           // Fix localhost:5173 to use backend URL
+           const baseUrl = envConfig.BASE_URL.replace('/api', '');
+           fixedUrl = fixedUrl.replace('http://localhost:5173', baseUrl);
+           console.log(`🔍 Fixed localhost:5173 in detail: ${img.url} -> ${fixedUrl}`);
+         } else if (fixedUrl.startsWith('/uploads/')) {
+           // If URL starts with /uploads/, add the backend base URL
+           const baseUrl = envConfig.BASE_URL.replace('/api', '');
+           fixedUrl = `${baseUrl}${fixedUrl}`;
+           console.log(`🔍 Fixed relative upload URL in detail: ${img.url} -> ${fixedUrl}`);
+         }
+         
+         return { ...img, url: fixedUrl };
+       }
+       return img;
+     });
   };
 
   // Render content with images inline
@@ -272,6 +341,12 @@ const LaporanKeuanganDetail = () => {
                       alt={part.data.name || 'Laporan Keuangan Image'}
                       className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                       onClick={() => openFullScreenImage(part.data.url)}
+                      onError={(e) => {
+                        console.error(`❌ Failed to load content image:`, part.data.url);
+                        e.target.style.border = '2px solid red';
+                        e.target.style.backgroundColor = '#fee';
+                        e.target.alt = 'Gambar gagal dimuat';
+                      }}
                     />
                   </div>
                 ) : (
@@ -300,6 +375,12 @@ const LaporanKeuanganDetail = () => {
                     alt={image.name || `Image ${index + 1}`}
                     className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                     onClick={() => openFullScreenImage(image.url)}
+                    onError={(e) => {
+                      console.error(`❌ Failed to load image ${index + 1}:`, image.url);
+                      e.target.style.border = '2px solid red';
+                      e.target.style.backgroundColor = '#fee';
+                      e.target.alt = 'Gambar gagal dimuat';
+                    }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
                     <ImageIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />

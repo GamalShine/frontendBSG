@@ -1,9 +1,9 @@
 // Single source of truth untuk semua URL dan konfigurasi
 export const API_CONFIG = {
     // Base URLs dari environment variables
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.38.223:3000/api',
-    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.38.223:3000',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.38.223:5173',
+    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.124:3000/api',
+    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.124:3000',
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.124:5173',
 
     // Helper functions
     getUrl: (endpoint) => `${API_CONFIG.BASE_URL}${endpoint}`,
@@ -12,8 +12,8 @@ export const API_CONFIG = {
 
     // Timeout settings
     TIMEOUT: {
-        REQUEST: 10000, // 10 seconds
-        UPLOAD: 30000,  // 30 seconds
+        REQUEST: 30000, // 30 seconds for development
+        UPLOAD: 60000,  // 60 seconds
     },
 
     // Pagination defaults
@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
         LOGOUT: '/auth/logout',
         REGISTER: '/auth/register',
         REFRESH_TOKEN: '/auth/refresh',
+        VERIFY_TOKEN: '/auth/verify',
     },
 
     // Users
@@ -100,6 +101,14 @@ export const API_ENDPOINTS = {
     OMSET_HARIAN: {
         LIST: '/omset-harian',
         BY_ID: (id) => `/omset-harian/${id}`,
+    },
+
+    // Aneka Grafik
+    ANEKA_GRAFIK: {
+        LIST: '/aneka-grafik',
+        DETAIL: '/aneka-grafik',
+        BY_ID: (id) => `/aneka-grafik/${id}`,
+        STATS: '/aneka-grafik/stats/overview',
     },
 
     // Laporan Keuangan

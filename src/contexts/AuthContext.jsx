@@ -18,35 +18,66 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initAuth = async () => {
       try {
+        console.log('🔄 Initializing authentication...')
+        
         // Check if we have a stored token
         if (authService.isAuthenticated()) {
+          console.log('✅ Token found, checking user data...')
           const storedUser = authService.getStoredUser()
+          
           if (storedUser) {
-            setUser(storedUser)
+            console.log('👤 Found stored user:', storedUser)
+            // Verify token is still valid
+            try {
+              const isValid = await authService.isTokenValid()
+              if (isValid) {
+                setUser(storedUser)
+                console.log('✅ Token is valid, user session restored')
+              } else {
+                console.log('❌ Token expired, clearing session')
+                await authService.logout()
+                setUser(null)
+              }
+            } catch (error) {
+              console.log('❌ Token validation failed, clearing session')
+              await authService.logout()
+              setUser(null)
+            }
           } else {
+            console.log('⚠️ No stored user, fetching from server...')
             try {
               // Try to get current user from server
               const currentUser = await authService.getCurrentUser()
+              console.log('👤 Fetched current user:', currentUser)
               setUser(currentUser)
               localStorage.setItem('user', JSON.stringify(currentUser))
             } catch (error) {
-              // If API call fails, clear stored data and continue
-              console.warn('Failed to get current user, clearing stored data:', error)
+              console.warn('❌ Failed to get current user, clearing stored data:', error)
               await authService.logout()
+              setUser(null)
             }
           }
+        } else {
+          console.log('❌ No token found, user not authenticated')
+          setUser(null)
         }
       } catch (error) {
-        console.error('Auth initialization error:', error)
+        console.error('❌ Auth initialization error:', error)
         // Clear any corrupted auth data
-        await authService.logout()
+        try {
+          await authService.logout()
+        } catch (logoutError) {
+          console.error('Logout error during cleanup:', logoutError)
+        }
+        setUser(null)
       } finally {
         setLoading(false)
+        console.log('✅ Authentication initialization complete')
       }
     }
 
     initAuth()
-  }, [])
+  }, []) // Empty dependency array to run only once on mount
 
   const login = async (credentials) => {
     try {
