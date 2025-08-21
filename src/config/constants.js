@@ -50,6 +50,37 @@ export const API_ENDPOINTS = {
         UPDATE: (id) => `/keuangan-poskas/${id}`,
         UPDATE_UPLOAD: (id) => `/keuangan-poskas/${id}/upload`,
         DELETE: (id) => `/keuangan-poskas/${id}`,
+
+        // Admin Poskas
+        ADMIN: {
+            LIST: '/admin/keuangan-poskas',
+            BY_ID: (id) => `/admin/keuangan-poskas/${id}`,
+            STATS: '/admin/keuangan-poskas/stats',
+        },
+
+        // Tim Poskas
+        TIM: {
+            LIST: '/tim/keuangan-poskas',
+            BY_ID: (id) => `/tim/keuangan-poskas/${id}`,
+            STATS: '/tim/keuangan-poskas/stats',
+        },
+
+        // Divisi Poskas
+        DIVISI: {
+            LIST: '/divisi/keuangan-poskas',
+            BY_ID: (id) => `/divisi/keuangan-poskas/${id}`,
+            STATS: '/divisi/keuangan-poskas/stats',
+            CATEGORIES: '/divisi/keuangan-poskas/categories',
+            SEARCH: '/divisi/keuangan-poskas/search',
+        },
+
+        // Owner Poskas
+        OWNER: {
+            LIST: '/owner/keuangan-poskas',
+            BY_ID: (id) => `/owner/keuangan-poskas/${id}`,
+            STATS: '/owner/keuangan-poskas/stats',
+            DATE_RANGE: '/owner/keuangan-poskas/date-range',
+        },
     },
 
     // Tasks
@@ -62,6 +93,13 @@ export const API_ENDPOINTS = {
     COMPLAINTS: {
         LIST: '/daftar-komplain',
         BY_ID: (id) => `/daftar-komplain/${id}`,
+
+        // Tim Komplain
+        TIM: {
+            LIST: '/tim/komplain',
+            BY_ID: (id) => `/tim/komplain/${id}`,
+            STATS: '/tim/komplain/stats',
+        },
     },
 
     // Announcements

@@ -11,12 +11,15 @@ const Badge = ({
   
   const variants = {
     default: 'bg-gray-100 text-gray-800',
-    primary: 'bg-primary-100 text-primary-800',
+    primary: 'bg-blue-100 text-blue-800',
     success: 'bg-green-100 text-green-800',
     danger: 'bg-red-100 text-red-800',
     warning: 'bg-yellow-100 text-yellow-800',
     info: 'bg-blue-100 text-blue-800',
-    dark: 'bg-gray-800 text-white'
+    dark: 'bg-gray-800 text-white',
+    secondary: 'bg-gray-200 text-gray-700',
+    destructive: 'bg-red-100 text-red-800',
+    outline: 'bg-transparent border border-gray-300 text-gray-700'
   }
   
   const sizes = {
@@ -25,9 +28,12 @@ const Badge = ({
     lg: 'px-2.5 py-1 text-sm'
   }
 
+  const variantClass = variants[variant] || variants.default
+  const sizeClass = sizes[size] || sizes.md
+
   return (
     <span
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`${baseClasses} ${variantClass} ${sizeClass} ${className}`}
       {...props}
     >
       {children}

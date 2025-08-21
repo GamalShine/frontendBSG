@@ -37,8 +37,61 @@ import PoskasList from './pages/Poskas/PoskasList'
 import PoskasDetail from './pages/Poskas/PoskasDetail'
 import PoskasForm from './pages/Poskas/PoskasForm'
 import PoskasEdit from './pages/Poskas/PoskasEdit'
-import OwnerPoskasList from './pages/Owner/Poskas/OwnerPoskasList'
-import OwnerPoskasDetail from './pages/Owner/Poskas/OwnerPoskasDetail'
+// Owner Pages - New Structure
+import OwnerLaporanKeuangan from './pages/Owner/Keuangan/laporan/OwnerLaporanKeuangan'
+import OwnerLaporanKeuanganForm from './pages/Owner/Keuangan/laporan/OwnerLaporanKeuanganForm'
+import OwnerLaporanKeuanganDetail from './pages/Owner/Keuangan/laporan/OwnerLaporanKeuanganDetail'
+import OwnerOmsetHarian from './pages/Owner/Keuangan/laporan/OwnerOmsetHarian'
+import OwnerAnekaGrafik from './pages/Owner/Keuangan/laporan/OwnerAnekaGrafik'
+import OwnerDaftarGaji from './pages/Owner/Keuangan/manage/OwnerDaftarGaji'
+import OwnerDataAset from './pages/Owner/Operasional/manage/OwnerDataAset'
+import OwnerDataTarget from './pages/Owner/Marketing/manage/OwnerDataTarget'
+import OwnerDataTim from './pages/Owner/SDM/manage/OwnerDataTim'
+import OwnerTimMerahBiruList from './pages/Owner/DaftarTugas/TimMerahBiru/OwnerTimMerahBiruList'
+import OwnerTimMerahBiruDetail from './pages/Owner/DaftarTugas/TimMerahBiru/OwnerTimMerahBiruDetail'
+
+// Admin Pages - New Structure
+import AdminLaporanKeuangan from './pages/Admin/Keuangan/laporan/AdminLaporanKeuangan'
+import AdminLaporanKeuanganForm from './pages/Admin/Keuangan/laporan/AdminLaporanKeuanganForm'
+import AdminLaporanKeuanganDetail from './pages/Admin/Keuangan/laporan/AdminLaporanKeuanganDetail'
+
+
+// Admin Poskas Pages
+import AdminPoskasList from './pages/Admin/Keuangan/Poskas/AdminPoskasList'
+import AdminPoskasDetail from './pages/Admin/Keuangan/Poskas/AdminPoskasDetail'
+import AdminPoskasForm from './pages/Admin/Keuangan/Poskas/AdminPoskasForm'
+import AdminPoskasEdit from './pages/Admin/Keuangan/Poskas/AdminPoskasEdit'
+
+// Admin Omset Harian Pages
+import AdminOmsetHarianList from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianList'
+import AdminOmsetHarianForm from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianForm'
+import AdminOmsetHarianDetail from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianDetail'
+
+// Admin Aneka Grafik Pages
+import AdminAnekaGrafikList from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikList'
+import AdminAnekaGrafikDetail from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikDetail'
+import AdminAnekaGrafikForm from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikForm'
+
+// Tim Pages - New Structure
+import TimPoskasForm from './pages/Tim/Keuangan/input-data/TimPoskasForm'
+import TimKomplainForm from './pages/Tim/Operasional/input-data/TimKomplainForm'
+
+// Divisi Pages - New Structure
+import DivisiPoskasList from './pages/Divisi/Keuangan/view/DivisiPoskasList'
+
+// Owner Poskas Pages - Updated
+import OwnerPoskasList from './pages/Owner/Keuangan/Poskas/OwnerPoskasList'
+import OwnerPoskasDetail from './pages/Owner/Keuangan/Poskas/OwnerPoskasDetail'
+import OwnerPoskasForm from './pages/Owner/Keuangan/Poskas/OwnerPoskasForm'
+import OwnerPoskasEdit from './pages/Owner/Keuangan/Poskas/OwnerPoskasEdit'
+
+// Owner Omset Harian Pages
+import OwnerOmsetHarianList from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianList'
+import OwnerOmsetHarianForm from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianForm'
+import OwnerOmsetHarianDetail from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianDetail'
+import OwnerAnekaGrafikList from './pages/Owner/Keuangan/AnekaGrafik/OwnerAnekaGrafikList'
+import OwnerAnekaGrafikForm from './pages/Owner/Keuangan/AnekaGrafik/OwnerAnekaGrafikForm'
+import OwnerAnekaGrafikDetail from './pages/Owner/Keuangan/AnekaGrafik/OwnerAnekaGrafikDetail'
 import LaporanKeuangan from './pages/Keuangan/LaporanKeuangan'
 import AnekaGrafikList from './pages/Keuangan/AnekaGrafikList'
 import AnekaGrafikDetail from './pages/Keuangan/AnekaGrafikDetail'
@@ -79,13 +132,13 @@ import TimMerahList from './pages/Tim/TimMerahList'
 import TimMerahForm from './pages/Tim/TimMerahForm'
 import TimBiruList from './pages/Tim/TimBiruList'
 import TimBiruForm from './pages/Tim/TimBiruForm'
-import OwnerTimList from './pages/Owner/Tim/OwnerTimList'
+import OwnerTimList from './pages/Owner/Operasional/manage/OwnerTimList'
 
 // Training Pages
 import TrainingList from './pages/Training/TrainingList'
 import AdminTrainingList from './pages/Admin/Training/AdminTrainingList'
 import AdminTrainingForm from './pages/Admin/Training/AdminTrainingForm'
-import OwnerTrainingList from './pages/Owner/Training/OwnerTrainingList'
+import OwnerTrainingList from './pages/Owner/SDM/manage/OwnerTrainingList'
 
 // Users Pages
 import UsersList from './pages/Users/UsersList'
@@ -150,7 +203,12 @@ const ProtectedRoute = ({ children, requiredPermissions = [] }) => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true,
+        }}
+      >
         <AuthProvider>
           <MenuProvider>
             <Routes>
@@ -256,6 +314,42 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Admin New Structure Routes */}
+              {/* Admin Keuangan Routes */}
+              <Route path="/admin/keuangan/laporan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminLaporanKeuangan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/laporan/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminLaporanKeuanganForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/laporan/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminLaporanKeuanganDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/laporan/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminLaporanKeuanganForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+
 
               {/* Poskas Routes */}
               <Route path="/poskas" element={
@@ -570,6 +664,172 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Owner New Structure Routes */}
+              {/* Owner Keuangan Routes */}
+              <Route path="/owner/keuangan/poskas" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerPoskasList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/poskas/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerPoskasForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/poskas/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerPoskasDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/poskas/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerPoskasEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/laporan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerLaporanKeuangan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/laporan/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerLaporanKeuanganForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/laporan/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerLaporanKeuanganDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/laporan/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerLaporanKeuanganForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/omset-harian" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerOmsetHarianList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/omset-harian/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerOmsetHarianForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/omset-harian/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerOmsetHarianDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/omset-harian/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerOmsetHarianForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Owner Aneka Grafik Routes */}
+              <Route path="/owner/keuangan/aneka-grafik" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerAnekaGrafikList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/aneka-grafik/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerAnekaGrafikForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/aneka-grafik/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerAnekaGrafikDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/aneka-grafik/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerAnekaGrafikForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/keuangan/gaji" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDaftarGaji />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner Operasional Routes */}
+              <Route path="/owner/operasional/aset" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataAset />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner Marketing Routes */}
+              <Route path="/owner/marketing/target" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataTarget />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner SDM Routes */}
+              <Route path="/owner/sdm/tim" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataTim />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               {/* Pengumuman Routes */}
               <Route path="/pengumuman" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -670,11 +930,146 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Owner DaftarTugas Routes */}
+              <Route path="/owner/daftar-tugas/tim-merah-biru" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/daftar-tugas/tim-merah-biru/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Tim New Structure Routes */}
+              {/* Tim Keuangan Routes */}
+              <Route path="/tim/keuangan/poskas/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <TimPoskasForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Tim Operasional Routes */}
+              <Route path="/tim/operasional/komplain/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <TimKomplainForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               {/* Training Routes */}
               <Route path="/training" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <TrainingList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Poskas Routes */}
+              <Route path="/admin/keuangan/poskas" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminPoskasList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/poskas/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminPoskasForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/poskas/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminPoskasDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/poskas/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminPoskasEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Omset Harian Routes */}
+              <Route path="/admin/keuangan/omset-harian" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminOmsetHarianList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/omset-harian/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminOmsetHarianForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/omset-harian/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminOmsetHarianDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Aneka Grafik Routes */}
+              <Route path="/admin/keuangan/aneka-grafik" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminAnekaGrafikList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/aneka-grafik/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminAnekaGrafikForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/aneka-grafik/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminAnekaGrafikDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/aneka-grafik/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminAnekaGrafikForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/omset-harian/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminOmsetHarianForm />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -781,6 +1176,16 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Divisi New Structure Routes */}
+              {/* Divisi Keuangan Routes */}
+              <Route path="/divisi/keuangan/poskas" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <DivisiPoskasList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
@@ -815,4 +1220,4 @@ const App = () => {
   )
 }
 
-export default App 
+export default App

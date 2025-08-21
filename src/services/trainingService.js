@@ -84,10 +84,30 @@ export const ownerTrainingService = {
         }
     },
 
+    // Get all trainings for owner (alias for compatibility)
+    async getOwnerTrainings(params = {}) {
+        try {
+            const response = await api.get('/owner/training/users', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
     // Get training statistics for owner
     async getOwnerTrainingStats(params = {}) {
         try {
             const response = await api.get(API_ENDPOINTS.TRAINING.OWNER_STATS, { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get owner stats (alias for compatibility)
+    async getOwnerStats(params = {}) {
+        try {
+            const response = await api.get('/owner/training/stats', { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -115,4 +135,4 @@ export const ownerTrainingService = {
             throw error.response?.data || error.message
         }
     }
-} 
+}

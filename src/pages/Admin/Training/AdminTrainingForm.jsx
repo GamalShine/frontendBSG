@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useAuth } from '../../../contexts/AuthContext'
-import { trainingService } from '../../../services/trainingService'
+import { useAuth } from '@/contexts/AuthContext'
+import { trainingService } from '@/services/trainingService'
 import { 
   ArrowLeft, 
   Save, 
@@ -11,11 +11,11 @@ import {
   Users,
   MapPin
 } from 'lucide-react'
-import Card, { CardHeader, CardBody } from '../../../components/UI/Card'
-import Button from '../../../components/UI/Button'
-import Input from '../../../components/UI/Input'
-import Select from '../../../components/UI/Select'
-import Textarea from '../../../components/UI/Textarea'
+import Card, { CardHeader, CardBody } from '@/components/UI/Card'
+import Button from '@/components/UI/Button'
+import Input from '@/components/UI/Input'
+import Select from '@/components/UI/Select'
+import Textarea from '@/components/UI/Textarea'
 import toast from 'react-hot-toast'
 
 const AdminTrainingForm = () => {

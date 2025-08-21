@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useRef, useEffect } from 'react';
 
+// Main Select component
 const Select = ({ 
   label, 
   name, 
@@ -9,6 +10,7 @@ const Select = ({
   placeholder, 
   error, 
   className = '',
+  children,
   ...props 
 }) => {
   return (
@@ -25,7 +27,7 @@ const Select = ({
         onChange={onChange}
         className={`block w-full border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors px-3 py-3 ${
           error 
-            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
+            ? 'border-red-300 focus:ring-red-500 focus:border-primary-500' 
             : 'border-gray-300'
         }`}
         {...props}
@@ -35,7 +37,7 @@ const Select = ({
             {placeholder}
           </option>
         )}
-        {options.map((option) => (
+        {children || options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
@@ -50,7 +52,55 @@ const Select = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default Select 
+// Advanced Select components for better UX
+export const SelectTrigger = ({ children, className = '', onClick, ...props }) => (
+  <button
+    type="button"
+    className={`flex items-center justify-between w-full border rounded-lg px-3 py-2 text-left focus:outline-none focus:ring-2 focus:ring-primary-500 ${className}`}
+    onClick={onClick}
+    {...props}
+  >
+    {children}
+    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+);
+
+export const SelectValue = ({ placeholder, value, options = [] }) => {
+  const selectedOption = options.find(option => option.value === value);
+  return (
+    <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
+      {selectedOption ? selectedOption.label : placeholder}
+    </span>
+  );
+};
+
+export const SelectContent = ({ children, isOpen, className = '', ...props }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div
+      className={`absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto ${className}`}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
+
+export const SelectItem = ({ children, value, onClick, className = '', ...props }) => (
+  <button
+    type="button"
+    className={`w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${className}`}
+    onClick={() => onClick?.(value)}
+    {...props}
+  >
+    {children}
+  </button>
+);
+
+export default Select; 
