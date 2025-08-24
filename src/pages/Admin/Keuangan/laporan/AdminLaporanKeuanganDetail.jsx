@@ -162,13 +162,13 @@ const AdminLaporanKeuanganDetail = () => {
          }
          
          // Fix old IP addresses and localhost issues
-         if (fixedUrl.includes('192.168.30.124:3000')) {
+         if (fixedUrl.includes('192.168.30.49:3000')) {
            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+           fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
            console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('192.168.30.124:3000')) {
+         } else if (fixedUrl.includes('192.168.30.49:3000')) {
            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+           fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
            console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
          } else if (fixedUrl.includes('localhost:5173')) {
            // Fix localhost:5173 to use backend URL

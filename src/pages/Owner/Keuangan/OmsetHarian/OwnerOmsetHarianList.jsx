@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../../../contexts/AuthContext';
-import { omsetHarianService } from '../../../../services/omsetHarianService';
+import { useAuth } from '@/contexts/AuthContext';
+import { omsetHarianService } from '@/services/omsetHarianService';
 import { toast } from 'react-hot-toast';
 import { 
   Plus, 
@@ -15,9 +15,9 @@ import {
   RefreshCw,
   DollarSign
 } from 'lucide-react';
-import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
-const OwnerOmsetHarianList = () => {
+const OmsetHarianList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -362,7 +362,7 @@ const OwnerOmsetHarianList = () => {
                           </Link>
                           <Link
                             to={`/owner/keuangan/omset-harian/${omset.id}/edit`}
-                            className="text-green-600 hover:text-green-900"
+                            className="text-green-600 hover:text-blue-900"
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
@@ -415,5 +415,4 @@ const OwnerOmsetHarianList = () => {
     </div>
   );
 };
-
-export default OwnerOmsetHarianList; 
+export default OmsetHarianList; 

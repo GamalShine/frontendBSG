@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { chatService } from '../../services/chatService'
+import { chatGroupService } from '../../services/chatService'
 import useChatSocket from '../../hooks/useChatSocket'
 import { isDuplicateKeyError, getErrorMessage, extractErrorMessage } from '../../utils/errorHandler'
 import LoadingSpinner from '../../components/UI/LoadingSpinner'
@@ -14,36 +15,132 @@ import {
   Video,
   Trash2,
   Wifi,
-  WifiOff
+  WifiOff,
+  Users,
+  Plus,
+  RefreshCw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const ChatPrivate = () => {
   const { user } = useAuth()
   const { joinRoom, leaveRoom, onNewMessage, isConnected } = useChatSocket()
+  
+  // Tab state
+  const [activeTab, setActiveTab] = useState('all') // 'all' for combined list
+  
+  // Private chat state
   const [contacts, setContacts] = useState([])
   const [selectedContact, setSelectedContact] = useState(null)
+  
+  // Group chat state
+  const [groups, setGroups] = useState([])
+  const [selectedGroup, setSelectedGroup] = useState(null)
+  
+  // Combined chat list state
+  const [combinedChatList, setCombinedChatList] = useState([])
+  
+  // Shared chat state
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentRoom, setCurrentRoom] = useState(null)
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
+  const [newChatContacts, setNewChatContacts] = useState([])
+  const [newChatSearchTerm, setNewChatSearchTerm] = useState('')
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
     if (user?.id) {
-      loadContacts()
-    }
+      loadAllChats()
+      }
   }, [user])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView({ behavior: 'instant' })
   }, [messages])
 
-  const loadContacts = async () => {
+  // Show new chat modal and load available contacts
+  const handleShowNewChatModal = async () => {
+    try {
+      console.log('Opening new chat modal for user:', user.id)
+      setShowNewChatModal(true)
+      setNewChatSearchTerm('')
+      
+      // Load all available contacts from database
+      const contactsResponse = await chatService.getContacts(user.id)
+      const roomsResponse = await chatService.getChatRooms(user.id)
+      console.log('Contacts API response:', contactsResponse)
+      console.log('Rooms API response:', roomsResponse)
+      
+      if (contactsResponse.success && contactsResponse.data) {
+        // Get existing chat user IDs
+        const existingChatUserIds = new Set()
+        if (roomsResponse.success && roomsResponse.data) {
+          roomsResponse.data.forEach(room => {
+            if (room && room.other_user) {
+              existingChatUserIds.add(room.other_user.id)
+            }
+          })
+        }
+        
+        // Mark contacts with existing chat status
+        const contactsWithStatus = contactsResponse.data.map(contact => ({
+          ...contact,
+          hasExistingChat: existingChatUserIds.has(contact.id)
+        }))
+        
+        console.log('Setting available contacts with status:', contactsWithStatus)
+        setNewChatContacts(contactsWithStatus)
+      } else {
+        console.error('Failed to load contacts:', contactsResponse)
+        toast.error('Gagal memuat daftar kontak')
+        setNewChatContacts([])
+      }
+    } catch (error) {
+      console.error('Error loading new chat contacts:', error)
+      toast.error('Gagal memuat daftar kontak')
+      setNewChatContacts([])
+    }
+  }
+
+  // Load all chats (contacts and groups) and combine them
+  const loadAllChats = async () => {
     try {
       setLoading(true)
+      console.log('Loading all chats for user:', user.id)
+      
+      // Load contacts and groups in parallel
+      const [contactsResponse, groupsResponse] = await Promise.all([
+        loadContactsData(),
+        loadGroupsData()
+      ])
+      
+      // Combine and sort by last message time
+      const combined = [...contactsResponse, ...groupsResponse]
+        .sort((a, b) => {
+          // Sort by last_message_time, newest first
+          const timeA = a.last_message_time ? new Date(a.last_message_time).getTime() : 0
+          const timeB = b.last_message_time ? new Date(b.last_message_time).getTime() : 0
+          return timeB - timeA
+        })
+      
+      console.log('Combined chat list:', combined)
+      setCombinedChatList(combined)
+    } catch (error) {
+      console.error('Error loading all chats:', error)
+      toast.error('Gagal memuat daftar chat')
+      setCombinedChatList([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load contacts data (without setting state)
+  const loadContactsData = async () => {
+    try {
       console.log('Loading contacts for user:', user.id)
       
       // Get new contacts (users without existing chat rooms)
@@ -71,7 +168,8 @@ const ChatPrivate = () => {
               last_message: room.last_message || 'Belum ada pesan',
               last_message_time: room.last_message_time,
               room_id: room.room_id,
-              isExistingChat: true
+              isExistingChat: true,
+              type: 'private' // Add type for identification
             }
             existingContactIds.add(contact.id) // Track this ID
             return contact
@@ -93,27 +191,65 @@ const ChatPrivate = () => {
             nama: contact.nama || contact.username || 'Unknown User',
             last_message: 'Belum ada pesan',
             last_message_time: null,
-            isExistingChat: false
+            isExistingChat: false,
+            type: 'private' // Add type for identification
           }))
         
         allContacts = [...allContacts, ...newContacts]
       }
       
       console.log('All contacts:', allContacts)
-      setContacts(allContacts)
+      return allContacts
     } catch (error) {
       console.error('Error loading contacts:', error)
-      toast.error('Gagal memuat daftar kontak')
-      setContacts([])
-    } finally {
-      setLoading(false)
+      return []
     }
   }
 
+  // Load groups data (without setting state)
+  const loadGroupsData = async () => {
+    try {
+      console.log('🔍 Loading groups for user:', user.id)
+      
+      // Get user's groups using the correct endpoint
+      const response = await chatGroupService.getUserGroups(user.id)
+      console.log('🔍 Groups response:', response)
+      
+      if (response.success) {
+        // Filter out invalid groups and ensure proper structure
+        const validGroups = (response.data || [])
+          .filter(group => 
+            group && 
+            group.group_id && 
+            group.group_name
+          )
+          .map(group => ({
+            ...group,
+            member_count: group.members ? group.members.length : 0,
+            description: group.group_description || group.description || 'Tidak ada deskripsi',
+            type: 'group', // Add type for identification
+            last_message: group.last_message || 'Belum ada pesan',
+            last_message_time: group.last_message_time || null
+          }))
+        
+        console.log('🔍 Valid groups:', validGroups)
+        return validGroups
+      } else {
+        console.error('Failed to load groups:', response.message)
+        return []
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error)
+      return []
+    }
+  }
+
+  // Select contact for private chat
   const selectContact = async (contact) => {
     try {
       setLoading(true)
       setSelectedContact(contact)
+      setSelectedGroup(null) // Clear group selection
       
       // Leave previous room if exists
       if (currentRoom) {
@@ -241,6 +377,105 @@ const ChatPrivate = () => {
     }
   }
 
+  // Select group for group chat
+  const selectGroup = async (group) => {
+    try {
+      setLoading(true)
+      setSelectedGroup(group)
+      setSelectedContact(null) // Clear contact selection
+      
+      // Leave previous room if exists
+      if (currentRoom) {
+        try {
+          leaveRoom(currentRoom.room_id)
+        } catch (wsError) {
+          console.warn('Error leaving room:', wsError)
+        }
+      }
+      
+      console.log('🔍 Selecting group:', group.group_id)
+      
+      // Set current room for group
+      setCurrentRoom({ room_id: group.group_id, isGroup: true })
+      
+      // Try to join the group room for real-time updates
+      try {
+        joinRoom(group.group_id)
+        console.log('Joined group room:', group.group_id)
+      } catch (wsError) {
+        console.warn('WebSocket connection failed, continuing without real-time updates:', wsError)
+      }
+      
+      const messagesResponse = await chatGroupService.getGroupMessages(group.group_id)
+      console.log('🔍 Group messages response:', messagesResponse)
+      
+      if (messagesResponse.success) {
+        // Handle the response structure properly
+        const messagesData = messagesResponse.data
+        if (messagesData && messagesData.messages && Array.isArray(messagesData.messages)) {
+          // Filter out messages with invalid IDs (like id = 0) and reverse to show oldest first
+          const validMessages = messagesData.messages.filter(msg => 
+            msg && msg.id !== 0 && msg.id !== null
+          ).reverse() // Show oldest first (since backend returns newest first)
+          console.log('🔍 Valid messages:', validMessages)
+          setMessages(validMessages)
+        } else if (Array.isArray(messagesData)) {
+          // Filter out messages with invalid IDs and reverse to show oldest first
+          const validMessages = messagesData.filter(msg => 
+            msg && msg.id !== 0 && msg.id !== null
+          ).reverse() // Show oldest first (since backend returns newest first)
+          console.log('🔍 Valid messages (array):', validMessages)
+          setMessages(validMessages)
+        } else {
+          // Fallback to empty array
+          console.warn('Unexpected messages data structure:', messagesData)
+          setMessages([])
+        }
+      } else {
+        setMessages([])
+        console.error('Failed to load group messages:', messagesResponse.message)
+        toast.error('Gagal memuat pesan grup')
+      }
+      
+    } catch (error) {
+      console.error('Error selecting group:', error)
+      toast.error('Gagal membuka grup chat')
+      setMessages([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Update chat list after new message
+  const updateChatListAfterMessage = (roomId, message, senderId) => {
+    setCombinedChatList(prevList => {
+      const updatedList = prevList.map(item => {
+        if (item.type === 'private' && item.room_id === roomId) {
+          return {
+            ...item,
+            last_message: message,
+            last_message_time: new Date().toISOString()
+          }
+        } else if (item.type === 'group' && item.group_id === roomId) {
+          return {
+            ...item,
+            last_message: message,
+            last_message_time: new Date().toISOString()
+          }
+        }
+        return item
+      })
+      
+      // Sort by last message time, newest first
+      return updatedList.sort((a, b) => {
+        const timeA = a.last_message_time ? new Date(a.last_message_time).getTime() : 0
+        const timeB = b.last_message_time ? new Date(b.last_message_time).getTime() : 0
+        return timeB - timeA
+      })
+    })
+  }
+
+  // Send message (works for both private and group)
   const sendMessage = async () => {
     if (!newMessage.trim() || !currentRoom) {
       console.log('Cannot send message: no message or no current room')
@@ -250,6 +485,18 @@ const ChatPrivate = () => {
     const messageText = newMessage.trim()
     setNewMessage('')
 
+    // Check if it's a group message
+    const isGroupMessage = currentRoom.isGroup
+
+    if (isGroupMessage) {
+      await sendGroupMessage(messageText)
+    } else {
+      await sendPrivateMessage(messageText)
+    }
+  }
+
+  // Send private message
+  const sendPrivateMessage = async (messageText) => {
     // Declare tempMessage outside try block so it can be accessed in catch block
     let tempMessage = null
 
@@ -308,6 +555,8 @@ const ChatPrivate = () => {
           toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
         } else {
           toast.success('Pesan berhasil dikirim!')
+          // Update chat list after successful message
+          updateChatListAfterMessage(currentRoom.room_id, messageText, user.id)
         }
       } else {
         console.error('Failed to send message:', response.message)
@@ -345,6 +594,9 @@ const ChatPrivate = () => {
                   )
                   toast.success(`Pesan berhasil dikirim setelah ${retryAttempt} percobaan!`)
                   console.log('Message sent successfully after retry')
+                  
+                  // Update chat list after successful retry
+                  updateChatListAfterMessage(currentRoom.room_id, messageText, user.id)
                   
                   // Show warning if it's a fallback
                   if (retryResponse.data.isFallback) {
@@ -455,6 +707,145 @@ const ChatPrivate = () => {
     }
   }
 
+  // Send group message
+  const sendGroupMessage = async (messageText) => {
+    // Declare tempMessage outside try block so it can be accessed in catch block
+    let tempMessage = null
+
+    try {
+      console.log('🔍 Sending group message:', {
+        group_id: selectedGroup.group_id,
+        sender_id: user.id,
+        message: messageText
+      })
+
+      // Optimistically add message to UI
+      tempMessage = {
+        id: Date.now(),
+        room_id: selectedGroup.group_id,
+        sender_id: user.id,
+        message: messageText,
+        message_type: 'text',
+        is_group_message: true,
+        created_at: new Date().toISOString(),
+        sender: {
+          id: user.id,
+          nama: user.nama,
+          username: user.username
+        }
+      }
+      
+      setMessages(prev => {
+        const currentMessages = Array.isArray(prev) ? prev : []
+        return [...currentMessages, tempMessage]
+      })
+
+      // Send message to backend
+      const response = await chatGroupService.sendGroupMessage(selectedGroup.group_id, {
+        sender_id: user.id,
+        message: messageText,
+        message_type: 'text'
+      })
+      
+      console.log('🔍 Send message response:', response)
+      
+      if (response.success) {
+        // Replace temp message with real message from server
+        setMessages(prev => {
+          const currentMessages = Array.isArray(prev) ? prev : []
+          return currentMessages.map(msg => 
+            msg.id === tempMessage.id ? response.data : msg
+          )
+        })
+        toast.success('Pesan berhasil dikirim!')
+        console.log('Group message sent successfully')
+        
+        // Update chat list after successful group message
+        updateChatListAfterMessage(selectedGroup.group_id, messageText, user.id)
+      } else {
+        // Handle server errors with auto-retry
+        if (response.isServerError || response.isDatabaseError) {
+          console.log('Server/Database error detected, will retry automatically...')
+          toast.error(response.message)
+          
+          // Auto-retry after 3 seconds for server errors, 5 seconds for database errors
+          const retryDelay = response.isDatabaseError ? 5000 : 3000
+          
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Auto-retrying message send...')
+              const retryResponse = await chatGroupService.sendGroupMessage(selectedGroup.group_id, {
+                sender_id: user.id,
+                message: messageText,
+                message_type: 'text'
+              })
+              
+              if (retryResponse.success) {
+                // Replace temp message with real message from server
+                setMessages(prev => {
+                  const currentMessages = Array.isArray(prev) ? prev : []
+                  return currentMessages.map(msg => 
+                    msg.id === tempMessage.id ? retryResponse.data : msg
+                  )
+                })
+                toast.success('Pesan berhasil dikirim setelah percobaan ulang!')
+                console.log('Group message sent successfully after retry')
+                
+                // Update chat list after successful retry
+                updateChatListAfterMessage(selectedGroup.group_id, messageText, user.id)
+              } else {
+                // Remove temp message if retry also failed
+                setMessages(prev => {
+                  const currentMessages = Array.isArray(prev) ? prev : []
+                  return currentMessages.filter(msg => msg.id !== tempMessage.id)
+                })
+                toast.error('Gagal mengirim pesan setelah percobaan ulang')
+              }
+            } catch (retryError) {
+              console.error('Auto-retry failed:', retryError)
+              // Remove temp message if retry failed
+              setMessages(prev => {
+                const currentMessages = Array.isArray(prev) ? prev : []
+                return currentMessages.filter(msg => msg.id !== tempMessage.id)
+              })
+              toast.error('Gagal mengirim pesan setelah percobaan ulang')
+            }
+          }, retryDelay)
+          
+          // Keep the temp message for now (will be replaced or removed by retry)
+          return
+        }
+        
+        // Remove temp message if failed (non-server error)
+        setMessages(prev => {
+          const currentMessages = Array.isArray(prev) ? prev : []
+          return currentMessages.filter(msg => msg.id !== tempMessage.id)
+        })
+        toast.error(response.message || 'Gagal mengirim pesan')
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+      console.error('Error details:', extractErrorMessage(error))
+      
+      // Check if it's a database error
+      if (isDuplicateKeyError(error)) {
+        console.log('Duplicate key error detected, keeping temp message for retry')
+        toast.error('Pesan berhasil dikirim (sedang diproses ulang)')
+        // Don't remove the temp message as it will be replaced when retry succeeds
+      } else {
+        console.log('Non-duplicate error, removing temp message')
+        toast.error(getErrorMessage(error))
+        // Remove temp message if failed
+        if (tempMessage) {
+          setMessages(prev => {
+            const currentMessages = Array.isArray(prev) ? prev : []
+            return currentMessages.filter(msg => msg.id !== tempMessage.id)
+          })
+        }
+      }
+    }
+  }
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -463,7 +854,7 @@ const ChatPrivate = () => {
   }
 
   const deleteChat = async () => {
-    if (!currentRoom || !selectedContact) return
+    if (!currentRoom) return
 
     if (!window.confirm('Apakah Anda yakin ingin menghapus chat ini?')) {
       return
@@ -478,13 +869,22 @@ const ChatPrivate = () => {
         currentRoom.cleanup()
       }
       
-      const response = await chatService.deleteChatRoom(currentRoom.room_id, user.id)
-      if (response.success) {
-        toast.success('Chat berhasil dihapus')
-        setSelectedContact(null)
+      if (currentRoom.isGroup) {
+        // For group chat, just clear the selection
+        setSelectedGroup(null)
         setCurrentRoom(null)
         setMessages([])
-        loadContacts() // Reload contacts to update the list
+        toast.success('Grup chat ditutup')
+      } else {
+        // For private chat, delete the chat room
+        const response = await chatService.deleteChatRoom(currentRoom.room_id, user.id)
+        if (response.success) {
+          toast.success('Chat berhasil dihapus')
+          setSelectedContact(null)
+          setCurrentRoom(null)
+          setMessages([])
+          loadContacts() // Reload contacts to update the list
+        }
       }
     } catch (error) {
       console.error('Error deleting chat:', error)
@@ -518,31 +918,131 @@ const ChatPrivate = () => {
     }
   }
 
-  const filteredContacts = contacts.filter(contact =>
-    (contact.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (contact.username || '').toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Filter contacts and groups based on search term and existing chats with messages
+  const filteredCombinedList = combinedChatList.filter(item => {
+    const name = item.nama || item.group_name || item.username || 'Unknown User'
+    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    // Only show items that have existing chats with messages or are groups
+    if (item.type === 'private') {
+      // For private chats, only show if they have existing chat AND have messages
+      return matchesSearch && item.isExistingChat && item.last_message && item.last_message !== 'Belum ada pesan'
+    } else if (item.type === 'group') {
+      // For groups, show all (groups are considered existing chats)
+      return matchesSearch
+    }
+    
+    return false
+  })
+
+  // Start new chat with selected contact
+  const startNewChat = async (contact) => {
+    try {
+      setShowNewChatModal(false)
+      setNewChatSearchTerm('')
+      
+      // Create new chat room
+      const roomResponse = await chatService.getOrCreateRoom(user.id, contact.id)
+      
+      if (roomResponse.success && roomResponse.data) {
+        // Add the new contact to the chat list
+        const newContact = {
+          id: contact.id,
+          nama: contact.nama || contact.username || 'Unknown User',
+          username: contact.username,
+          email: contact.email,
+          role: contact.role,
+          last_message: 'Belum ada pesan',
+          last_message_time: null,
+          room_id: roomResponse.data.room_id,
+          isExistingChat: true,
+          type: 'private'
+        }
+        
+        // Add to combined chat list
+        setCombinedChatList(prev => [newContact, ...prev])
+        
+        // Select the new contact
+        selectContact(newContact)
+        
+        toast.success(`Chat baru dengan ${contact.nama} berhasil dibuat`)
+      } else {
+        throw new Error('Gagal membuat chat room')
+      }
+    } catch (error) {
+      console.error('Error starting new chat:', error)
+      toast.error('Gagal membuat chat baru')
+    }
+  }
+
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setSelectedContact(null)
+    setSelectedGroup(null)
+    setCurrentRoom(null)
+    setMessages([])
+    setSearchTerm('')
+    
+    // Load data for the selected tab
+    if (tab === 'all') {
+      loadAllChats()
+    }
+  }
+
+  // Get current chat info
+  const getCurrentChatInfo = () => {
+    if (selectedContact) {
+      return {
+        name: selectedContact.nama || selectedContact.username || 'User',
+        role: selectedContact.role || 'User',
+        avatar: <User className="h-5 w-5 text-white" />,
+        bgColor: 'bg-blue-500',
+        type: 'Private Chat'
+      }
+    } else if (selectedGroup) {
+      return {
+        name: selectedGroup.group_name,
+        role: `${selectedGroup.member_count || 0} anggota`,
+        avatar: <Users className="h-5 w-5 text-white" />,
+        bgColor: 'bg-green-500',
+        type: 'Group Chat'
+      }
+    }
+    return null
+  }
+
+  const currentChatInfo = getCurrentChatInfo()
 
   return (
     <div className="flex h-full bg-gray-50">
-      {/* Contacts Sidebar */}
+      {/* Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        {/* Header */}
+        {/* Header with Tabs */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-800">Chat Pribadi</h2>
+            <h2 className="text-lg font-semibold text-gray-800">Chat</h2>
             <div className="flex items-center space-x-2">
               {isConnected ? (
                 <Wifi className="h-4 w-4 text-green-500" title="Terhubung" />
               ) : (
                 <WifiOff className="h-4 w-4 text-red-500" title="Terputus" />
               )}
+              <button
+                onClick={handleShowNewChatModal}
+                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Buat chat baru"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
             </div>
           </div>
+
+          {/* Search */}
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari kontak..."
+              placeholder="Cari semua chat..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -551,73 +1051,100 @@ const ChatPrivate = () => {
           </div>
         </div>
 
-        {/* Contacts List */}
+        {/* Content List */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center items-center h-32">
               <LoadingSpinner size="medium" />
             </div>
-          ) : filteredContacts.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              {searchTerm ? 'Tidak ada kontak yang ditemukan' : 'Tidak ada kontak'}
-            </div>
-          ) : (
-            filteredContacts.map((contact, index) => (
+          ) : filteredCombinedList.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+              {searchTerm ? 'Tidak ada chat yang ditemukan' : 'Belum ada chat yang aktif'}
+              </div>
+            ) : (
+            filteredCombinedList.map((item, index) => (
               <div
-                key={`${contact.id}-${contact.isExistingChat ? 'existing' : 'new'}-${index}`}
-                onClick={() => selectContact(contact)}
-                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                  selectedContact?.id === contact.id ? 'bg-blue-50 border-blue-200' : ''
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {contact.nama || contact.username || 'User'}
-                        {contact.isExistingChat && (
+                key={`${item.id || item.group_id}-${item.type}-${index}`}
+                onClick={() => {
+                  if (item.type === 'private') {
+                    selectContact(item)
+                  } else if (item.type === 'group') {
+                    selectGroup(item)
+                  }
+                }}
+                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                  (item.type === 'private' && selectedContact?.id === item.id) ||
+                  (item.type === 'group' && selectedGroup?.group_id === item.group_id)
+                    ? 'bg-blue-50 border-blue-200'
+                    : ''
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                  <div className={`w-10 h-10 ${item.type === 'private' ? 'bg-blue-500' : 'bg-green-500'} rounded-full flex items-center justify-center`}>
+                    {item.type === 'private' ? <User className="h-5 w-5 text-white" /> : <Users className="h-5 w-5 text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                        {item.type === 'private' ? (item.nama || item.username || 'User') : item.group_name}
+                        {item.type === 'private' && item.isExistingChat && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                              Chat
+                            </span>
+                          )}
+                        {item.type === 'group' && (
                           <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Chat
+                            Grup
                           </span>
                         )}
-                      </h3>
-                      {contact.last_message_time && (
-                        <span className="text-xs text-gray-500">
-                          {formatTime(contact.last_message_time)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500 truncate">
-                      {contact.last_message || 'Belum ada pesan'}
+                        </h3>
+                      {item.last_message_time && (
+                          <span className="text-xs text-gray-500">
+                          {formatTime(item.last_message_time)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500 truncate">
+                      {item.last_message || 'Belum ada pesan'}
                     </p>
+                    {item.type === 'group' && (
+                      <p className="text-xs text-gray-400">
+                        {item.member_count || 0} anggota
+                      </p>
+                    )}
+                    {item.type === 'private' && item.role && (
+                      <p className="text-xs text-gray-400">
+                        {item.role}
+                      </p>
+                    )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))
           )}
         </div>
       </div>
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {selectedContact ? (
+        {currentChatInfo ? (
           <>
             {/* Chat Header */}
             <div className="bg-white border-b border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <User className="h-5 w-5 text-white" />
+                  <div className={`w-10 h-10 ${currentChatInfo.bgColor} rounded-full flex items-center justify-center`}>
+                    {currentChatInfo.avatar}
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {selectedContact.nama || selectedContact.username || 'User'}
+                      {currentChatInfo.name}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      {selectedContact.role || 'User'}
+                      {currentChatInfo.role}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {currentChatInfo.type}
                     </p>
                   </div>
                 </div>
@@ -631,7 +1158,7 @@ const ChatPrivate = () => {
                   <button 
                     onClick={deleteChat}
                     className="p-2 text-red-400 hover:text-red-600"
-                    title="Hapus chat"
+                    title={currentRoom?.isGroup ? 'Tutup grup' : 'Hapus chat'}
                   >
                     <Trash2 className="h-5 w-5" />
                   </button>
@@ -660,10 +1187,15 @@ const ChatPrivate = () => {
                     <div
                       className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                         message.sender_id === user.id
-                          ? 'bg-blue-500 text-white'
+                          ? currentRoom?.isGroup ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
                           : 'bg-gray-200 text-gray-900'
                       } ${message.isFallback ? 'border-2 border-yellow-400' : ''}`}
                     >
+                      {message.sender_id !== user.id && currentRoom?.isGroup && (
+                        <p className="text-xs font-medium mb-1 text-gray-600">
+                          {message.sender?.nama || 'Unknown User'}
+                        </p>
+                      )}
                       <p className="text-sm">{message.message}</p>
                       {message.isFallback && (
                         <p className="text-xs text-yellow-600 font-medium mt-1">
@@ -671,7 +1203,9 @@ const ChatPrivate = () => {
                         </p>
                       )}
                       <p className={`text-xs mt-1 ${
-                        message.sender_id === user.id ? 'text-blue-100' : 'text-gray-500'
+                        message.sender_id === user.id 
+                          ? currentRoom?.isGroup ? 'text-green-100' : 'text-blue-100'
+                          : 'text-gray-500'
                       }`}>
                         {formatTime(message.created_at)}
                       </p>
@@ -691,12 +1225,14 @@ const ChatPrivate = () => {
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ketik pesan..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className={`px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                    currentRoom?.isGroup ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
+                  }`}
                 >
                   <Send className="h-4 w-4" />
                 </button>
@@ -708,15 +1244,101 @@ const ChatPrivate = () => {
             <div className="text-center">
               <MessageCircle className="h-16 w-16 mx-auto mb-4 text-gray-300" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Pilih kontak untuk memulai chat
+                Pilih chat untuk memulai
               </h3>
               <p className="text-gray-500">
-                Pilih kontak dari daftar di sebelah kiri untuk memulai percakapan
+                Pilih chat dari daftar di sebelah kiri untuk memulai percakapan
               </p>
             </div>
           </div>
         )}
       </div>
+
+      {/* New Chat Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-96 max-h-[80vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">Buat Chat Baru</h3>
+                  <p className="text-sm text-gray-500 mt-1">Pilih user untuk memulai chat baru atau lanjutkan chat yang ada</p>
+                </div>
+                <button
+                  onClick={() => setShowNewChatModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Cari kontak..."
+                  value={newChatSearchTerm}
+                  onChange={(e) => setNewChatSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              </div>
+            </div>
+
+            {/* Contact List */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {newChatContacts.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  {newChatSearchTerm ? 'Tidak ada kontak yang ditemukan' : 'Tidak ada kontak tersedia'}
+                </div>
+              ) : (
+                newChatContacts
+                  .filter(contact => 
+                    (contact.nama || '').toLowerCase().includes(newChatSearchTerm.toLowerCase()) ||
+                    (contact.username || '').toLowerCase().includes(newChatSearchTerm.toLowerCase()) ||
+                    (contact.email || '').toLowerCase().includes(newChatSearchTerm.toLowerCase())
+                  )
+                  .map((contact, index) => (
+                    <div
+                      key={`${contact.id}-${index}`}
+                      onClick={() => startNewChat(contact)}
+                      className="p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-sm font-medium text-gray-900 truncate">
+                            {contact.nama || contact.username || 'User'}
+                            {contact.hasExistingChat && (
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                Sudah Ada Chat
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-xs text-gray-500 truncate">
+                            {contact.username && contact.nama !== contact.username ? `${contact.username} • ` : ''}{contact.role || 'User'}
+                          </p>
+                          {contact.email && (
+                            <p className="text-xs text-gray-400 truncate">
+                              {contact.email}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -7,10 +7,10 @@ import {
   Plus, 
   Search, 
   Calendar, 
-  Filter,
-  Eye,
-  Edit,
-  Trash2,
+  Filter, 
+  Eye, 
+  Edit, 
+  Trash2, 
   TrendingUp,
   RefreshCw,
   DollarSign
@@ -20,6 +20,7 @@ import { API_ENDPOINTS, API_CONFIG } from '../../../../config/constants';
 
 const OwnerPoskasList = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [poskas, setPoskas] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -42,8 +43,8 @@ const OwnerPoskasList = () => {
   // Test API connection
   const testApiConnection = async () => {
     try {
-      console.log('🧪 Testing Owner API connection...')
-      const response = await fetch(API_CONFIG.getUrl(API_ENDPOINTS.POSKAS.OWNER.LIST), {
+      console.log('🧪 Testing API connection...')
+      const response = await fetch(API_CONFIG.getUrl(API_ENDPOINTS.POSKAS.LIST), {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -52,15 +53,15 @@ const OwnerPoskasList = () => {
       })
       
       const data = await response.json()
-      console.log('🧪 Owner API Test Response:', data)
+      console.log('🧪 API Test Response:', data)
       
       if (response.ok) {
-        console.log('✅ Owner API connection successful')
+        console.log('✅ API connection successful')
       } else {
-        console.error('❌ Owner API connection failed:', data)
+        console.error('❌ API connection failed:', data)
       }
     } catch (error) {
-      console.error('❌ Owner API test error:', error)
+      console.error('❌ API test error:', error)
     }
   }
 
@@ -79,43 +80,53 @@ const OwnerPoskasList = () => {
         date: dateFilter
       }
       
-      console.log('🔄 Loading owner poskas with params:', params)
+      console.log('🔄 Loading poskas with params:', params)
       console.log('👤 User role:', user.role, 'User ID:', user.id)
       
-      // Owner should use owner-specific endpoint
-      console.log('🔑 Owner - using owner endpoint')
-      const response = await poskasService.getOwnerPoskas(params)
+      // Owner can see all poskas - using same method as working example
+      const response = await poskasService.getPoskas(params)
       
-      console.log('📦 Owner poskas response:', response)
+      console.log('📦 Poskas response:', response)
       
-      if (response.success || response.data) {
-        const data = response.data || response
-        console.log('📋 Owner poskas data:', data)
-        
-        // Handle different response structures
-        const poskasData = Array.isArray(data) ? data : (data.rows || data || [])
-        console.log('📊 Final owner poskas data:', poskasData)
-        
-        setPoskas(poskasData)
-        
-        // Handle pagination
-        if (data.totalPages) {
-          setTotalPages(data.totalPages)
-        } else if (data.count) {
-          setTotalPages(Math.ceil(data.count / 10))
-        } else {
-          setTotalPages(1)
-        }
-        
-        setTotalItems(data.count || data.length || poskasData.length || 0)
+      // Handle different response structures
+      let data = response
+      
+      // Check if response has data property
+      if (response && typeof response === 'object' && 'data' in response) {
+        data = response.data
+      }
+      
+      console.log('📋 Processed poskas data:', data)
+      console.log('📊 Data type:', typeof data)
+      console.log('📋 Data keys:', Object.keys(data || {}))
+      
+      // Try to extract poskas from different possible structures
+      const poskasData = data?.poskas || data?.items || data?.data || data || []
+      const totalPages = data?.totalPages || data?.last_page || data?.total_pages || 1
+      const totalItems = data?.total || data?.total_items || data?.count || 0
+      
+      setPoskas(poskasData)
+      setTotalPages(totalPages)
+      setTotalItems(totalItems)
+      
+      console.log('✅ Poskas set:', poskasData)
+      console.log('📄 Total pages:', totalPages)
+      console.log('🔢 Total items:', totalItems)
+      
+      // Show success message if data loaded
+      if (poskasData.length > 0) {
+        console.log('✅ Successfully loaded', poskasData.length, 'poskas')
       } else {
-        console.warn('⚠️ Owner poskas response not successful:', response)
-        setPoskas([])
-        setTotalPages(1)
-        setTotalItems(0)
+        console.log('ℹ️ No poskas data found')
       }
     } catch (error) {
-      console.error('❌ Error loading owner poskas:', error)
+      console.error('❌ Error loading poskas:', error)
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config
+      })
       toast.error('Gagal memuat daftar pos kas')
       setPoskas([])
       setTotalPages(1)
@@ -127,14 +138,14 @@ const OwnerPoskasList = () => {
 
   const loadStats = async () => {
     try {
-      console.log('📊 Loading owner stats for user:', user.id)
-      const response = await poskasService.getOwnerPoskasStats({ limit: 1000 })
-      console.log('📈 Owner stats response:', response)
+      console.log('📊 Loading stats for user:', user.id)
+      const response = await poskasService.getPoskasByUser(user.id, { limit: 1000 })
+      console.log('📈 Stats response:', response)
       
       if (response.success || response.data) {
         const data = response.data || response
         const poskasData = Array.isArray(data) ? data : (data.rows || data || [])
-        console.log('📊 Owner stats data:', poskasData)
+        console.log('📊 Stats data:', poskasData)
         
         const now = new Date()
         const thisMonth = now.getMonth()
@@ -156,10 +167,10 @@ const OwnerPoskasList = () => {
           totalThisYear: thisYearPoskas.length
         }
         
-        console.log('📊 Calculated owner stats:', statsData)
+        console.log('📊 Calculated stats:', statsData)
         setStats(statsData)
       } else {
-        console.warn('⚠️ Owner stats response not successful:', response)
+        console.warn('⚠️ Stats response not successful:', response)
         setStats({
           totalPoskas: 0,
           totalThisMonth: 0,
@@ -167,7 +178,7 @@ const OwnerPoskasList = () => {
         })
       }
     } catch (error) {
-      console.error('❌ Error loading owner stats:', error)
+      console.error('❌ Error loading stats:', error)
       setStats({
         totalPoskas: 0,
         totalThisMonth: 0,
@@ -194,9 +205,9 @@ const OwnerPoskasList = () => {
   const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus laporan pos kas ini?')) {
       try {
-        console.log('🗑️ Deleting owner poskas with ID:', id)
-        const response = await poskasService.deleteOwnerPoskas(id)
-        console.log('✅ Owner delete response:', response)
+        console.log('🗑️ Deleting poskas with ID:', id)
+        const response = await poskasService.deletePoskas(id)
+        console.log('✅ Delete response:', response)
         
         if (response.success) {
           toast.success('Laporan pos kas berhasil dihapus')
@@ -206,7 +217,7 @@ const OwnerPoskasList = () => {
           toast.error(response.message || 'Gagal menghapus laporan pos kas')
         }
       } catch (error) {
-        console.error('❌ Error deleting owner poskas:', error)
+        console.error('❌ Error deleting poskas:', error)
         toast.error('Gagal menghapus laporan pos kas')
       }
     }
@@ -241,7 +252,7 @@ const OwnerPoskasList = () => {
 
     if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedItems.length} laporan pos kas yang dipilih?`)) {
       try {
-        const deletePromises = selectedItems.map(id => poskasService.deleteOwnerPoskas(id))
+        const deletePromises = selectedItems.map(id => poskasService.deletePoskas(id))
         await Promise.all(deletePromises)
         
         toast.success(`${selectedItems.length} laporan pos kas berhasil dihapus`)
@@ -249,13 +260,13 @@ const OwnerPoskasList = () => {
         loadPoskas()
         loadStats()
       } catch (error) {
-        console.error('❌ Error bulk deleting owner poskas:', error)
+        console.error('❌ Error bulk deleting poskas:', error)
         toast.error('Gagal menghapus beberapa laporan pos kas')
       }
     }
   }
 
-  return (
+    return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
       <div className="bg-white rounded-lg shadow-sm border mb-6">
@@ -299,8 +310,8 @@ const OwnerPoskasList = () => {
               <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
               <p className="text-2xl font-bold text-gray-900">{stats.totalThisMonth}</p>
             </div>
-          </div>
         </div>
+      </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <div className="flex items-center space-x-3">
@@ -324,18 +335,18 @@ const OwnerPoskasList = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cari
               </label>
-              <div className="relative">
+            <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Cari pos kas..."
-                  value={searchTerm}
+                value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
+              />
               </div>
             </div>
-
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Tanggal
@@ -348,7 +359,7 @@ const OwnerPoskasList = () => {
                   onChange={(e) => setDateFilter(e.target.value)}
                   className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
-              </div>
+          </div>
             </div>
 
             <div className="flex items-end">
@@ -360,9 +371,9 @@ const OwnerPoskasList = () => {
                 <span>Cari</span>
               </button>
             </div>
-          </div>
-        </div>
-      </div>
+            </div>
+                    </div>
+                    </div>
 
       {/* Data Table */}
       <div className="bg-white rounded-lg shadow-sm border">
@@ -383,9 +394,9 @@ const OwnerPoskasList = () => {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-
+                </div>
+              </div>
+              
         {loading ? (
           <div className="p-8 text-center">
             <LoadingSpinner />
@@ -489,7 +500,7 @@ const OwnerPoskasList = () => {
                   ))}
                 </tbody>
               </table>
-            </div>
+                </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -497,7 +508,7 @@ const OwnerPoskasList = () => {
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700">
                     Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
-                  </div>
+                      </div>
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => setCurrentPage(currentPage - 1)}
@@ -522,9 +533,9 @@ const OwnerPoskasList = () => {
             )}
           </>
         )}
-      </div>
+            </div>
     </div>
   );
 }
 
-export default OwnerPoskasList 
+export default OwnerPoskasList

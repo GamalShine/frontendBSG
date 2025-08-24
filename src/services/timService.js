@@ -102,55 +102,61 @@ export const timService = {
         }
     },
 
-    // Delete tim biru
-    async deleteTimBiru(id) {
-        try {
-            const response = await api.delete(API_ENDPOINTS.TIM.BIRU_BY_ID(id))
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
+      // Delete tim biru
+  async deleteTimBiru(id) {
+    try {
+      const response = await api.delete(API_ENDPOINTS.TIM.BIRU_BY_ID(id))
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
     }
+  },
+
+  // ===== OWNER METHODS =====
+
+  // Get tim merah for owner (using correct endpoint)
+  async getTimMerahForOwner(params = {}) {
+    try {
+      const response = await api.get('/owner/tim-merah-biru/merah', { params })
+      return response.data
+    } catch (error) {
+      console.error('Error in getTimMerahForOwner:', error)
+      throw error
+    }
+  },
+
+  // Get tim biru for owner (using correct endpoint)
+  async getTimBiruForOwner(params = {}) {
+    try {
+      const response = await api.get('/owner/tim-merah-biru/biru', { params })
+      return response.data
+    } catch (error) {
+      console.error('Error in getTimBiruForOwner:', error)
+      throw error
+    }
+  },
+
+  // Delete tim merah for owner
+  async deleteTimMerahForOwner(id) {
+    try {
+      const response = await api.delete(`/owner/tim-merah-biru/merah/${id}`)
+      return response.data
+    } catch (error) {
+      console.error('Error in deleteTimMerahForOwner:', error)
+      throw error
+    }
+  },
+
+  // Delete tim biru for owner
+  async deleteTimBiruForOwner(id) {
+    try {
+      const response = await api.delete(`/owner/tim-merah-biru/biru/${id}`)
+      return response.data
+    } catch (error) {
+      console.error('Error in deleteTimBiruForOwner:', error)
+      throw error
+    }
+  }
 }
 
-export const ownerTimService = {
-    // Get all tim for owner
-    async getOwnerTim(params = {}) {
-        try {
-            const response = await api.get('/owner/tim-merah-biru', { params })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get tim statistics for owner
-    async getOwnerTimStats(params = {}) {
-        try {
-            const response = await api.get('/owner/tim-merah-biru/stats', { params })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get tim by division
-    async getOwnerTimByDivision(division, params = {}) {
-        try {
-            const response = await api.get(`/owner/tim-merah-biru/division/${division}`, { params })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    },
-
-    // Get tim by status
-    async getOwnerTimByStatus(status, params = {}) {
-        try {
-            const response = await api.get(`/owner/tim-merah-biru/status/${status}`, { params })
-            return response.data
-        } catch (error) {
-            throw error.response?.data || error.message
-        }
-    }
-} 
+ 

@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
-import Select from '@/components/UI/Select';
-import Table from '@/components/UI/Table';
+import Input from '@/components/UI/Input';
+import Select, { 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/UI/Select';
+import Table, { 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/UI/Table';
 import Badge from '@/components/UI/Badge';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
@@ -77,14 +89,14 @@ const OwnerDataTarget = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Data Target Marketing - Owner View</span>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Data Target Marketing - Owner View</h2>
             <Button onClick={handleExport} variant="outline">
               Export Data
             </Button>
-          </CardTitle>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardBody>
           {/* Filters */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <Input
@@ -96,75 +108,90 @@ const OwnerDataTarget = () => {
               value={filters.kategori}
               onValueChange={(value) => handleFilterChange('kategori', value)}
             >
-              <option value="">Semua Kategori</option>
-              <option value="CORPORATE">CORPORATE</option>
-              <option value="UMKM">UMKM</option>
-              <option value="INDIVIDU">INDIVIDU</option>
-              <option value="GOVERNMENT">GOVERNMENT</option>
+              <SelectTrigger>
+                <SelectValue placeholder="Semua Kategori" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Semua Kategori</SelectItem>
+                <SelectItem value="CORPORATE">CORPORATE</SelectItem>
+                <SelectItem value="UMKM">UMKM</SelectItem>
+                <SelectItem value="INDIVIDU">INDIVIDU</SelectItem>
+                <SelectItem value="GOVERNMENT">GOVERNMENT</SelectItem>
+              </SelectContent>
             </Select>
             <Select
               value={filters.status}
               onValueChange={(value) => handleFilterChange('status', value)}
             >
-              <option value="">Semua Status</option>
-              <option value="PROSPEK">PROSPEK</option>
-              <option value="AKTIF">AKTIF</option>
-              <option value="NONAKTIF">NONAKTIF</option>
-              <option value="CLOSED">CLOSED</option>
+              <SelectTrigger>
+                <SelectValue placeholder="Semua Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Semua Status</SelectItem>
+                <SelectItem value="PROSPEK">PROSPEK</SelectItem>
+                <SelectItem value="AKTIF">AKTIF</SelectItem>
+                <SelectItem value="NONAKTIF">NONAKTIF</SelectItem>
+                <SelectItem value="CLOSED">CLOSED</SelectItem>
+              </SelectContent>
             </Select>
             <Select
               value={filters.limit}
               onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
             >
-              <option value={10}>10 per halaman</option>
-              <option value={25}>25 per halaman</option>
-              <option value={50}>50 per halaman</option>
+              <SelectTrigger>
+                <SelectValue placeholder="10 per halaman" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={10}>10 per halaman</SelectItem>
+                <SelectItem value={25}>25 per halaman</SelectItem>
+                <SelectItem value={50}>50 per halaman</SelectItem>
+              </SelectContent>
             </Select>
           </div>
 
           {/* Table */}
           <Table>
-            <thead>
-              <tr>
-                <th>Nama Target</th>
-                <th>Kategori</th>
-                <th>Alamat</th>
-                <th>Kontak</th>
-                <th>Status</th>
-                <th>Nilai Target</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nama Target</TableHead>
+                <TableHead>Kategori</TableHead>
+                <TableHead>Alamat</TableHead>
+                <TableHead>Kontak</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Nilai Target</TableHead>
+                <TableHead>Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {dataTarget.map((target) => (
-                <tr key={target.id}>
-                  <td className="font-medium">{target.nama_target}</td>
-                  <td>
+                <TableRow key={target.id}>
+                  <TableCell className="font-medium">{target.nama_target}</TableCell>
+                  <TableCell>
                     <Badge variant="outline">{target.kategori}</Badge>
-                  </td>
-                  <td className="max-w-xs truncate">{target.alamat}</td>
-                  <td>{target.kontak}</td>
-                  <td>
+                  </TableCell>
+                  <TableCell className="max-w-xs truncate">{target.alamat}</TableCell>
+                  <TableCell>{target.kontak}</TableCell>
+                  <TableCell>
                     <Badge variant={
                       target.status === 'AKTIF' ? 'success' : 
                       target.status === 'PROSPEK' ? 'warning' : 'secondary'
                     }>
                       {target.status}
                     </Badge>
-                  </td>
-                  <td className="font-mono">
+                  </TableCell>
+                  <TableCell className="font-mono">
                     Rp {target.nilai_target?.toLocaleString('id-ID')}
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <Button variant="outline" size="sm">
                       Detail
                     </Button>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
+            </TableBody>
           </Table>
-        </CardContent>
+        </CardBody>
       </Card>
     </div>
   );

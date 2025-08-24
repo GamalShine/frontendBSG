@@ -186,5 +186,25 @@ export const poskasService = {
         } catch (error) {
             throw error.response?.data || error.message
         }
+    },
+
+    // Create owner poskas
+    async createOwnerPoskas(poskasData) {
+        try {
+            const response = await api.post(API_ENDPOINTS.POSKAS.OWNER.LIST, poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Update owner poskas
+    async updateOwnerPoskas(id, poskasData) {
+        try {
+            const response = await api.put(API_ENDPOINTS.POSKAS.OWNER.BY_ID(id), poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     }
 } 

@@ -61,11 +61,19 @@ const AdminAnekaGrafikDetail = () => {
             processedImages = processedImages.map(img => {
               console.log('🔍 Processing image object:', img);
               
+              // Ensure we have a proper URL for the image
+              let imageUrl = img.url;
+              if (!imageUrl && img.serverPath) {
+                // If no URL but we have serverPath, construct the URL
+                const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+                imageUrl = `${baseUrl}/${img.serverPath}`;
+              }
+              
               const processedImg = {
                 uri: img.uri || `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: img.name || `aneka_grafik_${img.id}.jpg`,
-                url: img.url || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+                url: imageUrl || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
                 serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
               };
               
@@ -95,6 +103,11 @@ const AdminAnekaGrafikDetail = () => {
             finalUrl: imageUrl,
             id: image.id
           });
+          
+          // Ensure the image URL is properly constructed
+          if (imageUrl && !imageUrl.startsWith('data:')) {
+            imageUrl = constructImageUrl(imageUrl);
+          }
           
           const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
           const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
@@ -202,15 +215,17 @@ const AdminAnekaGrafikDetail = () => {
   const constructImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     
+    console.log('🔍 🔍 🔍 constructImageUrl called with:', imageUrl);
+    
     // Fix double http:// issue
     if (imageUrl.startsWith('http://http://')) {
       imageUrl = imageUrl.replace('http://http://', 'http://');
     }
     
     // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.124:3000')) {
+    if (imageUrl.includes('192.168.30.49:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
     }
     
     // Fix /api/uploads/ path
@@ -224,6 +239,7 @@ const AdminAnekaGrafikDetail = () => {
       imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }
     
+    console.log('🔍 🔍 🔍 Final constructed URL:', imageUrl);
     return imageUrl;
   };
 
@@ -239,6 +255,7 @@ const AdminAnekaGrafikDetail = () => {
         processedImages = images;
       }
     } catch (error) {
+      console.error('❌ Error parsing images JSON:', error);
       return [];
     }
 
@@ -248,16 +265,19 @@ const AdminAnekaGrafikDetail = () => {
 
     return processedImages.map((img) => {
       if (img && img.url) {
+        console.log('🔍 🔍 🔍 Processing image URL:', img.url);
+        
         // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
+        if (img.url.includes('192.168.30.49')) {
           const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
           if (match && match[1]) {
-            img.url = 'http://192.168.30.124:3000' + match[1];
+            img.url = 'http://192.168.30.49:3000' + match[1];
           }
         }
         
         // Apply final URL construction
         img.url = constructImageUrl(img.url);
+        console.log('🔍 🔍 🔍 Final image URL:', img.url);
       }
       return img;
     });
@@ -529,7 +549,7 @@ const AdminAnekaGrafikDetail = () => {
         <div className="flex items-center justify-between">
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate('/keuangan/aneka-grafik')}
+              onClick={() => navigate('/admin/keuangan/aneka-grafik')}
               className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Kembali
@@ -565,7 +585,7 @@ const AdminAnekaGrafikDetail = () => {
           </div>
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate(`/keuangan/aneka-grafik/${id}/edit`)}
+              onClick={() => navigate(`/admin/keuangan/aneka-grafik/${id}/edit`)}
               className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               <Edit className="h-4 w-4" />

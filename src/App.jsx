@@ -11,8 +11,6 @@ import NotFound from './pages/NotFound'
 
 // Chat Pages
 import ChatPrivate from './pages/Chat/ChatPrivate'
-import ChatGroups from './pages/Chat/ChatGroups'
-import ChatGroupCreate from './pages/Chat/ChatGroupCreate'
 import ChatRoom from './pages/Chat/ChatRoom'
 
 // Komplain Pages
@@ -21,6 +19,8 @@ import KomplainDetail from './pages/Komplain/KomplainDetail'
 import KomplainForm from './pages/Komplain/KomplainForm'
 import AdminKomplainList from './pages/Admin/Komplain/AdminKomplainList'
 import AdminKomplainDetail from './pages/Admin/Komplain/AdminKomplainDetail'
+import AdminKomplainForm from './pages/Admin/Komplain/AdminKomplainForm'
+import AdminKomplainEdit from './pages/Admin/Komplain/AdminKomplainEdit'
 
 // Tugas Pages
 import TugasList from './pages/Tugas/TugasList'
@@ -41,14 +41,27 @@ import PoskasEdit from './pages/Poskas/PoskasEdit'
 import OwnerLaporanKeuangan from './pages/Owner/Keuangan/laporan/OwnerLaporanKeuangan'
 import OwnerLaporanKeuanganForm from './pages/Owner/Keuangan/laporan/OwnerLaporanKeuanganForm'
 import OwnerLaporanKeuanganDetail from './pages/Owner/Keuangan/laporan/OwnerLaporanKeuanganDetail'
-import OwnerOmsetHarian from './pages/Owner/Keuangan/laporan/OwnerOmsetHarian'
+import OwnerOmsetHarian from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarian'
 import OwnerAnekaGrafik from './pages/Owner/Keuangan/laporan/OwnerAnekaGrafik'
 import OwnerDaftarGaji from './pages/Owner/Keuangan/manage/OwnerDaftarGaji'
 import OwnerDataAset from './pages/Owner/Operasional/manage/OwnerDataAset'
 import OwnerDataTarget from './pages/Owner/Marketing/manage/OwnerDataTarget'
 import OwnerDataTim from './pages/Owner/SDM/manage/OwnerDataTim'
-import OwnerTimMerahBiruList from './pages/Owner/DaftarTugas/TimMerahBiru/OwnerTimMerahBiruList'
-import OwnerTimMerahBiruDetail from './pages/Owner/DaftarTugas/TimMerahBiru/OwnerTimMerahBiruDetail'
+import OwnerTimMerahBiruList from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruList'
+import OwnerTimMerahBiruDetail from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruDetail'
+import OwnerTimMerahBiruForm from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruForm'
+import OwnerTimMerahBiruEdit from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruEdit'
+
+// Owner KPI Pages
+import OwnerKPI from './pages/Owner/SDM/KPI/OwnerKPI'
+import OwnerKPIList from './pages/Owner/SDM/KPI/OwnerKPIList'
+import OwnerKPIDetail from './pages/Owner/SDM/KPI/OwnerKPIDetail'
+import OwnerKPIForm from './pages/Owner/SDM/KPI/OwnerKPIForm'
+import OwnerKPIEdit from './pages/Owner/SDM/KPI/OwnerKPIEdit'
+
+// Owner Admin Management Pages
+import AdminMenuManagement from './pages/Owner/AdminMenuManagement/AdminMenuManagement'
+import PicMenuManagement from './pages/Owner/PicMenuManagement/PicMenuManagement'
 
 // Admin Pages - New Structure
 import AdminLaporanKeuangan from './pages/Admin/Keuangan/laporan/AdminLaporanKeuangan'
@@ -66,11 +79,33 @@ import AdminPoskasEdit from './pages/Admin/Keuangan/Poskas/AdminPoskasEdit'
 import AdminOmsetHarianList from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianList'
 import AdminOmsetHarianForm from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianForm'
 import AdminOmsetHarianDetail from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianDetail'
+import AdminOmsetHarianEdit from './pages/Admin/Keuangan/OmsetHarian/AdminOmsetHarianEdit'
 
 // Admin Aneka Grafik Pages
 import AdminAnekaGrafikList from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikList'
 import AdminAnekaGrafikDetail from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikDetail'
 import AdminAnekaGrafikForm from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikForm'
+
+// Admin Operasional Pages
+import AdminDataSupplier from './pages/Admin/Operasional/DataSupplier/AdminDataSupplier'
+import AdminDataSupplierForm from './pages/Admin/Operasional/DataSupplier/AdminDataSupplierForm'
+import AdminDataSupplierDetail from './pages/Admin/Operasional/DataSupplier/AdminDataSupplierDetail'
+import AdminDataSupplierEdit from './pages/Admin/Operasional/DataSupplier/AdminDataSupplierEdit'
+
+// Admin SDM Pages
+import AdminDataTim from './pages/Admin/SDM/manage/AdminDataTim'
+import AdminTimMerahBiru from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiru'
+import AdminTimMerahBiruList from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruList'
+import AdminTimMerahBiruDetail from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruDetail'
+import AdminTimMerahBiruForm from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruForm'
+import AdminTimMerahBiruEdit from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruEdit'
+
+// Admin KPI Pages
+import AdminKPI from './pages/Admin/SDM/KPI/AdminKPI'
+import AdminKPIList from './pages/Admin/SDM/KPI/AdminKPIList'
+import AdminKPIDetail from './pages/Admin/SDM/KPI/AdminKPIDetail'
+import AdminKPIForm from './pages/Admin/SDM/KPI/AdminKPIForm'
+import AdminKPIEdit from './pages/Admin/SDM/KPI/AdminKPIEdit'
 
 // Tim Pages - New Structure
 import TimPoskasForm from './pages/Tim/Keuangan/input-data/TimPoskasForm'
@@ -85,10 +120,35 @@ import OwnerPoskasDetail from './pages/Owner/Keuangan/Poskas/OwnerPoskasDetail'
 import OwnerPoskasForm from './pages/Owner/Keuangan/Poskas/OwnerPoskasForm'
 import OwnerPoskasEdit from './pages/Owner/Keuangan/Poskas/OwnerPoskasEdit'
 
+// Owner Operasional Pages
+import OwnerDataSupplier from './pages/Owner/Operasional/DataSupplier/OwnerDataSupplier'
+import OwnerDataSupplierForm from './pages/Owner/Operasional/DataSupplier/OwnerDataSupplierForm'
+import OwnerDataSupplierDetail from './pages/Owner/Operasional/DataSupplier/OwnerDataSupplierDetail'
+import OwnerDataSupplierEdit from './pages/Owner/Operasional/DataSupplier/OwnerDataSupplierEdit'
+
+// Owner Komplain Pages
+import OwnerKomplainList from './pages/Owner/Operasional/Komplain/OwnerKomplainList'
+import OwnerKomplainDetail from './pages/Owner/Operasional/Komplain/OwnerKomplainDetail'
+import OwnerKomplainForm from './pages/Owner/Operasional/Komplain/OwnerKomplainForm'
+import OwnerKomplainEdit from './pages/Owner/Operasional/Komplain/OwnerKomplainEdit'
+
+// Admin Data Target Pages
+import AdminDataTarget from './pages/Admin/Marketing/AdminDataTarget'
+import AdminDataTargetForm from './pages/Admin/Marketing/AdminDataTargetForm'
+import AdminDataTargetDetail from './pages/Admin/Marketing/AdminDataTargetDetail'
+import AdminDataTargetEdit from './pages/Admin/Marketing/AdminDataTargetEdit'
+
+// Admin Medsos Pages
+import AdminMedsos from './pages/Admin/Marketing/AdminMedsos'
+import AdminMedsosForm from './pages/Admin/Marketing/AdminMedsosForm'
+import AdminMedsosDetail from './pages/Admin/Marketing/AdminMedsosDetail'
+import AdminMedsosEdit from './pages/Admin/Marketing/AdminMedsosEdit'
+
 // Owner Omset Harian Pages
 import OwnerOmsetHarianList from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianList'
 import OwnerOmsetHarianForm from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianForm'
 import OwnerOmsetHarianDetail from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianDetail'
+import OwnerOmsetHarianEdit from './pages/Owner/Keuangan/OmsetHarian/OwnerOmsetHarianEdit'
 import OwnerAnekaGrafikList from './pages/Owner/Keuangan/AnekaGrafik/OwnerAnekaGrafikList'
 import OwnerAnekaGrafikForm from './pages/Owner/Keuangan/AnekaGrafik/OwnerAnekaGrafikForm'
 import OwnerAnekaGrafikDetail from './pages/Owner/Keuangan/AnekaGrafik/OwnerAnekaGrafikDetail'
@@ -233,6 +293,8 @@ const App = () => {
               } />
 
               {/* Chat Routes */}
+              <Route path="/chat" element={<Navigate to="/chat/private" replace />} />
+              
               <Route path="/chat/private" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
@@ -241,23 +303,99 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/chat/groups" element={
+              <Route path="/chat/room/:roomId" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <ChatGroups />
+                    <ChatRoom />
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Admin Chat Routes */}
+              <Route path="/admin/chat" element={<Navigate to="/admin/chat/private" replace />} />
               
-              <Route path="/chat/groups/create" element={
-                <ProtectedRoute requiredPermissions={['create']}>
+              <Route path="/admin/chat/private" element={
+                <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <ChatGroupCreate />
+                    <ChatPrivate />
                   </Layout>
                 </ProtectedRoute>
               } />
               
-              <Route path="/chat/room/:roomId" element={
+              <Route path="/admin/chat/room/:roomId" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <ChatRoom />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+                          {/* Owner Admin Management Routes */}
+            <Route path="/owner/admin-menu-management" element={
+              <ProtectedRoute requiredPermissions={['read']}>
+                <Layout>
+                  <AdminMenuManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+            <Route path="/owner/pic-menu-management" element={
+              <ProtectedRoute requiredPermissions={['read']}>
+                <Layout>
+                  <PicMenuManagement />
+                </Layout>
+              </ProtectedRoute>
+            } />
+              
+              {/* Owner Chat Routes */}
+              <Route path="/owner/chat" element={<Navigate to="/owner/chat/private" replace />} />
+              
+              <Route path="/owner/chat/private" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <ChatPrivate />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/chat/room/:roomId" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <ChatRoom />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Divisi Chat Routes */}
+              <Route path="/divisi/chat" element={<Navigate to="/divisi/chat/private" replace />} />
+              
+              <Route path="/divisi/chat/private" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <ChatPrivate />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/divisi/chat/room/:roomId" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <ChatRoom />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Tim Chat Routes */}
+              <Route path="/tim/chat" element={<Navigate to="/tim/chat/private" replace />} />
+              
+              <Route path="/tim/chat/private" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <ChatPrivate />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/tim/chat/room/:roomId" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <ChatRoom />
@@ -307,10 +445,26 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
+              <Route path="/admin/komplain/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminKomplainForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
               <Route path="/admin/komplain/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <AdminKomplainDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/komplain/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminKomplainEdit />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -348,7 +502,242 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Admin Operasional Routes */}
+              <Route path="/admin/operasional/data-supplier" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataSupplier />
+                  </Layout>
+                </ProtectedRoute>
+              } />
               
+              <Route path="/admin/operasional/data-supplier/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDataSupplierForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/operasional/data-supplier/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDataSupplierForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/operasional/data-supplier/detail/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataSupplierDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/operasional/data-supplier/edit/:id" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminDataSupplierEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Marketing Routes */}
+              <Route path="/admin/marketing/target" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataTarget />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/target/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDataTargetForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/target/detail/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataTargetDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/target/edit/:id" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminDataTargetEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/medsos" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminMedsos />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/medsos/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminMedsosForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/medsos/detail/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminMedsosDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/marketing/medsos/edit/:id" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminMedsosEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin SDM Routes */}
+              <Route path="/admin/sdm/tim" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataTim />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim-merah-biru" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTimMerahBiru />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/merah" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTimMerahBiruList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/biru" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTimMerahBiruList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/merah/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/merah/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/biru/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/biru/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/merah/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminTimMerahBiruEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/merah/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTimMerahBiruDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/biru/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminTimMerahBiruEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/tim/biru/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTimMerahBiruDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin KPI Routes */}
+              <Route path="/admin/sdm/kpi" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminKPIList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/kpi/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminKPIForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/kpi/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminKPIDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/sdm/kpi/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminKPIEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
 
 
               {/* Poskas Routes */}
@@ -663,6 +1052,39 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+              
+              {/* Owner Komplain Routes */}
+              <Route path="/owner/operasional/komplain" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerKomplainList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/operasional/komplain/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerKomplainForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/operasional/komplain/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerKomplainDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/operasional/komplain/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerKomplainEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
 
               {/* Owner New Structure Routes */}
               {/* Owner Keuangan Routes */}
@@ -757,7 +1179,7 @@ const App = () => {
               <Route path="/owner/keuangan/omset-harian/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
-                    <OwnerOmsetHarianForm />
+                    <OwnerOmsetHarianEdit />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -811,6 +1233,38 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+              
+              <Route path="/owner/operasional/data-supplier" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataSupplier />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/operasional/data-supplier/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerDataSupplierForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/operasional/data-supplier/detail/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataSupplierDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/operasional/data-supplier/edit/:id" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerDataSupplierEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
 
               {/* Owner Marketing Routes */}
               <Route path="/owner/marketing/target" element={
@@ -826,6 +1280,137 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerDataTim />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Owner KPI Routes */}
+              <Route path="/owner/sdm/kpi" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerKPIList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/kpi/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerKPIForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/kpi/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerKPIDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/kpi/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerKPIEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              {/* Owner Tim Merah/Biru Routes */}
+              <Route path="/owner/sdm/tim-merah-biru" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim-merah-biru/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner Tim Merah/Biru Individual Routes */}
+              <Route path="/owner/sdm/tim/merah" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/biru" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/merah/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/merah/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/biru/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/biru/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerTimMerahBiruForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/merah/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerTimMerahBiruEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/merah/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/biru/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerTimMerahBiruEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/owner/sdm/tim/biru/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTimMerahBiruDetail />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -930,8 +1515,8 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Owner DaftarTugas Routes */}
-              <Route path="/owner/daftar-tugas/tim-merah-biru" element={
+              {/* Owner DaftarTugas Routes - Dihapus karena sudah dipindah ke SDM */}
+              {/* <Route path="/owner/daftar-tugas/tim-merah-biru" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerTimMerahBiruList />
@@ -945,7 +1530,7 @@ const App = () => {
                     <OwnerTimMerahBiruDetail />
                   </Layout>
                 </ProtectedRoute>
-              } />
+              } /> */}
 
               {/* Tim New Structure Routes */}
               {/* Tim Keuangan Routes */}
@@ -1069,7 +1654,7 @@ const App = () => {
               <Route path="/admin/keuangan/omset-harian/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
-                    <AdminOmsetHarianForm />
+                    <AdminOmsetHarianEdit />
                   </Layout>
                 </ProtectedRoute>
               } />

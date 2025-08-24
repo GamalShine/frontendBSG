@@ -417,13 +417,13 @@ const PoskasEdit = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.124:3000')) {
+          if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          } else if (fixedUrl.includes('192.168.30.124:3000')) {
+          } else if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
           }
           

@@ -21,86 +21,6 @@ const AdminAnekaGrafikForm = () => {
   const { user } = useAuth();
   const envConfig = getEnvironmentConfig();
   
-  // Simple URL cleanup function
-  const aggressivelyCleanUrl = (url) => {
-    if (!url) return '';
-    
-    // Fix the specific duplication pattern we're seeing
-    if (url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
-      const match = url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-      if (match && match[1]) {
-        return 'http://192.168.30.124:3000' + match[1];
-      }
-    }
-    
-    return url;
-  };
-
-  // Clean up corrupted images automatically
-  const cleanupCorruptedImages = (images) => {
-    if (!images) return [];
-
-    let processedImages;
-    try {
-      if (typeof images === 'string') {
-        processedImages = JSON.parse(images);
-      } else {
-        processedImages = images;
-      }
-    } catch (error) {
-      return [];
-    }
-
-    if (!Array.isArray(processedImages)) {
-      return [];
-    }
-
-    return processedImages.map((img) => {
-      if (img && img.url) {
-        // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.124:3000' + match[1];
-          }
-        }
-        
-        // Apply final URL construction
-        img.url = constructImageUrl(img.url);
-      }
-      return img;
-    });
-  };
-
-  // Helper function to construct proper image URLs
-  const constructImageUrl = (imageUrl) => {
-    if (!imageUrl) return '';
-    
-    // Fix double http:// issue
-    if (imageUrl.startsWith('http://http://')) {
-      imageUrl = imageUrl.replace('http://http://', 'http://');
-    }
-    
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.124:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-    }
-    
-    // Fix /api/uploads/ path
-    if (imageUrl.includes('/api/uploads/')) {
-      imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-    }
-    
-    // Ensure URL is absolute
-    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-    }
-    
-    return imageUrl;
-  };
-
   const [formData, setFormData] = useState({
     tanggal_grafik: new Date().toISOString().split('T')[0],
     isi_grafik: '',
@@ -112,7 +32,83 @@ const AdminAnekaGrafikForm = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [usedInEditor, setUsedInEditor] = useState(new Set());
+  const [contentParts, setContentParts] = useState([]);
   const editorRef = useRef(null);
+
+  // Helper function to render content with images (same as OmsetHarian)
+  const renderContentWithImages = (content, images) => {
+    if (!content || !images || images.length === 0) {
+      return [{ type: 'text', text: content || '' }];
+    }
+    
+    // Ensure images is an array and process if it's a string
+    let imagesArray = [];
+      if (typeof images === 'string') {
+      console.log('🔍 🔍 🔍 Images is string in renderContentWithImages, attempting to parse');
+      try {
+        imagesArray = JSON.parse(images);
+        console.log('🔍 🔍 🔍 Successfully parsed images string:', imagesArray);
+      } catch (parseError) {
+        console.log('🔍 🔍 🔍 Failed to parse images string, treating as single image URL');
+        imagesArray = [{ url: images, name: images.split('/').pop() || 'image' }];
+        console.log('🔍 🔍 🔍 Treated string as single image URL in renderContentWithImages:', imagesArray);
+      }
+    } else if (Array.isArray(images)) {
+      imagesArray = images;
+    }
+    
+    if (imagesArray.length === 0) {
+      return [{ type: 'text', text: content }];
+    }
+    
+    const parts = [];
+    let currentText = content;
+    
+    // Process each image placeholder
+    imagesArray.forEach((image, index) => {
+      if (!image || !image.id) return;
+      
+      const placeholder = `[IMG:${image.id}]`;
+      const placeholderIndex = currentText.indexOf(placeholder);
+      
+      if (placeholderIndex !== -1) {
+        // Add text before image
+        if (placeholderIndex > 0) {
+          parts.push({
+            type: 'text',
+            text: currentText.substring(0, placeholderIndex)
+          });
+        }
+        
+        // Add image
+        parts.push({
+          type: 'image',
+          image: image
+        });
+        
+        // Update remaining text
+        currentText = currentText.substring(placeholderIndex + placeholder.length);
+      }
+    });
+    
+    // Add remaining text
+    if (currentText.trim()) {
+      parts.push({
+        type: 'text',
+        text: currentText
+      });
+    }
+    
+    // If no parts were created, return the original content as text
+    if (parts.length === 0) {
+      parts.push({
+        type: 'text',
+        text: content
+      });
+    }
+    
+    return parts;
+  };
 
   const loadAnekaGrafik = async () => {
     try {
@@ -126,9 +122,13 @@ const AdminAnekaGrafikForm = () => {
         let processedImages = [];
         if (anekaData.images) {
           try {
-            // Use the new cleanup function
-            processedImages = cleanupCorruptedImages(anekaData.images);
-            console.log('🔍 Cleaned images from AnekaGrafikForm:', processedImages);
+            if (typeof anekaData.images === 'string') {
+              processedImages = JSON.parse(anekaData.images);
+            } else if (Array.isArray(anekaData.images)) {
+              processedImages = anekaData.images;
+            }
+            
+            console.log('🔍 Cleaned images from AdminAnekaGrafikForm:', processedImages);
             
             if (Array.isArray(processedImages)) {
               processedImages = processedImages.map(img => {
@@ -138,7 +138,7 @@ const AdminAnekaGrafikForm = () => {
                   uri: img.uri || `file://temp/${img.id}.jpg`,
                   id: img.id,
                   name: img.name || `aneka_grafik_${img.id}.jpg`,
-                  url: img.url || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+                  url: img.url || `/uploads/aneka-grafik/temp_${img.id}.jpg`,
                   serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
                 };
                 
@@ -152,55 +152,19 @@ const AdminAnekaGrafikForm = () => {
           }
         }
 
-        // Convert [IMG:id] placeholders to HTML for editor
-        let editorContent = anekaData.isi_grafik || '';
-        if (Array.isArray(processedImages) && processedImages.length > 0) {
-          processedImages.forEach((image, index) => {
-            console.log(`🔍 Processing image ${index + 1}:`, image);
-            
-            // Use the cleaned URL directly
-            let imageUrl = image.url || '';
-            
-            console.log(`🔍 Image ${index + 1}:`, {
-              originalUrl: image.url,
-              finalUrl: imageUrl,
-              id: image.id
-            });
-            
-            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
-            const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
-            
-            // Check if this placeholder exists in content
-            const matches = editorContent.match(placeholderRegex);
-            console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
-            
-            if (matches) {
-              editorContent = editorContent.replace(placeholderRegex, imageHtmlTag);
-              console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
-            } else {
-              console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
-              // If no placeholder found, append image at the end
-              editorContent += imageHtmlTag;
-              console.log(`➕ Appended image ${image.id} to content since no placeholder found`);
-            }
-          });
-        } else {
-          console.log('⚠️ No processed images to render in editor');
-        }
-        
-        // Convert line breaks to <br> tags for editor
-        editorContent = editorContent.replace(/\n/g, '<br>');
-        console.log('🔍 Final editor content:', editorContent);
+        // Generate contentParts for preview
+        const contentParts = renderContentWithImages(anekaData.isi_grafik, processedImages);
+        setContentParts(contentParts);
         
         setFormData({
           tanggal_grafik: anekaData.tanggal_grafik ? new Date(anekaData.tanggal_grafik).toISOString().split('T')[0] : '',
-          isi_grafik: editorContent,
+          isi_grafik: anekaData.isi_grafik || '',
           images: processedImages
         });
         
         console.log('🔍 Set form data with:', {
           tanggal_grafik: anekaData.tanggal_grafik ? new Date(anekaData.tanggal_grafik).toISOString().split('T')[0] : '',
-          isi_grafik_length: editorContent.length,
+          isi_grafik_length: anekaData.isi_grafik ? anekaData.isi_grafik.length : 0,
           images_count: processedImages.length,
           images: processedImages
         });
@@ -533,25 +497,20 @@ const AdminAnekaGrafikForm = () => {
           const result = await response.json();
           console.log('📥 Upload response:', result);
           
-          if (result.success && result.data && result.data.length > 0) {
-            // The backend returns data array, get the first (and only) uploaded image
-            const uploadedFile = result.data[0];
+          if (result.success && result.files && result.files.length > 0) {
+            // The backend returns files array, get the first (and only) uploaded image
+            const uploadedFile = result.files[0];
             console.log('✅ Uploaded file info:', uploadedFile);
-            
-            // Construct full URL like OmsetHarian
-            // uploadedFile.url already contains /uploads/..., so we need to construct the base URL correctly
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            let imageUrl = `${baseUrl}${uploadedFile.url}`;
             
             uploadedImages.push({
               uri: `file://temp/${image.id}.jpg`,
               id: image.id,
               name: `aneka_grafik_${image.id}.jpg`,
-              url: imageUrl,
-              serverPath: uploadedFile.url
+              url: uploadedFile.url, // Use the URL directly from backend
+              serverPath: uploadedFile.serverPath // Use serverPath from backend
             });
           } else {
-            console.error('❌ Upload response missing data:', result);
+            console.error('❌ Upload response missing files:', result);
           }
         } else {
           const errorText = await response.text();
@@ -618,15 +577,15 @@ const AdminAnekaGrafikForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `aneka_grafik_${img.id}.jpg`,
-                url: `${envConfig.API_BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-                serverPath: uploadedFile.url
+                url: uploadedFile.url, // Use the URL directly from backend
+                serverPath: uploadedFile.serverPath // Use serverPath from backend
               };
             } else {
               return {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `aneka_grafik_${img.id}.jpg`,
-                url: `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+                url: `/uploads/aneka-grafik/temp_${img.id}.jpg`,
                 serverPath: `uploads/aneka-grafik/temp_${img.id}.jpg`
               };
             }
@@ -647,50 +606,22 @@ const AdminAnekaGrafikForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `aneka_grafik_${img.id}.jpg`,
-              url: `${envConfig.API_BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-              serverPath: uploadedFile.url
+              url: uploadedFile.url, // Use the URL directly from backend
+              serverPath: uploadedFile.serverPath // Use serverPath from backend
             };
           } else {
             return {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `aneka_grafik_${img.id}.jpg`,
-              url: `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+              url: `/uploads/aneka-grafik/temp_${img.id}.jpg`,
               serverPath: `uploads/aneka-grafik/temp_${img.id}.jpg`
             };
           }
         });
       }
       
-      // Ensure all image URLs are properly formatted like OmsetHarian
-      const finalImages = imagesWithServerUrls.map(img => {
-        if (img && img.url) {
-          let fixedUrl = img.url;
-          
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.124:3000')) {
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.124:3000')) {
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          return { ...img, url: fixedUrl };
-        }
-        return img;
-      });
-      
       console.log('📊 Images with server URLs:', imagesWithServerUrls);
-      console.log('🔍 Final images with fixed URLs:', finalImages);
       
       // Get editor content with [IMG:id] placeholders
       const editorContent = getEditorContent();
@@ -699,7 +630,7 @@ const AdminAnekaGrafikForm = () => {
       const submitData = {
         tanggal_grafik: formData.tanggal_grafik,
         isi_grafik: editorContent,
-        images: finalImages
+        images: imagesWithServerUrls
       };
       
       console.log('📤 Submitting data:', submitData);
@@ -857,6 +788,55 @@ const AdminAnekaGrafikForm = () => {
                         </span>
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Preview Konten */}
+            {contentParts && contentParts.length > 0 && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Preview Konten:</h3>
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                  {contentParts.map((part, index) => (
+                    <React.Fragment key={index}>
+                      {part.type === 'text' && part.text && (
+                        <div
+                          className="prose max-w-none mb-2"
+                          dangerouslySetInnerHTML={{
+                            __html: part.text.replace(/\n/g, '<br>')
+                          }}
+                        />
+                      )}
+                      {part.type === 'image' && part.image && (
+                        <div className="my-2">
+                          <img
+                            src={part.image.url}
+                            alt={part.image.filename || part.image.name || 'Aneka grafik image'}
+                            className="max-w-full h-auto max-h-48 object-contain rounded-lg shadow-sm border"
+                            style={{ maxHeight: '200px' }}
+                            onError={(e) => {
+                              console.error('❌ Image failed to load in preview:', part.image.url);
+                              e.target.style.display = 'none';
+                              const errorDiv = document.createElement('div');
+                              errorDiv.className = 'p-4 text-center bg-red-50 border-2 border-red-200 rounded-lg';
+                              errorDiv.innerHTML = `
+                                <div class="text-red-600 mb-2">
+                                  <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                  </svg>
+                                </div>
+                                <p class="text-red-800 font-medium text-sm">Gambar gagal dimuat</p>
+                              `;
+                              e.target.parentNode.appendChild(errorDiv);
+                            }}
+                            onLoad={() => {
+                              console.log('✅ Image loaded successfully in preview:', part.image.url);
+                            }}
+                          />
+                        </div>
+                      )}
+                    </React.Fragment>
                   ))}
                 </div>
               </div>

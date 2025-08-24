@@ -93,7 +93,7 @@ const OwnerPoskasEdit = () => {
   }, []);
 
   useEffect(() => {
-    fetchPoskasDetail();
+      fetchPoskasDetail();
   }, [id]);
 
   // Update editor content when formData changes
@@ -222,8 +222,8 @@ const OwnerPoskasEdit = () => {
   const fetchPoskasDetail = async () => {
     try {
       setLoading(true);
-      const response = await poskasService.getOwnerPoskasById(id);
-      
+      const response = await poskasService.getPoskasById(id);
+
       if (response.success) {
         const poskas = response.data;
         console.log('🔍 Raw poskas data from API:', poskas);
@@ -245,69 +245,69 @@ const OwnerPoskasEdit = () => {
         const placeholders = [...editorContent.matchAll(imgPlaceholderRegex)];
         console.log('🔍 Found image placeholders in content:', placeholders);
         
-                 // Replace [IMG:id] placeholders with actual image tags for editor
-         if (Array.isArray(parsedImages)) {
-           console.log('🔍 Processing parsed images for editor:', parsedImages);
-           console.log('🔍 Environment config:', API_CONFIG);
-           parsedImages.filter(image => {
-             // Filter out images without valid URLs
-             if (!image || (!image.url && !image.uri)) {
-               console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
-               return false;
-             }
-             return true;
-           }).forEach((image, index) => {
+        // Replace [IMG:id] placeholders with actual image tags for editor
+        if (Array.isArray(parsedImages)) {
+          console.log('🔍 Processing parsed images for editor:', parsedImages);
+          console.log('🔍 Environment config:', API_CONFIG);
+          parsedImages.filter(image => {
+            // Filter out images without valid URLs
+            if (!image || (!image.url && !image.uri)) {
+              console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
+              return false;
+            }
+            return true;
+          }).forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
-                         // Construct the correct image URL
-             let imageUrl = '';
-             if (image.url) {
-               if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-                 // Already absolute URL or data URL
-                 imageUrl = image.url;
-               } else {
-                 // Relative URL, add base URL
-                 const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-                 imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-               }
-             } else if (image.uri) {
-               imageUrl = image.uri;
-             }
-             
-             console.log(`🔍 Final image URL for editor: ${imageUrl}`);
-             
-             // Replace [IMG:id] placeholder with actual image tag
-             const placeholder = `[IMG:${image.id}]`;
-             if (editorContent.includes(placeholder)) {
-               console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
-               const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
-               editorContent = editorContent.replace(placeholder, imgTag);
-             } else {
-               console.log(`⚠️ Placeholder ${placeholder} not found in content`);
-             }
-           });
-         }
-         
-         console.log('🔍 Final editor content after image replacement:', editorContent);
-         
-         // Process tanggal_poskas
-         const originalTanggal = poskas.tanggal_poskas;
-         const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
-         
-         console.log('🔍 Tanggal processing:', {
-           original: originalTanggal,
-           processed: processedTanggal,
-           originalType: typeof originalTanggal,
-           isDate: originalTanggal instanceof Date
-         });
-         
-         // Set the processed content
-         setFormData(prev => ({
-           ...prev,
-           tanggal_poskas: processedTanggal,
-           isi_poskas: editorContent,
-           images: parsedImages
-         }));
+            // Construct the correct image URL
+            let imageUrl = '';
+            if (image.url) {
+              if (image.url.startsWith('http') || image.url.startsWith('data:')) {
+                // Already absolute URL or data URL
+                imageUrl = image.url;
+              } else {
+                // Relative URL, add base URL
+                const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+                imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
+              }
+            } else if (image.uri) {
+              imageUrl = image.uri;
+            }
+            
+            console.log(`🔍 Final image URL for editor: ${imageUrl}`);
+            
+            // Replace [IMG:id] placeholder with actual image tag
+            const placeholder = `[IMG:${image.id}]`;
+            if (editorContent.includes(placeholder)) {
+              console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
+              const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
+              editorContent = editorContent.replace(placeholder, imgTag);
+            } else {
+              console.log(`⚠️ Placeholder ${placeholder} not found in content`);
+            }
+          });
+        }
+        
+        console.log('🔍 Final editor content after image replacement:', editorContent);
+        
+        // Process tanggal_poskas
+        const originalTanggal = poskas.tanggal_poskas;
+        const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
+        
+        console.log('🔍 Tanggal processing:', {
+          original: originalTanggal,
+          processed: processedTanggal,
+          originalType: typeof originalTanggal,
+          isDate: originalTanggal instanceof Date
+        });
+        
+        // Set the processed content
+        setFormData(prev => ({
+          ...prev,
+          tanggal_poskas: processedTanggal,
+          isi_poskas: editorContent,
+          images: parsedImages
+        }));
         
       } else {
         setError(response.message || 'Gagal memuat detail laporan');
@@ -417,13 +417,13 @@ const OwnerPoskasEdit = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.124:3000')) {
+          if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          } else if (fixedUrl.includes('192.168.30.124:3000')) {
+          } else if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
           }
           
@@ -761,10 +761,10 @@ const OwnerPoskasEdit = () => {
         });
         
         console.log('🔍 Debug: Service response:', response);
-        
-        if (response.success) {
+
+      if (response.success) {
           toast.success('Laporan pos kas berhasil diperbarui');
-          navigate('/owner/keuangan/poskas');
+        navigate('/owner/keuangan/poskas');
         } else {
           toast.error(response.message || 'Gagal memperbarui laporan');
         }
@@ -772,12 +772,12 @@ const OwnerPoskasEdit = () => {
         // Save without images - use text-only logic
         console.log('🔍 Debug: Saving without images...');
         
-                 // Prepare existing images data
-         const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
-         console.log('🔍 Debug: All existing images to preserve (text-only):', allExistingImages);
+        // Prepare existing images data
+        const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
+        console.log('🔍 Debug: All existing images to preserve (text-only):', allExistingImages);
 
         console.log('🔍 Debug: Sending text-only data to service...');
-        const response = await poskasService.updateOwnerPoskas(id, {
+        const response = await poskasService.updatePoskas(id, {
           tanggal_poskas: finalFormData.tanggal_poskas,
           isi_poskas: finalFormData.isi_poskas,
           images: allExistingImages
@@ -952,7 +952,7 @@ const OwnerPoskasEdit = () => {
                   Coba Lagi
                 </button>
                 <button
-                  onClick={() => navigate('/poskas')}
+                  onClick={() => navigate('/owner/keuangan/poskas')}
                   className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
                 >
                   Kembali ke Daftar
@@ -971,13 +971,13 @@ const OwnerPoskasEdit = () => {
       <div className="bg-white rounded-lg shadow-sm border mb-6">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/poskas')}
+              <button
+                onClick={() => navigate('/owner/keuangan/poskas')}
               className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
+              >
               <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div>
+              </button>
+              <div>
               <h1 className="text-2xl font-bold text-gray-900">
                 Edit Laporan Pos Kas
               </h1>
@@ -1002,159 +1002,17 @@ const OwnerPoskasEdit = () => {
                 Tanggal Laporan
               </label>
             </div>
-            <input
-              type="date"
-              value={formData.tanggal_poskas}
+                <input
+                  type="date"
+                  value={formData.tanggal_poskas}
               readOnly
               className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-              required
-            />
+                  required
+                />
             <p className="text-sm text-gray-500 mt-2">
               Tanggal tidak dapat diubah karena sudah terdaftar saat pembuatan laporan
             </p>
-          </div>
-
-          {/* Existing Images Section */}
-          <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <ImageIcon className="h-5 w-5 text-blue-600" />
-              </div>
-              <label className="text-lg font-semibold text-gray-900">
-                Gambar yang Ada ({existingImages.filter(image => image && (image.url || image.uri)).length})
-              </label>
             </div>
-            
-            {existingImages.filter(image => image && (image.url || image.uri)).length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {existingImages.filter(image => {
-                  // Filter out images without valid URLs
-                  if (!image || (!image.url && !image.uri)) {
-                    console.log(`⚠️ Skipping image - no valid URL:`, image);
-                    return false;
-                  }
-                  return true;
-                }).map((image, index) => {
-                  // Construct the correct image URL
-                  let imageUrl = '';
-                  if (image.url) {
-                    if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-                      // Already absolute URL or data URL, but check if it has /api in wrong place
-                      imageUrl = image.url;
-                      if (imageUrl.includes('/api/uploads/')) {
-                        // Remove /api from upload URLs
-                        imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-                        console.log(`🔍 Fixed /api in existing image display URL: ${image.url} -> ${imageUrl}`);
-                      }
-                    } else {
-                      // Relative URL, add base URL
-                      const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-                      imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-                    }
-                  } else if (image.uri) {
-                    // Fallback to uri if url is not available
-                    imageUrl = image.uri;
-                  }
-                  
-                  const isUsedInEditor = usedInEditor.has(image.id);
-                  
-                  console.log(`🔍 Existing image ${index + 1} display:`, {
-                    originalUrl: image.url,
-                    uri: image.uri,
-                    constructedUrl: imageUrl,
-                    baseUrl: API_CONFIG.BASE_URL,
-                    imageData: image,
-                    isUsedInEditor
-                  });
-                  
-                  // Only render if we have a valid URL
-                  if (!imageUrl) {
-                    console.warn(`⚠️ No valid URL for image ${index + 1}:`, image);
-                    return null;
-                  }
-                  
-                  return (
-                    <div key={index} className="relative group">
-                      <div className={`relative ${isUsedInEditor ? 'ring-2 ring-green-500' : 'ring-2 ring-gray-300'}`}>
-                        <img
-                          src={imageUrl}
-                          alt={`Existing ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                          onError={(e) => {
-                            console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                          onLoad={() => {
-                            console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
-                          }}
-                        />
-                        <div 
-                          className="hidden w-full h-32 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
-                          style={{ display: 'none' }}
-                        >
-                          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        
-                        {/* Status indicator */}
-                        <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${
-                          isUsedInEditor 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-500 text-white'
-                        }`}>
-                          {isUsedInEditor ? '✓ Digunakan' : 'Tidak digunakan'}
-                        </div>
-                      </div>
-                      
-                      {/* Action buttons */}
-                      <div className="absolute top-2 right-2 flex space-x-1">
-                        {!isUsedInEditor && (
-                          <button
-                            type="button"
-                            onClick={() => addImageToEditor(image)}
-                            className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Tambah ke editor"
-                          >
-                            +
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(index)}
-                          className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Hapus gambar"
-                        >
-                          ×
-                        </button>
-                      </div>
-                      
-                      {/* Click to insert overlay */}
-                      {!isUsedInEditor && (
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center">
-                          <div className="text-white text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="text-sm font-medium">Klik untuk sisipkan</div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <div className="text-4xl text-gray-300 mb-2">📷</div>
-                <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
-              </div>
-            )}
-            
-            {existingImages.filter(image => image && (image.url || image.uri)).length > 0 && (
-              <p className="text-sm text-gray-500 mt-4">
-                💡 Gambar dengan border hijau sedang digunakan di editor. Klik tombol "+" untuk menambahkan gambar ke editor.
-              </p>
-            )}
-          </div>
 
           {/* Content Editor */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
@@ -1202,7 +1060,7 @@ const OwnerPoskasEdit = () => {
                 1. List
               </button>
             </div>
-            
+
             {/* Editor */}
             <div
               ref={editorRef}
@@ -1222,185 +1080,11 @@ const OwnerPoskasEdit = () => {
             </p>
           </div>
 
-          {/* Hidden sections for existing images and upload */}
-          <div style={{ display: 'none' }}>
-            {/* Existing Images */}
-            <div style={{ display: 'none' }}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Gambar yang Ada ({existingImages.filter(image => image && (image.url || image.uri)).length})
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {existingImages.filter(image => {
-                  // Filter out images without valid URLs
-                  if (!image || (!image.url && !image.uri)) {
-                    console.warn(`⚠️ Skipping image ${index + 1} - no valid URL:`, image);
-                    return false;
-                  }
-                  return true;
-                }).map((image, index) => {
-                  // Construct the correct image URL
-                  let imageUrl = '';
-                  if (image.url) {
-                    if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-                      // Already absolute URL or data URL
-                      imageUrl = image.url;
-                    } else {
-                      // Relative URL, add base URL
-                      const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-                      imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-                    }
-                  } else if (image.uri) {
-                    // Fallback to uri if url is not available
-                    imageUrl = image.uri;
-                  }
-                  
-                  const isUsedInEditor = usedInEditor.has(image.id);
-                  
-                  console.log(`🔍 Existing image ${index + 1} display:`, {
-                    originalUrl: image.url,
-                    uri: image.uri,
-                    constructedUrl: imageUrl,
-                    baseUrl: API_CONFIG.BASE_URL,
-                    imageData: image,
-                    isUsedInEditor
-                  });
-                  
-                  // Only render if we have a valid URL
-                  if (!imageUrl) {
-                    console.warn(`⚠️ No valid URL for image ${index + 1}:`, image);
-                    return null;
-                  }
-                  
-                  return (
-                    <div key={index} className="relative group">
-                      <div className={`relative ${isUsedInEditor ? 'ring-2 ring-green-500' : 'ring-2 ring-gray-300'}`}>
-                        <img
-                          src={imageUrl}
-                          alt={`Existing ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                          onError={(e) => {
-                            console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                          onLoad={() => {
-                            console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
-                          }}
-                        />
-                        <div 
-                          className="hidden w-full h-32 items-center justify-center text-gray-400 bg-gray-100 rounded-lg"
-                          style={{ display: 'none' }}
-                        >
-                          <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                        
-                        {/* Status indicator */}
-                        <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${
-                          isUsedInEditor 
-                            ? 'bg-green-500 text-white' 
-                            : 'bg-gray-500 text-white'
-                        }`}>
-                          {isUsedInEditor ? '✓ Digunakan' : 'Tidak digunakan'}
-                        </div>
-                      </div>
-                      
-                      {/* Action buttons */}
-                      <div className="absolute top-2 right-2 flex space-x-1">
-                        {!isUsedInEditor && (
-                          <button
-                            type="button"
-                            onClick={() => addImageToEditor(image)}
-                            className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Tambah ke editor"
-                          >
-                            +
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => removeExistingImage(index)}
-                          className="bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Hapus gambar"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {existingImages.filter(image => image && (image.url || image.uri)).length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="text-4xl text-gray-300 mb-2">📷</div>
-                  <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 mt-2">
-                  Gambar dengan border hijau sedang digunakan di editor. Klik tombol "+" untuk menambahkan gambar ke editor.
-                </p>
-              )}
-            </div>
-
-            {/* New Image Upload */}
-            <div style={{ display: 'none' }}>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Gambar Baru (Opsional)
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                >
-                  Pilih Gambar Baru
-                </button>
-                <p className="text-sm text-gray-500 mt-2">
-                  Maksimal 5 gambar total, ukuran maksimal 10MB per gambar
-                </p>
-              </div>
-
-              {/* New Image Previews */}
-              {imagePreviewUrls.length > 0 && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Gambar Baru yang Dipilih:</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {imagePreviewUrls.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt={`New Preview ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeNewImage(index)}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Submit Buttons */}
           <div className="flex space-x-4 p-6">
             <button
               type="button"
-              onClick={() => navigate('/poskas')}
+              onClick={() => navigate('/owner/keuangan/poskas')}
               className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Batal
@@ -1413,7 +1097,7 @@ const OwnerPoskasEdit = () => {
               {isSubmitting ? (
                 <LoadingSpinner className="h-4 w-4" />
               ) : (
-                <Save className="h-4 w-4" />
+                  <Save className="h-4 w-4" />
               )}
               <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
             </button>

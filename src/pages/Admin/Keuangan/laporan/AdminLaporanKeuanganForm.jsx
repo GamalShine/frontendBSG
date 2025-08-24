@@ -192,13 +192,13 @@ const AdminLaporanKeuanganForm = () => {
                   }
 
                   // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.124:3000')) {
+                  if (fixedUrl.includes('192.168.30.49:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.124:3000')) {
+                  } else if (fixedUrl.includes('192.168.30.49:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
                 }
@@ -239,13 +239,13 @@ const AdminLaporanKeuanganForm = () => {
               }
 
               // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.124:3000')) {
+              if (cleanUrl.includes('192.168.30.49:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.124:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.124:3000')) {
+              } else if (cleanUrl.includes('192.168.30.49:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.124:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
               }
 
@@ -568,13 +568,13 @@ const AdminLaporanKeuanganForm = () => {
           }
 
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.124:3000')) {
+          if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.124:3000')) {
+          } else if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
 
@@ -849,12 +849,12 @@ const AdminLaporanKeuanganForm = () => {
                         }
                         
                         // Fix old IP addresses
-                        if (imageUrl.includes('192.168.30.124:3000')) {
+                        if (imageUrl.includes('192.168.30.49:3000')) {
                           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-                        } else if (imageUrl.includes('192.168.30.124:3000')) {
+                          imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+                        } else if (imageUrl.includes('192.168.30.49:3000')) {
                           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+                          imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
                         }
                         
                         // If relative URL, add base URL

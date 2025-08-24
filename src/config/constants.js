@@ -1,9 +1,9 @@
 // Single source of truth untuk semua URL dan konfigurasi
 export const API_CONFIG = {
     // Base URLs dari environment variables
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.124:3000/api',
-    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.124:3000',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.124:5173',
+    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.49:3000/api',
+    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.49:3000',
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.49:5173',
 
     // Helper functions
     getUrl: (endpoint) => `${API_CONFIG.BASE_URL}${endpoint}`,
@@ -72,14 +72,6 @@ export const API_ENDPOINTS = {
             STATS: '/divisi/keuangan-poskas/stats',
             CATEGORIES: '/divisi/keuangan-poskas/categories',
             SEARCH: '/divisi/keuangan-poskas/search',
-        },
-
-        // Owner Poskas
-        OWNER: {
-            LIST: '/owner/keuangan-poskas',
-            BY_ID: (id) => `/owner/keuangan-poskas/${id}`,
-            STATS: '/owner/keuangan-poskas/stats',
-            DATE_RANGE: '/owner/keuangan-poskas/date-range',
         },
     },
 

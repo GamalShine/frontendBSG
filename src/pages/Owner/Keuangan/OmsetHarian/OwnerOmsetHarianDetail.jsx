@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../../../contexts/AuthContext';
-import { omsetHarianService } from '../../../../services/omsetHarianService';
+import { useAuth } from '@/contexts/AuthContext';
+import { omsetHarianService } from '@/services/omsetHarianService';
 import { toast } from 'react-hot-toast';
-import { getEnvironmentConfig } from '../../../../config/environment';
+import { getEnvironmentConfig } from '@/config/environment';
 import { 
   ArrowLeft, 
   Calendar, 

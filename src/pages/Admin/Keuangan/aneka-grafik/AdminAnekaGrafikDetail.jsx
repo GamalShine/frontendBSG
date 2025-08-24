@@ -208,9 +208,9 @@ const AdminAnekaGrafikDetail = () => {
     }
     
     // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.124:3000')) {
+    if (imageUrl.includes('192.168.30.49:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
     }
     
     // Fix /api/uploads/ path
@@ -249,10 +249,10 @@ const AdminAnekaGrafikDetail = () => {
     return processedImages.map((img) => {
       if (img && img.url) {
         // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
+        if (img.url.includes('http://192.168.30.49:3000http://192.168.30.49:3000')) {
           const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
           if (match && match[1]) {
-            img.url = 'http://192.168.30.124:3000' + match[1];
+            img.url = 'http://192.168.30.49:3000' + match[1];
           }
         }
         
@@ -529,7 +529,7 @@ const AdminAnekaGrafikDetail = () => {
         <div className="flex items-center justify-between">
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate('/keuangan/aneka-grafik')}
+              onClick={() => navigate('/admin/keuangan/aneka-grafik')}
               className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Kembali
@@ -565,7 +565,7 @@ const AdminAnekaGrafikDetail = () => {
           </div>
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate(`/keuangan/aneka-grafik/${id}/edit`)}
+              onClick={() => navigate(`/admin/keuangan/aneka-grafik/${id}/edit`)}
               className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               <Edit className="h-4 w-4" />

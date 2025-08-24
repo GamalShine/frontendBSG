@@ -26,14 +26,46 @@ const AnekaGrafikForm = () => {
     if (!url) return '';
     
     // Fix the specific duplication pattern we're seeing
-    if (url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
+    if (url.includes('192.168.30.49')) {
       const match = url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
       if (match && match[1]) {
-        return 'http://192.168.30.124:3000' + match[1];
+        return 'http://192.168.30.49:3000' + match[1];
       }
     }
     
     return url;
+  };
+
+  // Helper function to construct proper image URLs
+  const constructImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    
+    console.log('🔍 🔍 🔍 constructImageUrl called with:', imageUrl);
+    
+    // Fix double http:// issue
+    if (imageUrl.startsWith('http://http://')) {
+      imageUrl = imageUrl.replace('http://http://', 'http://');
+    }
+    
+    // Fix old IP addresses
+    if (imageUrl.includes('192.168.30.49:3000')) {
+      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+    }
+    
+    // Fix /api/uploads/ path
+    if (imageUrl.includes('/api/uploads/')) {
+      imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
+    }
+    
+    // Ensure URL is absolute
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+    }
+    
+    console.log('🔍 🔍 🔍 Final constructed URL:', imageUrl);
+    return imageUrl;
   };
 
   // Clean up corrupted images automatically
@@ -48,6 +80,7 @@ const AnekaGrafikForm = () => {
         processedImages = images;
       }
     } catch (error) {
+      console.error('❌ Error parsing images JSON:', error);
       return [];
     }
 
@@ -57,48 +90,22 @@ const AnekaGrafikForm = () => {
 
     return processedImages.map((img) => {
       if (img && img.url) {
+        console.log('🔍 🔍 🔍 Processing image URL:', img.url);
+        
         // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
+        if (img.url.includes('192.168.30.49')) {
           const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
           if (match && match[1]) {
-            img.url = 'http://192.168.30.124:3000' + match[1];
+            img.url = 'http://192.168.30.49:3000' + match[1];
           }
         }
         
         // Apply final URL construction
         img.url = constructImageUrl(img.url);
+        console.log('🔍 🔍 🔍 Final image URL:', img.url);
       }
       return img;
     });
-  };
-
-  // Helper function to construct proper image URLs
-  const constructImageUrl = (imageUrl) => {
-    if (!imageUrl) return '';
-    
-    // Fix double http:// issue
-    if (imageUrl.startsWith('http://http://')) {
-      imageUrl = imageUrl.replace('http://http://', 'http://');
-    }
-    
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.124:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-    }
-    
-    // Fix /api/uploads/ path
-    if (imageUrl.includes('/api/uploads/')) {
-      imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-    }
-    
-    // Ensure URL is absolute
-    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-    }
-    
-    return imageUrl;
   };
 
   const [formData, setFormData] = useState({
@@ -134,11 +141,19 @@ const AnekaGrafikForm = () => {
               processedImages = processedImages.map(img => {
                 console.log('🔍 Processing image object:', img);
                 
+                // Ensure we have a proper URL for the image
+                let imageUrl = img.url;
+                if (!imageUrl && img.serverPath) {
+                  // If no URL but we have serverPath, construct the URL
+                  const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+                  imageUrl = `${baseUrl}/${img.serverPath}`;
+                }
+                
                 const processedImg = {
                   uri: img.uri || `file://temp/${img.id}.jpg`,
                   id: img.id,
                   name: img.name || `aneka_grafik_${img.id}.jpg`,
-                  url: img.url || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+                  url: imageUrl || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
                   serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
                 };
                 
@@ -166,6 +181,11 @@ const AnekaGrafikForm = () => {
               finalUrl: imageUrl,
               id: image.id
             });
+            
+            // Ensure the image URL is properly constructed
+            if (imageUrl && !imageUrl.startsWith('data:')) {
+              imageUrl = constructImageUrl(imageUrl);
+            }
             
             const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
@@ -674,13 +694,13 @@ const AnekaGrafikForm = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.124:3000')) {
+          if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.124:3000')) {
+          } else if (fixedUrl.includes('192.168.30.49:3000')) {
             const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
           

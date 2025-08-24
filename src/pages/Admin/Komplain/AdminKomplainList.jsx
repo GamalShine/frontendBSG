@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
 import Input from '@/components/UI/Input';
@@ -44,6 +45,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 
 const AdminKomplainList = () => {
+  const navigate = useNavigate();
   const [komplain, setKomplain] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -133,7 +135,7 @@ const AdminKomplainList = () => {
 
   const handleEdit = (id) => {
     // Navigate to edit page
-    console.log('Edit komplain:', id);
+    navigate(`/admin/komplain/${id}/edit`);
   };
 
   const handleDelete = (id) => {
@@ -203,7 +205,10 @@ const AdminKomplainList = () => {
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Daftar Komplain</h1>
-        <Button className="bg-blue-600 hover:bg-blue-700">
+        <Button 
+          className="bg-blue-600 hover:bg-blue-700"
+          onClick={() => navigate('/admin/komplain/new')}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Komplain
         </Button>
@@ -445,7 +450,10 @@ const AdminKomplainList = () => {
               </div>
               
               <div className="flex gap-2">
-                <Button onClick={() => handleEdit(selectedKomplain.id)}>
+                <Button onClick={() => {
+                  handleEdit(selectedKomplain.id);
+                  setShowDetailDialog(false);
+                }}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>

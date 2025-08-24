@@ -56,5 +56,5 @@ const TableCell = ({ children, className = '', ...props }) => {
   )
 }
 
-export { TableHeader, TableBody, TableRow, TableHead, TableCell }
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell }
 export default Table 

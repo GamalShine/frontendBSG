@@ -19,7 +19,7 @@ import {
   Clock
 } from 'lucide-react';
 
-const AnekaGrafikList = () => {
+const AdminAnekaGrafikList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -252,7 +252,7 @@ const AnekaGrafikList = () => {
 
             {/* Add Button */}
             <button
-              onClick={() => navigate('/keuangan/aneka-grafik/new')}
+              onClick={() => navigate('/admin/keuangan/aneka-grafik/new')}
               className="flex items-center space-x-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
             >
               <Plus className="h-4 w-4" />
@@ -356,14 +356,14 @@ const AnekaGrafikList = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => navigate(`/keuangan/aneka-grafik/${item.id}`)}
+                        onClick={() => navigate(`/admin/keuangan/aneka-grafik/${item.id}`)}
                         className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
                         title="Lihat Detail"
                       >
                         <Eye className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => navigate(`/keuangan/aneka-grafik/${item.id}/edit`)}
+                        onClick={() => navigate(`/admin/keuangan/aneka-grafik/${item.id}/edit`)}
                         className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
                         title="Edit"
                       >
@@ -454,4 +454,4 @@ const AnekaGrafikList = () => {
   );
 };
 
-export default AnekaGrafikList;
+export default AdminAnekaGrafikList;
