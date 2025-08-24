@@ -1,119 +1,176 @@
-// Utility functions untuk menangani berbagai format gambar
+/**
+ * Utility functions for processing images in POSKAS
+ */
 
 /**
- * Convert mobile app image format to File object
- * @param {Object} mobileImage - Image object from mobile app
- * @returns {Promise<File>} - File object
+ * Parse images string to array with proper URL fixing
+ * @param {any} imagesData - Images data (string, array, or object)
+ * @param {string} baseUrl - Base URL for making relative URLs absolute
+ * @returns {Array} Array of processed image objects
  */
-export const convertMobileImageToFile = async (mobileImage) => {
-    try {
-        console.log('🔄 Converting mobile image to file:', mobileImage);
-
-        // If we have a URL, try to fetch the image
-        if (mobileImage.url) {
-            const response = await fetch(mobileImage.url);
-            const blob = await response.blob();
-            return new File([blob], mobileImage.name, { type: blob.type });
+export const parseImagesString = (imagesData, baseUrl = '') => {
+  if (!imagesData) return [];
+  
+  try {
+    console.log('🔍 parseImagesString called with:', imagesData);
+    console.log('🔍 imagesData type:', typeof imagesData);
+    console.log('🔍 baseUrl:', baseUrl);
+    
+    let result;
+    
+    // Handle different formats
+    if (Array.isArray(imagesData)) {
+      result = imagesData;
+      console.log('✅ Images is already an array, using directly');
+    } else if (typeof imagesData === 'string') {
+      try {
+        let cleanImages = imagesData.trim();
+        
+        if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
+          cleanImages = cleanImages.slice(1, -1);
         }
-
-        // If we have a URI, try to fetch from local file system
-        if (mobileImage.uri) {
-            // For mobile apps, this would need to be handled differently
-            // For now, we'll create a placeholder
-            console.log('⚠️ URI handling not implemented for web');
-            return new File(['placeholder'], mobileImage.name, { type: 'image/jpeg' });
-        }
-
-        throw new Error('No valid image source found');
-    } catch (error) {
-        console.error('❌ Error converting mobile image:', error);
-        // Return a placeholder file
-        return new File(['error'], mobileImage.name || 'error.jpg', { type: 'image/jpeg' });
+        
+        cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        
+        console.log('🔍 Cleaned images string:', cleanImages);
+        
+        result = JSON.parse(cleanImages);
+        console.log('✅ Successfully parsed string as JSON:', result);
+      } catch (parseError) {
+        console.log('ℹ️ Failed to parse string as JSON, treating as single image name:', parseError);
+        result = [{ name: imagesData, url: imagesData }];
+      }
+    } else if (typeof imagesData === 'object' && imagesData !== null) {
+      result = [imagesData];
+      console.log('✅ Single object wrapped in array');
+    } else {
+      console.log('ℹ️ Unknown images format:', typeof imagesData);
+      return [];
     }
-};
-
-/**
- * Process images array to handle different formats
- * @param {Array} images - Array of images in various formats
- * @returns {Promise<Array>} - Array of File objects
- */
-export const processImages = async (images) => {
-    if (!images || images.length === 0) {
+    
+    if (!Array.isArray(result)) {
+      console.log('ℹ️ Parsed result is not an array, converting...');
+      if (result && typeof result === 'object' && result !== null) {
+        result = [result];
+        console.log('✅ Converted single object to array');
+      } else {
+        console.log('ℹ️ Invalid images data, returning empty array');
         return [];
+      }
     }
-
-    const processedImages = [];
-
-    for (const image of images) {
-        try {
-            // Handle mobile app format
-            if (image.uri || (image.url && image.name)) {
-                const file = await convertMobileImageToFile(image);
-                processedImages.push(file);
-            }
-            // Handle web File objects
-            else if (image instanceof File) {
-                processedImages.push(image);
-            }
-            // Handle other formats
-            else {
-                console.warn('⚠️ Unknown image format:', image);
-            }
-        } catch (error) {
-            console.error('❌ Error processing image:', error);
+    
+    result = result.filter(image => {
+      if (!image || typeof image !== 'object') {
+        console.log('ℹ️ Invalid image object:', image);
+        return false;
+      }
+      return true;
+    }).map(image => {
+      const validImage = {
+        id: image.id || image.image_id || Date.now() + Math.random(),
+        name: image.name || image.filename || `image_${Date.now()}`,
+        url: image.url || image.image_url || '',
+        uri: image.uri || image.image_uri || '',
+        serverPath: image.serverPath || image.server_path || ''
+      };
+      
+      if (validImage.url) {
+        let fixedUrl = validImage.url;
+        
+        if (fixedUrl.startsWith('http://http://')) {
+          fixedUrl = fixedUrl.replace('http://http://', 'http://');
+          console.log(`🔍 Fixed double http:// URL: ${validImage.url} -> ${fixedUrl}`);
         }
-    }
-
-    return processedImages;
+        
+        if (fixedUrl.includes('192.168.30.49:3000')) {
+          const baseUrlClean = baseUrl.replace('/api', '');
+          fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrlClean);
+          console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${fixedUrl}`);
+        }
+        
+        if (fixedUrl.includes('/api/uploads/')) {
+          fixedUrl = fixedUrl.replace('/api/uploads/', '/uploads/');
+          console.log(`🔍 Fixed /api in upload URL: ${validImage.url} -> ${fixedUrl}`);
+        }
+        
+        if (!fixedUrl.startsWith('http') && !fixedUrl.startsWith('data:')) {
+          const baseUrlClean = baseUrl.replace('/api', '');
+          fixedUrl = `${baseUrlClean}${fixedUrl.startsWith('/') ? '' : '/'}${fixedUrl}`;
+          console.log(`🔍 Made URL absolute: ${validImage.url} -> ${fixedUrl}`);
+        }
+        
+        validImage.url = fixedUrl;
+      }
+      
+      if (validImage.uri) {
+        let fixedUri = validImage.uri;
+        
+        if (fixedUri.startsWith('http://http://')) {
+          fixedUri = fixedUri.replace('http://http://', 'http://');
+        }
+        
+        if (fixedUri.includes('192.168.30.49:3000')) {
+          const baseUrlClean = baseUrl.replace('/api', '');
+          fixedUri = fixedUri.replace('http://192.168.30.49:3000', baseUrlClean);
+        }
+        
+        if (fixedUri.includes('/api/uploads/')) {
+          fixedUri = fixedUri.replace('/api/uploads/', '/uploads/');
+        }
+        
+        if (!fixedUri.startsWith('http') && !fixedUri.startsWith('data:')) {
+          const baseUrlClean = baseUrl.replace('/api', '');
+          fixedUri = `${baseUrlClean}${fixedUri.startsWith('/') ? '' : '/'}${fixedUri}`;
+        }
+        
+        validImage.uri = fixedUri;
+      }
+      
+      return validImage;
+    });
+    
+    console.log('🔍 Final parsed images:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Error parsing images string:', error);
+    return [];
+  }
 };
 
 /**
- * Validate image format
- * @param {Object|File} image - Image to validate
- * @returns {boolean} - Whether image is valid
+ * Get display URL for an image (prioritizes url over uri)
+ * @param {Object} image - Image object
+ * @returns {string} Display URL
  */
-export const isValidImage = (image) => {
-    // Check if it's a File object
-    if (image instanceof File) {
-        return image.type.startsWith('image/');
-    }
-
-    // Check if it's a mobile app format
-    if (image && (image.uri || image.url) && image.name) {
-        return true;
-    }
-
-    return false;
+export const getImageDisplayUrl = (image) => {
+  if (!image) return '';
+  
+  if (image.url) {
+    return image.url;
+  }
+  
+  if (image.uri) {
+    return image.uri;
+  }
+  
+  return '';
 };
 
 /**
- * Get image display info
- * @param {Object|File} image - Image object
- * @returns {Object} - Display information
+ * Get fallback URL for an image (prioritizes uri over url)
+ * @param {Object} image - Image object
+ * @returns {string} Fallback URL
  */
-export const getImageInfo = (image) => {
-    if (image instanceof File) {
-        return {
-            name: image.name,
-            size: image.size,
-            type: image.type,
-            preview: URL.createObjectURL(image)
-        };
-    }
-
-    if (image && image.name) {
-        return {
-            name: image.name,
-            size: image.size || 0,
-            type: image.type || 'image/jpeg',
-            preview: image.url || image.uri || null
-        };
-    }
-
-    return {
-        name: 'Unknown',
-        size: 0,
-        type: 'image/jpeg',
-        preview: null
-    };
-}; 
+export const getImageFallbackUrl = (image) => {
+  if (!image) return '';
+  
+  if (image.uri) {
+    return image.uri;
+  }
+  
+  if (image.url) {
+    return image.url;
+  }
+  
+  return '';
+};  

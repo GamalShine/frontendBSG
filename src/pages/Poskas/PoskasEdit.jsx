@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
 import { API_CONFIG } from '../../config/constants';
+import { parseImagesString, getImageDisplayUrl, getImageFallbackUrl } from '../../utils/imageUtils';
 
 const PoskasEdit = () => {
   const { id } = useParams();
@@ -232,8 +233,23 @@ const PoskasEdit = () => {
         console.log('🔍 Images field value:', poskas.images);
         
         // Parse existing images first
-        const parsedImages = parseImagesString(poskas.images);
+        const parsedImages = parseImagesStringLocal(poskas.images);
         console.log('🔍 Parsed images:', parsedImages);
+        console.log('🔍 Parsed images count:', parsedImages.length);
+        console.log('🔍 Environment config:', API_CONFIG);
+        console.log('🔍 BASE_URL:', API_CONFIG.BASE_URL);
+        
+        // Log each parsed image for debugging
+        parsedImages.forEach((img, index) => {
+          console.log(`🔍 Parsed image ${index + 1}:`, {
+            id: img.id,
+            name: img.name,
+            url: img.url,
+            uri: img.uri,
+            serverPath: img.serverPath
+          });
+        });
+        
         setExistingImages(parsedImages);
         
         // Convert text with [IMG:id] placeholders to HTML for editor
@@ -245,69 +261,57 @@ const PoskasEdit = () => {
         const placeholders = [...editorContent.matchAll(imgPlaceholderRegex)];
         console.log('🔍 Found image placeholders in content:', placeholders);
         
-                 // Replace [IMG:id] placeholders with actual image tags for editor
-         if (Array.isArray(parsedImages)) {
-           console.log('🔍 Processing parsed images for editor:', parsedImages);
-           console.log('🔍 Environment config:', API_CONFIG);
-           parsedImages.filter(image => {
-             // Filter out images without valid URLs
-             if (!image || (!image.url && !image.uri)) {
-               console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
-               return false;
-             }
-             return true;
-           }).forEach((image, index) => {
+        // Replace [IMG:id] placeholders with actual image tags for editor
+        if (Array.isArray(parsedImages)) {
+          console.log('🔍 Processing parsed images for editor:', parsedImages);
+          console.log('🔍 Environment config:', API_CONFIG);
+          parsedImages.filter(image => {
+            // Filter out images without valid URLs
+            if (!image || (!image.url && !image.uri)) {
+              console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
+              return false;
+            }
+            return true;
+          }).forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
-                         // Construct the correct image URL
-             let imageUrl = '';
-             if (image.url) {
-               if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-                 // Already absolute URL or data URL
-                 imageUrl = image.url;
-               } else {
-                 // Relative URL, add base URL
-                 const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-                 imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-               }
-             } else if (image.uri) {
-               imageUrl = image.uri;
-             }
-             
-             console.log(`🔍 Final image URL for editor: ${imageUrl}`);
-             
-             // Replace [IMG:id] placeholder with actual image tag
-             const placeholder = `[IMG:${image.id}]`;
-             if (editorContent.includes(placeholder)) {
-               console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
-               const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
-               editorContent = editorContent.replace(placeholder, imgTag);
-             } else {
-               console.log(`⚠️ Placeholder ${placeholder} not found in content`);
-             }
-           });
-         }
-         
-         console.log('🔍 Final editor content after image replacement:', editorContent);
-         
-         // Process tanggal_poskas
-         const originalTanggal = poskas.tanggal_poskas;
-         const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
-         
-         console.log('🔍 Tanggal processing:', {
-           original: originalTanggal,
-           processed: processedTanggal,
-           originalType: typeof originalTanggal,
-           isDate: originalTanggal instanceof Date
-         });
-         
-         // Set the processed content
-         setFormData(prev => ({
-           ...prev,
-           tanggal_poskas: processedTanggal,
-           isi_poskas: editorContent,
-           images: parsedImages
-         }));
+            // Construct the correct image URL
+            let imageUrl = getImageDisplayUrl(image);
+            
+            console.log(`🔍 Final image URL for editor: ${imageUrl}`);
+            
+            // Replace [IMG:id] placeholder with actual image tag
+            const placeholder = `[IMG:${image.id}]`;
+            if (editorContent.includes(placeholder)) {
+              console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
+              const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
+              editorContent = editorContent.replace(placeholder, imgTag);
+            } else {
+              console.log(`⚠️ Placeholder ${placeholder} not found in content`);
+            }
+          });
+        }
+        
+        console.log('🔍 Final editor content after image replacement:', editorContent);
+        
+        // Process tanggal_poskas
+        const originalTanggal = poskas.tanggal_poskas;
+        const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
+        
+        console.log('🔍 Tanggal processing:', {
+          original: originalTanggal,
+          processed: processedTanggal,
+          originalType: typeof originalTanggal,
+          isDate: originalTanggal instanceof Date
+        });
+        
+        // Set the processed content
+        setFormData(prev => ({
+          ...prev,
+          tanggal_poskas: processedTanggal,
+          isi_poskas: editorContent,
+          images: parsedImages
+        }));
         
       } else {
         setError(response.message || 'Gagal memuat detail laporan');
@@ -330,128 +334,13 @@ const PoskasEdit = () => {
   };
 
   // Parse images string to array
-  const parseImagesString = (imagesString) => {
-    if (!imagesString) return [];
+  const parseImagesStringLocal = (imagesString) => {
+    console.log('🔍 parseImagesString called with:', imagesString);
+    console.log('🔍 Environment config:', API_CONFIG);
+    console.log('🔍 BASE_URL:', API_CONFIG.BASE_URL);
     
-    try {
-      console.log('🔍 Parsing images string:', imagesString);
-      console.log('🔍 imagesString type:', typeof imagesString);
-      console.log('🔍 imagesString isArray:', Array.isArray(imagesString));
-      
-      let result;
-      
-      // Handle different formats
-      if (Array.isArray(imagesString)) {
-        // If it's already an array, use it directly
-        result = imagesString;
-        console.log('🔍 Images is already an array, using directly');
-      } else if (typeof imagesString === 'string') {
-        // Try to parse the string as JSON
-        try {
-          // Clean the string first - remove extra quotes if they exist
-          let cleanImages = imagesString.trim();
-          
-          // Remove extra quotes if the string is wrapped in quotes
-          if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
-            cleanImages = cleanImages.slice(1, -1);
-          }
-          
-          // Unescape the string
-          cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-          
-          console.log('🔍 Cleaned images string:', cleanImages);
-          
-          result = JSON.parse(cleanImages);
-          console.log('🔍 Successfully parsed string as JSON:', result);
-        } catch (parseError) {
-          console.log('ℹ️ Failed to parse string as JSON, treating as single image name:', parseError);
-          // If it's not valid JSON, treat it as a single image name
-          result = [{ name: imagesString, url: imagesString }];
-        }
-      } else if (typeof imagesString === 'object' && imagesString !== null) {
-        // If it's a single object, wrap it in an array
-        result = [imagesString];
-        console.log('🔍 Single object wrapped in array');
-      } else {
-        console.log('ℹ️ Unknown images format:', typeof imagesString);
-        return [];
-      }
-      
-      // Ensure result is an array
-      if (!Array.isArray(result)) {
-        console.log('ℹ️ Parsed result is not an array, converting...');
-        if (result && typeof result === 'object' && result !== null) {
-          result = [result];
-          console.log('🔍 Converted single object to array');
-        } else {
-          console.log('ℹ️ Invalid images data, returning empty array');
-          return [];
-        }
-      }
-      
-      // Filter out invalid images and fix URLs
-      result = result.filter(image => {
-        if (!image || typeof image !== 'object') {
-          console.log('ℹ️ Invalid image object:', image);
-          return false;
-        }
-        return true;
-      }).map(image => {
-        // Ensure image has required properties
-        const validImage = {
-          id: image.id || Date.now() + Math.random(),
-          name: image.name || `image_${Date.now()}`,
-          url: image.url || '',
-          uri: image.uri || '',
-          serverPath: image.serverPath || ''
-        };
-        
-        // Fix URLs - replace old IP with current base URL
-        if (validImage.url) {
-          let fixedUrl = validImage.url;
-          
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// URL: ${validImage.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
-            const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
-            console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
-            const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
-            console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          }
-          
-          validImage.url = fixedUrl;
-        }
-        
-        // Ensure URL is absolute
-        if (validImage.url && !validImage.url.startsWith('http') && !validImage.url.startsWith('data:')) {
-          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-          validImage.url = `${baseUrl}${validImage.url.startsWith('/') ? '' : '/'}${validImage.url}`;
-        } else if (validImage.url && validImage.url.startsWith('http')) {
-          // Check if absolute URL has /api in wrong place
-          if (validImage.url.includes('/api/uploads/')) {
-            // Remove /api from upload URLs
-            validImage.url = validImage.url.replace('/api/uploads/', '/uploads/');
-            console.log(`🔍 Fixed /api in absolute upload URL: ${image.url} -> ${validImage.url}`);
-          }
-        }
-        
-        return validImage;
-      });
-      
-      console.log('🔍 Final parsed images:', result);
-      return result;
-    } catch (error) {
-      console.error('❌ Error parsing images string:', error);
-      return [];
-    }
+    // Use the utility function
+    return parseImagesString(imagesString, API_CONFIG.BASE_URL);
   };
 
   // Track images used in editor
