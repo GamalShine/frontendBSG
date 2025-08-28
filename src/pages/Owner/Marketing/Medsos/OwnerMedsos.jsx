@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
 import Input from '@/components/UI/Input';
@@ -15,10 +14,7 @@ import {
 import Select from '@/components/UI/Select';
 import { 
   Search, 
-  Plus, 
   Eye, 
-  Edit, 
-  Trash2,
   Instagram,
   Youtube,
   Music,
@@ -249,14 +245,7 @@ const OwnerMedsos = () => {
             {getPlatformIcon(platform.platform)}
             <span className="ml-2">{platform.platform}</span>
           </h3>
-          <div className="flex space-x-2">
-            <Link to={`/owner/marketing/medsos/edit/${platform.id}`} className="text-blue-600 hover:text-blue-800">
-              <Edit className="w-5 h-5" />
-            </Link>
-            <button className="text-red-600 hover:text-red-800">
-              <Trash2 className="w-5 h-5" />
-            </button>
-          </div>
+          {/* Owner read-only: no actions */}
         </div>
         
         <div className="grid grid-cols-2 gap-4 mb-4">
@@ -330,57 +319,47 @@ const OwnerMedsos = () => {
 
     return (
       <>
-        <Table>
+        <div className="overflow-x-auto -mx-0 sm:-mx-2 md:-mx-4 px-0 sm:px-2 md:px-4">
+          <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-16">NO</TableHead>
-              <TableHead>AKUN</TableHead>
-              <TableHead>FOLLOWER</TableHead>
-              <TableHead>RATECARD</TableHead>
-              <TableHead className="w-24">AKSI</TableHead>
+              <TableHead className="w-16 whitespace-nowrap">NO</TableHead>
+              <TableHead className="w-4/12 whitespace-nowrap">AKUN</TableHead>
+              <TableHead className="w-4/12 whitespace-nowrap">FOLLOWER</TableHead>
+              <TableHead className="w-3/12 whitespace-nowrap text-right">RATECARD</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {kolData.map((kol, index) => (
               <TableRow key={kol.id}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell className="font-medium">{kol.nama_akun}</TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <Instagram className="w-4 h-4 text-pink-600" />
-                      <span className="text-sm">{formatNumber(kol.follower_ig || 0)}</span>
+                <TableCell className="w-16">{index + 1}</TableCell>
+                <TableCell className="w-4/12">
+                  <div className="font-medium truncate whitespace-nowrap" title={kol.nama_akun}>
+                    {kol.nama_akun}
+                  </div>
+                </TableCell>
+                <TableCell className="w-4/12">
+                  <div className="space-y-1 text-left w-full">
+                    <div className="flex items-center space-x-2 whitespace-nowrap">
+                      <span className="text-xs text-gray-600">Instagram</span>
+                      <span className="text-sm font-medium tabular-nums">{formatNumber(kol.follower_ig || 0)}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Music className="w-4 h-4 text-black" />
-                      <span className="text-sm">{formatNumber(kol.follower_tiktok || 0)}</span>
+                    <div className="flex items-center space-x-2 whitespace-nowrap">
+                      <span className="text-xs text-gray-600">TikTok</span>
+                      <span className="text-sm font-medium tabular-nums">{formatNumber(kol.follower_tiktok || 0)}</span>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="font-semibold text-green-600">
+                <TableCell className="w-3/12 font-semibold text-green-600 text-right">
                   {formatCurrency(kol.ratecard)}
                 </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Link to={`/owner/marketing/medsos/kol/edit/${kol.id}`} className="text-blue-600 hover:text-blue-800">
-                      <Edit className="w-4 h-4" />
-                    </Link>
-                    <button className="text-red-600 hover:text-red-800">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </TableCell>
+                {/* Owner read-only: no action cell */}
               </TableRow>
             ))}
           </TableBody>
-        </Table>
-        
-        <div className="mt-4">
-          <Link to="/owner/marketing/medsos/kol/form" className="inline-flex items-center space-x-2 bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg font-medium">
-            <Plus className="w-4 h-4" />
-            <span>TAMBAH DATA KOL</span>
-          </Link>
+          </Table>
         </div>
+        {/* Owner read-only: remove add KOL button */}
       </>
     );
   };
@@ -422,91 +401,75 @@ const OwnerMedsos = () => {
         {/* Account-based Table */}
         <div>
           <h4 className="font-medium text-gray-700 mb-3">Berdasarkan Akun</h4>
-          <Table>
+          <div className="overflow-x-auto -mx-0 sm:-mx-2 md:-mx-4 px-0 sm:px-2 md:px-4">
+            <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">NO</TableHead>
-                <TableHead>NAMA AKUN</TableHead>
-                <TableHead>FOLLOWER</TableHead>
-                <TableHead>RATECARD</TableHead>
-                <TableHead className="w-24">AKSI</TableHead>
+                <TableHead className="w-16 whitespace-nowrap">NO</TableHead>
+                <TableHead className="w-4/12 whitespace-nowrap">NAMA AKUN</TableHead>
+                <TableHead className="w-4/12 whitespace-nowrap">FOLLOWER</TableHead>
+                <TableHead className="w-3/12 whitespace-nowrap text-right">RATECARD</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {anggaranData.map((anggaran, index) => (
                 <TableRow key={anggaran.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-medium">{anggaran.nama_akun}</TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <Instagram className="w-4 h-4 text-pink-600" />
-                        <span className="text-sm">{formatNumber(anggaran.follower_ig || 0)}</span>
+                  <TableCell className="w-16">{index + 1}</TableCell>
+                  <TableCell className="w-4/12">
+                    <div className="font-medium truncate whitespace-nowrap" title={anggaran.nama_akun}>
+                      {anggaran.nama_akun}
+                    </div>
+                  </TableCell>
+                  <TableCell className="w-4/12">
+                    <div className="space-y-1 inline-block text-left">
+                      <div className="flex items-center space-x-2 whitespace-nowrap">
+                        <span className="text-xs text-gray-600">Instagram</span>
+                        <span className="text-sm font-medium tabular-nums">{formatNumber(anggaran.follower_ig || 0)}</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Music className="w-4 h-4 text-black" />
-                        <span className="text-sm">{formatNumber(anggaran.follower_tiktok || 0)}</span>
+                      <div className="flex items-center space-x-2 whitespace-nowrap">
+                        <span className="text-xs text-gray-600">TikTok</span>
+                        <span className="text-sm font-medium tabular-nums">{formatNumber(anggaran.follower_tiktok || 0)}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-semibold text-green-600">
+                  <TableCell className="w-3/12 font-semibold text-green-600 text-right">
                     {formatCurrency(anggaran.ratecard)}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Link to={`/owner/marketing/medsos/anggaran/edit/${anggaran.id}`} className="text-blue-600 hover:text-blue-800">
-                        <Edit className="w-4 h-4" />
-                      </Link>
-                      <button className="text-red-600 hover:text-red-800">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
 
         {/* Platform-based Table */}
         <div>
           <h4 className="font-medium text-gray-700 mb-3">Berdasarkan Platform</h4>
-          <Table>
+          <div className="overflow-x-auto -mx-2 sm:-mx-4 md:-mx-6 px-2 sm:px-4 md:px-6">
+            <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">NO</TableHead>
-                <TableHead>PLATFORM</TableHead>
-                <TableHead>BIAYA</TableHead>
-                <TableHead className="w-24">AKSI</TableHead>
+                <TableHead className="w-16 whitespace-nowrap">NO</TableHead>
+                <TableHead className="w-9/12 whitespace-nowrap">PLATFORM</TableHead>
+                <TableHead className="w-3/12 whitespace-nowrap text-right">BIAYA</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {platformCostsData.map((cost, index) => (
                 <TableRow key={cost.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getPlatformIcon(cost.platform)}
-                      <span className="font-medium">{cost.platform}</span>
-                    </div>
+                  <TableCell className="w-16">{index + 1}</TableCell>
+                  <TableCell className="w-9/12">
+                    <span className="font-medium">{cost.platform}</span>
                   </TableCell>
-                  <TableCell className="font-semibold text-green-600">
+                  <TableCell className="w-3/12 font-semibold text-green-600 text-right tabular-nums">
                     {formatCurrency(cost.biaya)}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Link to={`/owner/marketing/medsos/platform-costs/edit/${cost.id}`} className="text-blue-600 hover:text-blue-800">
-                        <Edit className="w-4 h-4" />
-                      </Link>
-                      <button className="text-red-600 hover:text-red-800">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </TableCell>
+                  {/* Owner read-only: no action cell */}
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </div>
       </div>
     );
@@ -517,12 +480,7 @@ const OwnerMedsos = () => {
       {/* Header */}
       <div className="bg-red-800 text-white p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Link to="/owner/marketing" className="text-white hover:text-gray-200">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
+          <div className="flex items-center">
             <div>
               <h1 className="text-2xl font-bold">MEDSOS</h1>
               <p className="text-sm opacity-90">Marketing - Medsos</p>
@@ -541,11 +499,11 @@ const OwnerMedsos = () => {
         Data terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
       </div>
 
-      <div className="container mx-auto p-4 space-y-6">
+      <div className="w-full px-0 sm:px-2 md:px-4 space-y-6 mt-4 md:mt-6">
         {/* PLATFORM Section */}
         <Card className="border-0 shadow-lg">
           <CardHeader 
-            className="bg-red-800 text-white cursor-pointer"
+            className="bg-red-800 text-white cursor-pointer rounded-t-lg"
             onClick={() => toggleSection('platform')}
           >
             <div className="flex items-center justify-between">
@@ -579,7 +537,7 @@ const OwnerMedsos = () => {
         {/* DATA BASE KOL Section */}
         <Card className="border-0 shadow-lg">
           <CardHeader 
-            className="bg-red-800 text-white cursor-pointer"
+            className="bg-red-800 text-white cursor-pointer rounded-t-lg"
             onClick={() => toggleSection('kol')}
           >
             <div className="flex items-center justify-between">
@@ -613,7 +571,7 @@ const OwnerMedsos = () => {
         {/* ANGGARAN MARKETING Section */}
         <Card className="border-0 shadow-lg">
           <CardHeader 
-            className="bg-red-800 text-white cursor-pointer"
+            className="bg-red-800 text-white cursor-pointer rounded-t-lg"
             onClick={() => toggleSection('anggaran')}
           >
             <div className="flex items-center justify-between">
@@ -624,17 +582,17 @@ const OwnerMedsos = () => {
           
           {activeSection.anggaran && (
             <CardBody className="p-0">
-              {/* JULI Month */}
+              {/* AGUSTUS Month */}
               <div className="border-b border-gray-200">
                 <div 
                   className="bg-red-100 px-4 py-3 cursor-pointer flex items-center justify-between"
-                  onClick={() => toggleMonth('anggaran', 'JULI')}
+                  onClick={() => toggleMonth('anggaran', 'AGUSTUS')}
                 >
-                  <span className="font-medium text-gray-800">JULI</span>
-                  {activeMonth.anggaran === 'JULI' ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                  <span className="font-medium text-gray-800">AGUSTUS</span>
+                  {activeMonth.anggaran === 'AGUSTUS' ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                 </div>
                 
-                {activeMonth.anggaran === 'JULI' && (
+                {activeMonth.anggaran === 'AGUSTUS' && (
                   <div className="p-4">
                     {renderAnggaranData()}
                   </div>

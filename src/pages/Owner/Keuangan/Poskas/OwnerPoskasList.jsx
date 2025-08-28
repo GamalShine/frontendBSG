@@ -475,12 +475,32 @@ const OwnerPoskasList = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(poskasItem.id)}
-                          onChange={() => handleCheckboxChange(poskasItem.id)}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                        />
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(poskasItem.id)}
+                            onChange={() => handleCheckboxChange(poskasItem.id)}
+                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                          />
+                          <Link
+                            to={`/owner/keuangan/poskas/${poskasItem.id}`}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                          <Link
+                            to={`/owner/keuangan/poskas/${poskasItem.id}/edit`}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(poskasItem.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

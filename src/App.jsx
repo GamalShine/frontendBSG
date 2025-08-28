@@ -64,6 +64,7 @@ import OwnerDaftarGaji from './pages/Owner/Keuangan/manage/OwnerDaftarGaji'
 import OwnerDataAset from './pages/Owner/Operasional/DataAset/OwnerDataAset'
 import OwnerDataInvestor from './pages/Owner/Operasional/DataInvestor/OwnerDataInvestor'
 import OwnerDataTarget from './pages/Owner/Marketing/manage/OwnerDataTarget'
+import OwnerMedsos from './pages/Owner/Marketing/Medsos/OwnerMedsos'
 import OwnerDataTim from './pages/Owner/SDM/manage/OwnerDataTim'
 import OwnerTimMerahBiruList from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruList'
 import OwnerTimMerahBiruDetail from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruDetail'
@@ -390,6 +391,15 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerChatRoom />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner Marketing Routes */}
+              <Route path="/owner/marketing/medsos" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerMedsos />
                   </Layout>
                 </ProtectedRoute>
               } />
