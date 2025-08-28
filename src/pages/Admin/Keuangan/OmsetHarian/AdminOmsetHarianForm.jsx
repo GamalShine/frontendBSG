@@ -33,6 +33,29 @@ const AdminOmsetHarianForm = () => {
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [usedInEditor, setUsedInEditor] = useState(new Set()); // Track which images are used in editor
   const editorRef = useRef(null);
+  const lastContentRef = useRef('');
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+
+  const updateFormatState = () => {
+    try {
+      setIsBoldActive(document.queryCommandState('bold'));
+      setIsItalicActive(document.queryCommandState('italic'));
+      setIsUnderlineActive(document.queryCommandState('underline'));
+    } catch (_) {}
+  };
+
+  // Helper: place caret at the end of editor content (match Poskas UX)
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
 
   useEffect(() => {
     if (id) {
@@ -123,6 +146,8 @@ const AdminOmsetHarianForm = () => {
         
         // Update usedInEditor state after setting content
         updateUsedInEditor();
+        // Move caret to end for natural typing like Poskas
+        placeCaretAtEnd(editorRef.current);
       }, 300); // Increased delay to ensure everything is ready
     }
   }, [formData.isi_omset, formData.images, isEditMode]);
@@ -220,13 +245,13 @@ const AdminOmsetHarianForm = () => {
                   }
                   
                   // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.49:3000')) {
+                  if (fixedUrl.includes('192.168.30.116:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.49:3000')) {
+                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
                 }
@@ -274,13 +299,13 @@ const AdminOmsetHarianForm = () => {
               }
               
               // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.49:3000')) {
+              if (cleanUrl.includes('192.168.30.116:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.49:3000')) {
+              } else if (cleanUrl.includes('192.168.30.116:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
               }
               
@@ -360,13 +385,18 @@ const AdminOmsetHarianForm = () => {
 
   const handleEditorChange = (e) => {
     const content = e.target.innerHTML;
-    setFormData(prev => ({
-      ...prev,
-      isi_omset: content
-    }));
-    
-    // Update usedInEditor state
+    // Avoid frequent state updates to prevent caret reset; store in ref
+    lastContentRef.current = content;
+    // Keep tracking used images
     updateUsedInEditor();
+    // Update active formatting state while typing
+    updateFormatState();
+  };
+
+  const handleEditorBlur = () => {
+    const content = editorRef.current ? editorRef.current.innerHTML : '';
+    lastContentRef.current = content;
+    setFormData(prev => ({ ...prev, isi_omset: content }));
   };
 
   // Update usedInEditor state by scanning editor content
@@ -442,348 +472,146 @@ const AdminOmsetHarianForm = () => {
   };
 
   const getEditorContent = () => {
-    if (!editorRef.current) return '';
+  if (!editorRef.current) return '';
+  
+  const content = editorRef.current.innerHTML;
+  if (!content || content.trim() === '') return '';
+  
+  console.log('🔍 Debug: Getting editor content:', content);
+  
+  let processedContent = content;
+  
+  // Replace existing image tags that have data-image-id back to [IMG:id] placeholders
+  const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
+  processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
+    console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
+    return `[IMG:${imageId}]`;
+  });
+  
+  // Replace base64 images with [IMG:id] placeholders
+  const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
+  let imgMatch;
+  let imgIndex = 0;
+  
+  while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
+    const timestamp = Date.now();
+    const imgId = timestamp + Math.floor(Math.random() * 1000);
+    console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
     
-    const content = editorRef.current.innerHTML;
-    if (!content || content.trim() === '') return '';
-    
-    console.log('🔍 Debug: Getting editor content:', content);
-    
-    let processedContent = content;
-    
-    // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
-    const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
-    processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
-      console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
-      return `[IMG:${imageId}]`;
-    });
-    
-    // Then, replace base64 images with [IMG:id] placeholders
-    const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-    let imgMatch;
-    let imgIndex = 0;
-    
-    while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-      // Generate new ID for base64 images
-      const timestamp = Date.now();
-      const imgId = timestamp + Math.floor(Math.random() * 1000);
-      console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
-      
-      const placeholder = `[IMG:${imgId}]`;
-      processedContent = processedContent.replace(imgMatch[0], placeholder);
-      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
-      imgIndex++;
-    }
-    
-    // Remove any remaining HTML tags but keep line breaks
-    processedContent = processedContent
-      .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-      .replace(/<\/div>/gi, '') // Remove closing div tags
-      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-      .replace(/&amp;/g, '&') // Convert &amp; to &
-      .replace(/&lt;/g, '<') // Convert &lt; to <
-      .replace(/&gt;/g, '>') // Convert &gt; to >
-      .replace(/&quot;/g, '"') // Convert &quot; to "
-      .replace(/&#39;/g, "'") // Convert &#39; to '
-      .trim();
-    
-    console.log('🔍 Debug: Processed content:', processedContent);
-    return processedContent;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.tanggal_omset) {
-      toast.error('Tanggal omset harus diisi');
-      return;
-    }
-    
-    const editorContent = getEditorContent();
-    if (!editorContent || editorContent.trim() === '') {
-      toast.error('Isi omset tidak boleh kosong');
-      return;
-    }
-    
-    if (editorContent.trim().length < 10) {
-      toast.error('Isi omset minimal 10 karakter');
-      return;
-    }
-    
-    setIsSubmitting(true);
-
-    try {
-      let imagesWithServerUrls = [];
-      
-      if (isEditMode) {
-        // In edit mode, only preserve images that are still used in editor
-        console.log('🔍 Debug: Edit mode - filtering images by usage in editor');
-        console.log('🔍 Debug: Used in editor IDs:', usedInEditor);
-        console.log('🔍 Debug: All formData images:', formData.images);
-        
-        // Filter existing images to only include those still used in editor
-        const usedExistingImages = (formData.images || []).filter(img => {
-          const isUsed = usedInEditor.has(img.id);
-          console.log(`🔍 Image ${img.id} used in editor: ${isUsed}`);
-          return isUsed;
-        });
-        
-        console.log('🔍 Debug: Filtered existing images:', usedExistingImages);
-        imagesWithServerUrls = usedExistingImages;
-        
-        // Upload new images if any
-        if (selectedImages.length > 0) {
-          console.log('🔍 Debug: Uploading new images in edit mode');
-          const uploadedFiles = await uploadImagesToServer(selectedImages);
-          
-          // Add new uploaded images to existing ones
-          const newImages = selectedImages.map((img, index) => {
-            const uploadedFile = uploadedFiles[index];
-            
-            if (uploadedFile) {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `omset_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-                serverPath: uploadedFile.url
-              };
-            } else {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `omset_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/omset-harian/temp_${img.id}.jpg`,
-                serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
-              };
-            }
-          });
-          
-          imagesWithServerUrls = [...imagesWithServerUrls, ...newImages];
-        }
-      } else {
-        // In create mode, upload all selected images
-        console.log('🔍 Debug: Create mode - uploading all images');
-        const uploadedFiles = await uploadImagesToServer(selectedImages);
-        
-        imagesWithServerUrls = selectedImages.map((img, index) => {
-          const uploadedFile = uploadedFiles[index];
-          
-          if (uploadedFile) {
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `omset_${img.id}.jpg`,
-              url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-              serverPath: uploadedFile.url
-            };
-          } else {
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `omset_${img.id}.jpg`,
-              url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/omset-harian/temp_${img.id}.jpg`,
-              serverPath: `uploads/omset-harian/temp_${img.id}.jpg`
-            };
-          }
-        });
-      }
-      
-      // Ensure all image URLs are properly formatted
-      const finalImages = imagesWithServerUrls.map(img => {
-        if (img && img.url) {
-          let fixedUrl = img.url;
-          
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          return { ...img, url: fixedUrl };
-        }
-        return img;
-      });
-      
-      const submitData = {
-        tanggal_omset: formData.tanggal_omset,
-        isi_omset: editorContent,
-        images: finalImages
-      };
-      
-      console.log('🔍 Debug: Submit data:', submitData);
-      console.log('🔍 Debug: Final images with fixed URLs:', finalImages);
-      
-      if (isEditMode) {
-        await omsetHarianService.updateOmsetHarian(id, submitData);
-        toast.success('Data omset harian berhasil diperbarui');
-      } else {
-        await omsetHarianService.createOmsetHarian(submitData);
-        toast.success('Data omset harian berhasil ditambahkan');
-      }
-      
-              navigate('/admin/keuangan/omset-harian');
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error(isEditMode ? 'Gagal memperbarui data omset harian' : 'Gagal menambahkan data omset harian');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newSelectedImages = [];
-    const newImagePreviewUrls = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('Gambar terlalu besar. Maksimal 10MB');
-        continue;
-      }
-
-      if (selectedImages.length + newSelectedImages.length >= 5) {
-        toast.error('Maksimal 5 gambar per laporan');
-        break;
-      }
-
-      const imageId = Date.now() + Math.floor(Math.random() * 1000);
-      newSelectedImages.push({ file, id: imageId });
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        newImagePreviewUrls.push(e.target.result);
-        if (newSelectedImages.length === files.length) {
-          setSelectedImages(prev => [...prev, ...newSelectedImages]);
-          setImagePreviewUrls(prev => [...prev, ...newImagePreviewUrls]);
-          toast.success('Gambar berhasil ditambahkan');
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeImage = (index) => {
-    const newSelectedImages = selectedImages.filter((_, i) => i !== index);
-    const newImagePreviewUrls = imagePreviewUrls.filter((_, i) => i !== index);
-    setSelectedImages(newSelectedImages);
-    setImagePreviewUrls(newImagePreviewUrls);
-  };
-
-  // Remove image from editor by ID
-  const removeImageFromEditor = (imageId) => {
-    if (editorRef.current) {
-      // Remove image placeholder from editor content
-      const content = editorRef.current.innerHTML;
-      const placeholderRegex = new RegExp(`\\[IMG:${imageId}\\]`, 'g');
-      const newContent = content.replace(placeholderRegex, '');
-      editorRef.current.innerHTML = newContent;
-      
-      // Update formData
-      setFormData(prev => ({
-        ...prev,
-        isi_omset: newContent
-      }));
-      
-      // Update usedInEditor state
-      updateUsedInEditor();
-      
-      toast.success('Gambar berhasil dihapus dari editor');
-    }
-  };
-
-  const insertImage = (imageUrl, imageId) => {
-    const placeholder = `[IMG:${imageId}]`;
-    const newContent = editorRef.current.innerHTML.replace(placeholder, `<img src="${imageUrl}" alt="Gambar ${imageId}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${imageId}" />`);
-    editorRef.current.innerHTML = newContent;
-    
-    // Update formData
-    setFormData(prev => ({
-      ...prev,
-      isi_omset: newContent
-    }));
-    
-    // Update usedInEditor state
-    updateUsedInEditor();
-    
-    // Trigger input to update formData
-    const event = new Event('input', { bubbles: true });
-    editorRef.current.dispatchEvent(event);
-  };
-
-  const uploadImagesToServer = async (images) => {
-    if (images.length === 0) return [];
-
-    const formData = new FormData();
-    images.forEach((imageData) => {
-      formData.append('images', imageData.file);
-    });
-
-    try {
-      const response = await fetch(`${envConfig.API_BASE_URL}/upload/omset-harian`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-
-      if (result.success) {
-        return result.data;
-      } else {
-        toast.error(result.message || 'Gagal mengupload gambar');
-        return [];
-      }
-    } catch (error) {
-      console.error('Error uploading images:', error);
-      toast.error(`Gagal mengupload gambar: ${error.message}`);
-      return [];
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="p-8 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-red-500 mx-auto mb-4" />
-            <p className="text-gray-600">Memuat data...</p>
-          </div>
-        </div>
-      </div>
-    );
+    const placeholder = `[IMG:${imgId}]`;
+    processedContent = processedContent.replace(imgMatch[0], placeholder);
+    console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
+    imgIndex++;
   }
+  
+  // Normalize block separators by turning divs/p into line breaks
+  processedContent = processedContent
+    .replace(/<div[^>]*>/gi, '\n')
+    .replace(/<\/div>/gi, '')
+    .replace(/<p[^>]*>/gi, '\n')
+    .replace(/<\/p>/gi, '');
+  
+  // Keep only allowed tags and sanitize anchors
+  processedContent = processedContent
+    .replace(/<br[^>]*>/gi, '<br>')
+    .replace(/<a([^>]*)>/gi, (m, attrs) => {
+      const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
+      let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
+      if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
+      return href ? `<a href="${href}">` : '<a>';
+    })
+    .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
+  
+  // Remove all other tags except the allowed set and their closing tags
+  processedContent = processedContent.replace(/<(?!\/?(b|strong|i|em|u|a|ul|ol|li|br)\b)[^>]*>/gi, '');
+  
+  // Decode common HTML entities
+  processedContent = processedContent
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
+  
+  console.log('🔍 Debug: Processed content (kept basic formatting):', processedContent);
+  return processedContent;
+};
 
-  return (
+// Handlers referenced in JSX
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  setFormData(prev => ({ ...prev, [name]: value }));
+};
+
+const handleImageUpload = (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+  const max = 5 - selectedImages.length;
+  const toAdd = files.slice(0, Math.max(0, max));
+  const newItems = toAdd.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
+  setSelectedImages(prev => [...prev, ...newItems]);
+  newItems.forEach((item) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreviewUrls(prev => [...prev, ev.target.result]);
+    reader.readAsDataURL(item.file);
+  });
+};
+
+const insertImage = (imageUrl, imageId) => {
+  if (!editorRef.current) return;
+  const img = document.createElement('img');
+  img.src = imageUrl;
+  img.alt = 'Inserted image';
+  img.className = 'pasted-image';
+  img.setAttribute('data-image-id', imageId);
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(img);
+    range.collapse(false);
+    const br = document.createElement('br');
+    range.insertNode(br);
+  } else {
+    editorRef.current.appendChild(img);
+  }
+  const event = new Event('input', { bubbles: true });
+  editorRef.current.dispatchEvent(event);
+};
+
+const removeImage = (index) => {
+  setSelectedImages(prev => prev.filter((_, i) => i !== index));
+  setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  try {
+    const isiContent = getEditorContent();
+    const payload = {
+      tanggal_omset: formData.tanggal_omset,
+      isi_omset: isiContent,
+      images: formData.images || []
+    };
+    if (isEditMode) {
+      await omsetHarianService.updateOmsetHarian(id, payload);
+    } else {
+      await omsetHarianService.createOmsetHarian(payload);
+    }
+    toast.success('Berhasil menyimpan omset harian');
+    navigate('/admin/keuangan/omset-harian');
+  } catch (error) {
+    console.error('Gagal menyimpan omset harian', error);
+    toast.error('Gagal menyimpan omset harian');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header Section */}
       <div className="bg-white rounded-lg shadow-sm border mb-6">
@@ -852,13 +680,47 @@ const AdminOmsetHarianForm = () => {
             </div>
             
             <div className="space-y-4">
+              {/* Toolbar for basic formatting like on Poskas */}
+              <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => { document.execCommand('bold'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isBoldActive}
+                  title="Bold"
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { document.execCommand('italic'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isItalicActive}
+                  title="Italic"
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { document.execCommand('underline'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isUnderlineActive}
+                  title="Underline"
+                >
+                  U
+                </button>
+              </div>
               <div
                 ref={editorRef}
                 contentEditable
                 data-placeholder="Masukkan isi omset harian... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
                 onInput={handleEditorChange}
+                onBlur={handleEditorBlur}
                 onPaste={handleEditorPaste}
-                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                onKeyUp={updateFormatState}
+                onMouseUp={updateFormatState}
+                dir="ltr"
+                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-left"
                 style={{ whiteSpace: 'pre-wrap' }}
                 dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_omset } : undefined}
               />
@@ -951,12 +813,12 @@ const AdminOmsetHarianForm = () => {
                       }
                       
                       // Fix old IP addresses
-                      if (imageUrl.includes('192.168.30.49:3000')) {
+                      if (imageUrl.includes('192.168.30.116:3000')) {
                         const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
-                      } else if (imageUrl.includes('192.168.30.49:3000')) {
+                        imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
+                      } else if (imageUrl.includes('192.168.30.116:3000')) {
                         const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+                        imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
                       }
                       
                       // If relative URL, add base URL

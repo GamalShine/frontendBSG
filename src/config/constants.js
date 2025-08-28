@@ -1,9 +1,9 @@
 // Single source of truth untuk semua URL dan konfigurasi
 export const API_CONFIG = {
     // Base URLs dari environment variables
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.49:3000/api',
-    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.49:3000',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.49:5173',
+    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.116:3000/api',
+    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.116:3000',
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.116:5173',
 
     // Helper functions
     getUrl: (endpoint) => `${API_CONFIG.BASE_URL}${endpoint}`,
@@ -139,6 +139,22 @@ export const API_ENDPOINTS = {
         DETAIL: '/aneka-grafik',
         BY_ID: (id) => `/aneka-grafik/${id}`,
         STATS: '/aneka-grafik/stats/overview',
+        
+        // Admin Aneka Grafik
+        ADMIN: {
+            LIST: '/admin/aneka-grafik',
+            DETAIL: '/admin/aneka-grafik',
+            BY_ID: (id) => `/admin/aneka-grafik/${id}`,
+            STATS: '/admin/aneka-grafik/stats/overview',
+        },
+        
+        // Owner Aneka Grafik
+        OWNER: {
+            LIST: '/owner/aneka-grafik',
+            DETAIL: '/owner/aneka-grafik',
+            BY_ID: (id) => `/owner/aneka-grafik/${id}`,
+            STATS: '/owner/aneka-grafik/stats/overview',
+        },
     },
 
     // Laporan Keuangan

@@ -8,8 +8,6 @@ import {
   Edit, 
   Trash2, 
   Users, 
-  Instagram, 
-  Music,
   DollarSign,
   User
 } from 'lucide-react';
@@ -107,7 +105,7 @@ const AdminDataTargetDetail = () => {
           </Link>
           <div className="flex-1">
             <h1 className="text-3xl font-bold text-gray-900">Detail Data Target</h1>
-            <p className="text-gray-600">Informasi lengkap data target marketing</p>
+            <p className="text-gray-600">Informasi lengkap data target pemasaran</p>
           </div>
           <div className="flex items-center gap-2">
             <Link to={`/admin/marketing/target/edit/${dataTarget.id}`}>
@@ -142,73 +140,20 @@ const AdminDataTargetDetail = () => {
             <CardBody className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Nama Akun</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Nama Target</label>
                   <div className="text-lg font-semibold text-gray-900">
-                    {dataTarget.nama_akun}
+                    {dataTarget.nama_target}
                   </div>
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Rate Card</label>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Target Nominal</label>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-5 w-5 text-green-600" />
                     <span className="text-2xl font-bold text-gray-900">
-                      {formatCurrency(dataTarget.ratecard)}
+                      {formatCurrency(dataTarget.target_nominal)}
                     </span>
                   </div>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Social Media Information */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Informasi Media Sosial</h2>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Follower Instagram</label>
-                  <div className="flex items-center gap-2">
-                    <Instagram className="h-5 w-5 text-pink-600" />
-                    <span className="text-xl font-bold text-gray-900">
-                      {formatNumber(dataTarget.follower_ig)}
-                    </span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Follower TikTok</label>
-                  <div className="flex items-center gap-2">
-                    <Music className="h-5 w-5 text-black" />
-                    <span className="text-xl font-bold text-gray-900">
-                      {formatNumber(dataTarget.follower_tiktok)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          {/* Additional Information */}
-          <Card>
-            <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-900">Informasi Tambahan</h2>
-            </CardHeader>
-            <CardBody className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Dibuat Oleh</label>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-400" />
-                    <span className="text-gray-900">User ID: {dataTarget.created_by || '-'}</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-                  <Badge className="bg-green-100 text-green-800">Aktif</Badge>
                 </div>
               </div>
             </CardBody>
@@ -217,7 +162,7 @@ const AdminDataTargetDetail = () => {
 
         {/* Sidebar Information */}
         <div className="space-y-6">
-          {/* Quick Stats */}
+          {/* Status */}
           <Card>
             <CardHeader>
               <h3 className="text-lg font-semibold text-gray-900">Status</h3>

@@ -26,10 +26,10 @@ const AnekaGrafikForm = () => {
     if (!url) return '';
     
     // Fix the specific duplication pattern we're seeing
-    if (url.includes('192.168.30.49')) {
+    if (url.includes('192.168.30.116')) {
       const match = url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
       if (match && match[1]) {
-        return 'http://192.168.30.49:3000' + match[1];
+        return 'http://192.168.30.116:3000' + match[1];
       }
     }
     
@@ -211,9 +211,9 @@ const AnekaGrafikForm = () => {
     }
     
     // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.49:3000')) {
+    if (imageUrl.includes('192.168.30.116:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
     }
     
     // Fix /api/uploads/ path
@@ -256,10 +256,10 @@ const AnekaGrafikForm = () => {
         console.log('🔍 🔍 🔍 Processing image URL:', img.url);
         
         // Fix duplicated URLs
-        if (img.url.includes('192.168.30.49')) {
+        if (img.url.includes('192.168.30.116')) {
           const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
           if (match && match[1]) {
-            img.url = 'http://192.168.30.49:3000' + match[1];
+            img.url = 'http://192.168.30.116:3000' + match[1];
           }
         }
         
@@ -865,9 +865,9 @@ const AnekaGrafikForm = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
+          if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
           

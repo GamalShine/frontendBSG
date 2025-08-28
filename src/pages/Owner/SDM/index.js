@@ -1,19 +1,10 @@
-// SDM Components
-export { default as OwnerDataTim } from './manage/OwnerDataTim';
-export { default as OwnerTimMerahBiru } from './TimMerahBiru/OwnerTimMerahBiru';
-
-// KPI Components
-export { default as OwnerKPI } from './KPI/OwnerKPI';
-export { default as OwnerKPIList } from './KPI/OwnerKPIList';
-export { default as OwnerKPIDetail } from './KPI/OwnerKPIDetail';
-export { default as OwnerKPIForm } from './KPI/OwnerKPIForm';
-export { default as OwnerKPIEdit } from './KPI/OwnerKPIEdit';
-
-// Tim Merah/Biru Components
-export { default as OwnerTimMerahBiruList } from './TimMerahBiru/OwnerTimMerahBiruList';
-export { default as OwnerTimMerahBiruDetail } from './TimMerahBiru/OwnerTimMerahBiruDetail';
-export { default as OwnerTimMerahBiruForm } from './TimMerahBiru/OwnerTimMerahBiruForm';
-export { default as OwnerTimMerahBiruEdit } from './TimMerahBiru/OwnerTimMerahBiruEdit';
+export { default as KPI } from './KPI';
+export { default as DataTim } from './manage/OwnerDataTim';
+export { default as TimMerahBiruList } from './TimMerahBiru/OwnerTimMerahBiruList';
+export { default as TimMerahBiruDetail } from './TimMerahBiru/OwnerTimMerahBiruDetail';
+export { default as TimMerahBiruForm } from './TimMerahBiru/OwnerTimMerahBiruForm';
+export { default as TimMerahBiruEdit } from './TimMerahBiru/OwnerTimMerahBiruEdit';
+export { default as TrainingList } from './manage/OwnerTrainingList';
 
 
 

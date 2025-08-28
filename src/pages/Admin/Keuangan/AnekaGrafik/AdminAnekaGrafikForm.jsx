@@ -1,896 +1,321 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../../../../contexts/AuthContext';
-import { anekaGrafikService } from '../../../../services/anekaGrafikService';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { getEnvironmentConfig } from '../../../../config/environment';
 import { 
-  ArrowLeft, 
-  Calendar, 
-  FileText, 
+  X, 
+  Upload, 
   Image as ImageIcon,
-  Upload,
-  X,
   Save,
-  RefreshCw
+  ArrowLeft,
+  Trash2
 } from 'lucide-react';
+import { anekaGrafikService } from '../../../../services/anekaGrafikService';
+import { API_CONFIG, API_ENDPOINTS } from '../../../../config/constants';
 
-const AdminAnekaGrafikForm = () => {
+const AdminAnekaGrafikForm = ({ isEdit = false, anekaGrafikData = null, onClose, onSuccess }) => {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const { user } = useAuth();
-  const envConfig = getEnvironmentConfig();
-  
-  const [formData, setFormData] = useState({
-    tanggal_grafik: new Date().toISOString().split('T')[0],
-    isi_grafik: '',
-    images: []
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedImages, setSelectedImages] = useState([]);
-  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
-  const [usedInEditor, setUsedInEditor] = useState(new Set());
-  const [contentParts, setContentParts] = useState([]);
-  const editorRef = useRef(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'omzet',
+    photo_url: ''
+  });
+  const [uploadedFiles, setUploadedFiles] = useState([]);
 
-  // Helper function to render content with images (same as OmsetHarian)
-  const renderContentWithImages = (content, images) => {
-    if (!content || !images || images.length === 0) {
-      return [{ type: 'text', text: content || '' }];
-    }
-    
-    // Ensure images is an array and process if it's a string
-    let imagesArray = [];
-      if (typeof images === 'string') {
-      console.log('🔍 🔍 🔍 Images is string in renderContentWithImages, attempting to parse');
-      try {
-        imagesArray = JSON.parse(images);
-        console.log('🔍 🔍 🔍 Successfully parsed images string:', imagesArray);
-      } catch (parseError) {
-        console.log('🔍 🔍 🔍 Failed to parse images string, treating as single image URL');
-        imagesArray = [{ url: images, name: images.split('/').pop() || 'image' }];
-        console.log('🔍 🔍 🔍 Treated string as single image URL in renderContentWithImages:', imagesArray);
-      }
-    } else if (Array.isArray(images)) {
-      imagesArray = images;
-    }
-    
-    if (imagesArray.length === 0) {
-      return [{ type: 'text', text: content }];
-    }
-    
-    const parts = [];
-    let currentText = content;
-    
-    // Process each image placeholder
-    imagesArray.forEach((image, index) => {
-      if (!image || !image.id) return;
-      
-      const placeholder = `[IMG:${image.id}]`;
-      const placeholderIndex = currentText.indexOf(placeholder);
-      
-      if (placeholderIndex !== -1) {
-        // Add text before image
-        if (placeholderIndex > 0) {
-          parts.push({
-            type: 'text',
-            text: currentText.substring(0, placeholderIndex)
-          });
-        }
-        
-        // Add image
-        parts.push({
-          type: 'image',
-          image: image
-        });
-        
-        // Update remaining text
-        currentText = currentText.substring(placeholderIndex + placeholder.length);
-      }
-    });
-    
-    // Add remaining text
-    if (currentText.trim()) {
-      parts.push({
-        type: 'text',
-        text: currentText
+  useEffect(() => {
+    if (isEdit && anekaGrafikData) {
+      setFormData({
+        name: anekaGrafikData.name || '',
+        category: anekaGrafikData.category || 'omzet',
+        photo_url: anekaGrafikData.photo_url || ''
       });
+      if (anekaGrafikData.photo_url) {
+        setUploadedFiles([{ url: anekaGrafikData.photo_url, name: 'Current Image' }]);
+      }
     }
-    
-    // If no parts were created, return the original content as text
-    if (parts.length === 0) {
-      parts.push({
-        type: 'text',
-        text: content
-      });
-    }
-    
-    return parts;
+  }, [isEdit, anekaGrafikData]);
+
+
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const loadAnekaGrafik = async () => {
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
     try {
       setLoading(true);
-      const response = await anekaGrafikService.getAnekaGrafikById(id);
+      console.log('🔄 Starting file upload for:', files.length, 'files');
+      console.log('📁 Files to upload:', files.map(f => ({ name: f.name, size: f.size, type: f.type })));
       
-      if (response.success && response.data) {
-        const anekaData = response.data;
+      // Test the endpoint first
+      console.log('🧪 Testing endpoint:', `${API_ENDPOINTS.ANEKA_GRAFIK.ADMIN.LIST}/upload`);
+      console.log('🌐 Full URL:', `${API_CONFIG.BASE_URL}${API_ENDPOINTS.ANEKA_GRAFIK.ADMIN.LIST}/upload`);
+      
+      const response = await anekaGrafikService.uploadImages(files);
+      console.log('📥 Upload response:', response);
+      
+      if (response.success && response.files) {
+        const newFiles = response.files.map(file => ({
+          url: file.url,
+          name: file.name,
+          id: file.id
+        }));
         
-        // Process existing images to match new format
-        let processedImages = [];
-        if (anekaData.images) {
-          try {
-            if (typeof anekaData.images === 'string') {
-              processedImages = JSON.parse(anekaData.images);
-            } else if (Array.isArray(anekaData.images)) {
-              processedImages = anekaData.images;
-            }
-            
-            console.log('🔍 Cleaned images from AdminAnekaGrafikForm:', processedImages);
-            
-            if (Array.isArray(processedImages)) {
-              processedImages = processedImages.map(img => {
-                console.log('🔍 Processing image object:', img);
-                
-                const processedImg = {
-                  uri: img.uri || `file://temp/${img.id}.jpg`,
-                  id: img.id,
-                  name: img.name || `aneka_grafik_${img.id}.jpg`,
-                  url: img.url || `/uploads/aneka-grafik/temp_${img.id}.jpg`,
-                  serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
-                };
-                
-                console.log('🔍 Processed image object:', processedImg);
-                return processedImg;
-              });
-            }
-          } catch (error) {
-            console.error('Error parsing existing images:', error);
-            processedImages = [];
-          }
-        }
-
-        // Generate contentParts for preview
-        const contentParts = renderContentWithImages(anekaData.isi_grafik, processedImages);
-        setContentParts(contentParts);
-        
-        setFormData({
-          tanggal_grafik: anekaData.tanggal_grafik ? new Date(anekaData.tanggal_grafik).toISOString().split('T')[0] : '',
-          isi_grafik: anekaData.isi_grafik || '',
-          images: processedImages
-        });
-        
-        console.log('🔍 Set form data with:', {
-          tanggal_grafik: anekaData.tanggal_grafik ? new Date(anekaData.tanggal_grafik).toISOString().split('T')[0] : '',
-          isi_grafik_length: anekaData.isi_grafik ? anekaData.isi_grafik.length : 0,
-          images_count: processedImages.length,
-          images: processedImages
-        });
-        
-        // Update usedInEditor state after loading data
-        setTimeout(() => {
-          updateUsedInEditor();
-        }, 500); // Wait for editor content to be set
+        console.log('📁 New files processed:', newFiles);
+        setUploadedFiles(prev => [...prev, ...newFiles]);
+        setFormData(prev => ({
+          ...prev,
+          photo_url: newFiles[0]?.url || ''
+        }));
+        toast.success('Foto berhasil diupload');
       } else {
-        toast.error('Gagal memuat data aneka grafik');
-        navigate('/keuangan/aneka-grafik');
+        console.error('❌ Upload response not successful:', response);
+        toast.error(response.error || 'Gagal upload foto');
       }
     } catch (error) {
-      console.error('Error loading aneka grafik:', error);
-      toast.error('Gagal memuat data aneka grafik');
-      navigate('/keuangan/aneka-grafik');
+      console.error('❌ Error uploading files:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText
+      });
+      toast.error(error.message || 'Gagal upload foto');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      setIsEditMode(true);
-      loadAnekaGrafik();
-    }
-  }, [id]);
-
-  // Apply editor-specific CSS
-  useEffect(() => {
-    if (editorRef.current) {
-      const style = document.createElement('style');
-      style.textContent = `
-        .editor-content {
-          min-height: 200px;
-          padding: 1rem;
-          border: 1px solid #d1d5db;
-          border-radius: 0.5rem;
-          outline: none;
-          line-height: 1.6;
-        }
-        .editor-content:focus {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        .editor-content img {
-          max-width: 100%;
-          height: auto;
-          margin: 0.5rem 0;
-          border-radius: 0.5rem;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        }
-        .editor-content p {
-          margin: 0.5rem 0;
-        }
-      `;
-      document.head.appendChild(style);
-      return () => {
-        document.head.removeChild(style);
-      };
-    }
-  }, []);
-
-  const handleEditorChange = (e) => {
-    const content = e.target.innerHTML;
-    setFormData(prev => ({
-      ...prev,
-      isi_grafik: content
-    }));
-    
-    // Update usedInEditor state
-    updateUsedInEditor();
-  };
-
-  // Update usedInEditor state by scanning editor content
-  const updateUsedInEditor = () => {
-    if (editorRef.current) {
-      const content = editorRef.current.innerHTML;
-      const imgPlaceholderRegex = /\[IMG:(\d+)\]/g;
-      const matches = [...content.matchAll(imgPlaceholderRegex)];
-      const usedIds = new Set(matches.map(match => parseInt(match[1])));
-      
-      console.log('🔍 Used in editor IDs:', usedIds);
-      setUsedInEditor(usedIds);
-    }
-  };
-
-  const handleEditorDrop = (e) => {
-    e.preventDefault();
-    
-    const files = Array.from(e.dataTransfer.files);
-    const imageFiles = files.filter(file => file.type.startsWith('image/'));
-    
-    if (imageFiles.length > 0) {
-      imageFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const imageData = {
-            id: Date.now() + Math.random(),
-            file: file,
-            url: e.target.result,
-            name: file.name,
-            size: file.size
-          };
-          
-          // Add to selected images
-          setSelectedImages(prev => [...prev, imageData]);
-          
-          // Insert image into editor with data-image-id
-          const img = document.createElement('img');
-          img.src = e.target.result;
-          img.alt = file.name;
-          img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm';
-          img.setAttribute('data-image-id', imageData.id);
-          
-          // Insert at cursor position
-          const selection = window.getSelection();
-          if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            range.insertNode(img);
-            range.collapse(false);
-          }
-          
-          // Update form data
-          setFormData(prev => ({
-            ...prev,
-            isi_grafik: editorRef.current.innerHTML
-          }));
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  const handleEditorDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleEditorPaste = (e) => {
-    e.preventDefault();
-    
-    // Check if pasting images
-    const items = Array.from(e.clipboardData.items);
-    const imageItems = items.filter(item => item.type.startsWith('image/'));
-    
-    if (imageItems.length > 0) {
-      // Handle image paste
-      imageItems.forEach(item => {
-        const file = item.getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const imageData = {
-              id: Date.now() + Math.random(),
-              file: file,
-              url: e.target.result,
-              name: file.name || 'pasted-image',
-              size: file.size
-            };
-            
-            // Add to selected images
-            setSelectedImages(prev => [...prev, imageData]);
-            
-            // Insert image into editor with data-image-id
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.alt = 'Pasted Image';
-            img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm';
-            img.setAttribute('data-image-id', imageData.id);
-            
-            // Insert at cursor position
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(img);
-              range.collapse(false);
-            }
-            
-            // Update form data
-            setFormData(prev => ({
-              ...prev,
-              isi_grafik: editorRef.current.innerHTML
-            }));
-          };
-          reader.readAsDataURL(file);
-        }
-      });
-    } else {
-      // Handle text paste
-      const text = e.clipboardData.getData('text/plain');
-      document.execCommand('insertText', false, text);
-    }
-  };
-
-  const getEditorContent = () => {
-    if (!editorRef.current) return '';
-    
-    const content = editorRef.current.innerHTML;
-    let processedContent = content;
-    
-    // Replace image tags with [IMG:id] placeholders
-    const imgTags = editorRef.current.querySelectorAll('img[data-image-id]');
-    imgTags.forEach(img => {
-      const imageId = img.getAttribute('data-image-id');
-      if (imageId) {
-        processedContent = processedContent.replace(img.outerHTML, `[IMG:${imageId}]`);
-      }
+  const removeFile = (index) => {
+    setUploadedFiles(prev => {
+      const newFiles = prev.filter((_, i) => i !== index);
+      setFormData(prevData => ({
+        ...prevData,
+        photo_url: newFiles.length > 0 ? newFiles[0].url : ''
+      }));
+      return newFiles;
     });
-    
-    // Also check for any images without data-image-id that might be from selectedImages
-    const allImgTags = editorRef.current.querySelectorAll('img');
-    allImgTags.forEach(img => {
-      if (!img.getAttribute('data-image-id')) {
-        // Try to find matching image in selectedImages by src
-        const matchingImage = selectedImages.find(selectedImg => 
-          selectedImg.url === img.src || 
-          selectedImg.url === img.src.replace('blob:', '')
-        );
-        
-        if (matchingImage) {
-          // Add data-image-id to the img tag
-          img.setAttribute('data-image-id', matchingImage.id);
-          // Replace with placeholder
-          processedContent = processedContent.replace(img.outerHTML, `[IMG:${matchingImage.id}]`);
-        }
-      }
-    });
-    
-    return processedContent;
-  };
-
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const newImages = [];
-    
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const imageData = {
-            id: Date.now() + Math.random(),
-            file: file,
-            url: e.target.result,
-            name: file.name,
-            size: file.size
-          };
-          newImages.push(imageData);
-          
-          if (newImages.length === files.length) {
-            setSelectedImages(prev => [...prev, ...newImages]);
-            setImagePreviewUrls(prev => [...prev, ...newImages.map(img => img.url)]);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  };
-
-  const insertImageIntoEditor = (imageData) => {
-    if (!editorRef.current) return;
-    
-    const img = document.createElement('img');
-    img.src = imageData.url;
-    img.alt = imageData.name;
-    img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm';
-    img.setAttribute('data-image-id', imageData.id);
-    
-    // Insert at cursor position
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(img);
-      range.collapse(false);
-    } else {
-      // If no selection, append to end
-      editorRef.current.appendChild(img);
-    }
-    
-    // Update form data
-    setFormData(prev => ({
-      ...prev,
-      isi_grafik: editorRef.current.innerHTML
-    }));
-  };
-
-  const removeImage = (imageId) => {
-    setSelectedImages(prev => prev.filter(img => img.id !== imageId));
-    setImagePreviewUrls(prev => prev.filter((_, index) => 
-      selectedImages.findIndex(img => img.id === imageId) !== index
-    ));
-    
-    // Remove from editor if it exists there
-    if (editorRef.current) {
-      const imgInEditor = editorRef.current.querySelector(`img[data-image-id="${imageId}"]`);
-      if (imgInEditor) {
-        imgInEditor.remove();
-        // Update form data
-        setFormData(prev => ({
-          ...prev,
-          isi_grafik: editorRef.current.innerHTML
-        }));
-      }
-    }
-  };
-
-  const uploadImagesToServer = async (images) => {
-    const uploadedImages = [];
-    
-    for (const image of images) {
-      try {
-        console.log('🔄 Starting upload for image:', image.name);
-        const formData = new FormData();
-        formData.append('images', image.file); // Use 'images' field name as expected by backend
-        
-        console.log('📤 Uploading to:', `${envConfig.API_BASE_URL}/upload/aneka-grafik`);
-        const response = await fetch(`${envConfig.API_BASE_URL}/upload/aneka-grafik`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: formData
-        });
-        
-        console.log('📥 Upload response status:', response.status);
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log('📥 Upload response:', result);
-          
-          if (result.success && result.files && result.files.length > 0) {
-            // The backend returns files array, get the first (and only) uploaded image
-            const uploadedFile = result.files[0];
-            console.log('✅ Uploaded file info:', uploadedFile);
-            
-            uploadedImages.push({
-              uri: `file://temp/${image.id}.jpg`,
-              id: image.id,
-              name: `aneka_grafik_${image.id}.jpg`,
-              url: uploadedFile.url, // Use the URL directly from backend
-              serverPath: uploadedFile.serverPath // Use serverPath from backend
-            });
-          } else {
-            console.error('❌ Upload response missing files:', result);
-          }
-        } else {
-          const errorText = await response.text();
-          console.error('❌ Upload failed:', response.status, response.statusText, errorText);
-        }
-      } catch (error) {
-        console.error('❌ Error uploading image:', error);
-      }
-    }
-    
-    console.log('📊 Total uploaded images:', uploadedImages.length);
-    return uploadedImages;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.tanggal_grafik || !formData.isi_grafik.trim()) {
-      toast.error('Tanggal dan isi grafik harus diisi');
+    if (!formData.name || !formData.category) {
+      toast.error('Nama dan kategori harus diisi');
       return;
     }
 
-    if (formData.isi_grafik.length < 10) {
-      toast.error('Isi grafik minimal 10 karakter');
-      return;
-    }
-
-    setIsSubmitting(true);
-    
     try {
-      console.log('🚀 Starting form submission...');
-      console.log('📸 Selected images:', selectedImages);
-      console.log('🖼️ Existing images:', formData.images);
-      
-      let imagesWithServerUrls = [];
-      
-      if (isEditMode) {
-        // In edit mode, only preserve images that are still used in editor
-        console.log('🔍 Debug: Edit mode - filtering images by usage in editor');
-        console.log('🔍 Debug: Used in editor IDs:', usedInEditor);
-        console.log('🔍 Debug: All formData images:', formData.images);
-        
-        // Filter existing images to only include those still used in editor
-        const usedExistingImages = (formData.images || []).filter(img => {
-          const isUsed = usedInEditor.has(img.id);
-          console.log(`🔍 Image ${img.id} used in editor: ${isUsed}`);
-          return isUsed;
-        });
-        
-        console.log('🔍 Debug: Filtered existing images:', usedExistingImages);
-        imagesWithServerUrls = usedExistingImages;
-        
-        // Upload new images if any
-        if (selectedImages.length > 0) {
-          console.log('🔍 Debug: Uploading new images in edit mode');
-          const uploadedFiles = await uploadImagesToServer(selectedImages);
-          
-          // Add new uploaded images to existing ones
-          const newImages = selectedImages.map((img, index) => {
-            const uploadedFile = uploadedFiles[index];
-            
-            if (uploadedFile) {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `aneka_grafik_${img.id}.jpg`,
-                url: uploadedFile.url, // Use the URL directly from backend
-                serverPath: uploadedFile.serverPath // Use serverPath from backend
-              };
-            } else {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `aneka_grafik_${img.id}.jpg`,
-                url: `/uploads/aneka-grafik/temp_${img.id}.jpg`,
-                serverPath: `uploads/aneka-grafik/temp_${img.id}.jpg`
-              };
-            }
-          });
-          
-          imagesWithServerUrls = [...imagesWithServerUrls, ...newImages];
-        }
-      } else {
-        // In create mode, upload all selected images
-        console.log('🔍 Debug: Create mode - uploading all images');
-        const uploadedFiles = await uploadImagesToServer(selectedImages);
-        
-        imagesWithServerUrls = selectedImages.map((img, index) => {
-          const uploadedFile = uploadedFiles[index];
-          
-          if (uploadedFile) {
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `aneka_grafik_${img.id}.jpg`,
-              url: uploadedFile.url, // Use the URL directly from backend
-              serverPath: uploadedFile.serverPath // Use serverPath from backend
-            };
-          } else {
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `aneka_grafik_${img.id}.jpg`,
-              url: `/uploads/aneka-grafik/temp_${img.id}.jpg`,
-              serverPath: `uploads/aneka-grafik/temp_${img.id}.jpg`
-            };
-          }
-        });
-      }
-      
-      console.log('📊 Images with server URLs:', imagesWithServerUrls);
-      
-      // Get editor content with [IMG:id] placeholders
-      const editorContent = getEditorContent();
-      console.log('📝 Editor content:', editorContent);
-      
-      const submitData = {
-        tanggal_grafik: formData.tanggal_grafik,
-        isi_grafik: editorContent,
-        images: imagesWithServerUrls
-      };
-      
-      console.log('📤 Submitting data:', submitData);
-      
+      setLoading(true);
       let response;
-      if (isEditMode) {
-        response = await anekaGrafikService.updateAnekaGrafik(id, submitData);
+
+      if (isEdit) {
+        response = await anekaGrafikService.updateAnekaGrafik(anekaGrafikData.id, formData);
       } else {
-        response = await anekaGrafikService.createAnekaGrafik(submitData);
+        response = await anekaGrafikService.createAnekaGrafik(formData);
       }
-      
-      console.log('📥 Backend response:', response);
-      
+
       if (response.success) {
-        toast.success(isEditMode ? 'Aneka grafik berhasil diperbarui' : 'Aneka grafik berhasil ditambahkan');
-        navigate('/keuangan/aneka-grafik');
+        toast.success(isEdit ? 'Aneka grafik berhasil diupdate' : 'Aneka grafik berhasil dibuat');
+        if (onSuccess) onSuccess();
+        if (onClose) onClose();
+        navigate('/admin/keuangan/aneka-grafik');
       } else {
-        toast.error(response.message || 'Terjadi kesalahan');
+        toast.error(response.message || 'Gagal menyimpan data');
       }
     } catch (error) {
-      console.error('❌ Error submitting form:', error);
-      toast.error('Terjadi kesalahan saat menyimpan data');
+      console.error('Error saving aneka grafik:', error);
+      toast.error('Gagal menyimpan data');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Memuat data...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleDelete = async () => {
+    if (!anekaGrafikData?.id) return;
+    
+    if (!window.confirm('Apakah Anda yakin ingin menghapus aneka grafik ini?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await anekaGrafikService.deleteAnekaGrafik(anekaGrafikData.id);
+      
+      if (response.success) {
+        toast.success('Aneka grafik berhasil dihapus');
+        if (onSuccess) onSuccess();
+        if (onClose) onClose();
+        navigate('/admin/keuangan/aneka-grafik');
+      } else {
+        toast.error(response.message || 'Gagal menghapus data');
+      }
+    } catch (error) {
+      console.error('Error deleting aneka grafik:', error);
+      toast.error('Gagal menghapus data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="bg-white rounded-lg shadow-sm border">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => navigate('/keuangan/aneka-grafik')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {isEditMode ? 'Edit Aneka Grafik' : 'Tambah Aneka Grafik'}
-              </h1>
-            </div>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate('/admin/keuangan/aneka-grafik')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isEdit ? 'Edit Aneka Grafik' : 'Tambah Aneka Grafik Baru'}
+            </h2>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-gray-600" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {/* Form Content */}
-          <div className="p-6 space-y-6">
-            {/* Tanggal Grafik */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="inline h-4 w-4 mr-2" />
-                Tanggal Grafik
-              </label>
-              <input
-                type="date"
-                value={formData.tanggal_grafik}
-                onChange={(e) => setFormData(prev => ({ ...prev, tanggal_grafik: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                required
-              />
-            </div>
-
-            {/* Image Upload Section */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <ImageIcon className="inline h-4 w-4 mr-2" />
-                Upload Gambar
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <p className="text-gray-600 mb-2">
-                    Klik untuk memilih gambar atau drag & drop
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    PNG, JPG, GIF hingga 5MB
-                  </p>
-                </label>
-              </div>
-            </div>
-
-                         {/* New Images Preview */}
-             {selectedImages.length > 0 && (
-               <div>
-                 <h3 className="text-sm font-medium text-gray-700 mb-3">Gambar Baru:</h3>
-                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                   {selectedImages.map((image) => (
-                     <div key={image.id} className="relative group">
-                       <img
-                         src={image.url}
-                         alt={image.name}
-                         className="w-full h-24 object-cover rounded-lg border"
-                       />
-                       <div className="absolute top-2 right-2 flex space-x-1">
-                         <button
-                           type="button"
-                           onClick={() => insertImageIntoEditor(image)}
-                           className="bg-blue-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600"
-                           title="Masukkan ke editor"
-                         >
-                           <FileText className="h-3 w-3" />
-                         </button>
-                         <button
-                           type="button"
-                           onClick={() => removeImage(image.id)}
-                           className="bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                           title="Hapus gambar"
-                         >
-                           <X className="h-3 w-3" />
-                         </button>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-               </div>
-             )}
-
-            {/* Existing Images */}
-            {formData.images.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Gambar yang Sudah Ada:</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {formData.images.map((image, index) => (
-                    <div key={image.id || index} className="relative">
-                      <img
-                        src={image.url}
-                        alt={`Gambar ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg border"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                        <span className="text-white text-xs text-center px-2">
-                          Gambar sudah tersimpan
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Preview Konten */}
-            {contentParts && contentParts.length > 0 && (
-              <div>
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Preview Konten:</h3>
-                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                  {contentParts.map((part, index) => (
-                    <React.Fragment key={index}>
-                      {part.type === 'text' && part.text && (
-                        <div
-                          className="prose max-w-none mb-2"
-                          dangerouslySetInnerHTML={{
-                            __html: part.text.replace(/\n/g, '<br>')
-                          }}
-                        />
-                      )}
-                      {part.type === 'image' && part.image && (
-                        <div className="my-2">
-                          <img
-                            src={part.image.url}
-                            alt={part.image.filename || part.image.name || 'Aneka grafik image'}
-                            className="max-w-full h-auto max-h-48 object-contain rounded-lg shadow-sm border"
-                            style={{ maxHeight: '200px' }}
-                            onError={(e) => {
-                              console.error('❌ Image failed to load in preview:', part.image.url);
-                              e.target.style.display = 'none';
-                              const errorDiv = document.createElement('div');
-                              errorDiv.className = 'p-4 text-center bg-red-50 border-2 border-red-200 rounded-lg';
-                              errorDiv.innerHTML = `
-                                <div class="text-red-600 mb-2">
-                                  <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
-                                  </svg>
-                                </div>
-                                <p class="text-red-800 font-medium text-sm">Gambar gagal dimuat</p>
-                              `;
-                              e.target.parentNode.appendChild(errorDiv);
-                            }}
-                            onLoad={() => {
-                              console.log('✅ Image loaded successfully in preview:', part.image.url);
-                            }}
-                          />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Isi Grafik Editor */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FileText className="inline h-4 w-4 mr-2" />
-                Isi Grafik
-              </label>
-                             <div
-                 ref={editorRef}
-                 contentEditable
-                 className="editor-content"
-                 onInput={handleEditorChange}
-                 onPaste={handleEditorPaste}
-                 onDrop={handleEditorDrop}
-                 onDragOver={handleEditorDragOver}
-                 dangerouslySetInnerHTML={{ __html: formData.isi_grafik }}
-                 placeholder="Ketik atau paste konten di sini..."
-               />
-              <p className="text-sm text-gray-500 mt-2">
-                Panjang konten: {formData.isi_grafik.replace(/<[^>]*>/g, '').length} karakter
-              </p>
-            </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Nama */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nama Aneka Grafik *
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="Masukkan nama aneka grafik"
+              required
+            />
           </div>
 
-          {/* Submit Buttons */}
-          <div className="flex space-x-4 p-6">
-            <button
-              type="button"
-              onClick={() => navigate('/keuangan/aneka-grafik')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          {/* Kategori */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Kategori *
+            </label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              required
             >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-            >
-              {isSubmitting ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span>Menyimpan...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  <span>{isEditMode ? 'Update' : 'Simpan'}</span>
-                </>
+              <option value="omzet">OMZET</option>
+              <option value="bahan_baku">BAHAN BAKU</option>
+              <option value="gaji_bonus_ops">GAJI BONUS OPS</option>
+              <option value="gaji">GAJI</option>
+              <option value="bonus">BONUS</option>
+              <option value="operasional">OPERASIONAL</option>
+            </select>
+          </div>
+
+
+
+          {/* Photo Upload */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Foto Aneka Grafik
+            </label>
+            
+            {/* Upload Area */}
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-red-400 transition-colors">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileUpload}
+                className="hidden"
+                id="photo-upload"
+                disabled={loading}
+              />
+              <label htmlFor="photo-upload" className="cursor-pointer">
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-600">
+                  {loading ? 'Uploading...' : 'Klik untuk upload foto atau drag & drop'}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  PNG, JPG, GIF up to 10MB
+                </p>
+              </label>
+            </div>
+
+            {/* Uploaded Files */}
+            {uploadedFiles.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-sm font-medium text-gray-700">Foto yang diupload:</p>
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <ImageIcon className="w-5 h-5 text-gray-400" />
+                    <span className="text-sm text-gray-700 flex-1">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="p-1 hover:bg-red-100 rounded text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+            <div className="flex items-center space-x-3">
+              {isEdit && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="px-4 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50 disabled:opacity-50"
+                >
+                  Hapus
+                </button>
               )}
-            </button>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center space-x-2"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{isEdit ? 'Update' : 'Simpan'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

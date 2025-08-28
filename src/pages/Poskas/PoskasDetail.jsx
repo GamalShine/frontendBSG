@@ -5,7 +5,7 @@ import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, User, Clock, FileText, Eye, RefreshCw, Edit, Trash2, Info } from 'lucide-react';
 import { getEnvironmentConfig } from '../../config/environment';
-import { parseImagesString, getImageDisplayUrl, getImageFallbackUrl } from '../../utils/imageUtils';
+import { parseImagesString, getImageDisplayUrl, getImageFallbackUrl } from '../../utils';
 
 const PoskasDetail = () => {
   const { id } = useParams();

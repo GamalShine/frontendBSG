@@ -8,9 +8,6 @@ import {
   ArrowLeft, 
   Calendar, 
   FileText, 
-  Image as ImageIcon,
-  Upload,
-  X,
   Save,
   RefreshCw
 } from 'lucide-react';
@@ -32,16 +29,24 @@ const OwnerOmsetHarianForm = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [usedInEditor, setUsedInEditor] = useState(new Set()); // Track which images are used in editor
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
   const editorRef = useRef(null);
+  const savedRangeRef = useRef(null);
+  const didPlaceCaretRef = useRef(false);
+  const hasInitializedContentRef = useRef(false);
 
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
+      // Reset caret placement flag when switching/editing different item
+      didPlaceCaretRef.current = false;
       loadOmsetHarian();
     }
   }, [id]);
 
-  // Update editor content when formData changes
+  // Initialize editor content once in edit mode (avoid resetting caret on each keystroke)
   useEffect(() => {
     console.log('🔍 useEffect triggered with:', {
       hasEditorRef: !!editorRef.current,
@@ -51,12 +56,13 @@ const OwnerOmsetHarianForm = () => {
       images: formData.images
     });
     
-    if (editorRef.current && formData.isi_omset && isEditMode) {
+    if (editorRef.current && formData.isi_omset && isEditMode && !hasInitializedContentRef.current) {
       console.log('🔍 Setting editor content:', formData.isi_omset);
       
       // Small delay to ensure CSS is applied
       setTimeout(() => {
         editorRef.current.innerHTML = formData.isi_omset;
+        hasInitializedContentRef.current = true;
         
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -123,6 +129,11 @@ const OwnerOmsetHarianForm = () => {
         
         // Update usedInEditor state after setting content
         updateUsedInEditor();
+
+        // Place caret at end once after content is set (robust)
+        if (!didPlaceCaretRef.current) {
+          ensureCaretAtEnd();
+        }
       }, 300); // Increased delay to ensure everything is ready
     }
   }, [formData.isi_omset, formData.images, isEditMode]);
@@ -164,6 +175,117 @@ const OwnerOmsetHarianForm = () => {
       document.head.removeChild(style);
     };
   }, []);
+
+  // Toolbar helpers
+  const exec = (command) => {
+    if (!editorRef.current) return;
+    // Restore last selection if available, else put caret at end
+    if (savedRangeRef.current) {
+      restoreSelection();
+    } else {
+      placeCaretAtEnd(editorRef.current);
+    }
+    editorRef.current.focus();
+    document.execCommand(command, false, null);
+    // Save selection after exec and update active states
+    saveSelection();
+    setIsBold(document.queryCommandState('bold'));
+    setIsItalic(document.queryCommandState('italic'));
+    setIsUnderline(document.queryCommandState('underline'));
+  };
+
+  const updateFormatState = () => {
+    try {
+      setIsBold(document.queryCommandState('bold'));
+      setIsItalic(document.queryCommandState('italic'));
+      setIsUnderline(document.queryCommandState('underline'));
+    } catch (_) {}
+  };
+
+  // Track selection changes to highlight active buttons
+  useEffect(() => {
+    const handleSelection = () => {
+      try {
+        setIsBold(document.queryCommandState('bold'));
+        setIsItalic(document.queryCommandState('italic'));
+        setIsUnderline(document.queryCommandState('underline'));
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelection);
+    return () => document.removeEventListener('selectionchange', handleSelection);
+  }, []);
+
+  const handleEditorInteraction = () => {
+    saveSelection();
+    updateFormatState();
+  };
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    const range = savedRangeRef.current;
+    if (!range) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    savedRangeRef.current = range.cloneRange();
+    // Try to scroll caret into view if overflowing
+    try {
+      const dummy = document.createElement('span');
+      dummy.textContent = '\u200B';
+      range.insertNode(dummy);
+      dummy.scrollIntoView({ block: 'nearest' });
+      // Clean up dummy
+      const parent = dummy.parentNode;
+      if (parent) parent.removeChild(dummy);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (_) {}
+  };
+
+  // Ensure caret after DOM settles (images/layout) using RAF + timeout
+  const ensureCaretAtEnd = () => {
+    const el = editorRef.current;
+    if (!el) return;
+    const place = () => {
+      placeCaretAtEnd(el);
+      el.focus();
+      didPlaceCaretRef.current = true;
+    };
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        place();
+        setTimeout(place, 0);
+        setTimeout(place, 150);
+      });
+    });
+  };
+
+  // On first focus in edit mode, ensure caret at end once
+  const handleEditorFocus = () => {
+    if (!editorRef.current) return;
+    if (isEditMode && !didPlaceCaretRef.current) {
+      ensureCaretAtEnd();
+    }
+    handleEditorInteraction();
+  };
 
   const loadOmsetHarian = async () => {
     try {
@@ -220,13 +342,13 @@ const OwnerOmsetHarianForm = () => {
                   }
                   
                   // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.49:3000')) {
+                  if (fixedUrl.includes('192.168.30.116:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.49:3000')) {
+                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
                 }
@@ -274,13 +396,13 @@ const OwnerOmsetHarianForm = () => {
               }
               
               // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.49:3000')) {
+              if (cleanUrl.includes('192.168.30.116:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.49:3000')) {
+              } else if (cleanUrl.includes('192.168.30.116:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
               }
               
@@ -603,13 +725,13 @@ const OwnerOmsetHarianForm = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
+          if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
+          } else if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
           
@@ -851,154 +973,32 @@ const OwnerOmsetHarianForm = () => {
               </label>
             </div>
             
-            <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
+            </p>
               <div
                 ref={editorRef}
                 contentEditable
                 data-placeholder="Masukkan isi omset harian... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
                 onInput={handleEditorChange}
                 onPaste={handleEditorPaste}
+                onKeyUp={handleEditorInteraction}
+                onMouseUp={handleEditorInteraction}
+                onFocus={handleEditorFocus}
+                dir="ltr"
                 className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                 style={{ whiteSpace: 'pre-wrap' }}
-                dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_omset } : undefined}
               />
               
               <p className="text-sm text-gray-500">
                 💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
               </p>
             </div>
-          </div>
+          
 
-          {/* Image Management Section - Only show in edit mode */}
-          {isEditMode && (
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center space-x-3 mb-4">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <ImageIcon className="h-5 w-5 text-blue-600" />
-                </div>
-                <label className="text-lg font-semibold text-gray-900">
-                  Gambar
-                </label>
-              </div>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Image Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Gambar Baru
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="cursor-pointer inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-                    >
-                      <Upload className="h-5 w-5" />
-                      <span>Pilih Gambar</span>
-                    </label>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Maksimal 5 gambar, format JPG, PNG, GIF
-                    </p>
-                  </div>
-                </div>
+          {/* Image Upload UI removed intentionally to simplify interface */}
 
-                {/* New Images Preview */}
-                {selectedImages.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar Baru</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedImages.map((image, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={imagePreviewUrls[index]}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-20 object-cover rounded-lg"
-                          />
-                          <button
-                            onClick={() => removeImage(index)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-            {/* Existing Images */}
-            {formData.images && formData.images.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Ada</h3>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                  {formData.images.map((image, index) => {
-                    // Ensure proper URL construction
-                    let imageUrl = image.url;
-                    if (imageUrl) {
-                      // Fix double http:// issue
-                      if (imageUrl.startsWith('http://http://')) {
-                        imageUrl = imageUrl.replace('http://http://', 'http://');
-                      }
-                      
-                      // Fix old IP addresses
-                      if (imageUrl.includes('192.168.30.49:3000')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
-                      } else if (imageUrl.includes('192.168.30.49:3000')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
-                      }
-                      
-                      // If relative URL, add base URL
-                      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-                      }
-                    }
-                    
-                    return (
-                      <div key={index} className="relative">
-                        <img
-                          src={imageUrl}
-                          alt={image.name || `Gambar ${index + 1}`}
-                          className="w-full h-20 object-cover rounded-lg cursor-pointer hover:opacity-75"
-                          onClick={() => insertImage(imageUrl, image.id)}
-                          onError={(e) => {
-                            console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
-                            e.target.style.border = '2px solid red';
-                            e.target.style.backgroundColor = '#fee';
-                            e.target.alt = 'Gambar gagal dimuat';
-                            e.target.style.padding = '20px';
-                            e.target.style.textAlign = 'center';
-                            e.target.style.fontSize = '10px';
-                            e.target.style.color = '#666';
-                          }}
-                          onLoad={() => {
-                            console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                          <span className="text-white text-xs opacity-0 hover:opacity-100">Klik untuk sisipkan</span>
-                        </div>
-                        <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded">
-                          {image.name || `IMG ${index + 1}`}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+          {/* Existing Images section hidden intentionally */}
 
           {/* Submit Buttons */}
           <div className="flex space-x-4 p-6">

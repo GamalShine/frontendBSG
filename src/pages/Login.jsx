@@ -57,7 +57,7 @@ const Login = () => {
           {/* Logo - Overlapping the card */}
           <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
             <img 
-              src="http://192.168.30.49:3000/uploads/Logo.png" 
+              src="http://192.168.30.116:3000/uploads/Logo.png" 
               alt="Bosgil Group Logo" 
               className="w-28 h-28 object-contain"
             />

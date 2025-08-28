@@ -4,7 +4,8 @@ export const dataTargetService = {
   // Get all data target
   getAll: async (params = {}) => {
     try {
-      const response = await api.get('/admin/medsos/anggaran', { params });
+      // Backend returns: { success, data: { items, pagination, statistics } }
+      const response = await api.get('/admin/data-target', { params });
       return response.data;
     } catch (error) {
       throw error;
@@ -14,7 +15,7 @@ export const dataTargetService = {
   // Get data target by ID
   getById: async (id) => {
     try {
-      const response = await api.get(`/admin/medsos/anggaran/${id}`);
+      const response = await api.get(`/admin/data-target/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -24,7 +25,7 @@ export const dataTargetService = {
   // Create new data target
   create: async (dataTargetData) => {
     try {
-      const response = await api.post('/admin/medsos/anggaran', dataTargetData);
+      const response = await api.post('/admin/data-target', dataTargetData);
       return response.data;
     } catch (error) {
       throw error;
@@ -34,7 +35,7 @@ export const dataTargetService = {
   // Update data target
   update: async (id, dataTargetData) => {
     try {
-      const response = await api.put(`/admin/medsos/anggaran/${id}`, dataTargetData);
+      const response = await api.put(`/admin/data-target/${id}`, dataTargetData);
       return response.data;
     } catch (error) {
       throw error;
@@ -44,7 +45,7 @@ export const dataTargetService = {
   // Delete data target
   delete: async (id) => {
     try {
-      const response = await api.delete(`/admin/medsos/anggaran/${id}`);
+      const response = await api.delete(`/admin/data-target/${id}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -54,12 +55,24 @@ export const dataTargetService = {
   // Search data target
   search: async (query) => {
     try {
-      const response = await api.get('/admin/medsos/anggaran', { 
-        params: { search: query } 
+      const response = await api.get('/admin/data-target', {
+        params: { search: query }
       });
       return response.data;
     } catch (error) {
       throw error;
+    }
+  },
+
+  // Owner endpoints (read-only)
+  owner: {
+    getAll: async (params = {}) => {
+      const response = await api.get('/owner/data-target', { params });
+      return response.data;
+    },
+    getById: async (id) => {
+      const response = await api.get(`/owner/data-target/${id}`);
+      return response.data;
     }
   }
 };

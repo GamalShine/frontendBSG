@@ -43,11 +43,55 @@ const AdminPoskasEdit = () => {
   const [usedInEditor, setUsedInEditor] = useState(new Set()); // Track which images are used in editor
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
+  const lastContentRef = useRef('');
+  const [editorInitialized, setEditorInitialized] = useState(false);
 
-  // Add CSS for editor images
+  // Formatting active states
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+
+  const updateFormatState = () => {
+    try {
+      setIsBoldActive(document.queryCommandState('bold'));
+      setIsItalicActive(document.queryCommandState('italic'));
+      setIsUnderlineActive(document.queryCommandState('underline'));
+    } catch (_) {}
+  };
+
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  // Sanitize HTML to enforce LTR by removing dir/style and BiDi control chars
+  const sanitizeToLTR = (html) => {
+    if (!html || typeof html !== 'string') return html || '';
+    const removedBidi = html.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    return removedBidi
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sdir='[^']*'/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr))[^\"]*\"/gi, (m) => m.replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, ''))
+      .replace(/\sstyle=\"[^\"]*(text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, (m) => m.replace(/text-align\s*:\s*(right|left|center|justify)\s*;?/gi, ''))
+      .replace(/\sstyle=\"\s*\"/gi, '')
+      .replace(/\sstyle='\s*'/gi, '');
+  };
+
+  // Add CSS for editor behavior (LTR + images + placeholder)
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      /* Force LTR typing for editor and children */
+      [contenteditable="true"], [contenteditable="true"] * {
+        direction: ltr !important;
+        unicode-bidi: isolate !important;
+        text-align: left !important;
+      }
       [contenteditable="true"] img {
         max-width: 100% !important;
         height: auto !important;
@@ -96,7 +140,31 @@ const AdminPoskasEdit = () => {
     fetchPoskasDetail();
   }, [id]);
 
-  // Update editor content when formData changes
+  // Keep toolbar state in sync with selection inside the editor
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const onMouseUp = () => { updateFormatState(); };
+    const onKeyUp = () => { updateFormatState(); };
+    const onSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      if (node && editor.contains(node)) {
+        updateFormatState();
+      }
+    };
+    editor.addEventListener('mouseup', onMouseUp);
+    editor.addEventListener('keyup', onKeyUp);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      editor.removeEventListener('mouseup', onMouseUp);
+      editor.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+  }, []);
+
+  // Update editor content when formData changes (only once to avoid caret reset)
   useEffect(() => {
     console.log('🔍 useEffect triggered with:', {
       hasEditorRef: !!editorRef.current,
@@ -105,12 +173,18 @@ const AdminPoskasEdit = () => {
       images: existingImages
     });
     
-    if (editorRef.current && formData.isi_poskas) {
+    if (!editorInitialized && editorRef.current && formData.isi_poskas) {
       console.log('🔍 Setting editor content:', formData.isi_poskas);
       
       // Small delay to ensure CSS is applied
       setTimeout(() => {
-        editorRef.current.innerHTML = formData.isi_poskas;
+        const sanitized = sanitizeToLTR(formData.isi_poskas);
+        editorRef.current.innerHTML = sanitized;
+        lastContentRef.current = sanitized;
+        setEditorInitialized(true);
+        // place caret at end
+        try { placeCaretAtEnd(editorRef.current); } catch {}
+        updateFormatState();
         
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -217,7 +291,7 @@ const AdminPoskasEdit = () => {
         updateUsedInEditor();
       }, 300); // Increased delay to ensure everything is ready
     }
-  }, [formData.isi_poskas, existingImages]);
+  }, [formData.isi_poskas, existingImages, editorInitialized]);
 
   const fetchPoskasDetail = async () => {
     try {
@@ -417,13 +491,13 @@ const AdminPoskasEdit = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
+          if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
+          } else if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
           }
           
@@ -480,16 +554,62 @@ const AdminPoskasEdit = () => {
     }
   };
 
-  // Handle text editor changes
+  // Handle text editor changes (do not set state on every keystroke; avoid caret reset)
   const handleEditorChange = (e) => {
     const content = e.target.innerHTML;
-    setFormData(prev => ({
-      ...prev,
-      isi_poskas: content
-    }));
-    
+    lastContentRef.current = content;
+    // Microtask sanitize for any rogue dir/style injected during typing
+    if (editorRef.current) {
+      requestAnimationFrame(() => {
+        try {
+          const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+          nodes.forEach((n) => {
+            if (n.hasAttribute('dir')) n.removeAttribute('dir');
+            const style = n.getAttribute('style');
+            if (style) {
+              let cleaned = style
+                .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+                .replace(/text-align\s*:\s*right\s*;?/gi, 'text-align: left;')
+                .replace(/\s*;\s*$/, '');
+              if (cleaned.trim().length === 0) n.removeAttribute('style');
+              else n.setAttribute('style', cleaned);
+            }
+          });
+        } catch {}
+      });
+    }
     // Update used images tracking
     updateUsedInEditor();
+  };
+
+  const handleEditorKeyUp = () => {
+    if (!editorRef.current) return;
+    try {
+      const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+      nodes.forEach((n) => {
+        if (n.hasAttribute('dir')) n.removeAttribute('dir');
+        const style = n.getAttribute('style');
+        if (style) {
+          let cleaned = style
+            .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+            .replace(/text-align\s*:\s*right\s*;?/gi, 'text-align: left;')
+            .replace(/\s*;\s*$/, '');
+          if (cleaned.trim().length === 0) n.removeAttribute('style');
+          else n.setAttribute('style', cleaned);
+        }
+      });
+    } catch {}
+  };
+
+  const handleEditorBlur = () => {
+    const content = editorRef.current ? editorRef.current.innerHTML : '';
+    const clean = sanitizeToLTR(content);
+    if (editorRef.current) editorRef.current.innerHTML = clean;
+    lastContentRef.current = clean;
+    setFormData(prev => ({
+      ...prev,
+      isi_poskas: clean
+    }));
   };
 
   // Handle paste event in editor
@@ -569,6 +689,14 @@ const AdminPoskasEdit = () => {
         }
       }
     }
+    // Post-paste sanitize for non-image content
+    setTimeout(() => {
+      if (editorRef.current) {
+        const cleaned = sanitizeToLTR(editorRef.current.innerHTML);
+        editorRef.current.innerHTML = cleaned;
+        try { placeCaretAtEnd(editorRef.current); } catch {}
+      }
+    }, 0);
   };
 
   // Handle image selection
@@ -1159,48 +1287,35 @@ const AdminPoskasEdit = () => {
           {/* Content Editor */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
             {/* Toolbar */}
-            <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
               <button
                 type="button"
-                onClick={() => document.execCommand('bold')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={() => { document.execCommand('bold'); updateFormatState(); }}
+                className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                aria-pressed={isBoldActive}
                 title="Bold"
               >
-                <strong>B</strong>
+                B
               </button>
               <button
                 type="button"
-                onClick={() => document.execCommand('italic')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={() => { document.execCommand('italic'); updateFormatState(); }}
+                className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                aria-pressed={isItalicActive}
                 title="Italic"
               >
-                <em>I</em>
+                I
               </button>
               <button
                 type="button"
-                onClick={() => document.execCommand('underline')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={() => { document.execCommand('underline'); updateFormatState(); }}
+                className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                aria-pressed={isUnderlineActive}
                 title="Underline"
               >
-                <u>U</u>
+                U
               </button>
-              <div className="w-px h-6 bg-gray-300"></div>
-              <button
-                type="button"
-                onClick={() => document.execCommand('insertUnorderedList')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Bullet List"
-              >
-                • List
-              </button>
-              <button
-                type="button"
-                onClick={() => document.execCommand('insertOrderedList')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Numbered List"
-              >
-                1. List
-              </button>
+              {/* List buttons removed */}
             </div>
             
             {/* Editor */}
@@ -1208,6 +1323,9 @@ const AdminPoskasEdit = () => {
               ref={editorRef}
               contentEditable
               onInput={handleEditorChange}
+              onKeyUp={handleEditorKeyUp}
+              onMouseUp={handleEditorKeyUp}
+              onFocus={updateFormatState}
               onPaste={handleEditorPaste}
               className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"

@@ -1,20 +1,9 @@
 import React from 'react';
+import AdminKPI from '../../../Admin/SDM/KPI/AdminKPI';
 
+// Owner KPI reuses the Admin KPI component to ensure identical UI/UX and behavior
 const OwnerKPI = () => {
-  return (
-    <div className="container mx-auto p-6">
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">
-          KPI - Owner
-        </h1>
-        <div className="text-center py-12">
-          <p className="text-gray-600 text-lg">
-            Halaman ini sedang dalam pengembangan
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+  return <AdminKPI />;
 };
 
 export default OwnerKPI;

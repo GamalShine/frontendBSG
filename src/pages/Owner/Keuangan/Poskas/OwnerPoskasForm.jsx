@@ -10,38 +10,107 @@ const OwnerPoskasForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const envConfig = getEnvironmentConfig();
   const editorRef = useRef(null);
+  const savedRangeRef = useRef(null);
+  const lastContentRef = useRef('');
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedImages, setSelectedImages] = useState([]);
-  
+  const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
+  const [imageIdMap, setImageIdMap] = useState(new Map());
+  const [editorInitialized, setEditorInitialized] = useState(false);
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+
   const [formData, setFormData] = useState({
     tanggal_poskas: '',
     isi_poskas: '',
     images: []
   });
 
-  // Dynamic CSS for editor images
+  // Editor CSS and behavior helpers (match Admin)
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
-      [contenteditable] img {
-        max-width: 100%;
-        height: auto;
-        border-radius: 8px;
-        margin: 8px 0;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        cursor: pointer;
-        transition: transform 0.2s;
+      /* Force LTR typing for editor (element and all descendants) */
+      [contenteditable="true"], [contenteditable="true"] * {
+        direction: ltr !important;
+        unicode-bidi: isolate !important;
+        text-align: left !important;
       }
-      [contenteditable] img:hover {
-        transform: scale(1.02);
+      [contenteditable="true"] img {
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 10px 0 !important;
+        border-radius: 4px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        display: block !important;
+      }
+      .pasted-image {
+        max-width: 100% !important;
+        height: auto !important;
+        margin: 10px 0 !important;
+        border-radius: 4px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        display: block !important;
+        border: 1px solid #e5e7eb !important;
+      }
+      .image-placeholder {
+        background: #f3f4f6;
+        border: 2px dashed #d1d5db;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+        font-style: italic;
+        margin: 10px 0;
+      }
+      [contenteditable="true"]:empty:before {
+        content: attr(data-placeholder);
+        color: #9ca3af;
+        font-style: italic;
+        pointer-events: none;
+      }
+      [contenteditable="true"]:focus:empty:before {
+        content: "";
       }
     `;
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
+
+  const updateFormatState = () => {
+    try {
+      setIsBoldActive(document.queryCommandState('bold'));
+      setIsItalicActive(document.queryCommandState('italic'));
+      setIsUnderlineActive(document.queryCommandState('underline'));
+    } catch (_) {}
+  };
+
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const sanitizeToLTR = (html) => {
+    if (!html || typeof html !== 'string') return html || '';
+    const removedBidi = html.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    return removedBidi
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sdir='[^']*'/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr))[^\"]*\"/gi, (m) => m.replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, ''))
+      .replace(/\sstyle=\"[^\"]*(text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, (m) => m.replace(/text-align\s*:\s*(right|left|center|justify)\s*;?/gi, ''))
+      .replace(/\sstyle=\"\s*\"/gi, '')
+      .replace(/\sstyle='\s*'/gi, '');
+  };
 
   // Check if this is edit mode and load data
   useEffect(() => {
@@ -54,6 +123,29 @@ const OwnerPoskasForm = () => {
       setFormData(prev => ({ ...prev, tanggal_poskas: today }));
     }
   }, [id]);
+
+  // Track selection changes similar to Admin
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const onMouseUp = () => { saveSelection(); updateFormatState(); };
+    const onKeyUp = () => { saveSelection(); updateFormatState(); };
+    const onSelectionChange = () => {
+      saveSelection();
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      if (node && editor.contains(node)) updateFormatState();
+    };
+    editor.addEventListener('mouseup', onMouseUp);
+    editor.addEventListener('keyup', onKeyUp);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      editor.removeEventListener('mouseup', onMouseUp);
+      editor.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+  }, []);
 
   // Fetch poskas detail for editing
   const fetchPoskasDetail = async () => {
@@ -164,13 +256,94 @@ const OwnerPoskasForm = () => {
   };
 
   // Handle editor changes
-  const handleEditorChange = () => {
+  const handleEditorChange = (e) => {
+    const content = e?.target?.innerHTML ?? (editorRef.current ? editorRef.current.innerHTML : '');
+    lastContentRef.current = content;
     if (editorRef.current) {
-      const content = editorRef.current.innerHTML;
-      setFormData(prev => ({
-        ...prev,
-        isi_poskas: content
-      }));
+      requestAnimationFrame(() => {
+        try {
+          const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+          nodes.forEach((n) => {
+            if (n.hasAttribute('dir')) n.removeAttribute('dir');
+            const style = n.getAttribute('style');
+            if (style) {
+              let cleaned = style
+                .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+                .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
+                .replace(/\s*;\s*$/, '');
+              if (cleaned.trim().length === 0) {
+                n.removeAttribute('style');
+              } else {
+                n.setAttribute('style', cleaned);
+              }
+            }
+          });
+        } catch {}
+      });
+    }
+    setFormData(prev => ({ ...prev, isi_poskas: content }));
+    updateFormatState();
+  };
+
+  const handleEditorKeyUp = () => {
+    if (!editorRef.current) return;
+    try {
+      const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+      nodes.forEach((n) => {
+        if (n.hasAttribute('dir')) n.removeAttribute('dir');
+        const style = n.getAttribute('style');
+        if (style) {
+          let cleaned = style
+            .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+            .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
+            .replace(/\s*;\s*$/, '');
+          if (cleaned.trim().length === 0) {
+            n.removeAttribute('style');
+          } else {
+            n.setAttribute('style', cleaned);
+          }
+        }
+      });
+    } catch {}
+    updateFormatState();
+  };
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+    }
+  };
+
+  const restoreSelection = () => {
+    const range = savedRangeRef.current;
+    if (!range) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const exec = (cmd, value = null) => {
+    if (savedRangeRef.current) {
+      restoreSelection();
+    } else if (editorRef.current) {
+      placeCaretAtEnd(editorRef.current);
+    }
+    try {
+      if (cmd === 'createLink') {
+        const url = value || window.prompt('Masukkan URL tautan (https://...)');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+        return;
+      }
+      if (cmd === 'unlink') {
+        document.execCommand('unlink');
+        return;
+      }
+      document.execCommand(cmd, false, value);
+      saveSelection();
+    } catch (e) {
+      console.warn('Exec command error', cmd, e);
     }
   };
 
@@ -181,61 +354,49 @@ const OwnerPoskasForm = () => {
     }
   };
 
-  // Handle paste events in editor (for images)
+  // Handle paste events in editor (for images) - match Admin behavior
   const handleEditorPaste = async (e) => {
     const items = e.clipboardData?.items;
     if (!items) return;
-
     for (let item of items) {
       if (item.type.indexOf('image') !== -1) {
         e.preventDefault();
-        
         const file = item.getAsFile();
         if (file) {
-          // Validate image
-          if (file.size > 5 * 1024 * 1024) {
-            toast.error('Ukuran gambar tidak boleh lebih dari 5MB');
+          if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            toast.error('Gambar terlalu besar. Maksimal 10MB');
             return;
           }
-
-          if (selectedImages.length >= 10) {
-            toast.error('Maksimal 10 gambar per laporan');
+          if (selectedImages.length >= 5) {
+            toast.error('Maksimal 5 gambar per laporan');
             return;
           }
-
-          // Create image preview
+          const imageId = Date.now() + Math.floor(Math.random() * 1000);
+          const imageWithId = { file, id: imageId, name: `poskas_${imageId}.jpg` };
+          setSelectedImages(prev => [...prev, imageWithId]);
+          setImageIdMap(prev => new Map(prev.set(file, imageId)));
           const reader = new FileReader();
-          reader.onload = (event) => {
-            const imageId = Date.now() + Math.random();
+          reader.onload = (ev) => {
+            const imageUrl = ev.target.result;
+            setImagePreviewUrls(prev => [...prev, imageUrl]);
             const img = document.createElement('img');
-            img.src = event.target.result;
-            img.setAttribute('data-img-id', imageId);
-            img.style.maxWidth = '100%';
-            img.style.height = 'auto';
-            img.style.borderRadius = '8px';
-            img.style.margin = '8px 0';
-            img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-            
-            // Insert image at cursor position
+            img.src = imageUrl;
+            img.alt = 'Pasted image';
+            img.className = 'pasted-image';
+            img.setAttribute('data-image-id', imageId);
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
+              range.deleteContents();
               range.insertNode(img);
               range.collapse(false);
-            } else {
-              editorRef.current.appendChild(img);
+              const br = document.createElement('br');
+              range.insertNode(br);
+              range.collapse(false);
+              const event = new Event('input', { bubbles: true });
+              editorRef.current.dispatchEvent(event);
             }
-
-            // Add to selected images
-            const newImage = {
-              id: imageId,
-              file: file,
-              preview: event.target.result,
-              name: `poskas_${imageId}.jpg`
-            };
-            
-            setSelectedImages(prev => [...prev, newImage]);
-            handleEditorChange();
+            toast.success('Gambar berhasil ditambahkan');
           };
           reader.readAsDataURL(file);
         }
@@ -243,53 +404,47 @@ const OwnerPoskasForm = () => {
     }
   };
 
-  // Get editor content with [IMG:id] placeholders
+  // Get editor content with [IMG:id] placeholders and safe formatting (match Admin)
   const getEditorContent = () => {
     if (!editorRef.current) return '';
-    
-    let content = editorRef.current.innerHTML;
-    
-    // Replace img tags with [IMG:id] placeholders
-    const imgTags = editorRef.current.querySelectorAll('img');
-    imgTags.forEach(img => {
-      const imgId = img.getAttribute('data-img-id');
-      if (imgId) {
-        const placeholder = `[IMG:${imgId}]`;
-        content = content.replace(img.outerHTML, placeholder);
-      } else if (img.src.startsWith('data:')) {
-        // Handle base64 images (newly pasted)
-        const imgId = Date.now() + Math.random();
-        const placeholder = `[IMG:${imgId}]`;
-        content = content.replace(img.outerHTML, placeholder);
-        
-        // Add to selected images if not already there
-        const existingImage = selectedImages.find(si => si.preview === img.src);
-        if (!existingImage) {
-          // Convert base64 to file
-          fetch(img.src)
-            .then(res => res.blob())
-            .then(blob => {
-              const file = new File([blob], `poskas_${imgId}.jpg`, { type: 'image/jpeg' });
-              const newImage = {
-                id: imgId,
-                file: file,
-                preview: img.src,
-                name: `poskas_${imgId}.jpg`
-              };
-              setSelectedImages(prev => [...prev, newImage]);
-            });
-        }
-      }
-    });
-    
-    // Clean up HTML tags and return plain text with image placeholders
-    return content
-      .replace(/<div><br><\/div>/g, '\n')
-      .replace(/<div>/g, '\n')
-      .replace(/<\/div>/g, '')
-      .replace(/<br>/g, '\n')
-      .replace(/<[^>]*>/g, '')
+    const content = editorRef.current.innerHTML;
+    if (!content || content.trim() === '') return '';
+    let processedContent = content;
+    const imgRegex = /<img[^>]*data-image-id="([^"]*)"[^>]*>/g;
+    let imgMatch;
+    while ((imgMatch = imgRegex.exec(content)) !== null) {
+      const imageId = imgMatch[1];
+      const placeholder = `[IMG:${imageId}]`;
+      processedContent = processedContent.replace(imgMatch[0], placeholder);
+    }
+    processedContent = processedContent
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p[^>]*>/gi, '\n')
+      .replace(/<\/p>/gi, '');
+    processedContent = processedContent
+      .replace(/<br[^>]*>/gi, '<br>')
+      .replace(/<a([^>]*)>/gi, (m, attrs) => {
+        const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
+        let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
+        if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
+        return href ? `<a href="${href}">` : '<a>';
+      })
+      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
+    processedContent = processedContent.replace(/<(?!\/?(b|strong|i|em|u|a|ul|ol|li|br)\b)[^>]*>/gi, '');
+    processedContent = processedContent
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr)|text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, '');
+    processedContent = processedContent.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    processedContent = processedContent
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
       .trim();
+    return processedContent;
   };
 
   // Validate form
@@ -590,15 +745,49 @@ const OwnerPoskasForm = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Toolbar (B/I/U) to match Admin */}
+              <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => { exec('bold'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isBoldActive}
+                  title="Bold"
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { exec('italic'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isItalicActive}
+                  title="Italic"
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { exec('underline'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isUnderlineActive}
+                  title="Underline"
+                >
+                  U
+                </button>
+              </div>
               <div
                 ref={editorRef}
                 contentEditable
                 data-placeholder="Masukkan isi posisi kas... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
                 onInput={handleEditorChange}
+                onKeyUp={handleEditorKeyUp}
+                onMouseUp={handleEditorKeyUp}
+                onFocus={updateFormatState}
                 onPaste={handleEditorPaste}
+                dir="ltr"
                 className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                 style={{ whiteSpace: 'pre-wrap' }}
-                dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_poskas } : undefined}
+                dangerouslySetInnerHTML={isEditMode ? { __html: sanitizeToLTR(formData.isi_poskas) } : undefined}
               />
               
               <p className="text-sm text-gray-500">

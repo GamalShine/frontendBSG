@@ -17,6 +17,7 @@ import Table, {
 } from '@/components/UI/Table';
 import Badge from '@/components/UI/Badge';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import { dataTargetService } from '@/services/dataTargetService';
 
 const OwnerDataTarget = () => {
   const [dataTarget, setDataTarget] = useState([]);
@@ -24,11 +25,10 @@ const OwnerDataTarget = () => {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
-    kategori: '',
-    status: '',
     page: 1,
     limit: 10
   });
+  const [stats, setStats] = useState({});
 
   useEffect(() => {
     fetchDataTarget();
@@ -37,30 +37,14 @@ const OwnerDataTarget = () => {
   const fetchDataTarget = async () => {
     try {
       setLoading(true);
-      // Simulate API call
-      const mockData = [
-        {
-          id: 1,
-          nama_target: 'PT. ABC Corporation',
-          kategori: 'CORPORATE',
-          alamat: 'Jl. Sudirman No. 123, Jakarta',
-          kontak: '021-1234567',
-          email: 'info@abc.com',
-          status: 'PROSPEK',
-          nilai_target: 500000000
-        },
-        {
-          id: 2,
-          nama_target: 'CV. XYZ Trading',
-          kategori: 'UMKM',
-          alamat: 'Jl. Gatot Subroto No. 45, Bandung',
-          kontak: '022-9876543',
-          email: 'contact@xyz.com',
-          status: 'AKTIF',
-          nilai_target: 150000000
-        }
-      ];
-      setDataTarget(mockData);
+      const response = await dataTargetService.owner.getAll({
+        search: filters.search,
+        page: filters.page,
+        limit: filters.limit
+      });
+      // shape: { success, data: { items, pagination, statistics } }
+      setDataTarget(response?.data?.items || []);
+      setStats(response?.data?.statistics || {});
     } catch (err) {
       setError('Gagal mengambil data target');
       console.error('Error fetching data target:', err);
@@ -78,8 +62,17 @@ const OwnerDataTarget = () => {
   };
 
   const handleExport = () => {
-    // Export functionality for owner
-    console.log('Exporting data target...');
+    // Open PDF export in new tab
+    window.open('/api/owner/data-target/export/pdf', '_blank');
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount || 0);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -103,37 +96,13 @@ const OwnerDataTarget = () => {
               placeholder="Cari target..."
               value={filters.search}
               onChange={(e) => handleFilterChange('search', e.target.value)}
+              type="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
             />
-            <Select
-              value={filters.kategori}
-              onValueChange={(value) => handleFilterChange('kategori', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Semua Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Semua Kategori</SelectItem>
-                <SelectItem value="CORPORATE">CORPORATE</SelectItem>
-                <SelectItem value="UMKM">UMKM</SelectItem>
-                <SelectItem value="INDIVIDU">INDIVIDU</SelectItem>
-                <SelectItem value="GOVERNMENT">GOVERNMENT</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={filters.status}
-              onValueChange={(value) => handleFilterChange('status', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Semua Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">Semua Status</SelectItem>
-                <SelectItem value="PROSPEK">PROSPEK</SelectItem>
-                <SelectItem value="AKTIF">AKTIF</SelectItem>
-                <SelectItem value="NONAKTIF">NONAKTIF</SelectItem>
-                <SelectItem value="CLOSED">CLOSED</SelectItem>
-              </SelectContent>
-            </Select>
             <Select
               value={filters.limit}
               onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
@@ -154,39 +123,16 @@ const OwnerDataTarget = () => {
             <TableHeader>
               <TableRow>
                 <TableHead>Nama Target</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Alamat</TableHead>
-                <TableHead>Kontak</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Nilai Target</TableHead>
-                <TableHead>Aksi</TableHead>
+                <TableHead>Target Nominal</TableHead>
+                <TableHead>Dibuat Pada</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {dataTarget.map((target) => (
                 <TableRow key={target.id}>
                   <TableCell className="font-medium">{target.nama_target}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{target.kategori}</Badge>
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">{target.alamat}</TableCell>
-                  <TableCell>{target.kontak}</TableCell>
-                  <TableCell>
-                    <Badge variant={
-                      target.status === 'AKTIF' ? 'success' : 
-                      target.status === 'PROSPEK' ? 'warning' : 'secondary'
-                    }>
-                      {target.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-mono">
-                    Rp {target.nilai_target?.toLocaleString('id-ID')}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm">
-                      Detail
-                    </Button>
-                  </TableCell>
+                  <TableCell className="font-mono">{formatCurrency(target.target_nominal)}</TableCell>
+                  <TableCell>{target.created_at ? new Date(target.created_at).toLocaleDateString('id-ID') : '-'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

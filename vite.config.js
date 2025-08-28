@@ -12,13 +12,13 @@ export default defineConfig({
   },
   define: {
     // Gunakan environment variable dengan fallback
-    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://192.168.30.49:3000'),
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://192.168.30.116:3000'),
   },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://192.168.30.49:3000',
+        target: process.env.VITE_API_BASE_URL || 'http://192.168.30.116:3000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api'),
       },

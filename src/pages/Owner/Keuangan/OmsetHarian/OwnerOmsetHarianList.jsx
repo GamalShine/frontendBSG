@@ -34,6 +34,7 @@ const OmsetHarianList = () => {
     total_this_month: 0,
     total_this_year: 0
   });
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -147,6 +148,17 @@ const OmsetHarianList = () => {
     });
   };
 
+  const isToday = (dateString) => {
+    if (!dateString) return false;
+    const d = new Date(dateString);
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  };
+
   const truncateText = (text, maxLength = 100) => {
     if (!text) return '-';
     if (text.length <= maxLength) return text;
@@ -154,25 +166,37 @@ const OmsetHarianList = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match POSKAS style */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Omset Harian</h1>
-              <p className="text-gray-600">Kelola data omset harian outlet</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">OMSET HARIAN</h1>
+              <p className="text-sm text-red-100">Kelola data omset harian outlet</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              PENCARIAN
+            </button>
             <Link
               to="/owner/keuangan/omset-harian/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span>Tambah Omset</span>
+              <span className="font-semibold">Tambah</span>
             </Link>
           </div>
         </div>
       </div>
+
+      {/* Info bar */}
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Daftar omset harian terbaru berada di paling atas</div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -214,59 +238,54 @@ const OmsetHarianList = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter & Pencarian</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cari
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari omset harian..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
+      {showFilters && (
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari omset harian..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setDateFilter('');
-                }}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Reset</span>
-              </button>
+              <div className="flex items-end">
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setDateFilter('');
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="font-semibold">Reset</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Data Table */}
-      <div className="bg-white rounded-lg shadow-sm border">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900">Daftar Omset Harian</h2>
@@ -306,83 +325,73 @@ const OmsetHarianList = () => {
           <>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="sticky top-0 bg-red-50 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.length === omsetHarian.length && omsetHarian.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tanggal
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Isi Omset
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dibuat Oleh
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">No</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tanggal</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Keterangan</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {omsetHarian.map((omset) => (
-                    <tr key={omset.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(omset.id)}
-                          onChange={() => handleCheckboxChange(omset.id)}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(omset.tanggal_omset)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs">
-                          {truncateText(omset.isi_omset, 150)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {omset.user_nama || 'Admin'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <Link
-                            to={`/owner/keuangan/omset-harian/${omset.id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                          <Link
-                            to={`/owner/keuangan/omset-harian/${omset.id}/edit`}
-                            className="text-green-600 hover:text-blue-900"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(omset.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {omsetHarian.map((omset, idx) => {
+                    const displayIndex = (currentPage - 1) * 10 + (idx + 1);
+                    return (
+                      <tr key={omset.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {displayIndex}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{formatDate(omset.tanggal_omset).toUpperCase()}</span>
+                            {isToday(omset.tanggal_omset) && (
+                              <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-inset ring-blue-600/10">NEW</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="max-w-xs">
+                            {truncateText(omset.isi_omset, 150)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex items-center space-x-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedItems.includes(omset.id)}
+                              onChange={() => handleCheckboxChange(omset.id)}
+                              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            />
+                            <Link
+                              to={`/owner/keuangan/omset-harian/${omset.id}`}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                            <Link
+                              to={`/owner/keuangan/omset-harian/${omset.id}/edit`}
+                              className="text-green-600 hover:text-blue-900"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(omset.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200">
+              <div className="px-6 py-3 border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700">
                     Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data

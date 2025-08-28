@@ -184,13 +184,13 @@ const OwnerPoskasDetail = () => {
         }
         
         // Fix old IP addresses
-        if (fixedUrl.includes('192.168.30.49:3000')) {
+        if (fixedUrl.includes('192.168.30.116:3000')) {
           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
           console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
-        } else if (fixedUrl.includes('192.168.30.49:3000')) {
+        } else if (fixedUrl.includes('192.168.30.116:3000')) {
           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
           console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
         }
         
@@ -326,13 +326,13 @@ const OwnerPoskasDetail = () => {
             }
             
             // Fix old IP addresses
-            if (imageUrl.includes('192.168.30.49:3000')) {
+            if (imageUrl.includes('192.168.30.116:3000')) {
               const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
               console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-            } else if (imageUrl.includes('192.168.30.49:3000')) {
+            } else if (imageUrl.includes('192.168.30.116:3000')) {
               const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
               console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
             }
             
@@ -371,12 +371,12 @@ const OwnerPoskasDetail = () => {
             }
             
             // Fix old IP addresses for fallback too
-            if (imageUrl.includes('192.168.30.49:3000')) {
+            if (imageUrl.includes('192.168.30.116:3000')) {
               const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
-            } else if (imageUrl.includes('192.168.30.49:3000')) {
+              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
+            } else if (imageUrl.includes('192.168.30.116:3000')) {
               const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
             }
             
             // Check if it has /api in wrong place

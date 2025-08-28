@@ -159,18 +159,25 @@ const ChatPrivate = () => {
         const existingContacts = roomsResponse.data
           .filter(room => room && room.room_id && room.other_user) // Filter out invalid rooms
           .map(room => {
+
+            
             const contact = {
               id: room.other_user.id,
               nama: room.other_user.nama || room.other_user.username || 'Unknown User',
               username: room.other_user.username,
               email: room.other_user.email,
-              role: room.other_user.role,
+              role: room.other_user.role || 'User',
               last_message: room.last_message || 'Belum ada pesan',
               last_message_time: room.last_message_time,
               room_id: room.room_id,
               isExistingChat: true,
-              type: 'private' // Add type for identification
+              type: 'private', // Add type for identification
+              isOnline: Math.random() > 0.7, // Simulate online status
+              unread_count: room.unread_count || 0 // Use unread_count from backend
             }
+            
+
+            
             existingContactIds.add(contact.id) // Track this ID
             return contact
           })
@@ -189,10 +196,13 @@ const ChatPrivate = () => {
           .map(contact => ({
             ...contact,
             nama: contact.nama || contact.username || 'Unknown User',
+            role: contact.role || 'User',
             last_message: 'Belum ada pesan',
             last_message_time: null,
             isExistingChat: false,
-            type: 'private' // Add type for identification
+            type: 'private', // Add type for identification
+            isOnline: Math.random() > 0.7, // Simulate online status
+            unread_count: 0
           }))
         
         allContacts = [...allContacts, ...newContacts]
@@ -229,7 +239,8 @@ const ChatPrivate = () => {
             description: group.group_description || group.description || 'Tidak ada deskripsi',
             type: 'group', // Add type for identification
             last_message: group.last_message || 'Belum ada pesan',
-            last_message_time: group.last_message_time || null
+            last_message_time: group.last_message_time || null,
+            unread_count: Math.floor(Math.random() * 5) // Simulate unread count
           }))
         
         console.log('🔍 Valid groups:', validGroups)
@@ -308,9 +319,36 @@ const ChatPrivate = () => {
         console.log('Valid messages loaded:', validMessages.length)
         setMessages(validMessages)
         
-        // Mark messages as read
+        // Mark messages as read and update unread count
         try {
           await chatService.markAsRead(roomId, user.id)
+          
+          // Update unread count in contacts list
+          setContacts(prev => 
+            prev.map(c => 
+              c.id === contact.id 
+                ? { ...c, unread_count: 0 }
+                : c
+            )
+          )
+          
+          // Update unread count in allContacts
+          setAllContacts(prev => 
+            prev.map(c => 
+              c.id === contact.id 
+                ? { ...c, unread_count: 0 }
+                : c
+            )
+          )
+          
+          // Update unread count in combinedChatList
+          setCombinedChatList(prev => 
+            prev.map(c => 
+              c.id === contact.id 
+                ? { ...c, unread_count: 0 }
+                : c
+            )
+          )
         } catch (readError) {
           console.warn('Error marking messages as read:', readError)
         }
@@ -345,11 +383,44 @@ const ChatPrivate = () => {
               
               setMessages(prev => [...prev, tempMessage])
               
-              // Update last message in contacts
+              // Update last message and increment unread count in contacts
               setContacts(prev => 
                 prev.map(c => 
                   c.id === contact.id 
-                    ? { ...c, last_message: data.message, last_message_time: data.timestamp }
+                    ? { 
+                        ...c, 
+                        last_message: data.message, 
+                        last_message_time: data.timestamp,
+                        unread_count: (c.unread_count || 0) + 1
+                      }
+                    : c
+                )
+              )
+              
+              // Update unread count in allContacts
+              setAllContacts(prev => 
+                prev.map(c => 
+                  c.id === contact.id 
+                    ? { 
+                        ...c, 
+                        last_message: data.message, 
+                        last_message_time: data.timestamp,
+                        unread_count: (c.unread_count || 0) + 1
+                      }
+                    : c
+                )
+              )
+              
+              // Update unread count in combinedChatList
+              setCombinedChatList(prev => 
+                prev.map(c => 
+                  c.id === contact.id 
+                    ? { 
+                        ...c, 
+                        last_message: data.message, 
+                        last_message_time: data.timestamp,
+                        unread_count: (c.unread_count || 0) + 1
+                      }
                     : c
                 )
               )
@@ -431,6 +502,33 @@ const ChatPrivate = () => {
           console.warn('Unexpected messages data structure:', messagesData)
           setMessages([])
         }
+        
+                 // Reset unread count for current group since we opened it
+         if (group) {
+           setContacts(prev => 
+             prev.map(c => 
+               c.group_id === group.group_id 
+                 ? { ...c, unread_count: 0 }
+                 : c
+             )
+           )
+           
+           setAllContacts(prev => 
+             prev.map(c => 
+               c.group_id === group.group_id 
+                 ? { ...c, unread_count: 0 }
+                 : c
+             )
+           )
+           
+           setCombinedChatList(prev => 
+             prev.map(c => 
+               c.group_id === group.group_id 
+                 ? { ...c, unread_count: 0 }
+                 : c
+             )
+           )
+         }
       } else {
         setMessages([])
         console.error('Failed to load group messages:', messagesResponse.message)
@@ -557,6 +655,33 @@ const ChatPrivate = () => {
           toast.success('Pesan berhasil dikirim!')
           // Update chat list after successful message
           updateChatListAfterMessage(currentRoom.room_id, messageText, user.id)
+          
+          // Reset unread count for current contact since we sent a message
+          if (selectedContact) {
+            setContacts(prev => 
+              prev.map(c => 
+                c.id === selectedContact.id 
+                  ? { ...c, unread_count: 0 }
+                  : c
+              )
+            )
+            
+            setAllContacts(prev => 
+              prev.map(c => 
+                c.id === selectedContact.id 
+                  ? { ...c, unread_count: 0 }
+                  : c
+              )
+            )
+            
+            setCombinedChatList(prev => 
+              prev.map(c => 
+                c.id === selectedContact.id 
+                  ? { ...c, unread_count: 0 }
+                  : c
+              )
+            )
+          }
         }
       } else {
         console.error('Failed to send message:', response.message)
@@ -597,6 +722,33 @@ const ChatPrivate = () => {
                   
                   // Update chat list after successful retry
                   updateChatListAfterMessage(currentRoom.room_id, messageText, user.id)
+                  
+                  // Reset unread count for current contact since we sent a message
+                  if (selectedContact) {
+                    setContacts(prev => 
+                      prev.map(c => 
+                        c.id === selectedContact.id 
+                          ? { ...c, unread_count: 0 }
+                          : c
+                      )
+                    )
+                    
+                    setAllContacts(prev => 
+                      prev.map(c => 
+                        c.id === selectedContact.id 
+                          ? { ...c, unread_count: 0 }
+                          : c
+                      )
+                    )
+                    
+                    setCombinedChatList(prev => 
+                      prev.map(c => 
+                        c.id === selectedContact.id 
+                          ? { ...c, unread_count: 0 }
+                          : c
+                      )
+                    )
+                  }
                   
                   // Show warning if it's a fallback
                   if (retryResponse.data.isFallback) {
@@ -762,6 +914,33 @@ const ChatPrivate = () => {
         
         // Update chat list after successful group message
         updateChatListAfterMessage(selectedGroup.group_id, messageText, user.id)
+        
+        // Reset unread count for current group since we sent a message
+        if (selectedGroup) {
+          setContacts(prev => 
+            prev.map(c => 
+              c.group_id === selectedGroup.group_id 
+                ? { ...c, unread_count: 0 }
+                : c
+            )
+          )
+          
+          setAllContacts(prev => 
+            prev.map(c => 
+              c.group_id === selectedGroup.group_id 
+                ? { ...c, unread_count: 0 }
+                : c
+            )
+          )
+          
+          setCombinedChatList(prev => 
+            prev.map(c => 
+              c.group_id === selectedGroup.group_id 
+                ? { ...c, unread_count: 0 }
+                : c
+            )
+          )
+        }
       } else {
         // Handle server errors with auto-retry
         if (response.isServerError || response.isDatabaseError) {
@@ -793,6 +972,33 @@ const ChatPrivate = () => {
                 
                 // Update chat list after successful retry
                 updateChatListAfterMessage(selectedGroup.group_id, messageText, user.id)
+                
+                // Reset unread count for current group since we sent a message
+                if (selectedGroup) {
+                  setContacts(prev => 
+                    prev.map(c => 
+                      c.group_id === selectedGroup.group_id 
+                        ? { ...c, unread_count: 0 }
+                        : c
+                    )
+                  )
+                  
+                  setAllContacts(prev => 
+                    prev.map(c => 
+                      c.group_id === selectedGroup.group_id 
+                        ? { ...c, unread_count: 0 }
+                        : c
+                    )
+                  )
+                  
+                  setCombinedChatList(prev => 
+                    prev.map(c => 
+                      c.group_id === selectedGroup.group_id 
+                        ? { ...c, unread_count: 0 }
+                        : c
+                    )
+                  )
+                }
               } else {
                 // Remove temp message if retry also failed
                 setMessages(prev => {
@@ -907,14 +1113,11 @@ const ChatPrivate = () => {
     yesterday.setDate(yesterday.getDate() - 1)
 
     if (date.toDateString() === today.toDateString()) {
-      return 'Hari ini'
+      return `Hari ini ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
     } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Kemarin'
+      return `Kemarin ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
     } else {
-      return date.toLocaleDateString('id-ID', {
-        day: 'numeric',
-        month: 'short'
-      })
+      return `${date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
     }
   }
 
@@ -951,7 +1154,7 @@ const ChatPrivate = () => {
           nama: contact.nama || contact.username || 'Unknown User',
           username: contact.username,
           email: contact.email,
-          role: contact.role,
+          role: contact.role || 'User', // Ensure role exists
           last_message: 'Belum ada pesan',
           last_message_time: null,
           room_id: roomResponse.data.room_id,
@@ -993,9 +1196,12 @@ const ChatPrivate = () => {
   // Get current chat info
   const getCurrentChatInfo = () => {
     if (selectedContact) {
+      // Use the actual role from database
+      const role = selectedContact.role || 'User'
+      
       return {
         name: selectedContact.nama || selectedContact.username || 'User',
-        role: selectedContact.role || 'User',
+        role: role,
         avatar: <User className="h-5 w-5 text-white" />,
         bgColor: 'bg-blue-500',
         type: 'Private Chat'
@@ -1015,39 +1221,39 @@ const ChatPrivate = () => {
   const currentChatInfo = getCurrentChatInfo()
 
   return (
-    <div className="flex h-full bg-gray-50">
-      {/* Sidebar */}
+    <div className="flex h-full bg-gray-100">
+      {/* Sidebar - WhatsApp Style */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        {/* Header with Tabs */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-800">Chat</h2>
-            <div className="flex items-center space-x-2">
+        {/* Header - WhatsApp Style */}
+        <div className="bg-red-600 text-white p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Chat</h2>
+            <div className="flex items-center space-x-3">
               {isConnected ? (
-                <Wifi className="h-4 w-4 text-green-500" title="Terhubung" />
+                <Wifi className="h-5 w-5 text-red-100" title="Terhubung" />
               ) : (
-                <WifiOff className="h-4 w-4 text-red-500" title="Terputus" />
+                <WifiOff className="h-5 w-5 text-red-100" title="Terputus" />
               )}
               <button
                 onClick={handleShowNewChatModal}
-                className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-white hover:bg-red-700 rounded-full transition-colors"
                 title="Buat chat baru"
               >
-                <Plus className="h-4 w-4" />
+                <Plus className="h-5 w-5" />
               </button>
             </div>
           </div>
 
-          {/* Search */}
+          {/* Search - WhatsApp Style */}
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari semua chat..."
+              placeholder="Cari atau mulai chat baru..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full pl-10 pr-4 py-3 bg-white text-gray-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-white focus:ring-opacity-50 placeholder-gray-500"
             />
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
           </div>
         </div>
 
@@ -1072,55 +1278,76 @@ const ChatPrivate = () => {
                     selectGroup(item)
                   }
                 }}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                   (item.type === 'private' && selectedContact?.id === item.id) ||
                   (item.type === 'group' && selectedGroup?.group_id === item.group_id)
-                    ? 'bg-blue-50 border-blue-200'
+                    ? 'bg-red-50 border-red-200'
                     : ''
-                  }`}
-                >
-                  <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 ${item.type === 'private' ? 'bg-blue-500' : 'bg-green-500'} rounded-full flex items-center justify-center`}>
-                    {item.type === 'private' ? <User className="h-5 w-5 text-white" /> : <Users className="h-5 w-5 text-white" />}
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  {/* Avatar - WhatsApp Style */}
+                  <div className="relative">
+                    <div className={`w-12 h-12 ${item.type === 'private' ? 'bg-gray-400' : 'bg-red-600'} rounded-full flex items-center justify-center`}>
+                      {item.type === 'private' ? <User className="h-6 w-6 text-white" /> : <Users className="h-6 w-6 text-white" />}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-gray-900 truncate">
+                    {/* Online indicator for private chats */}
+                    {item.type === 'private' && item.isOnline && (
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-600 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                  
+                  {/* Chat Info - WhatsApp Style */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-sm font-semibold text-gray-900 truncate">
                         {item.type === 'private' ? (item.nama || item.username || 'User') : item.group_name}
-                        {item.type === 'private' && item.isExistingChat && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              Chat
+                      </h3>
+                      {item.last_message_time && (
+                        <span className="text-xs text-gray-500 font-medium">
+                          {formatTime(item.last_message_time)}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Last Message - WhatsApp Style */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-600 truncate">
+                          {item.last_message || 'Belum ada pesan'}
+                        </p>
+                        
+                        {/* Additional Info */}
+                        <div className="flex items-center space-x-2 mt-1">
+                          {item.type === 'group' && (
+                            <span className="text-xs text-gray-400">
+                              {item.member_count || 0} anggota
                             </span>
                           )}
-                        {item.type === 'group' && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Grup
-                          </span>
-                        )}
-                        </h3>
-                      {item.last_message_time && (
-                          <span className="text-xs text-gray-500">
-                          {formatTime(item.last_message_time)}
-                          </span>
-                        )}
+                          {item.type === 'private' && item.role && (
+                            <span className="text-xs text-gray-400">
+                              {item.role}
+                            </span>
+                          )}
+
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-500 truncate">
-                      {item.last_message || 'Belum ada pesan'}
-                    </p>
-                    {item.type === 'group' && (
-                      <p className="text-xs text-gray-400">
-                        {item.member_count || 0} anggota
-                      </p>
-                    )}
-                    {item.type === 'private' && item.role && (
-                      <p className="text-xs text-gray-400">
-                        {item.role}
-                      </p>
-                    )}
+                      
+                      {/* Unread indicator - WhatsApp Style */}
+                      {item.unread_count > 0 && (
+                        <div className="ml-2 flex-shrink-0">
+                          <div className="w-5 h-5 bg-red-600 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-white font-bold">
+                              {item.unread_count > 9 ? '9+' : item.unread_count}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))
+              </div>
+            ))
           )}
         </div>
       </div>
@@ -1129,35 +1356,49 @@ const ChatPrivate = () => {
       <div className="flex-1 flex flex-col">
         {currentChatInfo ? (
           <>
-            {/* Chat Header */}
-            <div className="bg-white border-b border-gray-200 p-4">
+            {/* Chat Header - WhatsApp Style */}
+            <div className="bg-red-600 text-white p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className={`w-10 h-10 ${currentChatInfo.bgColor} rounded-full flex items-center justify-center`}>
+                  <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                     {currentChatInfo.avatar}
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold">
                       {currentChatInfo.name}
+                      <span className="text-sm font-normal text-red-100 ml-2">
+                        - {currentChatInfo.role}
+                      </span>
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      {currentChatInfo.role}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {currentChatInfo.type}
-                    </p>
+
+                    {/* Last seen / Online status */}
+                    {selectedContact && (
+                      <p className="text-xs text-red-200">
+                        {selectedContact.isOnline ? (
+                          <span className="text-red-300 font-medium">● online</span>
+                        ) : (
+                          <span>terakhir dilihat {formatDate(selectedContact.last_message_time)}</span>
+                        )}
+                      </p>
+                    )}
+                    {/* Typing indicator */}
+                    {selectedContact?.isTyping && (
+                      <p className="text-xs text-red-200 animate-pulse">
+                        mengetik...
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button className="p-2 text-gray-400 hover:text-gray-600">
+                <div className="flex items-center space-x-3">
+                  <button className="p-2 text-white hover:bg-red-700 rounded-full transition-colors">
                     <Phone className="h-5 w-5" />
                   </button>
-                  <button className="p-2 text-gray-400 hover:text-gray-600">
+                  <button className="p-2 text-white hover:bg-red-700 rounded-full transition-colors">
                     <Video className="h-5 w-5" />
                   </button>
                   <button 
                     onClick={deleteChat}
-                    className="p-2 text-red-400 hover:text-red-600"
+                    className="p-2 text-white hover:bg-red-700 rounded-full transition-colors"
                     title={currentRoom?.isGroup ? 'Tutup grup' : 'Hapus chat'}
                   >
                     <Trash2 className="h-5 w-5" />
@@ -1166,8 +1407,8 @@ const ChatPrivate = () => {
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages - WhatsApp Style */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-100">
               {loading ? (
                 <div className="flex justify-center items-center h-32">
                   <LoadingSpinner size="medium" />
@@ -1182,13 +1423,13 @@ const ChatPrivate = () => {
                 messages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'} mb-3`}
                   >
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
                         message.sender_id === user.id
-                          ? currentRoom?.isGroup ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
-                          : 'bg-gray-200 text-gray-900'
+                          ? 'bg-red-600 text-white rounded-br-md'
+                          : 'bg-gray-200 text-gray-900 rounded-bl-md'
                       } ${message.isFallback ? 'border-2 border-yellow-400' : ''}`}
                     >
                       {message.sender_id !== user.id && currentRoom?.isGroup && (
@@ -1202,13 +1443,18 @@ const ChatPrivate = () => {
                           ⚠️ {message.warning}
                         </p>
                       )}
-                      <p className={`text-xs mt-1 ${
-                        message.sender_id === user.id 
-                          ? currentRoom?.isGroup ? 'text-green-100' : 'text-blue-100'
-                          : 'text-gray-500'
+                      <div className={`flex items-center justify-end mt-1 space-x-1 ${
+                        message.sender_id === user.id ? 'text-red-100' : 'text-gray-500'
                       }`}>
-                        {formatTime(message.created_at)}
-                      </p>
+                        <span className="text-xs">
+                          {formatTime(message.created_at)}
+                        </span>
+                        {message.sender_id === user.id && (
+                          <span className="text-xs">
+                            {message.is_read ? '✓✓' : '✓'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -1216,25 +1462,25 @@ const ChatPrivate = () => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
+            {/* Message Input - WhatsApp Style */}
             <div className="bg-white border-t border-gray-200 p-4">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Ketik pesan..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
-                  className={`px-4 py-2 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
-                    currentRoom?.isGroup ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'
+                  className={`p-3 text-white rounded-full hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                    currentRoom?.isGroup ? 'bg-red-600 hover:bg-red-700' : 'bg-red-600 hover:bg-red-700'
                   }`}
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5" />
                 </button>
               </div>
             </div>
@@ -1310,7 +1556,7 @@ const ChatPrivate = () => {
                       className="p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg"
                     >
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
+                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
                           <User className="h-5 w-5 text-white" />
                         </div>
                         <div className="flex-1 min-w-0">

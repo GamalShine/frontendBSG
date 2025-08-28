@@ -18,8 +18,6 @@ import {
   Eye, 
   Edit, 
   Trash2,
-  Instagram,
-  Music,
   DollarSign,
   Users
 } from 'lucide-react';
@@ -48,8 +46,9 @@ const AdminDataTarget = () => {
       }
 
       const response = await dataTargetService.getAll(params);
-      setDataTarget(response.data);
-      setStats(response.stats);
+      // response shape: { success, data: { items, pagination, statistics } }
+      setDataTarget(response?.data?.items || []);
+      setStats(response?.data?.statistics || {});
     } catch (err) {
       setError('Gagal memuat data target');
       console.error('Error fetching data target:', err);
@@ -77,10 +76,6 @@ const AdminDataTarget = () => {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount || 0);
-  };
-
-  const formatNumber = (num) => {
-    return new Intl.NumberFormat('id-ID').format(num || 0);
   };
 
   if (loading) {
@@ -115,7 +110,7 @@ const AdminDataTarget = () => {
     <div className="container mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Data Target</h1>
-        <p className="text-gray-600">Kelola data target marketing dan influencer</p>
+        <p className="text-gray-600">Kelola data target keuangan per lokasi/akun</p>
       </div>
 
       {/* Statistics Cards */}
@@ -125,9 +120,9 @@ const AdminDataTarget = () => {
             <div className="flex items-center">
               <Users className="h-8 w-8 text-blue-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Akun</p>
+                <p className="text-sm font-medium text-gray-600">Total Target</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats.total_akun || 0}
+                  {stats.totalTarget || 0}
                 </p>
               </div>
             </div>
@@ -137,25 +132,10 @@ const AdminDataTarget = () => {
         <Card>
           <CardBody className="p-4">
             <div className="flex items-center">
-              <Instagram className="h-8 w-8 text-pink-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Follower IG</p>
+                <p className="text-sm font-medium text-gray-600">Total Nominal</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatNumber(stats.total_follower_ig || 0)}
-                </p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center">
-              <Music className="h-8 w-8 text-black" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Follower TikTok</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {formatNumber(stats.total_follower_tiktok || 0)}
+                  {formatCurrency(stats.totalNominal || 0)}
                 </p>
               </div>
             </div>
@@ -167,9 +147,9 @@ const AdminDataTarget = () => {
             <div className="flex items-center">
               <DollarSign className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Rate Card</p>
+                <p className="text-sm font-medium text-gray-600">Rata-rata Nominal</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(stats.total_ratecard || 0)}
+                  {formatCurrency(((stats.totalNominal || 0) / (stats.totalTarget || 1)))}
                 </p>
               </div>
             </div>
@@ -185,11 +165,16 @@ const AdminDataTarget = () => {
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  type="text"
-                  placeholder="Cari nama akun..."
+                  type="search"
+                  placeholder="Cari nama target..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
                 />
               </div>
             </div>
@@ -221,10 +206,8 @@ const AdminDataTarget = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nama Akun</TableHead>
-                    <TableHead>Follower Instagram</TableHead>
-                    <TableHead>Follower TikTok</TableHead>
-                    <TableHead>Rate Card</TableHead>
+                    <TableHead>Nama Target</TableHead>
+                    <TableHead>Target Nominal</TableHead>
                     <TableHead>Tanggal Dibuat</TableHead>
                     <TableHead>Aksi</TableHead>
                   </TableRow>
@@ -234,28 +217,12 @@ const AdminDataTarget = () => {
                     <TableRow key={target.id}>
                       <TableCell>
                         <div className="font-medium text-gray-900">
-                          {target.nama_akun}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Instagram className="h-4 w-4 text-pink-600" />
-                          <span className="font-medium text-gray-900">
-                            {formatNumber(target.follower_ig)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Music className="h-4 w-4 text-black" />
-                          <span className="font-medium text-gray-900">
-                            {formatNumber(target.follower_tiktok)}
-                          </span>
+                          {target.nama_target}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="font-medium text-gray-900">
-                          {formatCurrency(target.ratecard)}
+                          {formatCurrency(target.target_nominal)}
                         </div>
                       </TableCell>
                       <TableCell>

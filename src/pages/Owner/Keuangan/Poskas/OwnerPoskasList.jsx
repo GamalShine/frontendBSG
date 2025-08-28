@@ -34,6 +34,7 @@ const OwnerPoskasList = () => {
     totalThisMonth: 0,
     totalThisYear: 0
   })
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     loadPoskas()
@@ -264,139 +265,154 @@ const OwnerPoskasList = () => {
         toast.error('Gagal menghapus beberapa laporan pos kas')
       }
     }
-  }
+  };
 
-    return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
+  return (
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - Investor-style */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Pos Kas</h1>
-              <p className="text-gray-600">Kelola data posisi kas outlet</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
+              <p className="text-sm text-red-100">Kelola data posisi kas outlet</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              PENCARIAN
+            </button>
+            <div className="relative group">
+              <button className="p-2 hover:bg-red-700 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 20.25a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
+                </svg>
+              </button>
+              <div className="hidden group-hover:block absolute right-0 mt-2 w-40 bg-white text-gray-700 rounded-lg shadow-lg overflow-hidden z-20">
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Bagikan</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Copy</button>
+                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Download PDF</button>
+              </div>
             </div>
             <Link
               to="/owner/keuangan/poskas/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span>Tambah Pos Kas</span>
+              <span className="font-semibold">Tambah</span>
             </Link>
           </div>
         </div>
       </div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Daftar pos kas terbaru berada di paling atas</div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
+      {/* Stats Cards (match Admin) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
               <DollarSign className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Pos Kas</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
+              <p className="text-xs font-medium text-gray-500">Total Pos Kas</p>
+              <p className="text-xl font-bold text-gray-900">{stats.totalPoskas}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-lg">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalThisMonth}</p>
+              <p className="text-xs font-medium text-gray-500">Bulan Ini</p>
+              <p className="text-xl font-bold text-gray-900">{stats.totalThisMonth}</p>
             </div>
+          </div>
         </div>
-      </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-purple-50 flex items-center justify-center">
               <Calendar className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Tahun Ini</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalThisYear}</p>
+              <p className="text-xs font-medium text-gray-500">Tahun Ini</p>
+              <p className="text-xl font-bold text-gray-900">{stats.totalThisYear}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter & Pencarian</h2>
+      {/* Filters (match Admin) */}
+      {showFilters && (
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+        <div className="px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cari
-              </label>
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Cari pos kas..."
-                value={searchTerm}
+                  value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
               </div>
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal
-              </label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="date"
                   value={dateFilter}
                   onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
-          </div>
+              </div>
             </div>
-
             <div className="flex items-end">
               <button
                 onClick={handleSearch}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
               >
                 <Search className="h-4 w-4" />
-                <span>Cari</span>
+                <span className="font-semibold">Pencarian</span>
               </button>
             </div>
-            </div>
-                    </div>
-                    </div>
+          </div>
+        </div>
+      </div>
+      )}
 
-      {/* Data Table */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
+      {/* Data Table (match Admin) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Daftar Pos Kas</h2>
-            {selectedItems.length > 0 && (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
-                  {selectedItems.length} item dipilih
-                </span>
+            <h2 className="text-base font-semibold text-gray-900">Daftar Pos Kas</h2>
+          {selectedItems.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">{selectedItems.length} item dipilih</span>
                 <button
                   onClick={handleBulkDelete}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                 >
                   <Trash2 className="h-4 w-4" />
                   <span>Hapus ({selectedItems.length})</span>
                 </button>
               </div>
-            )}
-                </div>
-              </div>
-              
+          )}
+          </div>
+        </div>
+
         {loading ? (
           <div className="p-8 text-center">
             <LoadingSpinner />
@@ -405,11 +421,11 @@ const OwnerPoskasList = () => {
         ) : poskas.length === 0 ? (
           <div className="p-8 text-center">
             <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Tidak ada data</h3>
             <p className="text-gray-500 mb-4">Belum ada data pos kas yang tersedia</p>
             <Link
               to="/owner/keuangan/poskas/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
             >
               <Plus className="h-4 w-4" />
               <span>Tambah Pos Kas Pertama</span>
@@ -417,35 +433,47 @@ const OwnerPoskasList = () => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="relative overflow-x-auto max-h-[60vh] overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="sticky top-0 bg-red-50 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.length === poskas.length && poskas.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tanggal
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Isi Pos Kas
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dibuat Oleh
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">No</th>
+                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Tanggal</th>
+                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Keterangan</th>
+                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {poskas.map((poskasItem) => (
-                    <tr key={poskasItem.id} className="hover:bg-gray-50">
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {poskas.map((poskasItem, idx) => (
+                    <tr key={poskasItem.id} className="hover:bg-gray-50/80">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold">{formatDate(poskasItem.tanggal_poskas).toUpperCase()}</span>
+                          {(() => {
+                            const d = new Date(poskasItem.tanggal_poskas);
+                            const now = new Date();
+                            const isRecent = d && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+                            return isRecent ? (
+                              <span className="text-[10px] font-bold text-blue-700">NEW</span>
+                            ) : null;
+                          })()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {poskasItem.isi_poskas ? (
+                          <div
+                            className="truncate max-w-md"
+                            dangerouslySetInnerHTML={{
+                              __html: poskasItem.isi_poskas.length > 150
+                                ? poskasItem.isi_poskas.substring(0, 150) + '...'
+                                : poskasItem.isi_poskas
+                            }}
+                          />
+                        ) : (
+                          '-'
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <input
                           type="checkbox"
@@ -454,76 +482,32 @@ const OwnerPoskasList = () => {
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(poskasItem.tanggal_poskas)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs">
-                          {poskasItem.isi_poskas ? (
-                            <div 
-                              className="truncate"
-                              dangerouslySetInnerHTML={{ 
-                                __html: poskasItem.isi_poskas.length > 150 
-                                  ? poskasItem.isi_poskas.substring(0, 150) + '...' 
-                                  : poskasItem.isi_poskas 
-                              }}
-                            />
-                          ) : '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {poskasItem.user_nama || poskasItem.admin_nama || poskasItem.created_by || 'Admin'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <Link
-                            to={`/owner/keuangan/poskas/${poskasItem.id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                          <Link
-                            to={`/owner/keuangan/poskas/${poskasItem.id}/edit`}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(poskasItem.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-                </div>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200">
+              <div className="px-6 py-3 border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700">
                     Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
-                      </div>
-                  <div className="flex items-center space-x-2">
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
                       Sebelumnya
                     </button>
-                    <span className="px-3 py-1 text-sm text-gray-700">
-                      Halaman {currentPage} dari {totalPages}
-                    </span>
+                    <span className="px-3 py-1 text-sm text-gray-700">Halaman {currentPage} dari {totalPages}</span>
                     <button
                       onClick={() => setCurrentPage(currentPage + 1)}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      className="px-3 py-1.5 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
                       Selanjutnya
                     </button>
@@ -533,7 +517,7 @@ const OwnerPoskasList = () => {
             )}
           </>
         )}
-            </div>
+      </div>
     </div>
   );
 }

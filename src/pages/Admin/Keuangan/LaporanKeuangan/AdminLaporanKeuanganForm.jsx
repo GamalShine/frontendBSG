@@ -32,10 +32,35 @@ const LaporanKeuanganForm = () => {
   const [selectedImages, setSelectedImages] = useState([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const editorRef = useRef(null);
+  const [hasInitializedContent, setHasInitializedContent] = useState(false);
+
+  // Formatting active states
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+
+  const updateFormatState = () => {
+    try {
+      setIsBoldActive(document.queryCommandState('bold'));
+      setIsItalicActive(document.queryCommandState('italic'));
+      setIsUnderlineActive(document.queryCommandState('underline'));
+    } catch (_) {}
+  };
+
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
 
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
+      setHasInitializedContent(false);
       loadLaporanKeuangan();
     } else {
       // Set default date only for new reports
@@ -46,14 +71,23 @@ const LaporanKeuanganForm = () => {
     }
   }, [id]);
 
-  // Update editor content when formData changes
+  // Initialize editor content once in edit mode to avoid caret jump while typing
   useEffect(() => {
-    if (editorRef.current && formData.isi_laporan && isEditMode) {
+    if (editorRef.current && isEditMode && !hasInitializedContent && formData.isi_laporan) {
       console.log('🔍 Setting editor content:', formData.isi_laporan);
 
       // Small delay to ensure CSS is applied
       setTimeout(() => {
         editorRef.current.innerHTML = formData.isi_laporan;
+        try {
+          const range = document.createRange();
+          range.selectNodeContents(editorRef.current);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } catch {}
+        try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch {}
 
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -91,9 +125,34 @@ const LaporanKeuanganForm = () => {
           img.style.maxWidth = '100%';
           img.style.height = 'auto';
         });
+        setHasInitializedContent(true);
       }, 200); // Increased delay to ensure everything is ready
     }
-  }, [formData.isi_laporan, isEditMode]);
+  }, [formData.isi_laporan, isEditMode, hasInitializedContent]);
+
+  // Keep toolbar state in sync with selection inside the editor
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const onMouseUp = () => { updateFormatState(); };
+    const onKeyUp = () => { updateFormatState(); };
+    const onSelectionChange = () => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      if (node && editor.contains(node)) {
+        updateFormatState();
+      }
+    };
+    editor.addEventListener('mouseup', onMouseUp);
+    editor.addEventListener('keyup', onKeyUp);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      editor.removeEventListener('mouseup', onMouseUp);
+      editor.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+  }, []);
 
   // Add CSS for editor
   useEffect(() => {
@@ -192,13 +251,13 @@ const LaporanKeuanganForm = () => {
                   }
 
                   // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.49:3000')) {
+                  if (fixedUrl.includes('192.168.30.116:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.49:3000')) {
+                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
                     console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
                 }
@@ -239,13 +298,13 @@ const LaporanKeuanganForm = () => {
               }
 
               // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.49:3000')) {
+              if (cleanUrl.includes('192.168.30.116:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.49:3000')) {
+              } else if (cleanUrl.includes('192.168.30.116:3000')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.49:3000', baseUrl);
+                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
                 console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
               }
 
@@ -568,13 +627,13 @@ const LaporanKeuanganForm = () => {
           }
 
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
+          if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
+          } else if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
 
@@ -762,10 +821,43 @@ const LaporanKeuanganForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Isi Laporan *
                 </label>
+                {/* Toolbar (B/I/U) */}
+                <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => { document.execCommand('bold'); updateFormatState(); }}
+                    className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                    aria-pressed={isBoldActive}
+                    title="Bold"
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { document.execCommand('italic'); updateFormatState(); }}
+                    className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                    aria-pressed={isItalicActive}
+                    title="Italic"
+                  >
+                    I
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { document.execCommand('underline'); updateFormatState(); }}
+                    className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                    aria-pressed={isUnderlineActive}
+                    title="Underline"
+                  >
+                    U
+                  </button>
+                </div>
                 <div
                   ref={editorRef}
                   contentEditable
                   onInput={handleEditorChange}
+                  onKeyUp={() => updateFormatState()}
+                  onMouseUp={() => updateFormatState()}
+                  onFocus={updateFormatState}
                   onPaste={handleEditorPaste}
                   data-placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
                   className="w-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
@@ -849,12 +941,12 @@ const LaporanKeuanganForm = () => {
                         }
                         
                         // Fix old IP addresses
-                        if (imageUrl.includes('192.168.30.49:3000')) {
+                        if (imageUrl.includes('192.168.30.116:3000')) {
                           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
-                        } else if (imageUrl.includes('192.168.30.49:3000')) {
+                          imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
+                        } else if (imageUrl.includes('192.168.30.116:3000')) {
                           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+                          imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
                         }
                         
                         // If relative URL, add base URL

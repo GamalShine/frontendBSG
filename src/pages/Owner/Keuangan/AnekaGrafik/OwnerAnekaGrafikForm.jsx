@@ -26,10 +26,10 @@ const OwnerAnekaGrafikForm = () => {
     if (!url) return '';
     
     // Fix the specific duplication pattern we're seeing
-    if (url.includes('192.168.30.49')) {
+    if (url.includes('192.168.30.116')) {
       const match = url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
       if (match && match[1]) {
-        return 'http://192.168.30.49:3000' + match[1];
+        return 'http://192.168.30.116:3000' + match[1];
       }
     }
     
@@ -58,10 +58,10 @@ const OwnerAnekaGrafikForm = () => {
     return processedImages.map((img) => {
       if (img && img.url) {
         // Fix duplicated URLs
-        if (img.url.includes('192.168.30.49')) {
+        if (img.url.includes('192.168.30.116')) {
           const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
           if (match && match[1]) {
-            img.url = 'http://192.168.30.49:3000' + match[1];
+            img.url = 'http://192.168.30.116:3000' + match[1];
           }
         }
         
@@ -82,9 +82,9 @@ const OwnerAnekaGrafikForm = () => {
     }
     
     // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.49:3000')) {
+    if (imageUrl.includes('192.168.30.116:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
     }
     
     // Fix /api/uploads/ path
@@ -134,11 +134,18 @@ const OwnerAnekaGrafikForm = () => {
               processedImages = processedImages.map(img => {
                 console.log('🔍 Processing image object:', img);
                 
+                // Build imageUrl, prefer serverPath if url is missing
+                let imageUrl = img.url;
+                if (!imageUrl && img.serverPath) {
+                  const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+                  imageUrl = `${baseUrl}/${img.serverPath}`;
+                }
+
                 const processedImg = {
                   uri: img.uri || `file://temp/${img.id}.jpg`,
                   id: img.id,
                   name: img.name || `aneka_grafik_${img.id}.jpg`,
-                  url: img.url || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+                  url: constructImageUrl(imageUrl || `/uploads/aneka-grafik/temp_${img.id}.jpg`),
                   serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
                 };
                 
@@ -158,7 +165,7 @@ const OwnerAnekaGrafikForm = () => {
           processedImages.forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
-            // Use the cleaned URL directly
+            // Use the cleaned URL directly, ensure it's normalized
             let imageUrl = image.url || '';
             
             console.log(`🔍 Image ${index + 1}:`, {
@@ -167,7 +174,9 @@ const OwnerAnekaGrafikForm = () => {
               id: image.id
             });
             
-            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
+            // Normalize once more when injecting into editor
+          imageUrl = constructImageUrl(imageUrl);
+          const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
             
             // Check if this placeholder exists in content
@@ -593,102 +602,41 @@ const OwnerAnekaGrafikForm = () => {
         console.log('🔍 Debug: Edit mode - filtering images by usage in editor');
         console.log('🔍 Debug: Used in editor IDs:', usedInEditor);
         console.log('🔍 Debug: All formData images:', formData.images);
-        
-        // Filter existing images to only include those still used in editor
-        const usedExistingImages = (formData.images || []).filter(img => {
+
+        const usedExistingImages = (formData.images || []).filter((img) => {
           const isUsed = usedInEditor.has(img.id);
           console.log(`🔍 Image ${img.id} used in editor: ${isUsed}`);
           return isUsed;
         });
-        
-        console.log('🔍 Debug: Filtered existing images:', usedExistingImages);
-        imagesWithServerUrls = usedExistingImages;
-        
-        // Upload new images if any
+
+        let uploadedNewImages = [];
         if (selectedImages.length > 0) {
-          console.log('🔍 Debug: Uploading new images in edit mode');
-          const uploadedFiles = await uploadImagesToServer(selectedImages);
-          
-          // Add new uploaded images to existing ones
-          const newImages = selectedImages.map((img, index) => {
-            const uploadedFile = uploadedFiles[index];
-            
-            if (uploadedFile) {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `aneka_grafik_${img.id}.jpg`,
-                url: `${envConfig.API_BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-                serverPath: uploadedFile.url
-              };
-            } else {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `aneka_grafik_${img.id}.jpg`,
-                url: `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
-                serverPath: `uploads/aneka-grafik/temp_${img.id}.jpg`
-              };
-            }
-          });
-          
-          imagesWithServerUrls = [...imagesWithServerUrls, ...newImages];
+          console.log('🔼 Uploading new images (edit mode)');
+          uploadedNewImages = await uploadImagesToServer(selectedImages);
         }
+
+        imagesWithServerUrls = [...usedExistingImages, ...(uploadedNewImages || [])];
       } else {
-        // In create mode, upload all selected images
-        console.log('🔍 Debug: Create mode - uploading all images');
-        const uploadedFiles = await uploadImagesToServer(selectedImages);
-        
-        imagesWithServerUrls = selectedImages.map((img, index) => {
-          const uploadedFile = uploadedFiles[index];
-          
-          if (uploadedFile) {
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `aneka_grafik_${img.id}.jpg`,
-              url: `${envConfig.API_BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-              serverPath: uploadedFile.url
-            };
-          } else {
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `aneka_grafik_${img.id}.jpg`,
-              url: `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
-              serverPath: `uploads/aneka-grafik/temp_${img.id}.jpg`
-            };
-          }
-        });
-      }
-      
-      // Ensure all image URLs are properly formatted like OmsetHarian
-      const finalImages = imagesWithServerUrls.map(img => {
-        if (img && img.url) {
-          let fixedUrl = img.url;
-          
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          return { ...img, url: fixedUrl };
+        // Create mode: upload all selected images
+        let uploadedFiles = [];
+        if (selectedImages.length > 0) {
+          console.log('🔼 Uploading images (create mode)');
+          uploadedFiles = await uploadImagesToServer(selectedImages);
         }
-        return img;
+        imagesWithServerUrls = uploadedFiles || [];
+      }
+
+      // Normalize and finalize images
+      const finalImages = (imagesWithServerUrls || []).map((img) => {
+        const normalizedUrl = constructImageUrl(img.url || img.serverPath || '');
+        let serverPath = img.serverPath;
+        if (!serverPath && img.url) {
+          const base = envConfig.API_BASE_URL.replace('/api', '');
+          serverPath = img.url.startsWith(base) ? img.url.substring(base.length) : img.url;
+        }
+        return { ...img, url: normalizedUrl, serverPath };
       });
-      
+
       console.log('📊 Images with server URLs:', imagesWithServerUrls);
       console.log('🔍 Final images with fixed URLs:', finalImages);
       

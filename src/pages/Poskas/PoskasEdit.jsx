@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '../../components/UI/LoadingSpinner';
 import { API_CONFIG } from '../../config/constants';
-import { parseImagesString, getImageDisplayUrl, getImageFallbackUrl } from '../../utils/imageUtils';
+import { parseImagesString, getImageDisplayUrl, getImageFallbackUrl } from '../../utils';
 
 const PoskasEdit = () => {
   const { id } = useParams();
@@ -261,57 +261,57 @@ const PoskasEdit = () => {
         const placeholders = [...editorContent.matchAll(imgPlaceholderRegex)];
         console.log('🔍 Found image placeholders in content:', placeholders);
         
-        // Replace [IMG:id] placeholders with actual image tags for editor
-        if (Array.isArray(parsedImages)) {
-          console.log('🔍 Processing parsed images for editor:', parsedImages);
-          console.log('🔍 Environment config:', API_CONFIG);
-          parsedImages.filter(image => {
-            // Filter out images without valid URLs
-            if (!image || (!image.url && !image.uri)) {
-              console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
-              return false;
-            }
-            return true;
-          }).forEach((image, index) => {
+                 // Replace [IMG:id] placeholders with actual image tags for editor
+         if (Array.isArray(parsedImages)) {
+           console.log('🔍 Processing parsed images for editor:', parsedImages);
+           console.log('🔍 Environment config:', API_CONFIG);
+           parsedImages.filter(image => {
+             // Filter out images without valid URLs
+             if (!image || (!image.url && !image.uri)) {
+               console.log(`⚠️ Skipping image for editor - no valid URL:`, image);
+               return false;
+             }
+             return true;
+           }).forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
-            // Construct the correct image URL
+                         // Construct the correct image URL
             let imageUrl = getImageDisplayUrl(image);
-            
-            console.log(`🔍 Final image URL for editor: ${imageUrl}`);
-            
-            // Replace [IMG:id] placeholder with actual image tag
-            const placeholder = `[IMG:${image.id}]`;
-            if (editorContent.includes(placeholder)) {
-              console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
-              const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
-              editorContent = editorContent.replace(placeholder, imgTag);
-            } else {
-              console.log(`⚠️ Placeholder ${placeholder} not found in content`);
-            }
-          });
-        }
-        
-        console.log('🔍 Final editor content after image replacement:', editorContent);
-        
-        // Process tanggal_poskas
-        const originalTanggal = poskas.tanggal_poskas;
-        const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
-        
-        console.log('🔍 Tanggal processing:', {
-          original: originalTanggal,
-          processed: processedTanggal,
-          originalType: typeof originalTanggal,
-          isDate: originalTanggal instanceof Date
-        });
-        
-        // Set the processed content
-        setFormData(prev => ({
-          ...prev,
-          tanggal_poskas: processedTanggal,
-          isi_poskas: editorContent,
-          images: parsedImages
-        }));
+             
+             console.log(`🔍 Final image URL for editor: ${imageUrl}`);
+             
+             // Replace [IMG:id] placeholder with actual image tag
+             const placeholder = `[IMG:${image.id}]`;
+             if (editorContent.includes(placeholder)) {
+               console.log(`🔍 Replacing placeholder ${placeholder} with image tag`);
+               const imgTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm editor-image" data-image-id="${image.id}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: block; visibility: visible;">`;
+               editorContent = editorContent.replace(placeholder, imgTag);
+             } else {
+               console.log(`⚠️ Placeholder ${placeholder} not found in content`);
+             }
+           });
+         }
+         
+         console.log('🔍 Final editor content after image replacement:', editorContent);
+         
+         // Process tanggal_poskas
+         const originalTanggal = poskas.tanggal_poskas;
+         const processedTanggal = originalTanggal ? new Date(originalTanggal).toISOString().split('T')[0] : '';
+         
+         console.log('🔍 Tanggal processing:', {
+           original: originalTanggal,
+           processed: processedTanggal,
+           originalType: typeof originalTanggal,
+           isDate: originalTanggal instanceof Date
+         });
+         
+         // Set the processed content
+         setFormData(prev => ({
+           ...prev,
+           tanggal_poskas: processedTanggal,
+           isi_poskas: editorContent,
+           images: parsedImages
+         }));
         
       } else {
         setError(response.message || 'Gagal memuat detail laporan');

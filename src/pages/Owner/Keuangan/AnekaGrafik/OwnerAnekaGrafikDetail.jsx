@@ -61,11 +61,20 @@ const OwnerAnekaGrafikDetail = () => {
             processedImages = processedImages.map(img => {
               console.log('🔍 Processing image object:', img);
               
+              // Ensure we have a proper URL for the image
+              let imageUrl = img.url;
+              if (!imageUrl && img.serverPath) {
+                // If no URL but we have serverPath, construct the URL
+                const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+                imageUrl = `${baseUrl}/${img.serverPath}`;
+              }
+
               const processedImg = {
                 uri: img.uri || `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: img.name || `aneka_grafik_${img.id}.jpg`,
-                url: img.url || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
+                // Always normalize to absolute URL
+                url: constructImageUrl(imageUrl || `/uploads/aneka-grafik/temp_${img.id}.jpg`),
                 serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
               };
               
@@ -87,7 +96,7 @@ const OwnerAnekaGrafikDetail = () => {
         processedImages.forEach((image, index) => {
           console.log(`🔍 Processing image ${index + 1}:`, image);
           
-          // Use the cleaned URL directly
+          // Use the cleaned URL directly, ensure it is well-formed
           let imageUrl = image.url || '';
           
           console.log(`🔍 Image ${index + 1}:`, {
@@ -96,6 +105,11 @@ const OwnerAnekaGrafikDetail = () => {
             id: image.id
           });
           
+          // Ensure the image URL is properly constructed
+          if (imageUrl && !imageUrl.startsWith('data:')) {
+            imageUrl = constructImageUrl(imageUrl);
+          }
+
           const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
           const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
           
@@ -202,28 +216,52 @@ const OwnerAnekaGrafikDetail = () => {
   const constructImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     
+    console.log('🔍 🔍 🔍 constructImageUrl called with:', imageUrl);
+    
     // Fix double http:// issue
     if (imageUrl.startsWith('http://http://')) {
       imageUrl = imageUrl.replace('http://http://', 'http://');
     }
     
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.49:3000')) {
+    // Fix double /uploads/ issue
+    if (imageUrl.includes('/uploads//uploads/')) {
+      imageUrl = imageUrl.replace('/uploads//uploads/', '/uploads/');
+      console.log('🔍 Fixed double /uploads/:', imageUrl);
+    }
+    
+    // Fix old IP addresses and wrong ports
+    if (imageUrl.includes('192.168.30.116:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
+      console.log('🔍 Fixed old IP 192.168.30.116:3000:', imageUrl);
+    }
+    
+    // Fix wrong port 5000
+    if (imageUrl.includes(':5000')) {
+      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+      imageUrl = imageUrl.replace(':5000', baseUrl.replace('http://', '').split('/')[0]);
+      console.log('🔍 Fixed wrong port 5000:', imageUrl);
     }
     
     // Fix /api/uploads/ path
     if (imageUrl.includes('/api/uploads/')) {
       imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
+      console.log('🔍 Fixed /api/uploads/ path:', imageUrl);
     }
     
-    // Ensure URL is absolute
+    // Ensure URL is absolute and correct
     if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      // Remove leading slash if exists to avoid double slashes
+      const cleanPath = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+      imageUrl = `${baseUrl}/${cleanPath}`;
+      console.log('🔍 Made URL absolute:', imageUrl);
     }
     
+    // Final cleanup: remove any remaining double slashes (except http://)
+    imageUrl = imageUrl.replace(/([^:])\/+/g, '$1/');
+    
+    console.log('🔍 🔍 🔍 Final constructed URL:', imageUrl);
     return imageUrl;
   };
 
@@ -248,16 +286,35 @@ const OwnerAnekaGrafikDetail = () => {
 
     return processedImages.map((img) => {
       if (img && img.url) {
-        // Fix duplicated URLs
-        if (img.url.includes('192.168.30.49')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.49:3000' + match[1];
-          }
+        console.log('🔍 🔍 🔍 Processing image URL:', img.url);
+        
+        // Fix various URL corruption issues
+        let fixedUrl = img.url;
+        
+        // Fix double /uploads/
+        if (fixedUrl.includes('/uploads//uploads/')) {
+          fixedUrl = fixedUrl.replace('/uploads//uploads/', '/uploads/');
+          console.log('🔍 Fixed double /uploads/ in cleanup:', fixedUrl);
+        }
+        
+        // Fix wrong port 5000
+        if (fixedUrl.includes(':5000')) {
+          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+          const hostPort = baseUrl.replace('http://', '').split('/')[0];
+          fixedUrl = fixedUrl.replace(':5000', hostPort);
+          console.log('🔍 Fixed port 5000 in cleanup:', fixedUrl);
+        }
+        
+        // Fix old IP addresses
+        if (fixedUrl.includes('192.168.30.116:3000')) {
+          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
+          console.log('🔍 Fixed old IP in cleanup:', fixedUrl);
         }
         
         // Apply final URL construction
-        img.url = constructImageUrl(img.url);
+        img.url = constructImageUrl(fixedUrl);
+        console.log('🔍 🔍 🔍 Final image URL after cleanup:', img.url);
       }
       return img;
     });
@@ -308,19 +365,13 @@ const OwnerAnekaGrafikDetail = () => {
 
 
   const openFullScreenImage = (image) => {
-    // Handle both relative and absolute URLs
+    // Always normalize via constructImageUrl for consistency
     let imageUrl = '';
     if (image.url) {
-      if (image.url.startsWith('http')) {
-        // Already absolute URL
-      imageUrl = image.url;
-      } else {
-        // Relative URL, add base URL
-        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-        imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-      }
+      imageUrl = constructImageUrl(image.url);
     } else {
-      imageUrl = image.displayUri || image.fallbackUri;
+      imageUrl = image.displayUri || image.fallbackUri || '';
+      if (imageUrl) imageUrl = constructImageUrl(imageUrl);
     }
     
     console.log('🔍 Opening full screen image with URL:', imageUrl);

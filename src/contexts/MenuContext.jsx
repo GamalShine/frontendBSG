@@ -173,27 +173,14 @@ export const MenuProvider = ({ children }) => {
           ]
         });
         
-        // Menu Daftar Tugas untuk Owner (dihapus karena sudah dipindah ke SDM)
-        // baseMenus.push({
-        //   id: 'daftar-tugas',
-        //   title: 'DAFTAR TUGAS',
-        //   icon: 'ClipboardList',
-        //   permissions: ['read'],
-        //   children: [
-        //     {
-        //       id: 'kpi',
-        //       title: 'KPI',
-        //       path: '/owner/daftar-tugas/kpi',
-        //       permissions: ['read']
-        //     },
-        //     {
-        //       id: 'tim-merah-biru',
-        //       title: 'TIM MERAH/BIRU',
-        //       path: '/owner/daftar-tugas/tim-merah-biru',
-        //       permissions: ['read']
-        //     }
-        //   ]
-        // });
+        // Menu Daftar Tugas untuk Owner
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/owner/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
+        });
         
         // Menu Operasional untuk Owner
         baseMenus.push({
@@ -379,6 +366,15 @@ export const MenuProvider = ({ children }) => {
             }
           ]
         });
+
+        // Menu Daftar Tugas untuk Admin
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/admin/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
+        });
         
         // Menu Operasional untuk Admin
         baseMenus.push({
@@ -454,51 +450,7 @@ export const MenuProvider = ({ children }) => {
           ]
         });
         
-        // Menu Admin Panel
-        baseMenus.push({
-          id: 'admin',
-          title: 'Admin Panel',
-          icon: 'Settings',
-          permissions: ['read'],
-          children: [
-            {
-              id: 'admin-komplain',
-              title: 'Kelola Komplain',
-              path: '/admin/komplain',
-              permissions: ['read']
-            },
-            {
-              id: 'admin-tugas',
-              title: 'Kelola Tugas',
-              path: '/admin/tugas',
-              permissions: ['read']
-            },
-            {
-              id: 'admin-pengumuman',
-              title: 'Kelola Pengumuman',
-              path: '/admin/pengumuman',
-              permissions: ['read']
-            },
-            {
-              id: 'admin-training',
-              title: 'Kelola Training',
-              path: '/admin/training',
-              permissions: ['read']
-            },
-            {
-              id: 'admin-users',
-              title: 'Kelola Users',
-              path: '/users',
-              permissions: ['read']
-            },
-            {
-              id: 'admin-profile',
-              title: 'Admin Profile',
-              path: '/admin/profile',
-              permissions: ['read']
-            }
-          ]
-        });
+        // Menu Admin Panel dihapus karena duplikasi dengan menu utama
         
         // Menu Settings untuk Admin
         baseMenus.push({

@@ -208,9 +208,9 @@ const AdminAnekaGrafikDetail = () => {
     }
     
     // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.49:3000')) {
+    if (imageUrl.includes('192.168.30.116:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
     }
     
     // Fix /api/uploads/ path
@@ -249,10 +249,10 @@ const AdminAnekaGrafikDetail = () => {
     return processedImages.map((img) => {
       if (img && img.url) {
         // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.49:3000http://192.168.30.49:3000')) {
+        if (img.url.includes('http://192.168.30.116:3000http://192.168.30.116:3000')) {
           const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
           if (match && match[1]) {
-            img.url = 'http://192.168.30.49:3000' + match[1];
+            img.url = 'http://192.168.30.116:3000' + match[1];
           }
         }
         

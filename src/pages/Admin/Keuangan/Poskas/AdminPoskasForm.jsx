@@ -17,6 +17,12 @@ const AdminPoskasForm = () => {
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      /* Force LTR typing for editor (element and all descendants) */
+      [contenteditable="true"], [contenteditable="true"] * {
+        direction: ltr !important;
+        unicode-bidi: isolate !important;
+        text-align: left !important;
+      }
       [contenteditable="true"] img {
         max-width: 100% !important;
         height: auto !important;
@@ -73,6 +79,44 @@ const AdminPoskasForm = () => {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
+  const savedRangeRef = useRef(null);
+  const lastContentRef = useRef('');
+  const [editorInitialized, setEditorInitialized] = useState(false);
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+
+  const updateFormatState = () => {
+    try {
+      setIsBoldActive(document.queryCommandState('bold'));
+      setIsItalicActive(document.queryCommandState('italic'));
+      setIsUnderlineActive(document.queryCommandState('underline'));
+    } catch (_) {}
+  };
+
+  const placeCaretAtEnd = (el) => {
+    if (!el) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  // Sanitize HTML to enforce LTR by removing dir/style that set RTL or right alignment
+  const sanitizeToLTR = (html) => {
+    if (!html || typeof html !== 'string') return html || '';
+    // Remove Unicode BiDi control characters that can flip cursor direction
+    const removedBidi = html.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    return removedBidi
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sdir='[^']*'/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr))[^\"]*\"/gi, (m) => m.replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, ''))
+      .replace(/\sstyle=\"[^\"]*(text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, (m) => m.replace(/text-align\s*:\s*(right|left|center|justify)\s*;?/gi, ''))
+      .replace(/\sstyle=\"\s*\"/gi, '')
+      .replace(/\sstyle='\s*'/gi, '');
+  };
 
   // Load existing data if in edit mode
   useEffect(() => {
@@ -80,6 +124,32 @@ const AdminPoskasForm = () => {
       loadExistingData();
     }
   }, [isEditMode, id]);
+
+  // Track selection changes to keep latest range (mouse/keyboard and global selectionchange)
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const onMouseUp = () => { saveSelection(); updateFormatState(); };
+    const onKeyUp = () => { saveSelection(); updateFormatState(); };
+    const onSelectionChange = () => {
+      saveSelection();
+      // Only update when selection is inside the editor
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const node = sel.anchorNode;
+      if (node && editor.contains(node)) {
+        updateFormatState();
+      }
+    };
+    editor.addEventListener('mouseup', onMouseUp);
+    editor.addEventListener('keyup', onKeyUp);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      editor.removeEventListener('mouseup', onMouseUp);
+      editor.removeEventListener('keyup', onKeyUp);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+  }, []);
 
   const loadExistingData = async () => {
     try {
@@ -90,7 +160,7 @@ const AdminPoskasForm = () => {
         const data = response.data;
         setFormData({
           tanggal_poskas: data.tanggal_poskas || new Date().toISOString().split('T')[0],
-          isi_poskas: data.isi_poskas || '',
+          isi_poskas: sanitizeToLTR(data.isi_poskas || ''),
           images: data.images || []
         });
         
@@ -117,8 +187,29 @@ const AdminPoskasForm = () => {
       navigate('/admin/keuangan/poskas');
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        if (editorRef.current) {
+          const cleaned = sanitizeToLTR(editorRef.current.innerHTML);
+          editorRef.current.innerHTML = cleaned;
+          placeCaretAtEnd(editorRef.current);
+          updateFormatState();
+        }
+      }, 0);
     }
   };
+
+  // Initialize editor content once after data load to avoid React resets of selection
+  useEffect(() => {
+    if (!editorInitialized && !loading && editorRef.current) {
+      const initial = formData.isi_poskas || '';
+      editorRef.current.innerHTML = sanitizeToLTR(initial);
+      lastContentRef.current = initial;
+      setEditorInitialized(true);
+      // Move caret to end for a natural typing experience
+      placeCaretAtEnd(editorRef.current);
+      updateFormatState();
+    }
+  }, [editorInitialized, loading, formData.isi_poskas]);
 
   // Handle text editor changes
   const handleInputChange = (e) => {
@@ -131,11 +222,102 @@ const AdminPoskasForm = () => {
 
   const handleEditorChange = (e) => {
     const content = e.target.innerHTML;
-    console.log('🔍 Debug: Editor content changed:', content);
+    lastContentRef.current = content;
+    // Avoid frequent setState to prevent caret reset; commit on blur/submit
+    // Microtask sanitize to remove any accidental RTL attributes/styles from new nodes
+    if (editorRef.current) {
+      requestAnimationFrame(() => {
+        try {
+          const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+          nodes.forEach((n) => {
+            if (n.hasAttribute('dir')) n.removeAttribute('dir');
+            const style = n.getAttribute('style');
+            if (style) {
+              let cleaned = style
+                .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+                .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
+                .replace(/\s*;\s*$/,'');
+              if (cleaned.trim().length === 0) {
+                n.removeAttribute('style');
+              } else {
+                n.setAttribute('style', cleaned);
+              }
+            }
+          });
+        } catch {}
+      });
+    }
+    updateFormatState();
+  };
+
+  const handleEditorKeyUp = () => {
+    // As an additional safeguard, normalize after keyup
+    if (!editorRef.current) return;
+    try {
+      const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+      nodes.forEach((n) => {
+        if (n.hasAttribute('dir')) n.removeAttribute('dir');
+        const style = n.getAttribute('style');
+        if (style) {
+          let cleaned = style
+            .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+            .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
+            .replace(/\s*;\s*$/,'');
+          if (cleaned.trim().length === 0) {
+            n.removeAttribute('style');
+          } else {
+            n.setAttribute('style', cleaned);
+          }
+        }
+      });
+    } catch {}
+    updateFormatState();
+  };
+
+  const handleEditorBlur = () => {
+    const content = editorRef.current ? editorRef.current.innerHTML : '';
+    const clean = sanitizeToLTR(content);
+    if (editorRef.current) editorRef.current.innerHTML = clean;
+    lastContentRef.current = clean;
     setFormData(prev => ({
       ...prev,
-      isi_poskas: content
+      isi_poskas: clean
     }));
+  };
+
+  // Focus editor helper
+  const focusEditor = () => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+  };
+
+  // Execute formatting command
+  const exec = (cmd, value = null) => {
+    // Restore selection so formatting applies to the highlighted text
+    if (savedRangeRef.current) {
+      restoreSelection();
+    } else if (editorRef.current) {
+      // No saved selection: put caret at end to ensure command still works
+      placeCaretAtEnd(editorRef.current);
+    }
+    try {
+      if (cmd === 'createLink') {
+        const url = value || window.prompt('Masukkan URL tautan (https://...)');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+        return;
+      }
+      if (cmd === 'unlink') {
+        document.execCommand('unlink');
+        return;
+      }
+      document.execCommand(cmd, false, value);
+      // Save selection after command so subsequent actions keep range
+      saveSelection();
+    } catch (e) {
+      console.warn('Exec command error', cmd, e);
+    }
   };
 
   // Handle paste event in editor
@@ -215,7 +397,7 @@ const AdminPoskasForm = () => {
     }
   };
 
-  // Get editor content dengan format [IMG:id] placeholder
+  // Get editor content with [IMG:id] placeholders and preserve safe formatting
   const getEditorContent = () => {
     if (!editorRef.current) {
       console.log('🔍 Debug: Editor ref not found');
@@ -230,7 +412,7 @@ const AdminPoskasForm = () => {
       return '';
     }
     
-    // Convert HTML content to text dengan [IMG:id] placeholders
+    // Convert HTML content but keep allowed tags and replace pasted images with placeholders
     let processedContent = content;
     
     // Replace base64 images dengan [IMG:id] placeholders
@@ -246,20 +428,45 @@ const AdminPoskasForm = () => {
       console.log(`🔍 Debug: Replaced image with placeholder: [IMG:${imageId}]`);
     }
     
-    // Remove any remaining HTML tags but keep line breaks
+    // Normalize block separators by turning divs/p into line breaks
     processedContent = processedContent
-      .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-      .replace(/<\/div>/gi, '') // Remove closing div tags
-      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-      .replace(/&amp;/g, '&') // Convert &amp; to &
-      .replace(/&lt;/g, '<') // Convert &lt; to <
-      .replace(/&gt;/g, '>') // Convert &gt; to >
-      .replace(/&quot;/g, '"') // Convert &quot; to "
-      .replace(/&#39;/g, "'") // Convert &#39; to '
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p[^>]*>/gi, '\n')
+      .replace(/<\/p>/gi, '');
+
+    // Simplify allowed tags and sanitize anchors
+    processedContent = processedContent
+      .replace(/<br[^>]*>/gi, '<br>')
+      .replace(/<a([^>]*)>/gi, (m, attrs) => {
+        const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
+        let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
+        if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
+        return href ? `<a href="${href}">` : '<a>';
+      })
+      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
+
+    // Remove all other tags except the allowed set and their closing tags
+    processedContent = processedContent.replace(/<(?!\/?(b|strong|i|em|u|a|ul|ol|li|br)\b)[^>]*>/gi, '');
+
+    // Strip direction-related attributes that could flip RTL
+    processedContent = processedContent
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr)|text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, '');
+
+    // Remove Unicode BiDi control characters
+    processedContent = processedContent.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+
+    // Decode common HTML entities
+    processedContent = processedContent
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
       .trim();
-    
+
     console.log('🔍 Debug: Final processed content:', processedContent);
     console.log('🔍 Debug: Content length:', processedContent.length);
     console.log('🔍 Debug: Images found:', imageCount);
@@ -638,15 +845,48 @@ const AdminPoskasForm = () => {
             </div>
 
             <div className="space-y-4">
+              {/* Toolbar (B/I/U) - match Edit page behavior */}
+              <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => { document.execCommand('bold'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isBoldActive}
+                  title="Bold"
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { document.execCommand('italic'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isItalicActive}
+                  title="Italic"
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { document.execCommand('underline'); updateFormatState(); }}
+                  className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                  aria-pressed={isUnderlineActive}
+                  title="Underline"
+                >
+                  U
+                </button>
+              </div>
               <div
                 ref={editorRef}
                 contentEditable
                 data-placeholder="Masukkan isi posisi kas... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
                 onInput={handleEditorChange}
+                onKeyUp={handleEditorKeyUp}
+                onMouseUp={handleEditorKeyUp}
+                onFocus={updateFormatState}
                 onPaste={handleEditorPaste}
-                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                dir="ltr"
+                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-left"
                 style={{ whiteSpace: 'pre-wrap' }}
-                dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_poskas } : undefined}
               />
               
               <p className="text-sm text-gray-500">

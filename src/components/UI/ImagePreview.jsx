@@ -1,6 +1,6 @@
 import React from 'react'
 import { X, Image as ImageIcon } from 'lucide-react'
-import { getImageInfo } from '../../utils/imageUtils'
+import { getImageInfo, formatFileSize, isValidImage } from '../../utils'
 
 const ImagePreview = ({ images, onRemove }) => {
   if (!images || images.length === 0) {
@@ -14,6 +14,11 @@ const ImagePreview = ({ images, onRemove }) => {
       </h4>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {images.map((image, index) => {
+          // Skip invalid images
+          if (!isValidImage(image)) {
+            return null;
+          }
+          
           const imageInfo = getImageInfo(image)
           
           return (
@@ -55,7 +60,7 @@ const ImagePreview = ({ images, onRemove }) => {
               <div className="mt-1 text-xs text-gray-600">
                 <div className="font-medium truncate">{imageInfo.name}</div>
                 <div className="text-gray-500">
-                  {imageInfo.size > 0 ? `${(imageInfo.size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                  {imageInfo.size > 0 ? formatFileSize(imageInfo.size) : 'Unknown size'}
                 </div>
               </div>
             </div>

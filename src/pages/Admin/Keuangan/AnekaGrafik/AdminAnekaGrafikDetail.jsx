@@ -66,7 +66,16 @@ const AdminAnekaGrafikDetail = () => {
               if (!imageUrl && img.serverPath) {
                 // If no URL but we have serverPath, construct the URL
                 const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-                imageUrl = `${baseUrl}/${img.serverPath}`;
+                // Clean serverPath to avoid double slashes
+                const cleanServerPath = img.serverPath.startsWith('/') ? img.serverPath.slice(1) : img.serverPath;
+                imageUrl = `${baseUrl}/${cleanServerPath}`;
+                console.log('🔍 Constructed URL from serverPath:', imageUrl);
+              }
+              
+              // Clean up the URL if it exists
+              if (imageUrl) {
+                imageUrl = constructImageUrl(imageUrl);
+                console.log('🔍 Cleaned image URL:', imageUrl);
               }
               
               const processedImg = {
@@ -222,22 +231,43 @@ const AdminAnekaGrafikDetail = () => {
       imageUrl = imageUrl.replace('http://http://', 'http://');
     }
     
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.49:3000')) {
+    // Fix double /uploads/ issue
+    if (imageUrl.includes('/uploads//uploads/')) {
+      imageUrl = imageUrl.replace('/uploads//uploads/', '/uploads/');
+      console.log('🔍 Fixed double /uploads/:', imageUrl);
+    }
+    
+    // Fix old IP addresses and wrong ports
+    if (imageUrl.includes('192.168.30.116:3000')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.49:3000', baseUrl);
+      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
+      console.log('🔍 Fixed old IP 192.168.30.116:3000:', imageUrl);
+    }
+    
+    // Fix wrong port 5000
+    if (imageUrl.includes(':5000')) {
+      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+      imageUrl = imageUrl.replace(':5000', baseUrl.replace('http://', '').split('/')[0]);
+      console.log('🔍 Fixed wrong port 5000:', imageUrl);
     }
     
     // Fix /api/uploads/ path
     if (imageUrl.includes('/api/uploads/')) {
       imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
+      console.log('🔍 Fixed /api/uploads/ path:', imageUrl);
     }
     
-    // Ensure URL is absolute
+    // Ensure URL is absolute and correct
     if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
       const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      // Remove leading slash if exists to avoid double slashes
+      const cleanPath = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+      imageUrl = `${baseUrl}/${cleanPath}`;
+      console.log('🔍 Made URL absolute:', imageUrl);
     }
+    
+    // Final cleanup: remove any remaining double slashes (except http://)
+    imageUrl = imageUrl.replace(/([^:])\/+/g, '$1/');
     
     console.log('🔍 🔍 🔍 Final constructed URL:', imageUrl);
     return imageUrl;
@@ -267,17 +297,33 @@ const AdminAnekaGrafikDetail = () => {
       if (img && img.url) {
         console.log('🔍 🔍 🔍 Processing image URL:', img.url);
         
-        // Fix duplicated URLs
-        if (img.url.includes('192.168.30.49')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.49:3000' + match[1];
-          }
+        // Fix various URL corruption issues
+        let fixedUrl = img.url;
+        
+        // Fix double /uploads/
+        if (fixedUrl.includes('/uploads//uploads/')) {
+          fixedUrl = fixedUrl.replace('/uploads//uploads/', '/uploads/');
+          console.log('🔍 Fixed double /uploads/ in cleanup:', fixedUrl);
+        }
+        
+        // Fix wrong port 5000
+        if (fixedUrl.includes(':5000')) {
+          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+          const hostPort = baseUrl.replace('http://', '').split('/')[0];
+          fixedUrl = fixedUrl.replace(':5000', hostPort);
+          console.log('🔍 Fixed port 5000 in cleanup:', fixedUrl);
+        }
+        
+        // Fix old IP addresses
+        if (fixedUrl.includes('192.168.30.116:3000')) {
+          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
+          console.log('🔍 Fixed old IP in cleanup:', fixedUrl);
         }
         
         // Apply final URL construction
-        img.url = constructImageUrl(img.url);
-        console.log('🔍 🔍 🔍 Final image URL:', img.url);
+        img.url = constructImageUrl(fixedUrl);
+        console.log('🔍 🔍 🔍 Final image URL after cleanup:', img.url);
       }
       return img;
     });
@@ -474,8 +520,59 @@ const AdminAnekaGrafikDetail = () => {
             dangerouslySetInnerHTML={{ __html: formData.isi_grafik || '' }}
           />
         </div>
+      </div>
 
-        {/* CSS for editor content - same as form */}
+      {/* Photos Section */}
+      {processedImages && processedImages.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <ImageIcon className="h-5 w-5 text-green-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Foto Aneka Grafik</h2>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {processedImages.map((image, index) => (
+                <div key={index} className="group relative">
+                  <div className="aspect-w-16 aspect-h-9 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={constructImageUrl(image.url)}
+                      alt={image.name || `Foto ${index + 1}`}
+                      className="w-full h-full object-cover cursor-pointer transition-transform duration-200 group-hover:scale-105"
+                      onClick={() => openFullScreenImage(image)}
+                      onError={(e) => {
+                        console.error('❌ Image failed to load:', image.url);
+                        e.target.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'flex items-center justify-center h-full bg-red-50 border-2 border-red-200 rounded-lg';
+                        errorDiv.innerHTML = `
+                          <div class="text-center">
+                            <div class="text-red-600 mb-2">
+                              <svg class="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                              </svg>
+                            </div>
+                            <p class="text-red-800 text-sm font-medium">Gambar gagal dimuat</p>
+                          </div>
+                        `;
+                        e.target.parentNode.appendChild(errorDiv);
+                      }}
+                    />
+                  </div>
+                  <div className="mt-2 text-center">
+                    <p className="text-sm text-gray-600 truncate">{image.name || `Foto ${index + 1}`}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSS for editor content */}
         <style dangerouslySetInnerHTML={{
           __html: `
             .editor-content {
@@ -540,9 +637,6 @@ const AdminAnekaGrafikDetail = () => {
             }
           `
         }} />
-        
-
-      </div>
 
       {/* Action Buttons */}
       <div className="bg-white rounded-lg shadow-sm border p-6">

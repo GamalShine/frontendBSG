@@ -43,11 +43,21 @@ const OwnerPoskasEdit = () => {
   const [usedInEditor, setUsedInEditor] = useState(new Set()); // Track which images are used in editor
   const fileInputRef = useRef(null);
   const editorRef = useRef(null);
+  const savedRangeRef = useRef(null);
+  const [isBoldActive, setIsBoldActive] = useState(false);
+  const [isItalicActive, setIsItalicActive] = useState(false);
+  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+  const lastContentRef = useRef('');
 
-  // Add CSS for editor images
+  // Add CSS and force LTR for editor
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      [contenteditable="true"], [contenteditable="true"] * {
+        direction: ltr !important;
+        unicode-bidi: isolate !important;
+        text-align: left !important;
+      }
       [contenteditable="true"] img {
         max-width: 100% !important;
         height: auto !important;
@@ -91,6 +101,55 @@ const OwnerPoskasEdit = () => {
       document.head.removeChild(style);
     };
   }, []);
+
+  const updateFormatState = () => {
+    try {
+      setIsBoldActive(document.queryCommandState('bold'));
+      setIsItalicActive(document.queryCommandState('italic'));
+      setIsUnderlineActive(document.queryCommandState('underline'));
+    } catch {}
+  };
+
+  const saveSelection = () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+  };
+
+  const restoreSelection = () => {
+    const range = savedRangeRef.current;
+    if (!range) return;
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  };
+
+  const exec = (cmd, value = null) => {
+    if (savedRangeRef.current) restoreSelection();
+    try {
+      if (cmd === 'createLink') {
+        const url = value || window.prompt('Masukkan URL tautan (https://...)');
+        if (!url) return;
+        document.execCommand('createLink', false, url);
+      } else if (cmd === 'unlink') {
+        document.execCommand('unlink');
+      } else {
+        document.execCommand(cmd, false, value);
+      }
+      saveSelection();
+      updateFormatState();
+    } catch {}
+  };
+
+  const sanitizeToLTR = (html) => {
+    if (!html || typeof html !== 'string') return html || '';
+    const removedBidi = html.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    return removedBidi
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sdir='[^']*'/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr)|text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, '')
+      .replace(/\sstyle=\"\s*\"/gi, '')
+      .replace(/\sstyle='\s*'/gi, '');
+  };
 
   useEffect(() => {
       fetchPoskasDetail();
@@ -215,6 +274,7 @@ const OwnerPoskasEdit = () => {
         
         // Update used images tracking
         updateUsedInEditor();
+        lastContentRef.current = editorRef.current.innerHTML;
       }, 300); // Increased delay to ensure everything is ready
     }
   }, [formData.isi_poskas, existingImages]);
@@ -417,13 +477,13 @@ const OwnerPoskasEdit = () => {
           }
           
           // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.49:3000')) {
+          if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          } else if (fixedUrl.includes('192.168.30.49:3000')) {
+          } else if (fixedUrl.includes('192.168.30.116:3000')) {
             const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.49:3000', baseUrl);
+            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
             console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
           }
           
@@ -476,94 +536,107 @@ const OwnerPoskasEdit = () => {
       }
       
       setUsedInEditor(usedIds);
-      console.log('🔍 Images used in editor:', Array.from(usedIds));
     }
   };
 
-  // Handle text editor changes
+  // Editor change handler: sanitize and sync state
   const handleEditorChange = (e) => {
-    const content = e.target.innerHTML;
-    setFormData(prev => ({
-      ...prev,
-      isi_poskas: content
-    }));
-    
-    // Update used images tracking
+    const content = e?.target?.innerHTML ?? (editorRef.current ? editorRef.current.innerHTML : '');
+    lastContentRef.current = content;
+    if (editorRef.current) {
+      requestAnimationFrame(() => {
+        try {
+          const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+          nodes.forEach((n) => {
+            if (n.hasAttribute('dir')) n.removeAttribute('dir');
+            const style = n.getAttribute('style');
+            if (style) {
+              let cleaned = style
+                .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+                .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
+                .replace(/\s*;\s*$/, '');
+              if (cleaned.trim().length === 0) {
+                n.removeAttribute('style');
+              } else {
+                n.setAttribute('style', cleaned);
+              }
+            }
+          });
+        } catch {}
+      });
+    }
+    setFormData(prev => ({ ...prev, isi_poskas: content }));
+    updateFormatState();
     updateUsedInEditor();
   };
 
-  // Handle paste event in editor
+  const handleEditorKeyUp = () => {
+    if (!editorRef.current) return;
+    try {
+      const nodes = editorRef.current.querySelectorAll('[dir], [style]');
+      nodes.forEach((n) => {
+        if (n.hasAttribute('dir')) n.removeAttribute('dir');
+        const style = n.getAttribute('style');
+        if (style) {
+          let cleaned = style
+            .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
+            .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
+            .replace(/\s*;\s*$/, '');
+          if (cleaned.trim().length === 0) {
+            n.removeAttribute('style');
+          } else {
+            n.setAttribute('style', cleaned);
+          }
+        }
+      });
+    } catch {}
+    updateFormatState();
+    updateUsedInEditor();
+  };
+
   const handleEditorPaste = async (e) => {
-    const items = e.clipboardData.items;
-    
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let item of items) {
       if (item.type.indexOf('image') !== -1) {
         e.preventDefault();
-        
         const file = item.getAsFile();
         if (file) {
-          console.log('📸 Pasted image detected:', file.name, file.size);
-          
-          // Validate file size
           if (file.size > 10 * 1024 * 1024) { // 10MB limit
             toast.error('Gambar terlalu besar. Maksimal 10MB');
             return;
           }
-          
-          // Check total image count (existing + new)
-          if (existingImages.length + selectedImages.length >= 5) {
+          if (selectedImages.length >= 5) {
             toast.error('Maksimal 5 gambar per laporan');
             return;
           }
-          
-          // Generate ID for this new image
-          const timestamp = Date.now();
-          const imageId = timestamp + Math.floor(Math.random() * 1000);
-          
-          // Add to selected images
-          setSelectedImages(prev => [...prev, file]);
-          
-          // Store the ID for this image
+          const imageId = Date.now() + Math.floor(Math.random() * 1000);
+          const imageWithId = { file, id: imageId, name: `poskas_${imageId}.jpg` };
+          setSelectedImages(prev => [...prev, imageWithId]);
           setNewImageIds(prev => [...prev, imageId]);
-          
-          console.log(`🔍 Generated ID for pasted image: ${imageId}`);
-          
-          // Create preview URL and insert image into editor
           const reader = new FileReader();
-          reader.onload = (e) => {
-            const imageUrl = e.target.result;
-            
-            // Add to preview URLs
+          reader.onload = (ev) => {
+            const imageUrl = ev.target.result;
             setImagePreviewUrls(prev => [...prev, imageUrl]);
-            
-            // Create image element for editor
             const img = document.createElement('img');
             img.src = imageUrl;
             img.alt = 'Pasted image';
             img.className = 'pasted-image';
-            img.setAttribute('data-image-id', imageId); // Add data attribute for ID
-            
-            // Insert image into editor at cursor position
+            img.setAttribute('data-image-id', imageId);
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
               range.deleteContents();
               range.insertNode(img);
               range.collapse(false);
-              
-              // Add a line break after the image
               const br = document.createElement('br');
               range.insertNode(br);
               range.collapse(false);
-              
-              // Trigger editor change event
               const event = new Event('input', { bubbles: true });
               editorRef.current.dispatchEvent(event);
             }
-            
             toast.success('Gambar berhasil ditambahkan');
+            updateUsedInEditor();
           };
           reader.readAsDataURL(file);
         }
@@ -571,356 +644,144 @@ const OwnerPoskasEdit = () => {
     }
   };
 
-  // Handle image selection
-  const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files);
-    
-    // Validate file types
-    const validFiles = files.filter(file => {
-      if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} bukan file gambar yang valid`);
-        return false;
-      }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error(`${file.name} terlalu besar. Maksimal 10MB`);
-        return false;
-      }
-      return true;
-    });
-
-    // Check total image count (existing + new)
-    if (existingImages.length + selectedImages.length + validFiles.length > 5) {
-      toast.error('Maksimal 5 gambar per laporan');
-      return;
+  // Convert editor HTML to sanitized content with [IMG:id]
+  const getEditorContent = () => {
+    if (!editorRef.current) return '';
+    const content = editorRef.current.innerHTML;
+    if (!content || content.trim() === '') return '';
+    let processedContent = content;
+    const imgRegex = /<img[^>]*data-image-id="([^"]*)"[^>]*>/g;
+    let imgMatch;
+    while ((imgMatch = imgRegex.exec(content)) !== null) {
+      const imageId = imgMatch[1];
+      const placeholder = `[IMG:${imageId}]`;
+      processedContent = processedContent.replace(imgMatch[0], placeholder);
     }
-
-    // Generate IDs for new images
-    const newIds = validFiles.map(() => {
-      const timestamp = Date.now();
-      return timestamp + Math.floor(Math.random() * 1000);
-    });
-
-    setSelectedImages(prev => [...prev, ...validFiles]);
-    setNewImageIds(prev => [...prev, ...newIds]);
-
-    console.log(`🔍 Generated IDs for selected images:`, newIds);
-
-    // Create preview URLs
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviewUrls(prev => [...prev, e.target.result]);
-      };
-      reader.readAsDataURL(file);
-    });
+    processedContent = processedContent
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p[^>]*>/gi, '\n')
+      .replace(/<\/p>/gi, '');
+    processedContent = processedContent
+      .replace(/<br[^>]*>/gi, '<br>')
+      .replace(/<a([^>]*)>/gi, (m, attrs) => {
+        const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
+        let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
+        if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
+        return href ? `<a href="${href}">` : '<a>';
+      })
+      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
+    processedContent = processedContent.replace(/<(?!\/?(b|strong|i|em|u|a|ul|ol|li|br)\b)[^>]*>/gi, '');
+    processedContent = processedContent
+      .replace(/\sdir=\"[^\"]*\"/gi, '')
+      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr)|text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, '');
+    processedContent = processedContent.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    processedContent = processedContent
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim();
+    return processedContent;
   };
 
-  // Remove new image
-  const removeNewImage = (index) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
-    setNewImageIds(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Remove existing image
-  const removeExistingImage = (index) => {
-    setExistingImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Add image to editor
-  const addImageToEditor = (image) => {
-    if (editorRef.current) {
-      // Construct the correct image URL
-      let imageUrl = '';
-      if (image.url) {
-        if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-          // Already absolute URL or data URL
-          imageUrl = image.url;
-        } else {
-          // Relative URL, add base URL
-          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-          imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-        }
-      } else if (image.uri) {
-        // Fallback to uri if url is not available
-        imageUrl = image.uri;
-      }
-      
-      if (!imageUrl) {
-        console.error('❌ No valid URL for image:', image);
-        toast.error('Gambar tidak memiliki URL yang valid');
-        return;
-      }
-      
-      const imgElement = document.createElement('img');
-      imgElement.src = imageUrl;
-      imgElement.alt = `Existing ${image.name || 'image'}`;
-      imgElement.className = 'editor-image';
-      imgElement.setAttribute('data-image-id', image.id);
-
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(imgElement);
-        range.collapse(false);
-
-        // Add a line break after the image
-        const br = document.createElement('br');
-        range.insertNode(br);
-        range.collapse(false);
-
-        // Trigger editor change event
-        const event = new Event('input', { bubbles: true });
-        editorRef.current.dispatchEvent(event);
-
-        // Update usedInEditor state
-        setUsedInEditor(prev => new Set([...prev, image.id]));
-        console.log(`✅ Image with ID ${image.id} added to editor.`);
-        toast.success('Gambar berhasil ditambahkan ke editor');
-      } else {
-        console.warn('No selection found to insert image.');
-        toast.error('Gagal menambahkan gambar ke editor. Tidak ada teks yang dipilih.');
-      }
-    } else {
-      console.warn('Editor ref not available.');
-      toast.error('Gagal menambahkan gambar ke editor. Editor tidak tersedia.');
-    }
-  };
-
-  // Validate form data
   const validateForm = () => {
-    const editorContent = editorRef.current?.innerHTML || '';
-    // Remove base64 images for validation purposes
-    const cleanContent = editorContent.replace(/<img[^>]*src="data:image[^"]*"[^>]*>/g, '').trim();
-    
-    if (!cleanContent) {
+    if (!formData.tanggal_poskas) {
+      toast.error('Tanggal laporan harus diisi');
+      return false;
+    }
+    const editorContent = getEditorContent();
+    if (!editorContent || editorContent.trim() === '') {
       toast.error('Isi laporan tidak boleh kosong');
       return false;
     }
-    
-    if (cleanContent.length < 10) {
+    if (editorContent.trim().length < 10) {
       toast.error('Isi laporan minimal 10 karakter');
       return false;
     }
-    
     return true;
   };
 
-  // Handle form submission
+  const ensureEditorContent = () => {
+    if (editorRef.current && !editorRef.current.innerHTML.trim()) {
+      editorRef.current.innerHTML = formData.isi_poskas || '';
+    }
+  };
+
+  const uploadNewImagesToServer = async (images) => {
+    if (!images || images.length === 0) return [];
+    try {
+      const files = images.filter(i => i.file).map(i => i.file);
+      if (files.length === 0) return [];
+      const res = await uploadService.uploadMultipleFiles(files, 'poskas');
+      // Support both {success,data} and direct array
+      const payload = Array.isArray(res) ? res : (res?.data || []);
+      if (!Array.isArray(payload)) return [];
+      return payload;
+    } catch (err) {
+      console.error('❌ Error uploading images:', err);
+      toast.error('Gagal mengupload gambar');
+      return [];
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    // Get content from editor
+    ensureEditorContent();
     const editorContent = getEditorContent();
-    const finalFormData = {
-      ...formData,
-      isi_poskas: editorContent
-    };
-    
-    console.log('🔍 Debug: Form submission started');
-    console.log('🔍 Debug: Form data:', finalFormData);
-    console.log('🔍 Debug: Selected images:', selectedImages);
-    console.log('🔍 Debug: Existing images:', existingImages);
-    
+    if (!validateForm()) return;
     setIsSubmitting(true);
-
     try {
-      // Check if there are any images in the editor content
-      const hasImagesInContent = editorContent.includes('[IMG:');
-      console.log('🔍 Debug: Has images in content:', hasImagesInContent);
-      
-      if (hasImagesInContent) {
-        // Save with images - use existing logic
-        console.log('🔍 Debug: Saving with images...');
-        
-        // Prepare images data for JSON submission
-        let allImagesData = [];
-        
-        // Add existing images
-        const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
-        allImagesData = [...allExistingImages];
-        
-        // Upload new images if any
-        if (selectedImages.length > 0) {
-          console.log('🔍 Uploading new images to server...');
-          const uploadedNewImages = await uploadNewImagesToServer(selectedImages);
-          allImagesData = [...allImagesData, ...uploadedNewImages];
-          console.log('🔍 New images uploaded:', uploadedNewImages.length);
+      // Determine which existing images are still used
+      const existingUsed = existingImages.filter(img => usedInEditor.has(Number(img.id)));
+      // Upload any newly pasted images
+      const uploaded = await uploadNewImagesToServer(selectedImages);
+      const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
+      const newImages = selectedImages.map((img, idx) => {
+        const uploadedFile = uploaded[idx];
+        if (uploadedFile) {
+          const url = uploadedFile.url || uploadedFile.filename || uploadedFile.path || '';
+          const finalUrl = url.startsWith('http') ? url : `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+          return {
+            uri: img.uri || '',
+            id: img.id,
+            name: img.name || `poskas_${img.id}.jpg`,
+            url: finalUrl,
+            serverPath: uploadedFile.path || uploadedFile.filename || ''
+          };
         }
-        
-        console.log('🔍 Debug: All images to send:', allImagesData);
-
-        // Use the existing PUT route with JSON data
-        const response = await poskasService.updatePoskas(id, {
-          tanggal_poskas: finalFormData.tanggal_poskas,
-          isi_poskas: finalFormData.isi_poskas,
-          images: allImagesData
-        });
-        
-        console.log('🔍 Debug: Service response:', response);
-
-      if (response.success) {
-          toast.success('Laporan pos kas berhasil diperbarui');
-        navigate('/owner/keuangan/poskas');
-        } else {
-          toast.error(response.message || 'Gagal memperbarui laporan');
-        }
-      } else {
-        // Save without images - use text-only logic
-        console.log('🔍 Debug: Saving without images...');
-        
-        // Prepare existing images data
-        const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
-        console.log('🔍 Debug: All existing images to preserve (text-only):', allExistingImages);
-
-        console.log('🔍 Debug: Sending text-only data to service...');
-        const response = await poskasService.updatePoskas(id, {
-          tanggal_poskas: finalFormData.tanggal_poskas,
-          isi_poskas: finalFormData.isi_poskas,
-          images: allExistingImages
-        });
-        
-        console.log('🔍 Debug: Service response:', response);
-        
-        if (response.success) {
-          toast.success('Laporan pos kas berhasil diperbarui');
-          navigate('/owner/keuangan/poskas');
-        } else {
-          toast.error(response.message || 'Gagal memperbarui laporan');
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error updating poskas:', error);
-      console.error('❌ Error details:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        config: error.config
+        // Fallback temp URL
+        return {
+          uri: img.uri || '',
+          id: img.id,
+          name: img.name || `poskas_${img.id}.jpg`,
+          url: `${baseUrl}/uploads/poskas/temp_${img.id}.jpg`,
+          serverPath: `poskas/temp_${img.id}.jpg`
+        };
       });
-      
-      // Provide specific error messages based on error type
-      if (error.response?.status === 404) {
-        toast.error('Backend server tidak ditemukan. Pastikan server berjalan di port 3000');
-      } else if (error.response?.status === 401) {
-        toast.error('Sesi Anda telah berakhir. Silakan login ulang');
-        navigate('/login');
-      } else if (error.code === 'ERR_NETWORK') {
-        toast.error('Tidak dapat terhubung ke server. Periksa koneksi internet atau status server');
+      const finalImages = [...existingUsed, ...newImages];
+
+      const payload = {
+        tanggal_poskas: formData.tanggal_poskas,
+        isi_poskas: editorContent,
+        images: finalImages
+      };
+
+      const response = await poskasService.updatePoskas(id, payload);
+      if (response.success) {
+        toast.success('Laporan pos kas berhasil diperbarui');
+        navigate('/owner/keuangan/poskas');
       } else {
-        toast.error('Terjadi kesalahan saat memperbarui laporan: ' + (error.response?.data?.message || error.message));
+        toast.error(response.message || 'Gagal memperbarui laporan');
       }
+    } catch (err) {
+      console.error('❌ Error updating poskas:', err);
+      toast.error('Terjadi kesalahan saat menyimpan laporan');
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  // Upload new images to server
-  const uploadNewImagesToServer = async (images) => {
-    const uploadedImages = [];
-    
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      try {
-        const formData = new FormData();
-        formData.append('images', image); // Use 'images' field name as expected by backend
-        
-        // Upload to server
-        const response = await uploadService.uploadFile(formData);
-        
-        if (response.success && response.data && response.data.length > 0) {
-          const uploadedFile = response.data[0]; // Get first uploaded file
-          
-          // Use stored ID if available, otherwise generate new one
-          let imageId;
-          if (newImageIds[i]) {
-            imageId = newImageIds[i];
-            console.log(`🔍 Using stored ID for uploaded image ${i + 1}: ${imageId}`);
-          } else {
-            const timestamp = Date.now();
-            imageId = timestamp + Math.floor(Math.random() * 1000);
-            console.log(`🔍 Generated new ID for uploaded image ${i + 1}: ${imageId}`);
-          }
-          
-          uploadedImages.push({
-            uri: `file://temp/${imageId}.jpg`,
-            id: imageId,
-            name: `poskas_${imageId}.jpg`,
-            url: uploadedFile.url,
-            serverPath: uploadedFile.path
-          });
-          
-          console.log(`✅ Uploaded new image: ${image.name} -> ${uploadedFile.url} with ID: ${imageId}`);
-        } else {
-          console.error(`❌ Upload response invalid:`, response);
-        }
-      } catch (error) {
-        console.error(`❌ Error uploading image ${image.name}:`, error);
-      }
-    }
-    
-    return uploadedImages;
-  };
-
-  // Get editor content
-  const getEditorContent = () => {
-    if (editorRef.current) {
-      const content = editorRef.current.innerHTML;
-      console.log('🔍 Debug: Getting editor content:', content);
-      
-      // Convert HTML content to text with [IMG:id] placeholders
-      let processedContent = content;
-      
-      // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
-      const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
-      processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
-        console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
-        return `[IMG:${imageId}]`;
-      });
-      
-      // Then, replace base64 images with [IMG:id] placeholders using stored IDs
-      const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-      let imgMatch;
-      let imgIndex = 0;
-      
-      while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-        // Use stored ID if available, otherwise generate new one
-        let imgId;
-        if (newImageIds[imgIndex]) {
-          imgId = newImageIds[imgIndex];
-          console.log(`🔍 Using stored ID for base64 image ${imgIndex + 1}: ${imgId}`);
-        } else {
-          const timestamp = Date.now();
-          imgId = timestamp + Math.floor(Math.random() * 1000);
-          console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
-        }
-        
-        const placeholder = `[IMG:${imgId}]`;
-        processedContent = processedContent.replace(imgMatch[0], placeholder);
-        console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
-        imgIndex++;
-      }
-      
-      // Remove any remaining HTML tags but keep line breaks
-      processedContent = processedContent
-        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-        .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-        .replace(/<\/div>/gi, '') // Remove closing div tags
-        .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-        .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-        .replace(/&amp;/g, '&') // Convert &amp; to &
-        .replace(/&lt;/g, '<') // Convert &lt; to <
-        .replace(/&gt;/g, '>') // Convert &gt; to >
-        .replace(/&quot;/g, '"') // Convert &quot; to "
-        .replace(/&#39;/g, "'") // Convert &#39; to '
-        .trim();
-      
-      console.log('🔍 Debug: Processed content:', processedContent);
-      return processedContent;
-    }
-    return '';
   };
 
   if (loading) {
@@ -1002,13 +863,13 @@ const OwnerPoskasEdit = () => {
                 Tanggal Laporan
               </label>
             </div>
-                <input
-                  type="date"
-                  value={formData.tanggal_poskas}
+              <input
+                type="date"
+                value={formData.tanggal_poskas}
               readOnly
               className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
-                  required
-                />
+                required
+              />
             <p className="text-sm text-gray-500 mt-2">
               Tanggal tidak dapat diubah karena sudah terdaftar saat pembuatan laporan
             </p>
@@ -1017,47 +878,33 @@ const OwnerPoskasEdit = () => {
           {/* Content Editor */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
             {/* Toolbar */}
-            <div className="bg-gray-50 px-3 py-2 border border-gray-300 rounded-lg flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
               <button
                 type="button"
-                onClick={() => document.execCommand('bold')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={() => { exec('bold'); updateFormatState(); }}
+                className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                aria-pressed={isBoldActive}
                 title="Bold"
               >
-                <strong>B</strong>
+                B
               </button>
               <button
                 type="button"
-                onClick={() => document.execCommand('italic')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={() => { exec('italic'); updateFormatState(); }}
+                className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                aria-pressed={isItalicActive}
                 title="Italic"
               >
-                <em>I</em>
+                I
               </button>
               <button
                 type="button"
-                onClick={() => document.execCommand('underline')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={() => { exec('underline'); updateFormatState(); }}
+                className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
+                aria-pressed={isUnderlineActive}
                 title="Underline"
               >
-                <u>U</u>
-              </button>
-              <div className="w-px h-6 bg-gray-300"></div>
-              <button
-                type="button"
-                onClick={() => document.execCommand('insertUnorderedList')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Bullet List"
-              >
-                • List
-              </button>
-              <button
-                type="button"
-                onClick={() => document.execCommand('insertOrderedList')}
-                className="px-2 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Numbered List"
-              >
-                1. List
+                U
               </button>
             </div>
 
@@ -1067,8 +914,13 @@ const OwnerPoskasEdit = () => {
               contentEditable
               onInput={handleEditorChange}
               onPaste={handleEditorPaste}
+              onKeyUp={handleEditorKeyUp}
+              onMouseUp={saveSelection}
+              onKeyDown={saveSelection}
+              onBlur={saveSelection}
+              onFocus={saveSelection}
               className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
+              data-placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
               style={{ 
                 whiteSpace: 'pre-wrap',
                 lineHeight: '1.6'
@@ -1097,7 +949,7 @@ const OwnerPoskasEdit = () => {
               {isSubmitting ? (
                 <LoadingSpinner className="h-4 w-4" />
               ) : (
-                  <Save className="h-4 w-4" />
+                <Save className="h-4 w-4" />
               )}
               <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
             </button>
@@ -1109,3 +961,4 @@ const OwnerPoskasEdit = () => {
 };
 
 export default OwnerPoskasEdit; 
+
