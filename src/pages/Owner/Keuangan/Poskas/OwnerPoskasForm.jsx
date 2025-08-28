@@ -598,8 +598,11 @@ const OwnerPoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `${envConfig.BASE_URL}${uploadedFile.url}`, // URL lengkap dengan IP untuk mobile
-              serverPath: uploadedFile.path // Path dari server
+              // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
+              url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
+                ? uploadedFile.url
+                : `${envConfig.BASE_URL}${uploadedFile.url}`,
+              serverPath: uploadedFile.serverPath || uploadedFile.path // Prefer serverPath if available
             };
           } else {
             // Fallback jika upload gagal

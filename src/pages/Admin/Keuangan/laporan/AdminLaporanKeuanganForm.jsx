@@ -561,7 +561,10 @@ const AdminLaporanKeuanganForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `laporan_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
+                // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
+                url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
+                  ? uploadedFile.url
+                  : `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
                 serverPath: uploadedFile.url
               };
             } else {
@@ -591,7 +594,10 @@ const AdminLaporanKeuanganForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `laporan_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
+                // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
+                url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
+                  ? uploadedFile.url
+                  : `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
                 serverPath: uploadedFile.url
               };
             } else {

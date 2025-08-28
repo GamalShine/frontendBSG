@@ -405,22 +405,22 @@ const OwnerMedsos = () => {
             <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16 whitespace-nowrap">NO</TableHead>
-                <TableHead className="w-4/12 whitespace-nowrap">NAMA AKUN</TableHead>
-                <TableHead className="w-4/12 whitespace-nowrap">FOLLOWER</TableHead>
-                <TableHead className="w-3/12 whitespace-nowrap text-right">RATECARD</TableHead>
+                <TableHead className="w-16 whitespace-nowrap px-4 md:px-6">NO</TableHead>
+                <TableHead className="w-4/12 whitespace-nowrap px-4 md:px-6">NAMA AKUN</TableHead>
+                <TableHead className="w-4/12 whitespace-nowrap px-4 md:px-6">FOLLOWER</TableHead>
+                <TableHead className="w-3/12 whitespace-nowrap text-right px-4 md:px-6">RATECARD</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {anggaranData.map((anggaran, index) => (
                 <TableRow key={anggaran.id}>
-                  <TableCell className="w-16">{index + 1}</TableCell>
-                  <TableCell className="w-4/12">
+                  <TableCell className="w-16 px-4 md:px-6">{index + 1}</TableCell>
+                  <TableCell className="w-4/12 px-4 md:px-6">
                     <div className="font-medium truncate whitespace-nowrap" title={anggaran.nama_akun}>
                       {anggaran.nama_akun}
                     </div>
                   </TableCell>
-                  <TableCell className="w-4/12">
+                  <TableCell className="w-4/12 px-4 md:px-6">
                     <div className="space-y-1 inline-block text-left">
                       <div className="flex items-center space-x-2 whitespace-nowrap">
                         <span className="text-xs text-gray-600">Instagram</span>
@@ -432,7 +432,7 @@ const OwnerMedsos = () => {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="w-3/12 font-semibold text-green-600 text-right">
+                  <TableCell className="w-3/12 font-semibold text-green-600 text-right tabular-nums px-4 md:px-6">
                     {formatCurrency(anggaran.ratecard)}
                   </TableCell>
                 </TableRow>
@@ -449,19 +449,19 @@ const OwnerMedsos = () => {
             <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16 whitespace-nowrap">NO</TableHead>
-                <TableHead className="w-9/12 whitespace-nowrap">PLATFORM</TableHead>
-                <TableHead className="w-3/12 whitespace-nowrap text-right">BIAYA</TableHead>
+                <TableHead className="w-16 whitespace-nowrap px-4 md:px-6">NO</TableHead>
+                <TableHead className="w-7/12 whitespace-nowrap px-4 md:px-6">PLATFORM</TableHead>
+                <TableHead className="w-3/12 whitespace-nowrap text-right px-4 md:px-6">BIAYA</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {platformCostsData.map((cost, index) => (
                 <TableRow key={cost.id}>
-                  <TableCell className="w-16">{index + 1}</TableCell>
-                  <TableCell className="w-9/12">
+                  <TableCell className="w-16 px-4 md:px-6">{index + 1}</TableCell>
+                  <TableCell className="w-7/12 px-4 md:px-6">
                     <span className="font-medium">{cost.platform}</span>
                   </TableCell>
-                  <TableCell className="w-3/12 font-semibold text-green-600 text-right tabular-nums">
+                  <TableCell className="w-3/12 font-semibold text-green-600 text-right tabular-nums px-4 md:px-6">
                     {formatCurrency(cost.biaya)}
                   </TableCell>
                   {/* Owner read-only: no action cell */}

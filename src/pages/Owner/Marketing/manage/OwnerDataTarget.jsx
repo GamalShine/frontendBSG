@@ -1,10 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Select, { 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/UI/Select';
 import Table, { 
   TableBody, 
   TableCell, 
@@ -26,6 +20,7 @@ const OwnerDataTarget = () => {
   });
   const [stats, setStats] = useState({});
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Debounce search text to reduce refetch churn
   useEffect(() => {
@@ -98,6 +93,12 @@ const OwnerDataTarget = () => {
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              PENCARIAN
+            </button>
+            <button
               onClick={handleExport}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
@@ -113,8 +114,68 @@ const OwnerDataTarget = () => {
         {loading && <span className="text-gray-500">Memuat…</span>}
       </div>
 
+      {/* Statistics Cards - Omset style */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 mb-6">
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              {/* icon placeholder visually consistent */}
+              <span className="block h-5 w-5 bg-blue-600 rounded-sm" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Target</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalTarget || 0}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <span className="block h-5 w-5 bg-green-600 rounded-sm" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Nominal</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(stats.totalNominal || 0)}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <span className="block h-5 w-5 bg-purple-600 rounded-sm" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Rata-rata Nominal</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(((stats.totalNominal || 0) / (stats.totalTarget || 1)))}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters panel (toggle) */}
+      {showFilters && (
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <input
+                placeholder="Cari target..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
+                type="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Content Card */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 m-0 md:m-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 m-0">
         {/* Error banner */}
         {error && (
           <div className="px-6 pt-4">
@@ -124,57 +185,28 @@ const OwnerDataTarget = () => {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            placeholder="Cari target..."
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-            type="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          />
-          <Select
-            value={filters.limit}
-            onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="10 per halaman" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={10}>10 per halaman</SelectItem>
-              <SelectItem value={25}>25 per halaman</SelectItem>
-              <SelectItem value={50}>50 per halaman</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Table */}
         <div className="overflow-x-auto">
-          <Table className="min-w-full">
+          <Table className="min-w-full table-auto">
             <TableHeader className="sticky top-0 bg-red-50 z-10">
               <TableRow>
-                <TableHead className="w-auto md:w-6/12 md:whitespace-nowrap px-3 md:px-6 py-3">Nama Target</TableHead>
-                <TableHead className="w-auto md:w-3/12 md:whitespace-nowrap text-right px-3 md:px-6 py-3">Target Nominal</TableHead>
-                <TableHead className="w-auto md:w-3/12 md:whitespace-nowrap text-right px-3 md:px-6 py-3">Dibuat Pada</TableHead>
+                <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Nama Target</TableHead>
+                <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Target Nominal</TableHead>
+                <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Dibuat Pada</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {dataTarget.map((target) => (
                 <TableRow key={target.id} className="hover:bg-gray-50">
-                  <TableCell className="w-auto md:w-6/12 px-3 md:px-6 py-4 md:whitespace-nowrap">
-                    <div className="font-medium truncate md:truncate" title={target.nama_target}>
+                  <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left">
+                    <div className="font-medium truncate" title={target.nama_target}>
                       {target.nama_target}
                     </div>
                   </TableCell>
-                  <TableCell className="w-auto md:w-3/12 px-3 md:px-6 py-4 font-semibold text-green-600 text-right tabular-nums md:whitespace-nowrap">
+                  <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left font-semibold text-gray-900 tabular-nums">
                     {formatCurrency(target.target_nominal)}
                   </TableCell>
-                  <TableCell className="w-auto md:w-3/12 px-3 md:px-6 py-4 text-right md:whitespace-nowrap">
+                  <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left">
                     {target.created_at ? new Date(target.created_at).toLocaleDateString('id-ID') : '-'}
                   </TableCell>
                 </TableRow>

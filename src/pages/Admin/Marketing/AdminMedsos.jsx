@@ -995,35 +995,35 @@ const AdminMedsos = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                <TableHead className="w-16">NO</TableHead>
-                <TableHead>NAMA AKUN</TableHead>
-                <TableHead>FOLLOWER</TableHead>
-                <TableHead>RATECARD</TableHead>
-                <TableHead className="w-24">AKSI</TableHead>
+                <TableHead className="w-16 whitespace-nowrap px-4 md:px-6">NO</TableHead>
+                <TableHead className="w-4/12 whitespace-nowrap px-4 md:px-6">NAMA AKUN</TableHead>
+                <TableHead className="w-4/12 whitespace-nowrap px-4 md:px-6">FOLLOWER</TableHead>
+                <TableHead className="w-3/12 whitespace-nowrap text-right px-4 md:px-6">RATECARD</TableHead>
+                <TableHead className="w-24 whitespace-nowrap text-center px-4 md:px-6">AKSI</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
               {anggaranData.map((anggaran, index) => (
                 <TableRow key={anggaran.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell className="font-medium">{anggaran.nama_akun}</TableCell>
-                      <TableCell>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
+                  <TableCell className="px-4 md:px-6">{index + 1}</TableCell>
+                  <TableCell className="font-medium px-4 md:px-6">{anggaran.nama_akun}</TableCell>
+                      <TableCell className="px-4 md:px-6">
+                    <div className="space-y-1 text-left">
+                      <div className="flex items-center space-x-2 whitespace-nowrap">
                         <Instagram className="w-4 h-4 text-pink-600" />
-                        <span className="text-sm">{formatNumber(anggaran.follower_ig || 0)}</span>
+                        <span className="text-sm tabular-nums">{formatNumber(anggaran.follower_ig || 0)}</span>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2 whitespace-nowrap">
                         <Music className="w-4 h-4 text-black" />
-                        <span className="text-sm">{formatNumber(anggaran.follower_tiktok || 0)}</span>
+                        <span className="text-sm tabular-nums">{formatNumber(anggaran.follower_tiktok || 0)}</span>
                         </div>
                       </div>
                       </TableCell>
-                  <TableCell className="font-semibold text-green-600">
+                  <TableCell className="font-semibold text-green-600 text-right tabular-nums px-4 md:px-6">
                     {formatCurrency(anggaran.ratecard)}
                       </TableCell>
-                      <TableCell>
-                    <div className="flex space-x-2">
+                      <TableCell className="px-4 md:px-6 text-center">
+                    <div className="inline-flex space-x-2 justify-center">
                       <Dialog>
                         <DialogTrigger asChild>
                           <button className="text-blue-600 hover:text-blue-800">
@@ -1063,27 +1063,27 @@ const AdminMedsos = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-16">NO</TableHead>
-                <TableHead>PLATFORM</TableHead>
-                <TableHead>BIAYA</TableHead>
-                <TableHead className="w-24">AKSI</TableHead>
+                <TableHead className="w-16 whitespace-nowrap px-4 md:px-6">NO</TableHead>
+                <TableHead className="w-7/12 whitespace-nowrap px-4 md:px-6">PLATFORM</TableHead>
+                <TableHead className="w-3/12 whitespace-nowrap text-right px-4 md:px-6">BIAYA</TableHead>
+                <TableHead className="w-24 whitespace-nowrap text-center px-4 md:px-6">AKSI</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {platformCostsData.map((cost, index) => (
                 <TableRow key={cost.id}>
-                  <TableCell>{index + 1}</TableCell>
-                      <TableCell>
+                  <TableCell className="px-4 md:px-6">{index + 1}</TableCell>
+                      <TableCell className="px-4 md:px-6">
                     <div className="flex items-center space-x-2">
                       {getPlatformIcon(cost.platform)}
                       <span className="font-medium">{cost.platform}</span>
                         </div>
                       </TableCell>
-                  <TableCell className="font-semibold text-green-600">
+                  <TableCell className="font-semibold text-green-600 text-right tabular-nums px-4 md:px-6">
                     {formatCurrency(cost.biaya)}
                       </TableCell>
-                      <TableCell>
-                    <div className="flex space-x-2">
+                      <TableCell className="px-4 md:px-6 text-center">
+                    <div className="inline-flex space-x-2 justify-center">
                       <Dialog>
                         <DialogTrigger asChild>
                           <button className="text-blue-600 hover:text-blue-800">
