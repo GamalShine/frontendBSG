@@ -1,9 +1,18 @@
 // Single source of truth untuk semua URL dan konfigurasi
+// Resolve BASE_URL dengan fallback bila env tidak diset
+const ENV_BASE = import.meta.env.VITE_API_BASE_URL;
+// Gunakan origin backend dev default bila env kosong
+const DEFAULT_BASE = 'http://localhost:3000/api';
+const RESOLVED_BASE = ENV_BASE || DEFAULT_BASE;
+
 export const API_CONFIG = {
-    // Base URLs dari environment variables
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.116:3000/api',
-    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.116:3000',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.116:5173',
+    // Base URLs dari environment variables (dengan fallback)
+    BASE_URL: RESOLVED_BASE, // contoh: http://localhost:3000/api
+    WS_URL: import.meta.env.VITE_WS_URL,         // wajib di-set via env jika digunakan
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL, // optional, via env
+
+    // Derived
+    BASE_HOST: (RESOLVED_BASE || '').replace(/\/?api\/?$/, ''),
 
     // Helper functions
     getUrl: (endpoint) => `${API_CONFIG.BASE_URL}${endpoint}`,

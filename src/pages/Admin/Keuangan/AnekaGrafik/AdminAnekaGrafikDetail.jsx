@@ -221,11 +221,22 @@ const AdminAnekaGrafikDetail = () => {
   };
 
   // Helper function to construct proper image URLs (same as form)
+  // Generic cleanup: no IP/port specific logic
+  const aggressivelyCleanUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://http://')) return url.replace('http://http://', 'http://');
+    if (url.startsWith('https://https://')) return url.replace('https://https://', 'https://');
+    return url;
+  };
+
   const constructImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     
     console.log('🔍 🔍 🔍 constructImageUrl called with:', imageUrl);
     
+    // Pre-clean duplicated protocols
+    imageUrl = aggressivelyCleanUrl(imageUrl);
+
     // Fix double http:// issue
     if (imageUrl.startsWith('http://http://')) {
       imageUrl = imageUrl.replace('http://http://', 'http://');
@@ -235,20 +246,6 @@ const AdminAnekaGrafikDetail = () => {
     if (imageUrl.includes('/uploads//uploads/')) {
       imageUrl = imageUrl.replace('/uploads//uploads/', '/uploads/');
       console.log('🔍 Fixed double /uploads/:', imageUrl);
-    }
-    
-    // Fix old IP addresses and wrong ports
-    if (imageUrl.includes('192.168.30.116:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-      console.log('🔍 Fixed old IP 192.168.30.116:3000:', imageUrl);
-    }
-    
-    // Fix wrong port 5000
-    if (imageUrl.includes(':5000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace(':5000', baseUrl.replace('http://', '').split('/')[0]);
-      console.log('🔍 Fixed wrong port 5000:', imageUrl);
     }
     
     // Fix /api/uploads/ path
@@ -296,32 +293,7 @@ const AdminAnekaGrafikDetail = () => {
     return processedImages.map((img) => {
       if (img && img.url) {
         console.log('🔍 🔍 🔍 Processing image URL:', img.url);
-        
-        // Fix various URL corruption issues
-        let fixedUrl = img.url;
-        
-        // Fix double /uploads/
-        if (fixedUrl.includes('/uploads//uploads/')) {
-          fixedUrl = fixedUrl.replace('/uploads//uploads/', '/uploads/');
-          console.log('🔍 Fixed double /uploads/ in cleanup:', fixedUrl);
-        }
-        
-        // Fix wrong port 5000
-        if (fixedUrl.includes(':5000')) {
-          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-          const hostPort = baseUrl.replace('http://', '').split('/')[0];
-          fixedUrl = fixedUrl.replace(':5000', hostPort);
-          console.log('🔍 Fixed port 5000 in cleanup:', fixedUrl);
-        }
-        
-        // Fix old IP addresses
-        if (fixedUrl.includes('192.168.30.116:3000')) {
-          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-          console.log('🔍 Fixed old IP in cleanup:', fixedUrl);
-        }
-        
-        // Apply final URL construction
+        const fixedUrl = aggressivelyCleanUrl(img.url);
         img.url = constructImageUrl(fixedUrl);
         console.log('🔍 🔍 🔍 Final image URL after cleanup:', img.url);
       }

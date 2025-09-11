@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../services/laporanKeuanganService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../config/environment';
+import { normalizeImageUrl } from '../../utils/url';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -150,42 +151,17 @@ const LaporanKeuanganDetail = () => {
       }
     }
     
-         // Fix URLs for all images
-     return processedImages.map(img => {
-       if (img && img.url) {
-         let fixedUrl = img.url;
-         
-         // Fix double http:// issue
-         if (fixedUrl.startsWith('http://http://')) {
-           fixedUrl = fixedUrl.replace('http://http://', 'http://');
-           console.log(`🔍 Fixed double http:// in detail: ${img.url} -> ${fixedUrl}`);
-         }
-         
-         // Fix old IP addresses and localhost issues
-         if (fixedUrl.includes('192.168.30.116:3000')) {
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('192.168.30.116:3000')) {
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('localhost:5173')) {
-           // Fix localhost:5173 to use backend URL
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://localhost:5173', baseUrl);
-           console.log(`🔍 Fixed localhost:5173 in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.startsWith('/uploads/')) {
-           // If URL starts with /uploads/, add the backend base URL
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = `${baseUrl}${fixedUrl}`;
-           console.log(`🔍 Fixed relative upload URL in detail: ${img.url} -> ${fixedUrl}`);
-         }
-         
-         return { ...img, url: fixedUrl };
-       }
-       return img;
-     });
+    // Normalisasi URL via helper untuk semua gambar
+    return processedImages.map(img => {
+      if (img && img.url) {
+        const normalized = normalizeImageUrl(img.url);
+        if (normalized !== img.url) {
+          console.log(`🔍 Normalized detail image URL: ${img.url} -> ${normalized}`);
+        }
+        return { ...img, url: normalized };
+      }
+      return img;
+    });
   };
 
   // Render content with images inline

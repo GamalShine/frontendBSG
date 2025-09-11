@@ -47,7 +47,7 @@ const AdminKomplainForm = () => {
       // Simulate API call
       console.log('Creating komplain:', formData);
       alert('Komplain berhasil dibuat');
-      navigate('/admin/komplain');
+      navigate('/admin/operasional/komplain');
     } catch (err) {
       alert('Gagal membuat komplain');
       console.error('Error creating komplain:', err);
@@ -60,7 +60,7 @@ const AdminKomplainForm = () => {
       <div className="flex items-center gap-4">
         <Button 
           variant="outline" 
-          onClick={() => navigate('/admin/komplain')}
+          onClick={() => navigate('/admin/operasional/komplain')}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -192,7 +192,7 @@ const AdminKomplainForm = () => {
               <Button 
                 type="button" 
                 variant="outline"
-                onClick={() => navigate('/admin/komplain')}
+                onClick={() => navigate('/admin/operasional/komplain')}
               >
                 <X className="w-4 h-4 mr-2" />
                 Batal

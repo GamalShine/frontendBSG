@@ -75,13 +75,13 @@ const AdminKomplainDetail = () => {
   }, [id]);
 
   const handleEdit = () => {
-    navigate(`/admin/komplain/${id}/edit`);
+    navigate(`/admin/operasional/komplain/${id}/edit`);
   };
 
   const handleDelete = () => {
     if (window.confirm('Apakah Anda yakin ingin menghapus komplain ini?')) {
       console.log('Delete komplain:', id);
-      navigate('/admin/komplain');
+      navigate('/admin/operasional/komplain');
     }
   };
 
@@ -189,7 +189,7 @@ const AdminKomplainDetail = () => {
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
-            onClick={() => navigate('/admin/komplain')}
+            onClick={() => navigate('/admin/operasional/komplain')}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />

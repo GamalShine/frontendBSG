@@ -21,18 +21,11 @@ const OwnerAnekaGrafikForm = () => {
   const { user } = useAuth();
   const envConfig = getEnvironmentConfig();
   
-  // Simple URL cleanup function
+  // Simple URL cleanup function (generalized, no hardcoded IPs)
   const aggressivelyCleanUrl = (url) => {
     if (!url) return '';
-    
-    // Fix the specific duplication pattern we're seeing
-    if (url.includes('192.168.30.116')) {
-      const match = url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-      if (match && match[1]) {
-        return 'http://192.168.30.116:3000' + match[1];
-      }
-    }
-    
+    if (url.startsWith('http://http://')) return url.replace('http://http://', 'http://');
+    if (url.startsWith('https://https://')) return url.replace('https://https://', 'https://');
     return url;
   };
 
@@ -57,22 +50,13 @@ const OwnerAnekaGrafikForm = () => {
 
     return processedImages.map((img) => {
       if (img && img.url) {
-        // Fix duplicated URLs
-        if (img.url.includes('192.168.30.116')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.116:3000' + match[1];
-          }
-        }
-        
-        // Apply final URL construction
-        img.url = constructImageUrl(img.url);
+        img.url = constructImageUrl(aggressivelyCleanUrl(img.url));
       }
       return img;
     });
   };
 
-  // Helper function to construct proper image URLs
+  // Helper function to construct proper image URLs (env-based)
   const constructImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     
@@ -80,11 +64,8 @@ const OwnerAnekaGrafikForm = () => {
     if (imageUrl.startsWith('http://http://')) {
       imageUrl = imageUrl.replace('http://http://', 'http://');
     }
-    
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.116:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
+    if (imageUrl.startsWith('https://https://')) {
+      imageUrl = imageUrl.replace('https://https://', 'https://');
     }
     
     // Fix /api/uploads/ path
@@ -547,10 +528,8 @@ const OwnerAnekaGrafikForm = () => {
             const uploadedFile = result.data[0];
             console.log('✅ Uploaded file info:', uploadedFile);
             
-            // Construct full URL like OmsetHarian
-            // uploadedFile.url already contains /uploads/..., so we need to construct the base URL correctly
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            let imageUrl = `${baseUrl}${uploadedFile.url}`;
+            // Construct full URL using env base and normalize
+            const imageUrl = constructImageUrl(`${envConfig.API_BASE_URL.replace('/api', '')}${uploadedFile.url}`);
             
             uploadedImages.push({
               uri: `file://temp/${image.id}.jpg`,

@@ -1,191 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import Card, { CardHeader, CardBody } from '@/components/UI/Card';
-import Button from '@/components/UI/Button';
-import Input from '@/components/UI/Input';
-import Select from '@/components/UI/Select';
-import Table from '@/components/UI/Table';
-import Badge from '@/components/UI/Badge';
-import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Users, Search } from 'lucide-react';
+import { ownerSdmService } from '@/services/ownerSdmService';
 
 const OwnerDataTim = () => {
-  const [dataTim, setDataTim] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filters, setFilters] = useState({
-    search: '',
-    divisi: '',
-    status: '',
-    page: 1,
-    limit: 10
-  });
+  const [hierarchy, setHierarchy] = useState([]); // divisi -> jabatan -> employees
+  const [expandedDivisi, setExpandedDivisi] = useState({});
+  const [expandedJabatan, setExpandedJabatan] = useState({});
+  const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchDataTim();
-  }, [filters]);
-
-  const fetchDataTim = async () => {
+  const fetchHierarchy = async () => {
     try {
       setLoading(true);
-      // Simulate API call
-      const mockData = [
-        {
-          id: 1,
-          nama: 'John Doe',
-          email: 'john.doe@bosgil.com',
-          divisi: 'KEUANGAN',
-          jabatan: 'Manager Keuangan',
-          status: 'AKTIF',
-          join_date: '2020-01-15',
-          training_status: 'COMPLETED'
-        },
-        {
-          id: 2,
-          nama: 'Jane Smith',
-          email: 'jane.smith@bosgil.com',
-          divisi: 'OPERASIONAL',
-          jabatan: 'Supervisor Operasional',
-          status: 'AKTIF',
-          join_date: '2021-03-20',
-          training_status: 'IN_PROGRESS'
-        },
-        {
-          id: 3,
-          nama: 'Bob Johnson',
-          email: 'bob.johnson@bosgil.com',
-          divisi: 'MARKETING',
-          jabatan: 'Marketing Specialist',
-          status: 'NONAKTIF',
-          join_date: '2019-11-10',
-          training_status: 'NOT_STARTED'
-        }
-      ];
-      setDataTim(mockData);
+      setError(null);
+      const res = await ownerSdmService.getHierarchy();
+      if (!res?.success) {
+        throw new Error(res?.message || 'Gagal memuat hierarchy');
+      }
+      setHierarchy(res.data || []);
     } catch (err) {
-      setError('Gagal mengambil data tim');
-      console.error('Error fetching data tim:', err);
+      setError(err.message || 'Terjadi kesalahan');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-      page: 1
-    }));
-  };
+  useEffect(() => { fetchHierarchy(); }, []);
 
-  const handleExport = () => {
-    // Export functionality for owner
-    console.log('Exporting data tim...');
-  };
+  const filteredHierarchy = useMemo(() => {
+    if (!search.trim()) return hierarchy;
+    const q = search.toLowerCase();
+    return hierarchy.map(div => {
+      const jabs = (div.children || []).map(jab => {
+        const emps = (jab.children || []).filter(emp =>
+          (emp.name || '').toLowerCase().includes(q) ||
+          (emp.email || '').toLowerCase().includes(q) ||
+          (jab.name || '').toLowerCase().includes(q) ||
+          (div.name || '').toLowerCase().includes(q)
+        );
+        return { ...jab, children: emps };
+      }).filter(j => j.children && j.children.length > 0);
+      return { ...div, children: jabs };
+    }).filter(d => d.children && d.children.length > 0);
+  }, [hierarchy, search]);
 
-  const getTrainingStatusBadge = (status) => {
-    switch (status) {
-      case 'COMPLETED':
-        return <Badge variant="success">Selesai</Badge>;
-      case 'IN_PROGRESS':
-        return <Badge variant="warning">Sedang Berjalan</Badge>;
-      case 'NOT_STARTED':
-        return <Badge variant="secondary">Belum Dimulai</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
-  };
-
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="text-red-500">{error}</div>;
+  const toggleDivisi = (id) => setExpandedDivisi(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleJabatan = (id) => setExpandedJabatan(prev => ({ ...prev, [id]: !prev[id] }));
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Data Tim - Owner View</span>
-            <Button onClick={handleExport} variant="outline">
-              Export Data
-            </Button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Input
-              placeholder="Cari tim..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-            <Select
-              value={filters.divisi}
-              onValueChange={(value) => handleFilterChange('divisi', value)}
-            >
-              <option value="">Semua Divisi</option>
-              <option value="KEUANGAN">KEUANGAN</option>
-              <option value="OPERASIONAL">OPERASIONAL</option>
-              <option value="MARKETING">MARKETING</option>
-              <option value="SDM">SDM</option>
-            </Select>
-            <Select
-              value={filters.status}
-              onValueChange={(value) => handleFilterChange('status', value)}
-            >
-              <option value="">Semua Status</option>
-              <option value="AKTIF">AKTIF</option>
-              <option value="NONAKTIF">NONAKTIF</option>
-              <option value="CUTI">CUTI</option>
-            </Select>
-            <Select
-              value={filters.limit}
-              onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
-            >
-              <option value={10}>10 per halaman</option>
-              <option value={25}>25 per halaman</option>
-              <option value={50}>50 per halaman</option>
-            </Select>
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header (tanpa tombol tambah) */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">OWN-SDM</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TIM</h1>
+              <p className="text-sm text-red-100">Struktur tim: divisi, jabatan, dan karyawan</p>
+            </div>
           </div>
+        </div>
+      </div>
 
-          {/* Table */}
-          <Table>
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Email</th>
-                <th>Divisi</th>
-                <th>Jabatan</th>
-                <th>Status</th>
-                <th>Join Date</th>
-                <th>Training Status</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dataTim.map((tim) => (
-                <tr key={tim.id}>
-                  <td className="font-medium">{tim.nama}</td>
-                  <td>{tim.email}</td>
-                  <td>
-                    <Badge variant="outline">{tim.divisi}</Badge>
-                  </td>
-                  <td>{tim.jabatan}</td>
-                  <td>
-                    <Badge variant={tim.status === 'AKTIF' ? 'success' : 'secondary'}>
-                      {tim.status}
-                    </Badge>
-                  </td>
-                  <td>{new Date(tim.join_date).toLocaleDateString('id-ID')}</td>
-                  <td>{getTrainingStatusBadge(tim.training_status)}</td>
-                  <td>
-                    <Button variant="outline" size="sm">
-                      Detail
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Toolbar Pencarian */}
+      <div className="px-6 py-4 bg-gray-50">
+        <div className="max-w-5xl">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari nama karyawan, jabatan, divisi..." className="pl-10 pr-3 py-2 w-full border rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+          </div>
+        </div>
+      </div>
+
+      {/* Konten Hierarki */}
+      <div className="px-6 pb-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm border">
+            {loading && <div className="p-8 text-center text-gray-500">Memuat data...</div>}
+            {error && !loading && <div className="p-8 text-center text-red-600">{error}</div>}
+            {!loading && !error && (
+              <div className="divide-y">
+                {(filteredHierarchy || []).map(div => {
+                  const totalDiv = (div.children || []).reduce((acc, j) => acc + (j.children?.length || 0), 0);
+                  const openDiv = !!expandedDivisi[div.id];
+                  return (
+                    <div key={div.id} className="p-4">
+                      <button onClick={() => toggleDivisi(div.id)} className="w-full flex items-center justify-between text-left">
+                        <div className="flex items-center gap-2">
+                          {openDiv ? <ChevronDown className="h-5 w-5 text-gray-600" /> : <ChevronRight className="h-5 w-5 text-gray-600" />}
+                          <span className="font-semibold text-gray-800">{div.name}</span>
+                        </div>
+                        <span className="text-sm text-gray-600">{totalDiv} orang</span>
+                      </button>
+                      {openDiv && (
+                        <div className="mt-3 ml-7 space-y-2">
+                          {(div.children || []).map(jab => {
+                            const openJab = !!expandedJabatan[jab.id];
+                            return (
+                              <div key={jab.id} className="border rounded-lg">
+                                <div className="px-3 py-2 bg-gray-50 flex items-center justify-between">
+                                  <button onClick={() => toggleJabatan(jab.id)} className="flex items-center gap-2">
+                                    {openJab ? <ChevronDown className="h-4 w-4 text-gray-600" /> : <ChevronRight className="h-4 w-4 text-gray-600" />}
+                                    <span className="font-medium text-gray-700">{jab.name}</span>
+                                  </button>
+                                  <span className="text-xs text-gray-600">{jab.children?.length || 0} orang</span>
+                                </div>
+                                {openJab && (
+                                  <div className="divide-y">
+                                    {(jab.children || []).map(emp => (
+                                      <div key={emp.id} className="px-3 py-3 flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-100 text-red-700"><Users className="h-4 w-4" /></span>
+                                          <div>
+                                            <div className="font-semibold text-gray-900">{emp.name}</div>
+                                            <div className="text-xs text-gray-500">{emp?.jabatan?.nama_jabatan} • {emp?.jabatan?.divisi?.nama_divisi}</div>
+                                          </div>
+                                        </div>
+                                        {/* Owner: hanya view, tidak ada tombol edit/tambah */}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {(!filteredHierarchy || filteredHierarchy.length === 0) && (
+                  <div className="p-8 text-center text-gray-500">Tidak ada data</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

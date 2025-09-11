@@ -12,6 +12,16 @@ export const dataTargetService = {
     }
   },
 
+  // Get available years
+  getYears: async () => {
+    try {
+      const response = await api.get('/admin/data-target/years');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Get data target by ID
   getById: async (id) => {
     try {

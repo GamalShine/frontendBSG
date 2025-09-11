@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { poskasService } from '../../../../services/poskasService';
@@ -105,8 +105,23 @@ const OwnerPoskasList = () => {
       const poskasData = data?.poskas || data?.items || data?.data || data || []
       const totalPages = data?.totalPages || data?.last_page || data?.total_pages || 1
       const totalItems = data?.total || data?.total_items || data?.count || 0
-      
-      setPoskas(poskasData)
+
+      // Sort newest first: created_at desc -> tanggal_poskas desc -> id desc
+      const sortedPoskas = [...(Array.isArray(poskasData) ? poskasData : [])].sort((a, b) => {
+        const aCreated = a?.created_at ? new Date(a.created_at).getTime() : 0
+        const bCreated = b?.created_at ? new Date(b.created_at).getTime() : 0
+        if (bCreated !== aCreated) return bCreated - aCreated
+
+        const aTanggal = a?.tanggal_poskas ? new Date(a.tanggal_poskas).getTime() : 0
+        const bTanggal = b?.tanggal_poskas ? new Date(b.tanggal_poskas).getTime() : 0
+        if (bTanggal !== aTanggal) return bTanggal - aTanggal
+
+        const aId = typeof a?.id === 'number' ? a.id : parseInt(a?.id || 0)
+        const bId = typeof b?.id === 'number' ? b.id : parseInt(b?.id || 0)
+        return (bId || 0) - (aId || 0)
+      })
+
+      setPoskas(sortedPoskas)
       setTotalPages(totalPages)
       setTotalItems(totalItems)
       
@@ -203,6 +218,27 @@ const OwnerPoskasList = () => {
     })
   }
 
+  // tampilkan tanggal + jam untuk banner "Terakhir diupdate"
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // kalkulasi teks terakhir diupdate dari poskas terbaru
+  const lastUpdatedText = useMemo(() => {
+    if (!poskas || poskas.length === 0) return '-'
+    const latest = poskas[0]
+    const dt = latest?.created_at || latest?.tanggal_poskas
+    return formatDateTime(dt)
+  }, [poskas])
+
   const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus laporan pos kas ini?')) {
       try {
@@ -270,24 +306,26 @@ const OwnerPoskasList = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header - Investor-style */}
-      <div className="bg-red-800 text-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-4 min-w-0">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
               <p className="text-sm text-red-100">Kelola data posisi kas outlet</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
             <button
               onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              aria-label="Buka Pencarian dan Filter"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
             >
-              PENCARIAN
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">PENCARIAN</span>
             </button>
             <div className="relative group">
-              <button className="p-2 hover:bg-red-700 rounded-lg">
+              <button className="p-2 hover:bg-red-700 rounded-lg" aria-label="Menu Aksi">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 20.25a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
                 </svg>
@@ -300,15 +338,16 @@ const OwnerPoskasList = () => {
             </div>
             <Link
               to="/owner/keuangan/poskas/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              aria-label="Tambah Pos Kas"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-600 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span className="font-semibold">Tambah</span>
+              <span className="hidden sm:inline font-semibold">Tambah</span>
             </Link>
           </div>
         </div>
       </div>
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Daftar pos kas terbaru berada di paling atas</div>
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards (match Admin) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -433,21 +472,21 @@ const OwnerPoskasList = () => {
           </div>
         ) : (
           <>
-            <div className="relative overflow-x-auto max-h-[60vh] overflow-y-auto">
+            <div className="relative table-responsive max-h-[60vh] overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="sticky top-0 bg-red-50 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">No</th>
-                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Tanggal</th>
-                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Keterangan</th>
-                    <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Aksi</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">No</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Tanggal</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Keterangan</th>
+                    <th className="px-4 sm:px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {poskas.map((poskasItem, idx) => (
                     <tr key={poskasItem.id} className="hover:bg-gray-50/80">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
+                      <td className="px-4 sm:px-6 py-4 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{formatDate(poskasItem.tanggal_poskas).toUpperCase()}</span>
                           {(() => {
@@ -460,10 +499,10 @@ const OwnerPoskasList = () => {
                           })()}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-900">
                         {poskasItem.isi_poskas ? (
                           <div
-                            className="truncate max-w-md"
+                            className="md:truncate break-anywhere max-w-[14rem] md:max-w-md"
                             dangerouslySetInnerHTML={{
                               __html: poskasItem.isi_poskas.length > 150
                                 ? poskasItem.isi_poskas.substring(0, 150) + '...'
@@ -474,7 +513,7 @@ const OwnerPoskasList = () => {
                           '-'
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-3">
                           <input
                             type="checkbox"

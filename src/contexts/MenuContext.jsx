@@ -31,11 +31,14 @@ export const MenuProvider = ({ children }) => {
     // Definisikan menu dasar yang akan difilter berdasarkan role
     let baseMenus = [];
     
-    // Menu Dashboard untuk semua role
+    // Menu Dashboard dengan path khusus per role
+    const dashboardPath = role === 'owner' ? '/owner/dashboard'
+      : role === 'admin' ? '/admin/dashboard'
+      : '/dashboard'
     baseMenus.push({
       id: 'dashboard',
       title: 'Dashboard',
-      path: '/dashboard',
+      path: dashboardPath,
       icon: 'Home',
       permissions: ['read']
     });
@@ -46,25 +49,43 @@ export const MenuProvider = ({ children }) => {
         baseMenus.push({
           id: 'chat',
           title: 'CHAT',
-          path: '/admin/chat/private',
+          path: '/admin/chat',
           icon: 'MessageCircle',
           permissions: ['read']
+        });
+        
+        // Menu Daftar Tugas untuk Admin
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/admin/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
         });
         break;
       case 'owner':
         baseMenus.push({
           id: 'chat',
           title: 'CHAT',
-          path: '/owner/chat/private',
+          path: '/owner/chat',
           icon: 'MessageCircle',
           permissions: ['read']
+        });
+        
+        // Menu Daftar Tugas untuk Owner
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/owner/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
         });
         break;
       case 'divisi':
         baseMenus.push({
           id: 'chat',
           title: 'CHAT',
-          path: '/divisi/chat/private',
+          path: '/divisi/chat',
           icon: 'MessageCircle',
           permissions: ['read']
         });
@@ -73,7 +94,7 @@ export const MenuProvider = ({ children }) => {
         baseMenus.push({
           id: 'chat',
           title: 'CHAT',
-          path: '/tim/chat/private',
+          path: '/tim/chat',
           icon: 'MessageCircle',
           permissions: ['read']
         });
@@ -173,15 +194,6 @@ export const MenuProvider = ({ children }) => {
           ]
         });
         
-        // Menu Daftar Tugas untuk Owner
-        baseMenus.push({
-          id: 'daftar-tugas',
-          title: 'DAFTAR TUGAS',
-          icon: 'CheckSquare',
-          path: '/owner/tugas',
-          permissions: ['read', 'create', 'update', 'delete']
-        });
-        
         // Menu Operasional untuk Owner
         baseMenus.push({
           id: 'operasional',
@@ -230,6 +242,12 @@ export const MenuProvider = ({ children }) => {
               title: 'DATA BINA LINGKUNGAN',
               path: '/owner/operasional/bina-lingkungan',
               permissions: ['read']
+            },
+            {
+              id: 'jadwal-pembayaran',
+              title: 'JADWAL PEMBAYARAN/PERAWATAN',
+              path: '/owner/operasional/jadwal-pembayaran',
+              permissions: ['read']
             }
           ]
         });
@@ -244,7 +262,7 @@ export const MenuProvider = ({ children }) => {
             {
               id: 'data-target',
               title: 'DATA TARGET',
-              path: '/owner/marketing/target',
+              path: '/owner/marketing/data-target',
               permissions: ['read']
             },
             {
@@ -258,25 +276,24 @@ export const MenuProvider = ({ children }) => {
         
 
         
-        // Menu Settings untuk Owner
+        // Menu Settings untuk Owner (dengan submenu)
         baseMenus.push({
           id: 'settings',
           title: 'Settings',
           path: '/settings',
           icon: 'Settings',
-          permissions: ['read']
+          permissions: ['read'],
+          children: [
+            {
+              id: 'kelola-akun',
+              title: 'Kelola Akun',
+              path: '/owner/settings/kelola-akun',
+              permissions: ['read']
+            }
+          ]
         });
 
-                    // Menu Manajemen Menu Admin untuk Owner
-            baseMenus.push({
-              id: 'admin-menu-management',
-              title: 'Manajemen Menu Admin',
-              path: '/owner/admin-menu-management',
-              icon: 'Shield',
-              permissions: ['read']
-            });
-            
-            // Menu PIC Menu Management untuk Owner
+                    // Menu PIC Menu Management untuk Owner
             baseMenus.push({
               id: 'pic-menu-management',
               title: 'PIC Menu Management',
@@ -298,37 +315,43 @@ export const MenuProvider = ({ children }) => {
               id: 'poskas',
               title: 'POSKAS',
               path: '/admin/keuangan/poskas',
-              permissions: ['read', 'create', 'update', 'delete']
+              permissions: ['read', 'create', 'update', 'delete'],
+              picKey: 'AdminKeuanganPoskas'
             },
             {
               id: 'omset-harian',
               title: 'OMSET HARIAN',
               path: '/admin/keuangan/omset-harian',
-              permissions: ['read', 'create', 'update', 'delete']
+              permissions: ['read', 'create', 'update', 'delete'],
+              picKey: 'AdminKeuanganOmsetHarian'
             },
             {
               id: 'lap-keu',
               title: 'LAP. KEU',
               path: '/admin/keuangan/laporan',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminKeuanganLaporan'
             },
             {
               id: 'aneka-grafik',
               title: 'ANEKA GRAFIK',
               path: '/admin/keuangan/aneka-grafik',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminAnekaGrafik'
             },
             {
               id: 'daftar-gaji',
               title: 'DAFTAR GAJI',
               path: '/admin/keuangan/gaji',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminKeuanganDaftarGaji'
             },
             {
               id: 'aneka-surat',
               title: 'ANEKA SURAT',
               path: '/admin/keuangan/surat',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminKeuanganAnekaSurat'
             }
           ]
         });
@@ -344,38 +367,33 @@ export const MenuProvider = ({ children }) => {
               id: 'struktur-jobdesk-sop',
               title: 'STRUKTUR, JOBDESK & S.O.P.',
               path: '/admin/sdm/struktur',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminSDMStruktur'
             },
             {
               id: 'data-tim',
               title: 'DATA TIM',
               path: '/admin/sdm/tim',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminSDMDataTim'
             },
             {
               id: 'kpi',
               title: 'KPI',
               path: '/admin/sdm/kpi',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminSDMKPI'
             },
             {
               id: 'tim-merah-biru',
               title: 'TIM MERAH/BIRU',
               path: '/admin/sdm/tim-merah-biru',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminSDMTimMerahBiru'
             }
           ]
         });
 
-        // Menu Daftar Tugas untuk Admin
-        baseMenus.push({
-          id: 'daftar-tugas',
-          title: 'DAFTAR TUGAS',
-          icon: 'CheckSquare',
-          path: '/admin/tugas',
-          permissions: ['read', 'create', 'update', 'delete']
-        });
-        
         // Menu Operasional untuk Admin
         baseMenus.push({
           id: 'operasional',
@@ -387,43 +405,57 @@ export const MenuProvider = ({ children }) => {
               id: 'data-aset',
               title: 'DATA ASET',
               path: '/admin/operasional/aset',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminDataAset'
             },
             {
               id: 'data-supplier',
               title: 'DATA SUPPLIER',
               path: '/admin/operasional/data-supplier',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminDataSupplier'
             },
             {
               id: 'data-sewa',
               title: 'DATA SEWA',
               path: '/admin/operasional/sewa',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminOperasionalDataSewa'
+            },
+            {
+              id: 'jadwal-pembayaran',
+              title: 'JADWAL PEMBAYARAN/PERAWATAN',
+              path: '/admin/operasional/jadwal-pembayaran',
+              permissions: ['read'],
+              picKey: 'AdminOperasionalJadwalPembayaran'
             },
             {
               id: 'data-investor',
               title: 'DATA INVESTOR',
               path: '/admin/operasional/investor',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminDataInvestor'
             },
             {
               id: 'daftar-saran',
               title: 'DAFTAR SARAN',
               path: '/admin/operasional/saran',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminOperasionalDaftarSaran'
             },
             {
               id: 'daftar-komplain',
               title: 'DAFTAR KOMPLAIN',
-              path: '/admin/komplain',
-              permissions: ['read']
+              path: '/admin/operasional/komplain',
+              permissions: ['read'],
+              picKey: 'AdminOperasionalDaftarKomplain'
             },
             {
               id: 'data-bina-lingkungan',
               title: 'DATA BINA LINGKUNGAN',
               path: '/admin/operasional/bina-lingkungan',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminDataBinaLingkungan'
             }
           ]
         });
@@ -438,14 +470,16 @@ export const MenuProvider = ({ children }) => {
             {
               id: 'data-target',
               title: 'DATA TARGET',
-              path: '/admin/marketing/target',
-              permissions: ['read']
+              path: '/admin/marketing/data-target',
+              permissions: ['read'],
+              picKey: 'AdminMarketingDataTarget'
             },
             {
               id: 'medsos',
               title: 'MEDSOS',
               path: '/admin/marketing/medsos',
-              permissions: ['read']
+              permissions: ['read'],
+              picKey: 'AdminMedsos'
             }
           ]
         });
@@ -458,7 +492,8 @@ export const MenuProvider = ({ children }) => {
           title: 'Settings',
           path: '/settings',
           icon: 'Settings',
-          permissions: ['read']
+          permissions: ['read'],
+          picKey: 'AdminSettings'
         });
         break;
         
@@ -540,6 +575,14 @@ export const MenuProvider = ({ children }) => {
             }
           ]
         });
+        // Menu Daftar Tugas untuk Divisi
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
+        });
         break;
         
       case 'tim':
@@ -557,6 +600,14 @@ export const MenuProvider = ({ children }) => {
               permissions: ['read', 'create']
             }
           ]
+        });
+        // Menu Daftar Tugas untuk Tim
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
         });
         break;
         
@@ -596,7 +647,9 @@ export const MenuProvider = ({ children }) => {
       setLoading(true)
       
       // Get menus based on user role
-      const userMenus = getMenusByRole(user.role)
+      let userMenus = getMenusByRole(user.role)
+
+      // Bypass dihapus: menu hanya mengikuti role user
       
       // Extract all permissions from menus
       const allPermissions = []

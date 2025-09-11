@@ -28,11 +28,6 @@ const OwnerAnekaGrafikDetail = () => {
   const [fullScreenImage, setFullScreenImage] = useState(null);
   const [showFullScreenModal, setShowFullScreenModal] = useState(false);
   const [processedImages, setProcessedImages] = useState([]);
-  const [formData, setFormData] = useState({
-    tanggal_grafik: '',
-    isi_grafik: '',
-    images: []
-  });
 
   useEffect(() => {
     if (id) {
@@ -40,20 +35,17 @@ const OwnerAnekaGrafikDetail = () => {
     }
   }, [id]);
 
-  // Process images and content when anekaGrafikData changes (same as form)
   useEffect(() => {
     if (anekaGrafikData) {
       console.log('🔍 🔍 🔍 ANEKA GRAFIK DATA LOADED:', anekaGrafikData);
       console.log('🔍 🔍 🔍 Images field:', anekaGrafikData.images);
       console.log('🔍 🔍 🔍 Images field type:', typeof anekaGrafikData.images);
       console.log('🔍 🔍 🔍 Environment config:', envConfig);
-      console.log('🔍 🔍 🔍 BASE_URL:', envConfig.BASE_URL);
+      console.log('🔍 🔍 🔍 API_BASE_URL:', envConfig.API_BASE_URL);
       
-      // Process existing images to match form format
       let processedImages = [];
       if (anekaGrafikData.images) {
         try {
-          // Use the same cleanup function as form
           processedImages = cleanupCorruptedImages(anekaGrafikData.images);
           console.log('🔍 Cleaned images from AnekaGrafikDetail:', processedImages);
           
@@ -61,20 +53,24 @@ const OwnerAnekaGrafikDetail = () => {
             processedImages = processedImages.map(img => {
               console.log('🔍 Processing image object:', img);
               
-              // Ensure we have a proper URL for the image
               let imageUrl = img.url;
               if (!imageUrl && img.serverPath) {
-                // If no URL but we have serverPath, construct the URL
                 const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-                imageUrl = `${baseUrl}/${img.serverPath}`;
+                const cleanServerPath = img.serverPath.startsWith('/') ? img.serverPath.slice(1) : img.serverPath;
+                imageUrl = `${baseUrl}/${cleanServerPath}`;
+                console.log('🔍 Constructed URL from serverPath:', imageUrl);
               }
-
+              
+              if (imageUrl) {
+                imageUrl = constructImageUrl(imageUrl);
+                console.log('🔍 Cleaned image URL:', imageUrl);
+              }
+              
               const processedImg = {
                 uri: img.uri || `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: img.name || `aneka_grafik_${img.id}.jpg`,
-                // Always normalize to absolute URL
-                url: constructImageUrl(imageUrl || `/uploads/aneka-grafik/temp_${img.id}.jpg`),
+                url: imageUrl || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
                 serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
               };
               
@@ -90,182 +86,77 @@ const OwnerAnekaGrafikDetail = () => {
       
       setProcessedImages(processedImages);
       
-      // Convert [IMG:id] placeholders to HTML for display (same as form)
       let displayContent = anekaGrafikData.isi_grafik || '';
       if (Array.isArray(processedImages) && processedImages.length > 0) {
         processedImages.forEach((image, index) => {
           console.log(`🔍 Processing image ${index + 1}:`, image);
           
-          // Use the cleaned URL directly, ensure it is well-formed
           let imageUrl = image.url || '';
-          
-          console.log(`🔍 Image ${index + 1}:`, {
-            originalUrl: image.url,
-            finalUrl: imageUrl,
-            id: image.id
-          });
-          
-          // Ensure the image URL is properly constructed
-          if (imageUrl && !imageUrl.startsWith('data:')) {
+          if (imageUrl) {
             imageUrl = constructImageUrl(imageUrl);
+            console.log(`🔍 Final image URL for display:`, imageUrl);
           }
-
-          const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
-          const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
           
-          // Check if this placeholder exists in content
-          const matches = displayContent.match(placeholderRegex);
-          console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
-          
-          if (matches) {
-            displayContent = displayContent.replace(placeholderRegex, imageHtmlTag);
-            console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
-          } else {
-            console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
-            // If no placeholder found, append image at the end
-            displayContent += imageHtmlTag;
-            console.log(`➕ Appended image ${image.id} to content since no placeholder found`);
-          }
+          const imgTag = `<img src="${imageUrl}" alt="Grafik ${index + 1}" class="max-w-full h-auto rounded-lg shadow-md my-4" />`;
+          displayContent = displayContent.replace(`[IMG:${image.id}]`, imgTag);
         });
-      } else {
-        console.log('⚠️ No processed images to render in display');
       }
-      
-      // Convert line breaks to <br> tags for display
-      displayContent = displayContent.replace(/\n/g, '<br>');
-      console.log('🔍 Final display content:', displayContent);
-      
-      setFormData({
-        tanggal_grafik: anekaGrafikData.tanggal_grafik || '',
-        isi_grafik: displayContent,
-        images: processedImages
-      });
     }
-  }, [anekaGrafikData]);
+  }, [anekaGrafikData, envConfig]);
 
   const loadAnekaGrafik = async () => {
     try {
-      console.log('🔍 🔍 🔍 Loading aneka grafik with ID:', id);
       setLoading(true);
       const response = await anekaGrafikService.getAnekaGrafikById(id);
-      
-      console.log('🔍 🔍 🔍 API Response:', response);
-      console.log('🔍 🔍 🔍 Response success:', response.success);
-      console.log('🔍 🔍 🔍 Response data:', response.data);
-      
-      if (response.success && response.data) {
-        console.log('🔍 🔍 🔍 Setting aneka grafik data:', response.data);
-        setAnekaGrafikData(response.data);
-      } else {
-        console.error('❌ ❌ ❌ API response indicates failure:', response);
-        toast.error('Gagal memuat data aneka grafik');
-        navigate('/owner/keuangan/aneka-grafik');
-      }
+      setAnekaGrafikData(response.data);
     } catch (error) {
-      console.error('❌ ❌ ❌ Error loading aneka grafik:', error);
+      console.error('Error loading aneka grafik:', error);
       toast.error('Gagal memuat data aneka grafik');
-      navigate('/owner/keuangan/aneka-grafik');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus data aneka grafik ini?')) {
-      return;
-    }
-
-    try {
-      await anekaGrafikService.deleteAnekaGrafik(id);
-      toast.success('Data aneka grafik berhasil dihapus');
-      navigate('/owner/keuangan/aneka-grafik');
-    } catch (error) {
-      console.error('Error deleting aneka grafik:', error);
-      toast.error('Gagal menghapus data aneka grafik');
-    }
+  // Helper untuk membersihkan URL dari duplikasi protokol/path
+  const aggressivelyCleanUrl = (url) => {
+    if (!url) return '';
+    let cleaned = url.trim();
+    cleaned = cleaned.replace(/^https?:\/\/https?:\/\//, match => match.replace('http://http://', 'http://').replace('https://https://', 'https://'));
+    cleaned = cleaned.replace(/([^:])\/+/g, '$1/');
+    return cleaned;
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const handleImagePress = (imageUri) => {
-    setFullScreenImage(imageUri);
-    setShowFullScreenModal(true);
-  };
-
-  // Helper function to construct proper image URLs (same as form)
   const constructImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     
-    console.log('🔍 🔍 🔍 constructImageUrl called with:', imageUrl);
+    console.log('🔍 🔍 🔍 Constructing URL for:', imageUrl);
     
-    // Fix double http:// issue
-    if (imageUrl.startsWith('http://http://')) {
-      imageUrl = imageUrl.replace('http://http://', 'http://');
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      const abs = aggressivelyCleanUrl(imageUrl);
+      console.log('🔍 🔍 🔍 Already absolute URL (cleaned):', abs);
+      return abs;
     }
     
-    // Fix double /uploads/ issue
-    if (imageUrl.includes('/uploads//uploads/')) {
-      imageUrl = imageUrl.replace('/uploads//uploads/', '/uploads/');
-      console.log('🔍 Fixed double /uploads/:', imageUrl);
+    if (imageUrl.startsWith('file://')) {
+      console.log('🔍 🔍 🔍 File URL, returning as is:', imageUrl);
+      return imageUrl;
     }
     
-    // Fix old IP addresses and wrong ports
-    if (imageUrl.includes('192.168.30.116:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-      console.log('🔍 Fixed old IP 192.168.30.116:3000:', imageUrl);
+    const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+    let finalUrl = imageUrl;
+    
+    if (!imageUrl.startsWith('/')) {
+      finalUrl = `/${imageUrl}`;
     }
     
-    // Fix wrong port 5000
-    if (imageUrl.includes(':5000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace(':5000', baseUrl.replace('http://', '').split('/')[0]);
-      console.log('🔍 Fixed wrong port 5000:', imageUrl);
-    }
+    finalUrl = `${baseUrl}${finalUrl}`;
     
-    // Fix /api/uploads/ path
-    if (imageUrl.includes('/api/uploads/')) {
-      imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-      console.log('🔍 Fixed /api/uploads/ path:', imageUrl);
-    }
+    finalUrl = aggressivelyCleanUrl(finalUrl);
     
-    // Ensure URL is absolute and correct
-    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      // Remove leading slash if exists to avoid double slashes
-      const cleanPath = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
-      imageUrl = `${baseUrl}/${cleanPath}`;
-      console.log('🔍 Made URL absolute:', imageUrl);
-    }
-    
-    // Final cleanup: remove any remaining double slashes (except http://)
-    imageUrl = imageUrl.replace(/([^:])\/+/g, '$1/');
-    
-    console.log('🔍 🔍 🔍 Final constructed URL:', imageUrl);
-    return imageUrl;
+    console.log('🔍 🔍 🔍 Final constructed URL:', finalUrl);
+    return finalUrl;
   };
 
-  // Clean up corrupted images automatically (same as form)
   const cleanupCorruptedImages = (images) => {
     if (!images) return [];
 
@@ -288,31 +179,14 @@ const OwnerAnekaGrafikDetail = () => {
       if (img && img.url) {
         console.log('🔍 🔍 🔍 Processing image URL:', img.url);
         
-        // Fix various URL corruption issues
         let fixedUrl = img.url;
-        
-        // Fix double /uploads/
+
+        // Fix path ganda uploads
         if (fixedUrl.includes('/uploads//uploads/')) {
           fixedUrl = fixedUrl.replace('/uploads//uploads/', '/uploads/');
           console.log('🔍 Fixed double /uploads/ in cleanup:', fixedUrl);
         }
-        
-        // Fix wrong port 5000
-        if (fixedUrl.includes(':5000')) {
-          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-          const hostPort = baseUrl.replace('http://', '').split('/')[0];
-          fixedUrl = fixedUrl.replace(':5000', hostPort);
-          console.log('🔍 Fixed port 5000 in cleanup:', fixedUrl);
-        }
-        
-        // Fix old IP addresses
-        if (fixedUrl.includes('192.168.30.116:3000')) {
-          const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-          console.log('🔍 Fixed old IP in cleanup:', fixedUrl);
-        }
-        
-        // Apply final URL construction
+
         img.url = constructImageUrl(fixedUrl);
         console.log('🔍 🔍 🔍 Final image URL after cleanup:', img.url);
       }
@@ -320,52 +194,7 @@ const OwnerAnekaGrafikDetail = () => {
     });
   };
 
-  // Helper function to safely process images (same as form)
-  const processImages = (images) => {
-    console.log('🔍 🔍 🔍 processImages called with:', images);
-    
-    if (!images) {
-      console.log('🔍 🔍 🔍 No images data, returning empty array');
-      return [];
-    }
-    
-    let processedImages = [];
-    
-    if (typeof images === 'string') {
-      try {
-        processedImages = JSON.parse(images);
-      } catch (error) {
-        console.error('❌ Error parsing images JSON:', error);
-        return [];
-      }
-    } else if (Array.isArray(images)) {
-      processedImages = images;
-    } else if (typeof images === 'object' && images !== null) {
-      processedImages = [images];
-    } else {
-      return [];
-    }
-    
-    // Ensure it's always an array
-    if (!Array.isArray(processedImages)) {
-      if (processedImages && typeof processedImages === 'object' && processedImages !== null) {
-        processedImages = [processedImages];
-      } else {
-        return [];
-      }
-    }
-    
-    // Clean up corrupted URLs using the same function as form
-    processedImages = cleanupCorruptedImages(processedImages);
-    
-    console.log('🔍 🔍 🔍 Final processed images array:', processedImages);
-    return processedImages;
-  };
-
-
-
   const openFullScreenImage = (image) => {
-    // Always normalize via constructImageUrl for consistency
     let imageUrl = '';
     if (image.url) {
       imageUrl = constructImageUrl(image.url);
@@ -379,13 +208,26 @@ const OwnerAnekaGrafikDetail = () => {
     setShowFullScreenModal(true);
   };
 
+  const handleDelete = async () => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus aneka grafik ini?')) {
+      try {
+        await anekaGrafikService.deleteAnekaGrafik(id);
+        toast.success('Aneka grafik berhasil dihapus');
+        navigate('/owner/keuangan/aneka-grafik');
+      } catch (error) {
+        console.error('Error deleting aneka grafik:', error);
+        toast.error('Gagal menghapus aneka grafik');
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-8 text-center">
             <RefreshCw className="h-8 w-8 animate-spin text-green-500 mx-auto mb-4" />
-          <p className="text-gray-600">Memuat data...</p>
+            <p className="text-gray-600">Memuat data...</p>
           </div>
         </div>
       </div>
@@ -397,16 +239,7 @@ const OwnerAnekaGrafikDetail = () => {
       <div className="p-6 bg-gray-50 min-h-screen">
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-8 text-center">
-            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Data tidak ditemukan</h3>
-            <p className="text-gray-500 mb-4">Data aneka grafik yang Anda cari tidak ditemukan</p>
-            <button
-              onClick={() => navigate('/owner/keuangan/aneka-grafik')}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Kembali ke Daftar</span>
-            </button>
+            <p className="text-gray-600">Data tidak ditemukan</p>
           </div>
         </div>
       </div>
@@ -415,225 +248,143 @@ const OwnerAnekaGrafikDetail = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/owner/keuangan/aneka-grafik')}
-                className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <div>
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => navigate('/owner/keuangan/aneka-grafik')}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  <span>Kembali</span>
+                </button>
                 <h1 className="text-2xl font-bold text-gray-900">Detail Aneka Grafik</h1>
-                <p className="text-gray-600">Informasi lengkap data aneka grafik</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                ANEKA GRAFIK
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Summary Card */}
-        <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold mb-1">ANEKA GRAFIK</h2>
-              <p className="text-blue-100">Tanggal: {formatDate(anekaGrafikData.tanggal_grafik)}</p>
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Informasi Grafik</h2>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center space-x-3">
+                          <Calendar className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Tanggal</p>
+                            <p className="font-medium text-gray-900">
+                              {new Date(anekaGrafikData.tanggal_grafik).toLocaleDateString('id-ID', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <User className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Dibuat oleh</p>
+                            <p className="font-medium text-gray-900">{anekaGrafikData.created_by || 'Unknown'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <Clock className="h-5 w-5 text-gray-400" />
+                          <div>
+                            <p className="text-sm text-gray-500">Dibuat pada</p>
+                            <p className="font-medium text-gray-900">
+                              {new Date(anekaGrafikData.created_at).toLocaleString('id-ID')}
+                            </p>
+                          </div>
+                        </div>
+                        {anekaGrafikData.updated_at && (
+                          <div className="flex items-center space-x-3">
+                            <Clock className="h-5 w-5 text-gray-400" />
+                            <div>
+                              <p className="text-sm text-gray-500">Diperbarui pada</p>
+                              <p className="font-medium text-gray-900">
+                                {new Date(anekaGrafikData.updated_at).toLocaleString('id-ID')}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Isi Grafik</h2>
+                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                      <div 
+                        className="prose max-w-none"
+                        dangerouslySetInnerHTML={{ 
+                          __html: anekaGrafikData.isi_grafik 
+                            ? anekaGrafikData.isi_grafik.replace(/\n/g, '<br>') 
+                            : 'Tidak ada konten' 
+                        }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-1">
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Galeri Gambar</h2>
+                    {processedImages && processedImages.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        {processedImages.map((image, index) => (
+                          <div key={image.id || index} className="relative group">
+                            <img
+                              src={image.url}
+                              alt={image.name || `Grafik ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-75 transition-opacity"
+                              onClick={() => openFullScreenImage(image)}
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                              <ImageIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <ImageIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                        <p>Tidak ada gambar</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex space-x-4">
+                    <button
+                      onClick={() => navigate(`/owner/keuangan/aneka-grafik/${id}/edit`)}
+                      className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      <Edit className="h-4 w-4" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Tanggal Grafik</p>
-              <p className="text-lg font-semibold text-gray-900">{formatDate(anekaGrafikData.tanggal_grafik)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <User className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Dibuat Oleh</p>
-              <p className="text-lg font-semibold text-gray-900">{anekaGrafikData.user_nama || 'Admin'}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Clock className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Waktu Input</p>
-              <p className="text-lg font-semibold text-gray-900">{formatDateTime(anekaGrafikData.created_at)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Isi Grafik Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="h-5 w-5 text-blue-600" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Isi Aneka Grafik</h2>
-          </div>
-        </div>
-        <div className="p-6">
-          <div 
-            className="prose max-w-none editor-content"
-            dangerouslySetInnerHTML={{ __html: formData.isi_grafik || '' }}
-          />
-        </div>
-
-        {/* CSS for editor content - same as form */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            .editor-content {
-              line-height: 1.6;
-              color: #374151;
-              font-family: inherit;
-            }
-            .editor-content img {
-              max-width: 100%;
-              height: auto;
-              margin: 8px 0;
-              border-radius: 8px;
-              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-              display: block;
-              cursor: pointer;
-              transition: transform 0.2s ease-in-out;
-            }
-            .editor-content img:hover {
-              transform: scale(1.02);
-            }
-            .editor-content p {
-              margin: 8px 0;
-            }
-            .editor-content br {
-              display: block;
-              margin: 4px 0;
-            }
-            .editor-content * {
-              max-width: 100%;
-            }
-            .editor-content h1, .editor-content h2, .editor-content h3, .editor-content h4, .editor-content h5, .editor-content h6 {
-              margin: 1rem 0 0.5rem 0;
-              font-weight: 600;
-            }
-            .editor-content ul, .editor-content ol {
-              margin: 0.5rem 0;
-              padding-left: 1.5rem;
-            }
-            .editor-content li {
-              margin: 0.25rem 0;
-            }
-            .editor-content blockquote {
-              margin: 1rem 0;
-              padding: 0.5rem 1rem;
-              border-left: 4px solid #3b82f6;
-              background-color: #f8fafc;
-              font-style: italic;
-            }
-            .editor-content code {
-              background-color: #f1f5f9;
-              padding: 0.125rem 0.25rem;
-              border-radius: 0.25rem;
-              font-family: 'Courier New', monospace;
-              font-size: 0.875rem;
-            }
-            .editor-content pre {
-              background-color: #f1f5f9;
-              padding: 1rem;
-              border-radius: 0.5rem;
-              overflow-x: auto;
-              margin: 1rem 0;
-            }
-          `
-        }} />
-        
-
-      </div>
-
-      {/* Action Buttons */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex space-x-4">
-            <button
-              onClick={() => navigate('/owner/keuangan/aneka-grafik')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Kembali
-            </button>
-            
-            {/* Debug button for testing */}
-            <button
-              onClick={() => {
-                console.log('🔍 🔍 🔍 DEBUG BUTTON CLICKED');
-                console.log('🔍 🔍 🔍 Current anekaGrafikData:', anekaGrafikData);
-                console.log('🔍 🔍 🔍 Current formData:', formData);
-                console.log('🔍 🔍 🔍 Current processedImages:', processedImages);
-                if (anekaGrafikData) {
-                  console.log('🔍 🔍 🔍 Testing image processing...');
-                  const testProcessedImages = processImages(anekaGrafikData.images);
-                  console.log('🔍 🔍 🔍 Test processed images:', testProcessedImages);
-                  
-                  // Check if content contains [IMG:] placeholders
-                  const hasPlaceholders = anekaGrafikData.isi_grafik.includes('[IMG:');
-                  console.log('🔍 Content contains [IMG:] placeholders:', hasPlaceholders);
-                  
-                  if (hasPlaceholders) {
-                    const placeholderRegex = /\[IMG:(\d+)\]/g;
-                    const placeholders = anekaGrafikData.isi_grafik.match(placeholderRegex);
-                    console.log('🔍 Found placeholders:', placeholders);
-                  }
-                }
-              }}
-              className="px-6 py-3 text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              Debug Images & Content
-            </button>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={() => navigate(`/owner/keuangan/aneka-grafik/${id}/edit`)}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <Edit className="h-4 w-4" />
-              <span>Edit</span>
-            </button>
-            <button
-              onClick={handleDelete}
-              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Hapus</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Full Screen Image Modal */}
       {showFullScreenModal && fullScreenImage && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
           <div className="relative max-w-4xl max-h-full p-4">
@@ -656,4 +407,4 @@ const OwnerAnekaGrafikDetail = () => {
   );
 };
 
-export default OwnerAnekaGrafikDetail; 
+export default OwnerAnekaGrafikDetail;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { omsetHarianService } from '../../../../services/omsetHarianService';
@@ -148,6 +148,27 @@ const AdminOmsetHarianList = () => {
     });
   };
 
+  // Tanggal + jam untuk banner "Terakhir diupdate"
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Mengambil waktu update terakhir dari item terbaru (diasumsikan data sudah sorted desc)
+  const lastUpdatedText = useMemo(() => {
+    if (!omsetHarian || omsetHarian.length === 0) return '-'
+    const latest = omsetHarian[0]
+    const dt = latest?.created_at || latest?.tanggal_omset
+    return formatDateTime(dt)
+  }, [omsetHarian])
+
   const isToday = (dateString) => {
     if (!dateString) return false;
     const d = new Date(dateString);
@@ -196,7 +217,7 @@ const AdminOmsetHarianList = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Daftar omset harian terbaru berada di paling atas</div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

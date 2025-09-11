@@ -70,7 +70,7 @@ const AdminKomplainEdit = () => {
       // Simulate API call
       console.log('Updating komplain:', formData);
       alert('Komplain berhasil diperbarui');
-      navigate('/admin/komplain');
+      navigate('/admin/operasional/komplain');
     } catch (err) {
       alert('Gagal memperbarui komplain');
       console.error('Error updating komplain:', err);
@@ -104,7 +104,7 @@ const AdminKomplainEdit = () => {
       <div className="flex items-center gap-4">
         <Button 
           variant="outline" 
-          onClick={() => navigate('/admin/komplain')}
+          onClick={() => navigate('/admin/operasional/komplain')}
           className="flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -236,7 +236,7 @@ const AdminKomplainEdit = () => {
               <Button 
                 type="button" 
                 variant="outline"
-                onClick={() => navigate('/admin/komplain')}
+                onClick={() => navigate('/admin/operasional/komplain')}
               >
                 <X className="w-4 h-4 mr-2" />
                 Batal

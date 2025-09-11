@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { timService } from '../../../../services/timService'
 import { 
@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   User,
   Building,
-  Award
+  Award,
+  RefreshCw
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -24,6 +25,7 @@ const AdminTimMerahBiru = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     if (activeTab === 'merah') {
@@ -153,36 +155,102 @@ const AdminTimMerahBiru = () => {
 
   const currentData = activeTab === 'merah' ? timMerah : timBiru
 
+  const resetFilters = () => {
+    setSearchTerm('')
+    setDivisiFilter('all')
+    setStatusFilter('all')
+    setActiveTab('merah')
+    setCurrentPage(1)
+  }
+
+  const handleRefresh = () => {
+    if (activeTab === 'merah') {
+      loadTimMerah()
+    } else {
+      loadTimBiru()
+    }
+  }
+
+  // Tanggal + jam untuk banner "Terakhir diupdate"
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Ambil waktu update terakhir dari item terbaru pada tab aktif
+  const lastUpdatedText = useMemo(() => {
+    const data = activeTab === 'merah' ? timMerah : timBiru
+    if (!data || data.length === 0) return '-'
+    const latest = data[0]
+    const dt = latest?.updated_at || latest?.created_at
+    return formatDateTime(dt)
+  }, [activeTab, timMerah, timBiru])
+
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tim Merah/Biru</h1>
-          <p className="text-gray-600">Kelola data tim merah dan tim biru</p>
+    <div className="min-h-screen bg-gray-100">
+      {/* Header - mengikuti gaya Omset Harian */}
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-4 min-w-0">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-TMB</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TIM MERAH BIRU</h1>
+              <p className="text-sm text-red-100">Kelola data tim merah dan biru</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              aria-label="Buka Pencarian dan Filter"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">PENCARIAN</span>
+            </button>
+            <Link
+              to={`/admin/sdm/tim/${activeTab}/form`}
+              aria-label="Tambah Data Tim"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">Tambah</span>
+            </Link>
+          </div>
         </div>
       </div>
 
+      {/* Info bar */}
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+
+      <div className="p-4 sm:p-6">
+
       {/* Tabs */}
-      <div className="mb-6">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+      <div className="mb-4">
+        <div className="border-b border-gray-200 bg-white rounded-t-lg">
+          <nav className="-mb-px flex space-x-6 px-4 pt-3 overflow-x-auto whitespace-nowrap scrollbar-hide">
             <button
               onClick={() => setActiveTab('merah')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 px-3 border-b-2 font-semibold text-sm transition-colors ${
                 activeTab === 'merah'
-                  ? 'border-red-500 text-red-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-red-600 text-red-700'
+                  : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
               }`}
             >
               Tim Merah
             </button>
             <button
               onClick={() => setActiveTab('biru')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-3 px-3 border-b-2 font-semibold text-sm transition-colors ${
                 activeTab === 'biru'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
               }`}
             >
               Tim Biru
@@ -192,8 +260,28 @@ const AdminTimMerahBiru = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="flex flex-col lg:flex-row gap-4">
+      {showFilters && (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 my-4">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800">Pencarian & Filter</h3>
+          <button
+            onClick={() => {
+              setSearchTerm('')
+              setDivisiFilter('all')
+              setStatusFilter('all')
+              setActiveTab('merah')
+              setCurrentPage(1)
+              loadTimMerah()
+            }}
+            aria-label="Reset Filter"
+            className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            <span className="hidden sm:inline font-semibold">Reset</span>
+          </button>
+        </div>
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search */}
           <div className="flex-1">
             <div className="relative">
@@ -203,8 +291,8 @@ const AdminTimMerahBiru = () => {
                 placeholder="Cari nama karyawan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -214,7 +302,7 @@ const AdminTimMerahBiru = () => {
             <select
               value={divisiFilter}
               onChange={(e) => setDivisiFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
               <option value="all">Semua Divisi</option>
               <option value="BSG PUSAT">BSG PUSAT</option>
@@ -232,7 +320,7 @@ const AdminTimMerahBiru = () => {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="all">Semua Status</option>
                 <option value="SP1">SP1</option>
@@ -243,33 +331,40 @@ const AdminTimMerahBiru = () => {
           )}
 
           {/* Search Button */}
-          <button
-            onClick={handleSearch}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Cari
-          </button>
+          <div className="flex lg:justify-end">
+            <button
+              onClick={handleSearch}
+              aria-label="Cari"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-6 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline">Cari</span>
+            </button>
+          </div>
         </div>
       </div>
+      </div>
+      )}
 
       {/* Actions */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 bg-white rounded-lg border p-4 shadow-sm">
         <div className="text-sm text-gray-600">
           Total: {totalItems} data
         </div>
         <Link
           to={`/admin/sdm/tim/${activeTab}/form`}
-          className={`text-white px-4 py-2 rounded-lg hover:opacity-90 flex items-center gap-2 ${
+          aria-label="Tambah Data Tim"
+          className={`text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:opacity-90 flex items-center gap-2 ${
             activeTab === 'merah' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
           <Plus className="h-4 w-4" />
-          Tambah Tim {activeTab === 'merah' ? 'Merah' : 'Biru'}
+          <span className="hidden sm:inline">Tambah Tim {activeTab === 'merah' ? 'Merah' : 'Biru'}</span>
         </Link>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow table-responsive">
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -282,9 +377,9 @@ const AdminTimMerahBiru = () => {
             <p className="text-gray-500">Belum ada data tim {activeTab} yang tersedia</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="table-responsive">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="sticky top-0 bg-red-50 z-10">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Karyawan
@@ -309,7 +404,7 @@ const AdminTimMerahBiru = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentData.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 sm:px-6 py-4 whitespace-normal md:whitespace-nowrap">
                       <div className="flex items-center">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                           activeTab === 'merah' ? 'bg-red-100' : 'bg-blue-100'
@@ -329,7 +424,7 @@ const AdminTimMerahBiru = () => {
                         <span className="text-sm text-gray-900">{item.divisi}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 sm:px-6 py-4 whitespace-normal md:whitespace-nowrap text-sm text-gray-900 break-anywhere">
                       {item.posisi}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -344,12 +439,12 @@ const AdminTimMerahBiru = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-xs truncate">
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="text-sm text-gray-900 max-w-[12rem] md:max-w-xs break-anywhere md:truncate">
                         {item.keterangan || '-'}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <Link
                           to={`/admin/sdm/tim/${activeTab}/edit/${item.id}`}
@@ -401,6 +496,8 @@ const AdminTimMerahBiru = () => {
             </div>
           </div>
         )}
+      </div>
+      {/* Close inner content wrapper */}
       </div>
     </div>
   )

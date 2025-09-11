@@ -283,142 +283,241 @@ const AdminAnekaSurat = () => {
     groupedData[item.jenis_dokumen].push(item);
   });
 
-  if (loading) {
-  return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat data aneka surat...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleSelectAll = () => {
+    if (selectedItems.length === anekaSurat.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(anekaSurat.map(item => item.id));
+    }
+  };
+
+  const handleBulkAction = async (action) => {
+    if (selectedItems.length === 0) {
+      toast.error('Pilih dokumen terlebih dahulu');
+      return;
+    }
+
+    try {
+      if (action === 'delete') {
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus ${selectedItems.length} dokumen?`)) {
+          return;
+        }
+        const deletePromises = selectedItems.map(id => anekaSuratService.deleteAnekaSurat(id));
+        await Promise.all(deletePromises);
+        toast.success(`${selectedItems.length} dokumen berhasil dihapus`);
+      } else if (action === 'approve') {
+        const approvePromises = selectedItems.map(id => anekaSuratService.approveAnekaSurat(id));
+        await Promise.all(approvePromises);
+        toast.success(`${selectedItems.length} dokumen berhasil disetujui`);
+      } else if (action === 'reject') {
+        if (!window.confirm(`Apakah Anda yakin ingin menolak ${selectedItems.length} dokumen?`)) {
+          return;
+        }
+        const rejectPromises = selectedItems.map(id => anekaSuratService.rejectAnekaSurat(id));
+        await Promise.all(rejectPromises);
+        toast.success(`${selectedItems.length} dokumen berhasil ditolak`);
+      }
+      
+      setSelectedItems([]);
+      loadAnekaSurat();
+      loadStats();
+    } catch (error) {
+      console.error(`Error performing bulk ${action}:`, error);
+      toast.error(`Gagal melakukan aksi ${action} pada beberapa dokumen`);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'PENDING':
+        return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Menunggu</span>;
+      case 'APPROVED':
+        return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Disetujui</span>;
+      case 'REJECTED':
+        return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Ditolak</span>;
+      default:
+        return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">{status}</span>;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-red-600 text-white">
-        <div className="px-4 py-3">
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K3</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT - ADMIN</h1>
+              <p className="text-sm text-red-100">Kelola dan verifikasi dokumen aneka surat</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              PENCARIAN
+            </button>
+            <Link
+              to="/admin/keuangan/aneka-surat/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="font-semibold">Tambah</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Info bar */}
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+        {selectedItems.length > 0 ? (
           <div className="flex items-center justify-between">
-            <button 
-              onClick={() => window.history.back()}
-              className="p-2 bg-red-700 rounded-lg"
-            >
-              <ChevronDown className="w-5 h-5 rotate-90" />
-            </button>
-            <div className="text-center">
-              <div className="text-sm opacity-75">Admin Panel</div>
-              <h1 className="text-xl font-bold">Aneka Surat</h1>
+            <span>{selectedItems.length} dokumen dipilih</span>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => handleBulkAction('approve')}
+                className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+              >
+                Setujui
+              </button>
+              <button 
+                onClick={() => handleBulkAction('reject')}
+                className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+              >
+                Tolak
+              </button>
+              <button 
+                onClick={() => handleBulkAction('delete')}
+                className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Hapus
+              </button>
             </div>
-            <button 
-              onClick={() => setShowAddModal(true)}
-              className="p-2 bg-red-700 rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="text-center text-sm opacity-75 mt-2">
-            Terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
-          </div>
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="px-4 py-4 bg-white border-b">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-red-50 p-3 rounded-lg border border-red-200">
-            <div className="flex items-center space-x-2">
-              <BarChart3 className="w-6 h-6 text-red-600" />
-              <div>
-                <p className="text-xs text-red-600 font-medium">Total Dokumen</p>
-                <p className="text-lg font-bold text-red-800">{anekaSurat.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-            <div className="flex items-center space-x-2">
-              <FileText className="w-6 h-6 text-blue-600" />
-              <div>
-                <p className="text-xs text-blue-600 font-medium">Jenis Dokumen</p>
-                <p className="text-lg font-bold text-blue-800">{Object.keys(groupedData).length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-              <div>
-                <p className="text-xs text-green-600 font-medium">Aktif</p>
-                <p className="text-lg font-bold text-green-800">
-                  {anekaSurat.filter(item => !item.status_deleted).length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-            <div className="flex items-center space-x-2">
-              <User className="w-6 h-6 text-purple-600" />
-              <div>
-                <p className="text-xs text-purple-600 font-medium">Users</p>
-                <p className="text-lg font-bold text-purple-800">
-                  {new Set(anekaSurat.map(item => item.id_user)).size}
-          </p>
-        </div>
-      </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="px-4 py-4 bg-white border-b">
-        <div className="flex flex-col space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cari dokumen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
-          </div>
-          <select
-            value={jenisFilter}
-            onChange={(e) => setJenisFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          >
-            <option value="all">Semua Jenis Dokumen</option>
-            {documentTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="px-4 py-4">
-        {Object.keys(groupedData).length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Tidak ada dokumen ditemukan</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {Object.entries(groupedData).map(([jenis, documents]) => (
-              <div key={jenis} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <button
-                  onClick={() => toggleCategory(jenis)}
-                  className="w-full px-4 py-3 bg-red-50 text-red-700 flex items-center justify-between hover:bg-red-100 transition-colors"
-                >
-                  <div>
-                    <div className="font-bold text-lg">{jenis}</div>
-                    <div className="text-sm">{documents.length} dokumen</div>
-                  </div>
-                  {expandedCategories.has(jenis) ? (
-                    <ChevronUp className="w-5 h-5" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5" />
-                  )}
+          'Daftar dokumen terbaru berada di paling atas'
+        )}
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6">
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Dokumen</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_documents}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <FileType className="h-6 w-6 text-green-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Jenis Dokumen</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.document_types}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <FileClock className="h-6 w-6 text-yellow-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Menunggu</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.pending_documents}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg shadow border">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <FileCheck className="h-6 w-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Disetujui</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.approved_documents}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Search and Filters */}
+      {showFilters && (
+        <div className="bg-white p-4 border-b">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Cari dokumen..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="date"
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <select 
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Semua Status</option>
+              <option value="PENDING">Menunggu</option>
+              <option value="APPROVED">Disetujui</option>
+              <option value="REJECTED">Ditolak</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="bg-white mx-6 rounded-lg shadow border overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center items-center p-12">
+            <LoadingSpinner />
+          </div>
+        ) : anekaSurat.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input 
+                      type="checkbox" 
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      checked={selectedItems.length === anekaSurat.length}
+                      onChange={handleSelectAll}
+                    />
                 </button>
                 
                 {expandedCategories.has(jenis) && (

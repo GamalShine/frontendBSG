@@ -22,6 +22,7 @@ import Select from '../../components/UI/Select'
 import Switch from '../../components/UI/Switch'
 import Textarea from '../../components/UI/Textarea'
 import toast from 'react-hot-toast'
+import AccountManagement from './AccountManagement'
 
 const Settings = () => {
   const { user } = useAuth()
@@ -152,8 +153,14 @@ const Settings = () => {
     { id: 'notifications', name: 'Notifikasi', icon: Bell },
     { id: 'system', name: 'Sistem', icon: Database },
     { id: 'users', name: 'Pengguna', icon: Users },
+    { id: 'accounts', name: 'Kelola Akun', icon: Users },
     { id: 'appearance', name: 'Tampilan', icon: Palette }
   ]
+
+  // Hanya owner yang melihat tab Kelola Akun
+  const availableTabs = (user?.role === 'owner')
+    ? tabs
+    : tabs.filter(t => t.id !== 'accounts')
 
   if (loading) {
     return (
@@ -189,7 +196,7 @@ const Settings = () => {
             <Card>
               <CardBody className="p-0">
                 <nav className="space-y-1">
-                  {tabs.map((tab) => {
+                  {availableTabs.map((tab) => {
                     const Icon = tab.icon
                     return (
                       <button

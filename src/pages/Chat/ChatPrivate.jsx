@@ -118,14 +118,28 @@ const ChatPrivate = () => {
         loadGroupsData()
       ])
       
-      // Combine and sort by last message time
-      const combined = [...contactsResponse, ...groupsResponse]
-        .sort((a, b) => {
-          // Sort by last_message_time, newest first
-          const timeA = a.last_message_time ? new Date(a.last_message_time).getTime() : 0
-          const timeB = b.last_message_time ? new Date(b.last_message_time).getTime() : 0
-          return timeB - timeA
-        })
+      // Combine, de-duplicate, and sort by last message time
+      const merged = [...contactsResponse, ...groupsResponse]
+      const uniqueMap = new Map()
+      for (const item of merged) {
+        const key = item.type === 'group' ? `group-${item.group_id}` : `private-${item.id || item.room_id}`
+        if (!uniqueMap.has(key)) {
+          uniqueMap.set(key, item)
+        } else {
+          // If duplicate found, prefer the one with newer last_message_time or non-null values
+          const existing = uniqueMap.get(key)
+          const existingTime = existing.last_message_time ? new Date(existing.last_message_time).getTime() : 0
+          const currentTime = item.last_message_time ? new Date(item.last_message_time).getTime() : 0
+          if (currentTime > existingTime) {
+            uniqueMap.set(key, item)
+          }
+        }
+      }
+      const combined = Array.from(uniqueMap.values()).sort((a, b) => {
+        const timeA = a.last_message_time ? new Date(a.last_message_time).getTime() : 0
+        const timeB = b.last_message_time ? new Date(b.last_message_time).getTime() : 0
+        return timeB - timeA
+      })
       
       console.log('Combined chat list:', combined)
       setCombinedChatList(combined)
@@ -240,7 +254,7 @@ const ChatPrivate = () => {
             type: 'group', // Add type for identification
             last_message: group.last_message || 'Belum ada pesan',
             last_message_time: group.last_message_time || null,
-            unread_count: Math.floor(Math.random() * 5) // Simulate unread count
+            unread_count: typeof group.unread_count === 'number' ? group.unread_count : 0
           }))
         
         console.log('🔍 Valid groups:', validGroups)
@@ -545,20 +559,21 @@ const ChatPrivate = () => {
   }
 
   // Update chat list after new message
-  const updateChatListAfterMessage = (roomId, message, senderId) => {
+  const updateChatListAfterMessage = (roomId, message, senderId, timestamp) => {
+    const ts = timestamp || new Date().toISOString()
     setCombinedChatList(prevList => {
       const updatedList = prevList.map(item => {
         if (item.type === 'private' && item.room_id === roomId) {
           return {
             ...item,
             last_message: message,
-            last_message_time: new Date().toISOString()
+            last_message_time: ts
           }
         } else if (item.type === 'group' && item.group_id === roomId) {
           return {
             ...item,
             last_message: message,
-            last_message_time: new Date().toISOString()
+            last_message_time: ts
           }
         }
         return item
@@ -653,8 +668,13 @@ const ChatPrivate = () => {
           toast.warning('Pesan ditampilkan di UI tapi mungkin tidak tersimpan di server')
         } else {
           toast.success('Pesan berhasil dikirim!')
-          // Update chat list after successful message
-          updateChatListAfterMessage(currentRoom.room_id, messageText, user.id)
+          // Update chat list after successful message using server timestamp if available
+          updateChatListAfterMessage(
+            currentRoom.room_id,
+            messageText,
+            user.id,
+            response.data && (response.data.created_at || response.data.timestamp)
+          )
           
           // Reset unread count for current contact since we sent a message
           if (selectedContact) {
@@ -720,8 +740,13 @@ const ChatPrivate = () => {
                   toast.success(`Pesan berhasil dikirim setelah ${retryAttempt} percobaan!`)
                   console.log('Message sent successfully after retry')
                   
-                  // Update chat list after successful retry
-                  updateChatListAfterMessage(currentRoom.room_id, messageText, user.id)
+                  // Update chat list after successful retry using server timestamp if available
+                  updateChatListAfterMessage(
+                    currentRoom.room_id,
+                    messageText,
+                    user.id,
+                    retryResponse.data && (retryResponse.data.created_at || retryResponse.data.timestamp)
+                  )
                   
                   // Reset unread count for current contact since we sent a message
                   if (selectedContact) {
@@ -912,8 +937,13 @@ const ChatPrivate = () => {
         toast.success('Pesan berhasil dikirim!')
         console.log('Group message sent successfully')
         
-        // Update chat list after successful group message
-        updateChatListAfterMessage(selectedGroup.group_id, messageText, user.id)
+        // Update chat list after successful group message using server timestamp
+        updateChatListAfterMessage(
+          selectedGroup.group_id,
+          messageText,
+          user.id,
+          response.data && (response.data.created_at || response.data.timestamp)
+        )
         
         // Reset unread count for current group since we sent a message
         if (selectedGroup) {
@@ -970,8 +1000,13 @@ const ChatPrivate = () => {
                 toast.success('Pesan berhasil dikirim setelah percobaan ulang!')
                 console.log('Group message sent successfully after retry')
                 
-                // Update chat list after successful retry
-                updateChatListAfterMessage(selectedGroup.group_id, messageText, user.id)
+                // Update chat list after successful retry using server timestamp
+                updateChatListAfterMessage(
+                  selectedGroup.group_id,
+                  messageText,
+                  user.id,
+                  retryResponse.data && (retryResponse.data.created_at || retryResponse.data.timestamp)
+                )
                 
                 // Reset unread count for current group since we sent a message
                 if (selectedGroup) {
@@ -1121,21 +1156,15 @@ const ChatPrivate = () => {
     }
   }
 
-  // Filter contacts and groups based on search term and existing chats with messages
+  // Filter daftar chat ala WhatsApp: hanya tampil jika ada pesan terakhir (punya timestamp) atau ada unread
   const filteredCombinedList = combinedChatList.filter(item => {
     const name = item.nama || item.group_name || item.username || 'Unknown User'
     const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    // Only show items that have existing chats with messages or are groups
-    if (item.type === 'private') {
-      // For private chats, only show if they have existing chat AND have messages
-      return matchesSearch && item.isExistingChat && item.last_message && item.last_message !== 'Belum ada pesan'
-    } else if (item.type === 'group') {
-      // For groups, show all (groups are considered existing chats)
-      return matchesSearch
-    }
-    
-    return false
+
+    const hasLastMessageTime = !!item.last_message_time
+    const hasUnread = typeof item.unread_count === 'number' && item.unread_count > 0
+
+    return matchesSearch && (hasLastMessageTime || hasUnread)
   })
 
   // Start new chat with selected contact
@@ -1162,8 +1191,15 @@ const ChatPrivate = () => {
           type: 'private'
         }
         
-        // Add to combined chat list
-        setCombinedChatList(prev => [newContact, ...prev])
+        // Add to combined chat list without duplicates
+        setCombinedChatList(prev => {
+          const keyToRemove = `private-${newContact.id || newContact.room_id}`
+          const filtered = prev.filter(it => {
+            const key = it.type === 'group' ? `group-${it.group_id}` : `private-${it.id || it.room_id}`
+            return key !== keyToRemove
+          })
+          return [newContact, ...filtered]
+        })
         
         // Select the new contact
         selectContact(newContact)
@@ -1270,7 +1306,9 @@ const ChatPrivate = () => {
             ) : (
             filteredCombinedList.map((item, index) => (
               <div
-                key={`${item.id || item.group_id}-${item.type}-${index}`}
+                key={item.type === 'group' 
+                  ? `group-${item.group_id}` 
+                  : `private-${item.room_id || item.id}`}
                 onClick={() => {
                   if (item.type === 'private') {
                     selectContact(item)
@@ -1301,7 +1339,9 @@ const ChatPrivate = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="text-sm font-semibold text-gray-900 truncate">
-                        {item.type === 'private' ? (item.nama || item.username || 'User') : item.group_name}
+                        {item.type === 'private'
+                          ? `${item.nama || item.username || 'User'} - ${item.role || 'User'}`
+                          : item.group_name}
                       </h3>
                       {item.last_message_time && (
                         <span className="text-xs text-gray-500 font-medium">
@@ -1322,11 +1362,6 @@ const ChatPrivate = () => {
                           {item.type === 'group' && (
                             <span className="text-xs text-gray-400">
                               {item.member_count || 0} anggota
-                            </span>
-                          )}
-                          {item.type === 'private' && item.role && (
-                            <span className="text-xs text-gray-400">
-                              {item.role}
                             </span>
                           )}
 

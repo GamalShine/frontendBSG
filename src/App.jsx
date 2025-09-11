@@ -5,8 +5,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MenuProvider, useMenu } from './contexts/MenuContext'
 import ErrorBoundary from './components/ErrorBoundary'
 import Layout from './components/Layout/Layout'
+import RequireMenuKey from './components/RouteGuards/RequireMenuKey'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import AdminDashboard from './pages/Admin/Dashboard/AdminDashboard'
+import OwnerDashboard from './pages/Owner/Dashboard/OwnerDashboard'
 import NotFound from './pages/NotFound'
 
 // Chat Pages
@@ -29,6 +32,7 @@ import AdminKomplainList from './pages/Admin/Komplain/AdminKomplainList'
 import AdminKomplainDetail from './pages/Admin/Komplain/AdminKomplainDetail'
 import AdminKomplainForm from './pages/Admin/Komplain/AdminKomplainForm'
 import AdminKomplainEdit from './pages/Admin/Komplain/AdminKomplainEdit'
+import AdminDaftarKomplain from './pages/Admin/Operasional/DaftarKomplain/AdminDaftarKomplain'
 
 // Tugas Pages
 import TugasList from './pages/Tugas/TugasList'
@@ -63,8 +67,14 @@ import OwnerAnekaGrafikDashboard from './pages/Owner/Dashboard/AnekaGrafik'
 import OwnerDaftarGaji from './pages/Owner/Keuangan/manage/OwnerDaftarGaji'
 import OwnerDataAset from './pages/Owner/Operasional/DataAset/OwnerDataAset'
 import OwnerDataInvestor from './pages/Owner/Operasional/DataInvestor/OwnerDataInvestor'
-import OwnerDataTarget from './pages/Owner/Marketing/manage/OwnerDataTarget'
 import OwnerMedsos from './pages/Owner/Marketing/Medsos/OwnerMedsos'
+import OwnerMedsosForm from './pages/Owner/Marketing/Medsos/OwnerMedsosForm'
+import OwnerMedsosDetail from './pages/Owner/Marketing/Medsos/OwnerMedsosDetail'
+import OwnerMedsosEdit from './pages/Owner/Marketing/Medsos/OwnerMedsosEdit'
+import OwnerTargetHarianList from './pages/Owner/Marketing/TargetHarian/OwnerTargetHarianList'
+import OwnerTargetHarianForm from './pages/Owner/Marketing/TargetHarian/OwnerTargetHarianForm'
+import OwnerTargetHarianDetail from './pages/Owner/Marketing/TargetHarian/OwnerTargetHarianDetail'
+import OwnerTargetHarianEdit from './pages/Owner/Marketing/TargetHarian/OwnerTargetHarianEdit'
 import OwnerDataTim from './pages/Owner/SDM/manage/OwnerDataTim'
 import OwnerTimMerahBiruList from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruList'
 import OwnerTimMerahBiruDetail from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruDetail'
@@ -78,8 +88,7 @@ import OwnerKPIDetail from './pages/Owner/SDM/KPI/OwnerKPIDetail'
 import OwnerKPIForm from './pages/Owner/SDM/KPI/OwnerKPIForm'
 import OwnerKPIEdit from './pages/Owner/SDM/KPI/OwnerKPIEdit'
 
-// Owner Admin Management Pages
-import AdminMenuManagement from './pages/Owner/AdminMenuManagement/AdminMenuManagement'
+// Owner Management Pages
 import PicMenuManagement from './pages/Owner/PicMenuManagement/PicMenuManagement'
 
 // Admin Pages - New Structure
@@ -117,12 +126,16 @@ import AdminDataBinaLingkunganDetail from './pages/Admin/Operasional/DataBinaLin
 import AdminDataBinaLingkunganEdit from './pages/Admin/Operasional/DataBinaLingkungan/AdminDataBinaLingkunganEdit'
 import AdminDataAset from './pages/Admin/Operasional/DataAset/AdminDataAset'
 import AdminDataInvestor from './pages/Admin/Operasional/DataInvestor/AdminDataInvestor'
+import AdminDaftarKomplainForm from './pages/Admin/Operasional/DaftarKomplain/AdminDaftarKomplainForm'
+import AdminJadwalPembayaran from './pages/Admin/Operasional/JadwalPembayaran/AdminJadwalPembayaran'
 
 // Admin SDM Pages
 import AdminDataTim from './pages/Admin/SDM/manage/AdminDataTim'
 import AdminTimMerahBiru from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiru'
 import AdminTimMerahBiruList from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruList'
 import AdminTimMerahBiruDetail from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruDetail'
+import AdminDataTimDetail from './pages/Admin/SDM/manage/AdminDataTimDetail'
+import AdminDataTimForm from './pages/Admin/SDM/manage/AdminDataTimForm'
 import AdminTimMerahBiruForm from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruForm'
 import AdminTimMerahBiruEdit from './pages/Admin/SDM/TimMerahBiru/AdminTimMerahBiruEdit'
 
@@ -152,24 +165,33 @@ import OwnerDataSupplierForm from './pages/Owner/Operasional/DataSupplier/OwnerD
 import OwnerDataSupplierDetail from './pages/Owner/Operasional/DataSupplier/OwnerDataSupplierDetail'
 import OwnerDataSupplierEdit from './pages/Owner/Operasional/DataSupplier/OwnerDataSupplierEdit'
 import OwnerDataBinaLingkungan from './pages/Owner/Operasional/DataBinaLingkungan/OwnerDataBinaLingkungan'
+import OwnerJadwalPembayaran from './pages/Owner/Operasional/JadwalPembayaran/OwnerJadwalPembayaran'
+import OwnerDataSewaList from './pages/Owner/Operasional/DataSewa/OwnerDataSewaList'
+import OwnerDataSewaDetail from './pages/Owner/Operasional/DataSewa/OwnerDataSewaDetail'
+import OwnerDaftarSaran from './pages/Owner/Operasional/DaftarSaran/OwnerDaftarSaran'
+import AdminDaftarSaran from './pages/Admin/Operasional/DaftarSaran/AdminDaftarSaran'
+import DivisiDaftarSaran from './pages/Divisi/Operasional/DaftarSaran/DivisiDaftarSaran'
+import TimDaftarSaran from './pages/Tim/Operasional/DaftarSaran/TimDaftarSaran'
 
 // Owner Komplain Pages
 import OwnerKomplainList from './pages/Owner/Operasional/Komplain/OwnerKomplainList'
 import OwnerKomplainDetail from './pages/Owner/Operasional/Komplain/OwnerKomplainDetail'
 import OwnerKomplainForm from './pages/Owner/Operasional/Komplain/OwnerKomplainForm'
 import OwnerKomplainEdit from './pages/Owner/Operasional/Komplain/OwnerKomplainEdit'
+import OwnerDaftarKomplain from './pages/Owner/Operasional/DaftarKomplain/OwnerDaftarKomplain'
+import OwnerDaftarKomplainForm from './pages/Owner/Operasional/DaftarKomplain/OwnerDaftarKomplainForm'
 
-// Admin Data Target Pages
-import AdminDataTarget from './pages/Admin/Marketing/AdminDataTarget'
-import AdminDataTargetForm from './pages/Admin/Marketing/AdminDataTargetForm'
-import AdminDataTargetDetail from './pages/Admin/Marketing/AdminDataTargetDetail'
-import AdminDataTargetEdit from './pages/Admin/Marketing/AdminDataTargetEdit'
+// Admin Data Target (deprecated) removed
+import AdminTargetHarianList from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianList'
+import AdminTargetHarianDetail from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianDetail'
+import AdminTargetHarianForm from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianForm'
+import AdminTargetHarianEdit from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianEdit'
 
-// Admin Medsos Pages
-import AdminMedsos from './pages/Admin/Marketing/AdminMedsos'
-import AdminMedsosForm from './pages/Admin/Marketing/AdminMedsosForm'
-import AdminMedsosDetail from './pages/Admin/Marketing/AdminMedsosDetail'
-import AdminMedsosEdit from './pages/Admin/Marketing/AdminMedsosEdit'
+// Admin Medsos Pages (use Medsos subfolder to match Owner features)
+import AdminMedsos from './pages/Admin/Marketing/Medsos/AdminMedsos'
+import AdminMedsosForm from './pages/Admin/Marketing/Medsos/AdminMedsosForm'
+import AdminMedsosDetail from './pages/Admin/Marketing/Medsos/AdminMedsosDetail'
+import AdminMedsosEdit from './pages/Admin/Marketing/Medsos/AdminMedsosEdit'
 import AdminMedsosKOLForm from './pages/Admin/Marketing/AdminMedsosKOLForm'
 import AdminMedsosAnggaranForm from './pages/Admin/Marketing/AdminMedsosAnggaranForm'
 import AdminMedsosPlatformForm from './pages/Admin/Marketing/AdminMedsosPlatformForm'
@@ -188,6 +210,7 @@ import AnekaGrafikDetail from './pages/Keuangan/AnekaGrafikDetail'
 import AnekaGrafikForm from './pages/Keuangan/AnekaGrafikForm'
 import DaftarGaji from './pages/Keuangan/DaftarGaji'
 import AnekaSurat from './pages/Keuangan/AnekaSurat'
+import OwnerAnekaSuratList from './pages/Owner/Keuangan/AnekaSurat/OwnerAnekaSuratList'
 import OmsetHarian from './pages/Keuangan/OmsetHarian'
 import OmsetHarianList from './pages/Keuangan/OmsetHarianList'
 import OmsetHarianForm from './pages/Keuangan/OmsetHarianForm'
@@ -204,7 +227,6 @@ import DataAset from './pages/Operasional/DataAset'
 import DataSupplier from './pages/Operasional/DataSupplier'
 import DataSewa from './pages/Operasional/DataSewa'
 import DataInvestor from './pages/Operasional/DataInvestor'
-import DaftarSaran from './pages/Operasional/DaftarSaran'
 import DataBinaLingkungan from './pages/Operasional/DataBinaLingkungan'
 
 // Marketing Pages
@@ -242,10 +264,11 @@ import ProfilePassword from './pages/Profile/ProfilePassword'
 
 // Settings Pages
 import Settings from './pages/Settings/Settings'
+import OwnerSettingsKelolaAkun from './pages/Settings/KelolaAkun/OwnerSettingsKelolaAkun'
 
 // Login Wrapper Component
 const LoginWrapper = () => {
-  const { isAuthenticated, loading } = useAuth()
+  const { isAuthenticated, loading, user } = useAuth()
   
   if (loading) {
     return (
@@ -260,7 +283,10 @@ const LoginWrapper = () => {
   }
   
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    const defaultPath = user?.role === 'owner' ? '/owner/dashboard'
+      : user?.role === 'admin' ? '/admin/dashboard'
+      : '/dashboard'
+    return <Navigate to={defaultPath} replace />
   }
   
   return <Login />
@@ -313,11 +339,51 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Owner Operasional - Jadwal Pembayaran/Perawatan */}
+              <Route path="/owner/operasional/jadwal-pembayaran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerJadwalPembayaran />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/operasional/sewa" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataSewaList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/operasional/sewa/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDataSewaDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
               
               <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <Layout>
                     <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Role-specific Dashboards */}
+              <Route path="/admin/dashboard" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AdminDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/owner/dashboard" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <OwnerDashboard />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -342,15 +408,16 @@ const App = () => {
               } />
 
               {/* Admin Chat Routes */}
-              <Route path="/admin/chat" element={<Navigate to="/admin/chat/private" replace />} />
-              
-              <Route path="/admin/chat/private" element={
+              <Route path="/admin/chat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <AdminChatPrivate />
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/admin/chat/private" element={<Navigate to="/admin/chat" replace />} />
               
               <Route path="/admin/chat/room/:roomId" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -359,15 +426,6 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
-
-                          {/* Owner Admin Management Routes */}
-            <Route path="/owner/admin-menu-management" element={
-              <ProtectedRoute requiredPermissions={['read']}>
-                <Layout>
-                  <AdminMenuManagement />
-                </Layout>
-              </ProtectedRoute>
-            } />
             <Route path="/owner/pic-menu-management" element={
               <ProtectedRoute requiredPermissions={['read']}>
                 <Layout>
@@ -377,20 +435,114 @@ const App = () => {
             } />
               
               {/* Owner Chat Routes */}
-              <Route path="/owner/chat" element={<Navigate to="/owner/chat/private" replace />} />
-              
-              <Route path="/owner/chat/private" element={
+              <Route path="/owner/chat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerChatPrivate />
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/owner/chat/private" element={<Navigate to="/owner/chat" replace />} />
               
               <Route path="/owner/chat/room/:roomId" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerChatRoom />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner Settings - Kelola Akun */}
+              <Route path="/owner/settings/kelola-akun" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <OwnerSettingsKelolaAkun />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Owner Operasional - Saran */}
+              <Route path="/owner/operasional/saran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDaftarSaran />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Operasional - Saran */}
+              <Route path="/admin/operasional/saran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDaftarSaran />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Operasional - Jadwal Pembayaran/Perawatan */}
+              <Route path="/admin/operasional/jadwal-pembayaran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminOperasionalJadwalPembayaran">
+                    <Layout>
+                      <AdminJadwalPembayaran />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Marketing - Data Target (ratakan penamaan) */}
+              <Route path="/admin/marketing/data-target" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTargetHarianList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/marketing/data-target/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminTargetHarianForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/marketing/data-target/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminTargetHarianDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/marketing/data-target/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminTargetHarianEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Backward compatibility redirects */}
+              <Route path="/admin/marketing/target" element={<Navigate to="/admin/marketing/data-target" replace />} />
+              <Route path="/admin/marketing/target-harian" element={<Navigate to="/admin/marketing/data-target" replace />} />
+              <Route path="/admin/marketing/target-harian/new" element={<Navigate to="/admin/marketing/data-target/new" replace />} />
+              <Route path="/admin/marketing/target-harian/:id" element={<Navigate to="/admin/marketing/data-target/:id" replace />} />
+              <Route path="/admin/marketing/target-harian/:id/edit" element={<Navigate to="/admin/marketing/data-target/:id/edit" replace />} />
+
+              {/* Divisi Operasional - Saran */}
+              <Route path="/divisi/operasional/saran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <DivisiDaftarSaran />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Tim Operasional - Saran */}
+              <Route path="/tim/operasional/saran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <TimDaftarSaran />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -403,17 +555,72 @@ const App = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+              <Route path="/owner/marketing/data-target" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTargetHarianList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/marketing/data-target/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerTargetHarianForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/marketing/data-target/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerTargetHarianDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/marketing/data-target/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerTargetHarianEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              {/* Backward compatibility: redirect old paths to new */}
+              <Route path="/owner/marketing/target-harian" element={<Navigate to="/owner/marketing/data-target" replace />} />
+              <Route path="/owner/marketing/target-harian/new" element={<Navigate to="/owner/marketing/data-target/new" replace />} />
+              <Route path="/owner/marketing/target-harian/:id" element={<Navigate to="/owner/marketing/data-target/:id" replace />} />
+              <Route path="/owner/marketing/target-harian/:id/edit" element={<Navigate to="/owner/marketing/data-target/:id/edit" replace />} />
+              <Route path="/owner/marketing/medsos/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <OwnerMedsosForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/marketing/medsos/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerMedsosDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/marketing/medsos/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <OwnerMedsosEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
 
               {/* Divisi Chat Routes */}
-              <Route path="/divisi/chat" element={<Navigate to="/divisi/chat/private" replace />} />
-              
-              <Route path="/divisi/chat/private" element={
+              <Route path="/divisi/chat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <DivisiChatPrivate />
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/divisi/chat/private" element={<Navigate to="/divisi/chat" replace />} />
               
               <Route path="/divisi/chat/room/:roomId" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -424,15 +631,16 @@ const App = () => {
               } />
 
               {/* Tim Chat Routes */}
-              <Route path="/tim/chat" element={<Navigate to="/tim/chat/private" replace />} />
-              
-              <Route path="/tim/chat/private" element={
+              <Route path="/tim/chat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <TimChatPrivate />
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/tim/chat/private" element={<Navigate to="/tim/chat" replace />} />
               
               <Route path="/tim/chat/room/:roomId" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -508,6 +716,39 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Admin Operasional Komplain Routes (new namespace) */}
+              <Route path="/admin/operasional/komplain" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDaftarKomplain />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/operasional/komplain/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDaftarKomplainForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/operasional/komplain/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminKomplainDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/admin/operasional/komplain/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminKomplainEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               {/* Admin New Structure Routes */}
               {/* Admin Keuangan Routes */}
               <Route path="/admin/keuangan/laporan" element={
@@ -552,9 +793,11 @@ const App = () => {
               {/* Admin Operasional Routes */}
               <Route path="/admin/operasional/data-supplier" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDataSupplier />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDataSupplier">
+                    <Layout>
+                      <AdminDataSupplier />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -591,9 +834,11 @@ const App = () => {
               } />
               <Route path="/admin/operasional/bina-lingkungan" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDataBinaLingkungan />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDataBinaLingkungan">
+                    <Layout>
+                      <AdminDataBinaLingkungan />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
 
@@ -601,40 +846,22 @@ const App = () => {
               <Route path="/admin/marketing/target" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <AdminDataTarget />
+                    <AdminTargetHarianList />
                   </Layout>
                 </ProtectedRoute>
               } />
               
-              <Route path="/admin/marketing/target/form" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <AdminDataTargetForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
               
-              <Route path="/admin/marketing/target/detail/:id" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDataTargetDetail />
-                  </Layout>
-                </ProtectedRoute>
-              } />
               
-              <Route path="/admin/marketing/target/edit/:id" element={
-                <ProtectedRoute requiredPermissions={['update']}>
-                  <Layout>
-                    <AdminDataTargetEdit />
-                  </Layout>
-                </ProtectedRoute>
-              } />
+              
               
               <Route path="/admin/marketing/medsos" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminMedsos />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminMedsos">
+                    <Layout>
+                      <AdminMedsos />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -670,7 +897,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/admin/marketing/medsos/detail/:id" element={
+              <Route path="/admin/marketing/medsos/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <AdminMedsosDetail />
@@ -678,7 +905,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/admin/marketing/medsos/edit/:id" element={
+              <Route path="/admin/marketing/medsos/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
                     <AdminMedsosEdit />
@@ -691,6 +918,20 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <AdminDataTim />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/sdm/tim/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDataTimForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/sdm/tim/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataTimDetail />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -1138,13 +1379,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/operasional/saran" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <DaftarSaran />
-                  </Layout>
-                </ProtectedRoute>
-              } />
+              
               
               <Route path="/operasional/bina-lingkungan" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -1256,7 +1491,7 @@ const App = () => {
               <Route path="/owner/operasional/komplain" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <OwnerKomplainList />
+                    <OwnerDaftarKomplain />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -1264,7 +1499,7 @@ const App = () => {
               <Route path="/owner/operasional/komplain/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <Layout>
-                    <OwnerKomplainForm />
+                    <OwnerDaftarKomplainForm />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -1394,7 +1629,7 @@ const App = () => {
               <Route path="/owner/keuangan/surat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <AnekaSurat />
+                    <OwnerAnekaSuratList />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -1485,7 +1720,7 @@ const App = () => {
               <Route path="/owner/marketing/target" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <OwnerDataTarget />
+                    <OwnerTargetHarianList />
                   </Layout>
                 </ProtectedRoute>
               } />

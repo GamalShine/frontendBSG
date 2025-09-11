@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ownerAnekaGrafikService } from '../../../../services/anekaGrafikService';
 import { toast } from 'react-hot-toast';
@@ -45,6 +45,7 @@ const OwnerAnekaGrafikList = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [activeTab, setActiveTab] = useState('omzet');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -153,6 +154,27 @@ const OwnerAnekaGrafikList = () => {
     return 'https://placehold.co/400x300?text=Aneka+Grafik';
   };
 
+  // Helper untuk format tanggal-waktu lokal ID
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Terakhir diupdate diambil dari entri terbaru (diasumsikan urutan data desc)
+  const lastUpdatedText = useMemo(() => {
+    if (!anekaGrafik || anekaGrafik.length === 0) return '-';
+    const latest = anekaGrafik[0];
+    const dt = latest?.created_at || latest?.tanggal_grafik;
+    return formatDateTime(dt);
+  }, [anekaGrafik]);
+
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
@@ -170,41 +192,83 @@ const OwnerAnekaGrafikList = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header - Dark Red (WhatsApp-like) */}
-      <div className="bg-red-800 text-white">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button className="p-2 text-white hover:bg-red-700 rounded-full transition-colors">
-                <ChevronRight className="h-5 w-5 rotate-180" />
-              </button>
-              <div>
-                <div className="text-xs font-medium text-red-200">H01-S4</div>
-                <div className="text-lg font-bold">Aneka Grafik</div>
-              </div>
+      {/* Header - match Omset Harian style */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-S4</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA GRAFIK</h1>
+              <p className="text-sm text-red-100">Kelola daftar grafik keuangan</p>
             </div>
-            <button className="p-2 text-white hover:bg-red-700 rounded-full transition-colors">
-              <div className="w-1 h-1 bg-white rounded-full mb-1"></div>
-              <div className="w-1 h-1 bg-white rounded-full mb-1"></div>
-              <div className="w-1 h-1 bg-white rounded-full"></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              aria-pressed={showFilters}
+            >
+              PENCARIAN
             </button>
+            <Link
+              to="/owner/keuangan/aneka-grafik/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="font-semibold">Tambah</span>
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Last Update Info */}
+      {/* Info bar */}
       <div className="bg-gray-200 px-6 py-2">
-        <p className="text-sm text-gray-600">
-          Data terakhir diupdate: {new Date().toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })} pukul {new Date().toLocaleTimeString('id-ID', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </p>
+        <p className="text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</p>
       </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari aneka grafik..."
+                    value={searchTerm}
+                    onChange={handleSearch}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={dateFilter}
+                    onChange={handleDateFilter}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => { setSearchTerm(''); setDateFilter(''); }}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="font-semibold">Reset</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Navigation Tabs */}
       <div className="bg-white px-6 py-3 border-b border-gray-200">
@@ -276,17 +340,6 @@ const OwnerAnekaGrafikList = () => {
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-sm">{item.name}</span>
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigate(`/owner/keuangan/aneka-grafik/${item.id}`); }}
-                          className={`p-1.5 rounded border transition-colors ${
-                            selectedItem === item 
-                              ? 'border-white text-white hover:bg-red-500' 
-                              : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                          }`}
-                          title="View"
-                        >
-                          <Eye className="w-3 h-3" />
-                        </button>
                         <div className={`transition-transform ${selectedItem === item ? 'rotate-90' : ''}`}>
                           {selectedItem === item ? (
                             <ChevronDown className="w-4 h-4" />

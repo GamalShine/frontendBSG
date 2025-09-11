@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_CONFIG } from '../config/constants.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 // Admin Data Investor Service (CRUD)
 export const dataInvestorService = {
@@ -13,6 +14,26 @@ export const dataInvestorService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching data investor:', error);
+      throw error;
+    }
+  },
+
+  createWithAttachments: async (data, files) => {
+    try {
+      const token = localStorage.getItem('token');
+      const form = new FormData();
+      // append text fields
+      Object.entries(data || {}).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) form.append(k, v);
+      });
+      // append files
+      [...(files || [])].forEach(f => form.append('files', f));
+      const response = await axios.post(`${API_BASE_URL}/admin/data-investor`, form, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error creating data investor with attachments:', error);
       throw error;
     }
   },
@@ -117,6 +138,49 @@ export const dataInvestorService = {
       return response.data;
     } catch (error) {
       console.error('Error searching data investor:', error);
+      throw error;
+    }
+  },
+
+  // Lampiran (Admin only)
+  listLampiran: async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_BASE_URL}/admin/data-investor/${id}/lampiran`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error listing lampiran:', error);
+      throw error;
+    }
+  },
+
+  uploadLampiran: async (id, files) => {
+    try {
+      const token = localStorage.getItem('token');
+      const form = new FormData();
+      [...files].forEach(f => form.append('files', f));
+      const response = await axios.post(`${API_BASE_URL}/admin/data-investor/${id}/lampiran`, form, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading lampiran:', error);
+      throw error;
+    }
+  },
+
+  deleteLampiran: async (id, stored_name) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(`${API_BASE_URL}/admin/data-investor/${id}/lampiran`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { stored_name }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting lampiran:', error);
       throw error;
     }
   }

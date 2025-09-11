@@ -21,18 +21,11 @@ const AnekaGrafikForm = () => {
   const { user } = useAuth();
   const envConfig = getEnvironmentConfig();
   
-  // Simple URL cleanup function
+  // Simple URL cleanup function (generic, no IP-specific logic)
   const aggressivelyCleanUrl = (url) => {
     if (!url) return '';
-    
-    // Fix the specific duplication pattern we're seeing
-    if (url.includes('192.168.30.116')) {
-      const match = url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-      if (match && match[1]) {
-        return 'http://192.168.30.116:3000' + match[1];
-      }
-    }
-    
+    if (url.startsWith('http://http://')) return url.replace('http://http://', 'http://');
+    if (url.startsWith('https://https://')) return url.replace('https://https://', 'https://');
     return url;
   };
 
@@ -210,12 +203,6 @@ const AnekaGrafikForm = () => {
       imageUrl = imageUrl.replace('http://http://', 'http://');
     }
     
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.116:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-    }
-    
     // Fix /api/uploads/ path
     if (imageUrl.includes('/api/uploads/')) {
       imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
@@ -254,17 +241,8 @@ const AnekaGrafikForm = () => {
     return processedImages.map((img) => {
       if (img && img.url) {
         console.log('🔍 🔍 🔍 Processing image URL:', img.url);
-        
-        // Fix duplicated URLs
-        if (img.url.includes('192.168.30.116')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.116:3000' + match[1];
-          }
-        }
-        
-        // Apply final URL construction
-        img.url = constructImageUrl(img.url);
+        // Generic cleanup and normalization
+        img.url = constructImageUrl(aggressivelyCleanUrl(img.url));
         console.log('🔍 🔍 🔍 Final image URL:', img.url);
       }
       return img;
@@ -853,25 +831,11 @@ const AnekaGrafikForm = () => {
         });
       }
       
-      // Ensure all image URLs are properly formatted like OmsetHarian
+      // Ensure all image URLs are normalized generically (no IP logic)
       const finalImages = imagesWithServerUrls.map(img => {
         if (img && img.url) {
-          let fixedUrl = img.url;
-          
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          return { ...img, url: fixedUrl };
+          const normalized = constructImageUrl(aggressivelyCleanUrl(img.url));
+          return { ...img, url: normalized };
         }
         return img;
       });

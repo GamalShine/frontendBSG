@@ -4,6 +4,8 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../../../config/environment';
+import api from '../../../../services/api';
+import { normalizeImageUrl } from '../../../../utils/url';
 import {
   ArrowLeft,
   Calendar,
@@ -182,32 +184,12 @@ const OwnerLaporanKeuanganForm = () => {
             
             if (Array.isArray(processedImages)) {
               processedImages = processedImages.map(img => {
-                // Fix double http:// issue in existing URLs
-                let fixedUrl = img.url;
-                if (fixedUrl) {
-                  // Fix double http:// issue
-                  if (fixedUrl.startsWith('http://http://')) {
-                    fixedUrl = fixedUrl.replace('http://http://', 'http://');
-                    console.log(`🔍 Fixed double http:// in existing URL: ${img.url} -> ${fixedUrl}`);
-                  }
-
-                  // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  }
-                }
-
+                const normalizedUrl = img.url ? normalizeImageUrl(img.url) : normalizeImageUrl(`/uploads/laporan-keuangan/temp_${img.id}.jpg`);
                 return {
                   uri: img.uri || `file://temp/${img.id}.jpg`,
                   id: img.id,
                   name: img.name || `laporan_${img.id}.jpg`,
-                  url: fixedUrl || `${envConfig.BASE_URL.replace('/api', '')}/uploads/laporan-keuangan/temp_${img.id}.jpg`,
+                  url: normalizedUrl,
                   serverPath: img.serverPath || `uploads/laporan-keuangan/temp_${img.id}.jpg`
                 };
               });
@@ -228,36 +210,8 @@ const OwnerLaporanKeuanganForm = () => {
           processedImages.forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
 
-            // Construct the correct image URL
-            let imageUrl = '';
-            if (image.url) {
-              // Fix double http:// issue
-              let cleanUrl = image.url;
-              if (cleanUrl.startsWith('http://http://')) {
-                cleanUrl = cleanUrl.replace('http://http://', 'http://');
-                console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${cleanUrl}`);
-              }
-
-              // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              }
-
-              if (cleanUrl.startsWith('http') || cleanUrl.startsWith('data:')) {
-                // Already absolute URL or data URL
-                imageUrl = cleanUrl;
-              } else {
-                // Relative URL, add base URL
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                imageUrl = `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
-              }
-            }
+            // Build URL via helper
+            const imageUrl = normalizeImageUrl(image.url || image.uri);
 
             console.log(`🔍 Image ${index + 1}:`, {
               originalUrl: image.url,
@@ -437,33 +391,24 @@ const OwnerLaporanKeuanganForm = () => {
 
   const uploadImagesToServer = async (images) => {
     const uploadedFiles = [];
-
     for (const image of images) {
       try {
         const formData = new FormData();
         formData.append('images', image.file);
-
-        const response = await fetch(`${envConfig.API_BASE_URL}/upload/laporan-keuangan`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: formData
+        const { data } = await api.post('/upload/laporan-keuangan', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
         });
-
-        if (response.ok) {
-          const result = await response.json();
-          uploadedFiles.push(result.data[0]);
+        if (data?.success && Array.isArray(data.data) && data.data[0]) {
+          uploadedFiles.push(data.data[0]);
         } else {
-          console.error('Failed to upload image:', image.file.name);
+          console.error('Failed to upload image (server response invalid):', data);
           uploadedFiles.push(null);
         }
       } catch (error) {
-        console.error('Error uploading image:', error);
+        console.error('Error uploading image:', error?.response || error);
         uploadedFiles.push(null);
       }
     }
-
     return uploadedFiles;
   };
 
@@ -494,7 +439,7 @@ const OwnerLaporanKeuanganForm = () => {
       if (isEditMode) {
         // In edit mode, preserve existing images
         console.log('🔍 Debug: Edit mode - preserving existing images');
-        imagesWithServerUrls = formData.images || [];
+        imagesWithServerUrls = formData.images.map(img => ({ ...img, url: normalizeImageUrl(img.url) })) || [];
 
         // Upload new images if any
         if (selectedImages.length > 0) {
@@ -510,10 +455,7 @@ const OwnerLaporanKeuanganForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `laporan_${img.id}.jpg`,
-                // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
-                url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
-                  ? uploadedFile.url
-                  : `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
+                url: normalizeImageUrl(uploadedFile.url),
                 serverPath: uploadedFile.url
               };
             } else {
@@ -521,7 +463,7 @@ const OwnerLaporanKeuanganForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `laporan_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/laporan-keuangan/temp_${img.id}.jpg`,
+                url: normalizeImageUrl(`/uploads/laporan-keuangan/temp_${img.id}.jpg`),
                 serverPath: `uploads/laporan-keuangan/temp_${img.id}.jpg`
               };
             }
@@ -565,26 +507,11 @@ const OwnerLaporanKeuanganForm = () => {
       // Ensure all image URLs are properly formatted
       const finalImages = imagesWithServerUrls.map(img => {
         if (img && img.url) {
-          let fixedUrl = img.url;
-
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
+          const normalized = normalizeImageUrl(img.url);
+          if (normalized !== img.url) {
+            console.log(`🔍 Normalized URL before submit: ${img.url} -> ${normalized}`);
           }
-
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          }
-
-          return { ...img, url: fixedUrl };
+          return { ...img, url: normalized };
         }
         return img;
       });
@@ -592,7 +519,7 @@ const OwnerLaporanKeuanganForm = () => {
       const submitData = {
         tanggal_laporan: formData.tanggal_laporan,
         isi_laporan: editorContent,
-        images: finalImages
+        images: finalImages || []
       };
 
       console.log('🔍 Debug: Submitting data:', submitData);
@@ -605,15 +532,18 @@ const OwnerLaporanKeuanganForm = () => {
         response = await laporanKeuanganService.createLaporanKeuangan(submitData);
       }
 
-      if (response.success) {
+      if (response && response.success) {
         toast.success(isEditMode ? 'Laporan keuangan berhasil diperbarui' : 'Laporan keuangan berhasil dibuat');
+        try { sessionStorage.setItem('owner.lapkeu.returning','1'); } catch(_){}
         navigate('/owner/keuangan/laporan');
       } else {
-        toast.error(response.message || 'Gagal menyimpan laporan keuangan');
+        console.error('Save response error:', response);
+        toast.error((response && (response.message || response.error)) || 'Gagal menyimpan laporan keuangan');
       }
     } catch (error) {
-      console.error('Error saving laporan keuangan:', error);
-      toast.error('Gagal menyimpan laporan keuangan');
+      console.error('Error saving laporan keuangan:', error?.response || error);
+      const msg = error?.response?.data?.message || error?.message || 'Gagal menyimpan laporan keuangan';
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -628,15 +558,16 @@ const OwnerLaporanKeuanganForm = () => {
   };
 
   const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-
+    const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    if (files.length > 5) {
+    // Batasi maksimal total 5 gambar
+    if (selectedImages.length + files.length > 5) {
       toast.error('Maksimal 5 gambar');
       return;
     }
 
+    // Validasi tipe
     const validFiles = files.filter(file => {
       const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type);
       if (!isValidType) {
@@ -645,16 +576,17 @@ const OwnerLaporanKeuanganForm = () => {
       }
       return true;
     });
-
     if (validFiles.length === 0) return;
 
-    setSelectedImages(prev => [...prev, ...validFiles]);
+    // Bungkus ke objek { file, id } agar kompatibel dengan uploadImagesToServer (menggunakan image.file)
+    const withIds = validFiles.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
+    setSelectedImages(prev => [...prev, ...withIds]);
 
-    // Create preview URLs
-    validFiles.forEach(file => {
+    // Buat preview untuk setiap file
+    withIds.forEach(({ file }) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviewUrls(prev => [...prev, e.target.result]);
+      reader.onload = (ev) => {
+        setImagePreviewUrls(prev => [...prev, ev.target.result]);
       };
       reader.readAsDataURL(file);
     });
@@ -702,49 +634,46 @@ const OwnerLaporanKeuanganForm = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/owner/keuangan/laporan')}
-                className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Kembali</span>
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {isEditMode ? 'Edit Laporan Keuangan' : 'Tambah Laporan Keuangan'}
-                </h1>
-                <p className="text-gray-600">
-                  {isEditMode ? 'Perbarui data laporan keuangan' : 'Buat laporan keuangan baru'}
-                </p>
-              </div>
-            </div>
+    <div className="px-0 py-2 bg-gray-50 min-h-screen">
+      {/* Header ala list/detail */}
+      <div className="bg-red-800 text-white p-4 mb-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+              onClick={() => { try { sessionStorage.setItem('owner.lapkeu.returning','1'); } catch(_){}; navigate('/owner/keuangan/laporan') }}
+              aria-label="Kembali"
+              className="inline-flex items-center bg-white/0 text-white hover:text-gray-100"
             >
-              <Save className="h-4 w-4" />
-              <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+              <ArrowLeft className="h-5 w-5" />
             </button>
+            <div>
+              <h1 className="text-2xl font-bold">{isEditMode ? 'Edit Laporan Keuangan' : 'Tambah Laporan Keuangan'}</h1>
+              <p className="text-sm opacity-90">Owner - Keuangan</p>
+            </div>
           </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+          </button>
         </div>
       </div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
+        {isEditMode ? 'Mode Edit' : 'Mode Tambah'}
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Basic Info */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white shadow-sm border">
+            <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Informasi Laporan</h2>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
               {/* Tanggal Laporan */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -757,7 +686,7 @@ const OwnerLaporanKeuanganForm = () => {
                     value={formData.tanggal_laporan}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
@@ -774,7 +703,7 @@ const OwnerLaporanKeuanganForm = () => {
                   onInput={handleEditorChange}
                   onPaste={handleEditorPaste}
                   data-placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
-                  className="w-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                  className="w-full min-h-[400px] p-4 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
                 />
               </div>
             </div>
@@ -782,19 +711,19 @@ const OwnerLaporanKeuanganForm = () => {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Image Upload */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white shadow-sm border">
+            <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Gambar</h2>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-3">
               {/* Upload New Images */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload Gambar Baru
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <div className="border-2 border-dashed border-gray-300 p-4 text-center">
                   <input
                     type="file"
                     multiple
@@ -826,7 +755,7 @@ const OwnerLaporanKeuanganForm = () => {
                         <img
                           src={imagePreviewUrls[index]}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-20 object-cover rounded-lg"
+                          className="w-full h-20 object-cover"
                         />
                         <button
                           onClick={() => removeImage(index)}
@@ -846,36 +775,13 @@ const OwnerLaporanKeuanganForm = () => {
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Ada</h3>
                   <div className="grid grid-cols-2 gap-2">
                     {formData.images.map((image, index) => {
-                      // Ensure proper URL construction
-                      let imageUrl = image.url;
-                      if (imageUrl) {
-                        // Fix double http:// issue
-                        if (imageUrl.startsWith('http://http://')) {
-                          imageUrl = imageUrl.replace('http://http://', 'http://');
-                        }
-                        
-                        // Fix old IP addresses
-                        if (imageUrl.includes('192.168.30.116:3000')) {
-                          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-                        } else if (imageUrl.includes('192.168.30.116:3000')) {
-                          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-                        }
-                        
-                        // If relative URL, add base URL
-                        if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-                          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-                        }
-                      }
-                      
+                      const imageUrl = normalizeImageUrl(image.url || image.uri);
                       return (
                       <div key={index} className="relative">
                         <img
                             src={imageUrl}
                             alt={image.name || `Gambar ${index + 1}`}
-                          className="w-full h-20 object-cover rounded-lg cursor-pointer hover:opacity-75"
+                          className="w-full h-20 object-cover cursor-pointer hover:opacity-75"
                             onClick={() => insertImage(imageUrl, image.id)}
                             onError={(e) => {
                               console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
@@ -891,7 +797,7 @@ const OwnerLaporanKeuanganForm = () => {
                               console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
                             }}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                           <span className="text-white text-xs opacity-0 hover:opacity-100">Klik untuk sisipkan</span>
                         </div>
                           <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded">
@@ -907,7 +813,7 @@ const OwnerLaporanKeuanganForm = () => {
           </div>
 
           {/* Help */}
-          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+          <div className="bg-blue-50 border border-blue-200 p-4">
             <h3 className="text-lg font-semibold text-blue-900 mb-3">Panduan</h3>
             <div className="space-y-3 text-sm text-blue-800">
               <div>

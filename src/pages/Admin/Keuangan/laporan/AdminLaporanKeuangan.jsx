@@ -25,6 +25,7 @@ const AdminLaporanKeuangan = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -34,13 +35,19 @@ const AdminLaporanKeuangan = () => {
     total_this_month: 0,
     total_this_year: 0
   });
+  const [monthsView, setMonthsView] = useState('months'); // 'months' | 'monthContent'
+  const [availableMonths, setAvailableMonths] = useState([]); // [{year, month}]
 
   useEffect(() => {
     if (user) {
-      loadLaporanKeuangan();
+      if (monthsView === 'months') {
+        loadAvailableMonths();
+      } else {
+        loadLaporanKeuangan();
+      }
       loadStats();
     }
-  }, [user, currentPage, searchTerm, dateFilter]);
+  }, [user, monthsView, currentPage, monthFilter]);
 
   const loadLaporanKeuangan = async () => {
     try {
@@ -48,8 +55,9 @@ const AdminLaporanKeuangan = () => {
       const response = await laporanKeuanganService.getAllLaporanKeuangan(
         currentPage,
         10,
-        searchTerm,
-        dateFilter
+        '',
+        '',
+        monthFilter
       );
       
       if (response.success) {
@@ -62,6 +70,23 @@ const AdminLaporanKeuangan = () => {
     } catch (error) {
       console.error('Error loading laporan keuangan:', error);
       toast.error('Gagal memuat data laporan keuangan');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAvailableMonths = async () => {
+    try {
+      setLoading(true);
+      const res = await laporanKeuanganService.getAvailableMonths();
+      if (res?.success) {
+        setAvailableMonths(res.data || []);
+      } else {
+        setAvailableMonths([]);
+      }
+    } catch (e) {
+      console.error('Error loading available months:', e);
+      setAvailableMonths([]);
     } finally {
       setLoading(false);
     }
@@ -180,141 +205,129 @@ const AdminLaporanKeuangan = () => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
+  // Grouping helpers
+  const getMonthKey = (dateStr) => {
+    if (!dateStr) return 'Unknown';
+    const d = new Date(dateStr);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const formatMonthHeader = (monthKey) => {
+    if (!monthKey || monthKey === 'Unknown') return 'Tidak diketahui';
+    const [y, m] = monthKey.split('-').map(Number);
+    const date = new Date(y, m - 1, 1);
+    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
+
+  const groupByMonth = (items) => {
+    const groups = {};
+    items.forEach((it) => {
+      const key = getMonthKey(it.tanggal_laporan);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(it);
+    });
+    return groups;
+  };
+
+  const openMonthFolder = (year, month) => {
+    const key = `${year}-${String(month).padStart(2, '0')}`;
+    setMonthFilter(key);
+    setCurrentPage(1);
+    setMonthsView('monthContent');
+  };
+
+  const backToMonths = () => {
+    setMonthsView('months');
+    setMonthFilter('');
+    setLaporanKeuangan([]);
+    setCurrentPage(1);
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
+    <div className="px-0 py-2 bg-gray-50 min-h-screen">
+      {/* Header ala Owner */}
+      <div className="bg-red-800 text-white p-4 mb-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
+            <p className="text-sm opacity-90">Admin - Keuangan</p>
+          </div>
+          <button
+            onClick={() => navigate('/admin/keuangan/laporan/new')}
+            className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Tambah</span>
+          </button>
+        </div>
+      </div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
+        Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})}
+        {' '}pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}
+      </div>
+
+      {/* Months Folder Grid */}
+      {monthsView === 'months' && (
+        <div className="bg-white shadow-sm border mb-4">
+          <div className="p-3 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Bulan</h2>
+            {loading && <div className="text-sm text-gray-600">Memuat daftar bulan...</div>}
+            {!loading && availableMonths.length === 0 && (
+              <div className="text-sm text-gray-600">Belum ada data bulan tersedia</div>
+            )}
+            {!loading && availableMonths.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {availableMonths.map(({ year, month }) => {
+                  const label = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                  return (
+                    <div
+                      key={`${year}-${month}`}
+                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      onClick={() => openMonthFolder(year, month)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <div className="w-10 h-10 bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold">{month}</div>
+                        <div>
+                          <div className="font-semibold text-gray-800 group-hover:text-red-700">{label}</div>
+                          <div className="text-xs text-gray-500">Folder Bulan</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Month Content Table */}
+      {monthsView === 'monthContent' && (
+      <div className="bg-white shadow-sm border">
+        <div className="bg-red-800 text-white px-4 py-3">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Laporan Keuangan</h1>
-              <p className="text-gray-600">Kelola data laporan keuangan outlet</p>
+              <h2 className="text-lg font-semibold">{formatMonthHeader(monthFilter)}</h2>
+              <p className="text-xs opacity-90">Data Laporan Keuangan ({totalItems} item)</p>
             </div>
-            <button
-                              onClick={() => navigate('/admin/keuangan/laporan/new')}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Laporan</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Laporan</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_records}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Calendar className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Hari</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_this_month}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total User</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_this_year}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter & Pencarian</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Pencarian
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Cari laporan keuangan..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              </div>
-            </div>
-            
-            <div className="flex items-end space-x-2">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => { setSearchTerm(''); setDateFilter(''); setCurrentPage(1); }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => navigate('/admin/keuangan/laporan/new')}
+                className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
               >
-                Reset
+                <Plus className="h-4 w-4" /> Tambah
               </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Data Table */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Data Laporan Keuangan ({totalItems} item)
-            </h2>
-            <div className="flex items-center space-x-2">
-              {selectedItems.length > 0 && (
-                <button
-                  onClick={handleBulkDelete}
-                  className="inline-flex items-center space-x-2 px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Hapus ({selectedItems.length})</span>
-                </button>
-              )}
               <button
-                onClick={() => { loadLaporanKeuangan(); loadStats(); }}
-                className="inline-flex items-center space-x-2 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={backToMonths}
+                className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
               >
-                <RefreshCw className="h-4 w-4" />
-                <span>Refresh</span>
+                Kembali
               </button>
             </div>
           </div>
@@ -332,19 +345,19 @@ const AdminLaporanKeuangan = () => {
                     className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   Tanggal
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   Judul
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   User
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   Dibuat
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
                   Aksi
                 </th>
               </tr>
@@ -361,59 +374,70 @@ const AdminLaporanKeuangan = () => {
                   </td>
                 </tr>
               ) : (
-                laporanKeuangan.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => handleCheckboxChange(item.id)}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(item.tanggal_laporan)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {extractTitle(item.isi_laporan)}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {truncateContent(item.isi_laporan)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.user_nama || 'Unknown'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateTime(item.created_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          to={`/admin/keuangan/laporan/${item.id}`}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Link>
-                        <Link
-                          to={`/admin/keuangan/laporan/${item.id}/edit`}
-                          className="text-green-600 hover:text-green-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                Object.entries(groupByMonth(laporanKeuangan))
+                  .sort((a, b) => b[0].localeCompare(a[0]))
+                  .map(([monthKey, items]) => (
+                    <React.Fragment key={monthKey}>
+                      <tr>
+                        <td colSpan="6" className="bg-gray-50 px-6 py-3 text-sm font-semibold text-gray-700">
+                          {formatMonthHeader(monthKey)}
+                        </td>
+                      </tr>
+                      {items.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedItems.includes(item.id)}
+                              onChange={() => handleCheckboxChange(item.id)}
+                              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(item.tanggal_laporan)}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {extractTitle(item.isi_laporan)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {truncateContent(item.isi_laporan)}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.user_nama || 'Unknown'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDateTime(item.created_at)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center space-x-2">
+                              <Link
+                                to={`/admin/keuangan/laporan/${item.id}`}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                              <Link
+                                to={`/admin/keuangan/laporan/${item.id}/edit`}
+                                className="text-green-600 hover:text-green-900"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                              <button
+                                onClick={() => handleDelete(item.id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  ))
               )}
             </tbody>
           </table>
@@ -421,7 +445,7 @@ const AdminLaporanKeuangan = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200">
+          <div className="px-3 py-2 border-t border-gray-200">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
                 Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} item
@@ -430,7 +454,7 @@ const AdminLaporanKeuangan = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Sebelumnya
                 </button>
@@ -440,7 +464,7 @@ const AdminLaporanKeuangan = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Selanjutnya
                 </button>
@@ -449,8 +473,9 @@ const AdminLaporanKeuangan = () => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };
 
-export default AdminLaporanKeuangan; 
+export default AdminLaporanKeuangan;

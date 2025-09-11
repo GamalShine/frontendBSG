@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { omsetHarianService } from '../../../../services/omsetHarianService';
+import api from '../../../../services/api';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../../../config/environment';
+import { normalizeImageUrl } from '../../../../utils/url';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -95,7 +97,7 @@ const AdminOmsetHarianForm = () => {
                 console.log(`🔍 Creating image element for image ${index + 1}:`, image);
                 
                 const img = document.createElement('img');
-                img.src = image.url;
+                img.src = normalizeImageUrl(image.url);
                 img.alt = `Gambar ${index + 1}`;
                 img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm';
                 img.setAttribute('data-image-id', image.id);
@@ -235,24 +237,24 @@ const AdminOmsetHarianForm = () => {
               processedImages = processedImages.map(img => {
                 console.log('🔍 Processing image object:', img);
                 
-                // Fix double http:// issue in existing URLs
+                // Normalize existing URLs
                 let fixedUrl = img.url;
                 if (fixedUrl) {
-                  // Fix double http:// issue
+                  // Fix double http://
                   if (fixedUrl.startsWith('http://http://')) {
                     fixedUrl = fixedUrl.replace('http://http://', 'http://');
                     console.log(`🔍 Fixed double http:// in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
-                  
-                  // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.116:3000')) {
+                  // Remove /api from upload URLs
+                  if (fixedUrl.includes('/api/uploads/')) {
+                    fixedUrl = fixedUrl.replace('/api/uploads/', '/uploads/');
+                    console.log(`🔍 Fixed /api in upload URL: ${img.url} -> ${fixedUrl}`);
+                  }
+                  // Make relative URLs absolute using env base
+                  if (!fixedUrl.startsWith('http') && !fixedUrl.startsWith('data:')) {
                     const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
+                    fixedUrl = `${baseUrl}${fixedUrl.startsWith('/') ? '' : '/'}${fixedUrl}`;
+                    console.log(`🔍 Made URL absolute: ${img.url} -> ${fixedUrl}`);
                   }
                 }
                 
@@ -297,16 +299,10 @@ const AdminOmsetHarianForm = () => {
                 cleanUrl = cleanUrl.replace('http://http://', 'http://');
                 console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${cleanUrl}`);
               }
-              
-              // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
+              // Remove /api from upload URLs if present
+              if (cleanUrl.includes('/api/uploads/')) {
+                cleanUrl = cleanUrl.replace('/api/uploads/', '/uploads/');
+                console.log(`🔍 Fixed /api in upload URL for editor: ${image.url} -> ${cleanUrl}`);
               }
               
               if (cleanUrl.startsWith('http') || cleanUrl.startsWith('data:')) {
@@ -590,11 +586,57 @@ const handleSubmit = async (e) => {
   e.preventDefault();
   setIsSubmitting(true);
   try {
+    // 1) Pastikan gambar baru diupload ke server terlebih dahulu
+    const uploadNewImages = async () => {
+      if (!selectedImages || selectedImages.length === 0) return [];
+      const fd = new FormData();
+      selectedImages.forEach((item) => {
+        if (item?.file) fd.append('images', item.file);
+      });
+
+      try {
+        const res = await api.post('/upload/omset-harian', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        if (res?.data?.success && Array.isArray(res.data.data)) {
+          const uploaded = res.data.data; // array sejajar dengan selectedImages
+          // Petakan kembali dengan id lokal agar cocok dengan [IMG:id]
+          return uploaded.map((f, idx) => ({
+            id: selectedImages[idx]?.id,
+            name: f.originalName || selectedImages[idx]?.file?.name || `omset_${Date.now()}_${idx}.jpg`,
+            url: f.url,
+            serverPath: f.path
+          })).filter(img => img.id);
+        }
+        toast.error('Upload gambar gagal');
+        return [];
+      } catch (err) {
+        console.error('❌ Upload OMSET HARIAN gagal:', err);
+        toast.error('Gagal mengupload gambar');
+        return [];
+      }
+    };
+
+    const newImages = await uploadNewImages();
+
+    // 2) Kumpulkan seluruh images: existing + yang baru diupload
+    const allImages = [
+      ...((formData.images && Array.isArray(formData.images)) ? formData.images : []),
+      ...newImages
+    ];
+
+    // 3) Ambil konten editor (placeholder [IMG:id] sudah konsisten dengan id lokal)
     const isiContent = getEditorContent();
+
+    // 4) Hanya simpan gambar yang benar-benar dipakai di editor
+    const usedIdMatches = [...isiContent.matchAll(/\[IMG:(\d+)\]/g)];
+    const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
+    const filteredImages = allImages.filter((img) => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
+
     const payload = {
       tanggal_omset: formData.tanggal_omset,
       isi_omset: isiContent,
-      images: formData.images || []
+      images: filteredImages
     };
     if (isEditMode) {
       await omsetHarianService.updateOmsetHarian(id, payload);
@@ -804,29 +846,8 @@ return (
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Ada</h3>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   {formData.images.map((image, index) => {
-                    // Ensure proper URL construction
-                    let imageUrl = image.url;
-                    if (imageUrl) {
-                      // Fix double http:// issue
-                      if (imageUrl.startsWith('http://http://')) {
-                        imageUrl = imageUrl.replace('http://http://', 'http://');
-                      }
-                      
-                      // Fix old IP addresses
-                      if (imageUrl.includes('192.168.30.116:3000')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-                      } else if (imageUrl.includes('192.168.30.116:3000')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-                      }
-                      
-                      // If relative URL, add base URL
-                      if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-                      }
-                    }
+                    // Build URL via helper
+                    const imageUrl = normalizeImageUrl(image.url);
                     
                     return (
                       <div key={index} className="relative">

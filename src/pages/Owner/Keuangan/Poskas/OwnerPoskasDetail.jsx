@@ -172,7 +172,7 @@ const OwnerPoskasDetail = () => {
     
     console.log('🔍 Final images array:', imagesArray);
     
-    // Fix old IP addresses in image URLs
+    // Normalize image URLs
     return imagesArray.map(image => {
       if (image && image.url) {
         let fixedUrl = image.url;
@@ -181,17 +181,6 @@ const OwnerPoskasDetail = () => {
         if (fixedUrl.startsWith('http://http://')) {
           fixedUrl = fixedUrl.replace('http://http://', 'http://');
           console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${fixedUrl}`);
-        }
-        
-        // Fix old IP addresses
-        if (fixedUrl.includes('192.168.30.116:3000')) {
-          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-          console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
-        } else if (fixedUrl.includes('192.168.30.116:3000')) {
-          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-          console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
         }
         
         const processedImg = { ...image, url: fixedUrl };
@@ -325,17 +314,6 @@ const OwnerPoskasDetail = () => {
               console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${imageUrl}`);
             }
             
-            // Fix old IP addresses
-            if (imageUrl.includes('192.168.30.116:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-              console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-            } else if (imageUrl.includes('192.168.30.116:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-              console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-            }
-            
             if (imageUrl.startsWith('http')) {
               // Already absolute URL, but check if it has /api in wrong place
               if (imageUrl.includes('/api/uploads/')) {
@@ -357,6 +335,7 @@ const OwnerPoskasDetail = () => {
           return image.uri || '';
         })();
 
+        // Build a fallback URI for error handling/logging
         const fallbackUri = (() => {
           if (image.uri) {
             console.log(`🔍 Using URI as fallback: ${image.uri}`);
@@ -364,28 +343,15 @@ const OwnerPoskasDetail = () => {
           }
           if (image.url) {
             let imageUrl = image.url;
-            
             // Fix double http:// issue for fallback too
             if (imageUrl.startsWith('http://http://')) {
               imageUrl = imageUrl.replace('http://http://', 'http://');
             }
-            
-            // Fix old IP addresses for fallback too
-            if (imageUrl.includes('192.168.30.116:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-            } else if (imageUrl.includes('192.168.30.116:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-            }
-            
             // Check if it has /api in wrong place
             if (imageUrl.includes('/api/uploads/')) {
-              // Remove /api from upload URLs
               imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
               console.log(`🔍 Fixed /api in fallback upload URL: ${image.url} -> ${imageUrl}`);
             }
-            
             console.log(`🔍 Using URL as fallback: ${imageUrl}`);
             return imageUrl;
           }

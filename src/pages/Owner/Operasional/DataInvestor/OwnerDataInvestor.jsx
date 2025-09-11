@@ -5,16 +5,14 @@ import {
   User, 
   Search, 
   Filter, 
-  Eye,
   Phone,
   MapPin,
   Calendar,
   DollarSign,
   Percent,
-  ArrowLeft,
-  MoreVertical,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Plus, Edit, Trash2, Heart, Baby, PhoneCall, Wallet
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -30,11 +28,20 @@ const OwnerDataInvestor = () => {
   const [outletFilter, setOutletFilter] = useState('all');
   const [tipeFilter, setTipeFilter] = useState('all');
   const [outlets, setOutlets] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [expandedOutlets, setExpandedOutlets] = useState({});
 
   useEffect(() => {
     fetchDataInvestor();
     fetchOutlets();
   }, []);
+
+  useEffect(() => {
+    // Set semua outlet terbuka secara default saat daftar outlet berubah
+    const initial = {};
+    outlets.forEach((o) => { initial[o] = true; });
+    setExpandedOutlets(initial);
+  }, [outlets]);
 
   const fetchDataInvestor = async () => {
     try {
@@ -49,6 +56,34 @@ const OwnerDataInvestor = () => {
       toast.error('Gagal mengambil data investor');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Parse lampiran dari kolom TEXT: bisa string JSON atau array
+  const parseLampiran = (raw) => {
+    try {
+      const val = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (!Array.isArray(val)) return [];
+      return val
+        .map((it) => {
+          if (typeof it === 'string') {
+            const url = it;
+            const name = (() => {
+              try { const u = new URL(url, window.location.origin); return decodeURIComponent(u.pathname.split('/').pop() || 'file'); } catch { return url.split('/').pop() || 'file'; }
+            })();
+            return { url, name, mime: '', size: undefined };
+          }
+          // object meta dari backend { url, name, mime, size, stored_name, uploaded_at }
+          return {
+            url: it.url || '#',
+            name: it.name || it.originalName || it.filename || it.stored_name || 'file',
+            mime: it.mime || it.mimetype || '',
+            size: it.size,
+          };
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
     }
   };
 
@@ -75,6 +110,19 @@ const OwnerDataInvestor = () => {
     
     return matchesSearch && matchesOutlet && matchesTipe;
   });
+
+  // Util: parse persentase string menjadi number 0-100
+  // Mendukung format '30%' atau '70%-30%'. Jika ada dua angka, anggap angka terakhir adalah porsi investor.
+  const parsePercent = (val) => {
+    if (val == null) return 0;
+    try {
+      const s = val.toString();
+      const matches = [...s.matchAll(/(\d+(?:\.\d+)?)%?/g)].map(m => Number(m[1]));
+      if (matches.length === 0 || matches.some(n => Number.isNaN(n))) return 0;
+      const picked = matches.length >= 2 ? matches[matches.length - 1] : matches[0];
+      return Math.max(0, Math.min(100, picked));
+    } catch { return 0; }
+  };
 
   const getTipeColor = (tipe) => {
     switch (tipe) {
@@ -118,21 +166,25 @@ const OwnerDataInvestor = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header - Merah Gelap seperti Mobile App */}
-      <div className="bg-red-800 text-white p-4">
+      {/* Header - konsisten dengan pola merah */}
+      <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <button className="p-2 hover:bg-red-700 rounded-lg">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-P4</span>
             <div>
-              <h1 className="text-xl font-bold">DATA INVESTOR</h1>
-              <p className="text-sm text-red-100">H01-P4</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA INVESTOR</h1>
+              <p className="text-sm text-red-100">Daftar investor dan outlet</p>
             </div>
           </div>
-          <button className="p-2 hover:bg-red-700 rounded-lg">
-            <MoreVertical className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              aria-pressed={showFilters}
+            >
+              PENCARIAN
+            </button>
+          </div>
         </div>
       </div>
 
@@ -142,184 +194,174 @@ const OwnerDataInvestor = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white p-4 border-b border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cari investor, outlet, HP, alamat..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
-          </div>
-          
-          <div>
-            <select
-              value={outletFilter}
-              onChange={(e) => setOutletFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            >
-              <option value="all">Semua Outlet</option>
-              {outlets.map((outlet, index) => (
-                <option key={index} value={outlet}>{outlet}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <select
-              value={tipeFilter}
-              onChange={(e) => setTipeFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            >
-              <option value="all">Semua Tipe</option>
-              <option value="outlet">Outlet</option>
-              <option value="biodata">Biodata</option>
-            </select>
+      {showFilters && (
+        <div className="bg-white p-4 border-b border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Cari investor, outlet, HP, alamat..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <select
+                value={outletFilter}
+                onChange={(e) => setOutletFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="all">Semua Outlet</option>
+                {outlets.map((outlet, index) => (
+                  <option key={index} value={outlet}>{outlet}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <select
+                value={tipeFilter}
+                onChange={(e) => setTipeFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="all">Semua Tipe</option>
+                <option value="outlet">Outlet</option>
+                <option value="biodata">Biodata</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Content Sections */}
       <div className="p-4 space-y-4">
-        {/* Section 1: Data Investor/Outlet & Jumlah % Bagi Hasil */}
-        <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-          <div 
-            className="bg-red-800 text-white p-4 cursor-pointer flex items-center justify-between"
-            onClick={() => setActiveSection(activeSection === 'outlet' ? null : 'outlet')}
-          >
-            <span className="font-semibold">Data Investor/Outlet & Jumlah % Bagi Hasil</span>
-            {activeSection === 'outlet' ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronRight className="w-5 h-5" />
-            )}
-          </div>
-          
-          {activeSection === 'outlet' && (
-            <div className="p-4 space-y-4">
-              {/* Group by Outlet */}
-              {outlets.map((outlet) => {
-                const outletInvestors = filteredData.filter(item => item.outlet === outlet);
-                if (outletInvestors.length === 0) return null;
-                
-  return (
-                  <div key={outlet} className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-red-800 text-white p-3 flex items-center justify-between">
-                      <span className="font-semibold">{outlet}</span>
-                      <ChevronDown className="w-5 h-5" />
-                    </div>
-                    
-                    <div className="p-4 bg-white space-y-3">
-                      {outletInvestors.map((investor) => (
-                        <div key={investor.id} className="space-y-2">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+        {/* Daftar per Outlet */}
+        <div className="p-4 space-y-4">
+          {/* Group by Outlet */}
+          {outlets.map((outlet) => {
+            const outletInvestors = filteredData.filter(item => item.outlet === outlet);
+            if (outletInvestors.length === 0) return null;
+
+            return (
+              <div key={outlet} className="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setExpandedOutlets(prev => ({ ...prev, [outlet]: !prev[outlet] }))}
+                  className="w-full bg-red-800 text-white px-6 py-4 flex items-center justify-between hover:bg-red-900 transition-colors"
+                >
+                  <span className="font-semibold text-left">{outlet}</span>
+                  {expandedOutlets[outlet] ? (
+                    <ChevronDown className="w-5 h-5" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
+                </button>
+
+                {expandedOutlets[outlet] && (
+                <div className="p-6 bg-white">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {outletInvestors.map((investor) => (
+                      <div key={investor.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-start justify-between mb-2">
                             <div>
-                              <span className="font-semibold text-gray-700">OUTLET:</span>
-                              <span className="ml-2 text-gray-600">{investor.outlet}</span>
+                              <h4 className="font-semibold text-gray-900 text-base">{investor.nama_investor}</h4>
+                              <p className="text-xs text-gray-500">Outlet: {investor.outlet}</p>
                             </div>
-                            <div>
-                              <span className="font-semibold text-gray-700">DAFTAR INVESTOR:</span>
-                              <span className="ml-2 text-gray-600">{investor.nama_investor}</span>
-                            </div>
-                            <div>
-                              <span className="font-semibold text-gray-700">BAGI HASIL:</span>
-                              <span className="ml-2 text-gray-600">{investor.persentase_bagi_hasil || '50%-50%'}</span>
-                            </div>
+                            {(() => {
+                              const inv = parsePercent(investor.persentase_bagi_hasil);
+                              const bos = Math.max(0, 100 - inv);
+                              return (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border bg-green-50 text-green-700 border-green-200">
+                                  <Percent className="w-3 h-3" /> {`${bos}% Bosgil — ${inv}% Investor`}
+                                </span>
+                              );
+                            })()}
                           </div>
-                          
-                          {/* View Button Only */}
-                          <div className="flex space-x-2 pt-2">
-                            <button className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200">
-                              <Eye className="w-4 h-4" />
-                            </button>
+
+                          <div className="mt-2 pt-2 border-t border-gray-100 space-y-2 text-sm leading-relaxed text-gray-700">
+                            {investor.ttl_investor ? (
+                              <div className="flex items-center space-x-2">
+                                <User className="w-4 h-4 text-gray-400" />
+                                <span>{investor.ttl_investor}</span>
+                              </div>
+                            ) : null}
+                            <div className="flex items-center space-x-2">
+                              <Phone className="w-4 h-4 text-gray-400" />
+                              <span>{investor.no_hp || '-'}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="w-4 h-4 text-gray-400" />
+                              <span>{investor.tanggal_join ? format(new Date(investor.tanggal_join), 'dd MMM yyyy', { locale: id }) : '-'}</span>
+                            </div>
+                            <div className="flex items-start space-x-2">
+                              <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-2">{investor.alamat || '-'}</span>
+                            </div>
+
+                            <div className="space-y-2 pt-1">
+                              <div className="flex items-center space-x-2 text-sm text-gray-700">
+                                <PhoneCall className="w-4 h-4 text-gray-400" />
+                                <span>Kontak Darurat:</span>
+                                <span>{investor.kontak_darurat || '-'}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-sm text-gray-700">
+                                <Heart className="w-4 h-4 text-gray-400" />
+                                <span>Pasangan:</span>
+                                <span>{investor.nama_pasangan || '-'}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-sm text-gray-700">
+                                <Baby className="w-4 h-4 text-gray-400" />
+                                <span>Anak:</span>
+                                <span>{investor.nama_anak || '-'}</span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-sm text-gray-700">
+                                <Heart className="w-4 h-4 text-gray-400" />
+                                <span>Ahli Waris:</span>
+                                <span>{investor.ahli_waris || '-'}</span>
+                              </div>
+
+                              {(() => {
+                                const files = parseLampiran(investor.lampiran);
+                                if (!files.length) return null;
+                                return (
+                                  <div className="mt-2">
+                                    <div className="text-xs font-semibold text-gray-700 mb-1">Lampiran:</div>
+                                    <div className="flex flex-wrap gap-2">
+                                      {files.map((f, idx) => (
+                                        <a
+                                          key={`${f.name}-${idx}`}
+                                          href={f.url || '#'}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-50"
+                                          title={f.name}
+                                        >
+                                          {(f.mime || '').startsWith('image/') ? '🖼️' : '📎'} {f.name}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              {/* Investasi di Outlet */}
+                              <div className="flex items-center space-x-2 pt-1">
+                                <Wallet className="w-4 h-4 text-gray-400" />
+                                <span>Investasi di Outlet: {investor.investasi_di_outlet ? `Rp ${parseFloat(investor.investasi_di_outlet).toLocaleString('id-ID')}` : '-'}</span>
+                              </div>
+                            </div>
+
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Section 2: Biodata Investor */}
-        <div className="bg-white rounded-lg overflow-hidden shadow-sm">
-          <div 
-            className="bg-red-800 text-white p-4 cursor-pointer flex items-center justify-between"
-            onClick={() => setActiveSection(activeSection === 'biodata' ? null : 'biodata')}
-          >
-            <span className="font-semibold">Biodata Investor</span>
-            {activeSection === 'biodata' ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronRight className="w-5 h-5" />
-            )}
-          </div>
-          
-          {activeSection === 'biodata' && (
-            <div className="p-4">
-              <div className="bg-pink-50 p-4 rounded-lg">
-                <h3 className="font-bold text-gray-800 mb-4 text-center">BIODATA INVESTOR</h3>
-                
-                {filteredData.slice(0, 3).map((investor) => (
-                  <div key={investor.id} className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">Nama:</span>
-                        <span className="text-gray-600">{investor.nama_investor}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">TTL Investor:</span>
-                        <span className="text-gray-600">{investor.ttl_investor || '-'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">No. HP:</span>
-                        <span className="text-gray-600">{investor.no_hp}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">ALAMAT:</span>
-                        <span className="text-gray-600">{investor.alamat}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">TANGGAL JOIN:</span>
-                        <span className="text-gray-600">
-                          {investor.tanggal_join ? format(new Date(investor.tanggal_join), 'dd MMMM yyyy', { locale: id }) : '-'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">KONTAK DARURAT:</span>
-                        <span className="text-gray-600">{investor.kontak_darurat || '-'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">NAMA PASANGAN:</span>
-                        <span className="text-gray-600">{investor.nama_pasangan || '-'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">NAMA ANAK:</span>
-                        <span className="text-gray-600">{investor.nama_anak || '-'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">INVESTASI DI OUTLET:</span>
-                        <span className="text-gray-600">
-                          {investor.investasi_di_outlet ? 
-                            `Rp ${parseFloat(investor.investasi_di_outlet).toLocaleString('id-ID')}` : '-'
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-semibold text-gray-700">PERSENTASE BAGI HASIL:</span>
-                        <span className="text-gray-600">{investor.persentase_bagi_hasil || '50%-50%'}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                )}
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
       </div>
     </div>

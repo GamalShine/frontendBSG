@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { normalizeImageUrl } from '../utils/url';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ const Login = () => {
   
   const navigate = useNavigate();
   const { login } = useAuth();
+  
 
   const handleChange = (e) => {
     setFormData({
@@ -50,128 +52,116 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-red-700">
-      <div className="flex items-center justify-center p-4 min-h-screen">
-        {/* Main White Card */}
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md relative">
-          {/* Logo - Overlapping the card */}
-          <div className="absolute -top-12 left-1/2 transform -translate-x-1/2">
-            <img 
-              src="http://192.168.30.116:3000/uploads/Logo.png" 
-              alt="Bosgil Group Logo" 
-              className="w-28 h-28 object-contain"
+    <div className="min-h-screen bg-red-700 flex flex-col">
+      {/* Top brand section (di area merah) */}
+      <div className="flex flex-col items-center justify-end pt-6 pb-4">
+        {/* Logo bergaya app icon */}
+        <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/90 ring-1 ring-white/70 shadow-lg flex items-center justify-center">
+          <div className="w-[82%] h-[82%] rounded-2xl bg-white flex items-center justify-center overflow-hidden">
+            <img
+              src={normalizeImageUrl('/uploads/Logo.png')}
+              alt="Bosgil Group Logo"
+              className="w-full h-full object-contain"
             />
           </div>
+        </div>
+        <h1 className="mt-3 text-white text-lg md:text-xl font-extrabold tracking-wide uppercase">BOSGIL GROUP</h1>
+        <p className="text-white/90 text-sm md:text-base font-semibold mt-1">#KITAPASTIBISA</p>
+      </div>
 
-          {/* Card Content */}
-          <div className="pt-20 pb-6 px-8">
-            {/* Company Name */}
+      {/* Wrapper untuk card + bottom content */}
+      <div className="flex-1 flex flex-col items-center px-4 pb-6">
+        {/* Card Form Login */}
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-red-100/40">
+          <div className="px-6 sm:px-8 pt-6 pb-4">
+            {/* Title card */}
             <div className="text-center mb-4">
-              <h1 className="text-2xl font-bold text-gray-900 uppercase mb-1">BOSGIL GROUP</h1>
-              <p className="text-gray-500 font-semibold text-base tracking-wider">#KITAPASTIBISA</p>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Masuk</h2>
+              <p className="text-gray-500 text-sm md:text-base mt-1">Masuk ke akun Anda untuk melanjutkan</p>
             </div>
 
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Username Field */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-3">
-                  Username
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Masukkan username"
-                    className="block w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-gray-50 text-gray-900 placeholder-gray-400 text-base"
-                    required
-                  />
-                </div>
-              </div>
+            {/* Field Username */}
+            <label className="block text-xs font-medium text-gray-600 mb-2">Username</label>
+            <div className="w-full rounded-xl bg-gray-100/90 border border-gray-200 px-3 md:px-4 h-10 md:h-12 grid grid-cols-[auto,1fr,auto] items-center gap-2 md:gap-3">
+              <User className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                placeholder="Username"
+                className="flex-1 h-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-[15px] md:text-base"
+                required
+              />
+              {/* spacer agar kolom aksi setara dengan tombol mata di Password */}
+              <span className="justify-self-end inline-block w-6 h-6" aria-hidden="true" />
+            </div>
 
-              {/* Password Field */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-3">
-                  Password
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Masukkan password"
-                    className="block w-full pl-12 pr-14 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-gray-50 text-gray-900 placeholder-gray-400 text-base"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-4 flex items-center"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Forgot Password Note */}
-              <p className="text-xs text-gray-500 text-left">
-                *Jika lupa Username/Password hubungi HR
-              </p>
-
-              {/* Login Button */}
+            {/* Field Password */}
+            <label className="block text-xs font-medium text-gray-600 mt-4 mb-2">Password</label>
+            <div className="w-full rounded-xl bg-gray-100/90 border border-gray-200 px-3 md:px-4 h-10 md:h-12 grid grid-cols-[auto,1fr,auto] items-center gap-2 md:gap-3">
+              <Lock className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Password"
+                className="flex-1 h-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-[15px] md:text-base"
+                required
+              />
               <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-red-600 text-white py-1 px-6 rounded-lg font-semibold text-lg hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="justify-self-end w-6 h-6 flex items-center justify-center rounded-md text-red-400 hover:text-red-600"
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
               >
-                {isLoading ? 'Memproses...' : 'MASUK'}
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 md:h-5 md:w-5" />
+                ) : (
+                  <Eye className="h-4 w-4 md:h-5 md:w-5" />
+                )}
               </button>
-            </form>
-
-            {/* Second Slogan */}
-            <div className="text-center mt-6 pb-3 border-b border-gray-300">
-              <p className="text-gray-500 font-semibold text-lg">#BEKERJAADALAHIBADAH</p>
             </div>
 
-            {/* 3 Important Points */}
-            <div className="mt-6">
-              <h3 className="text-base font-medium text-red-700 text-left mb-2">3 HAL PENTING</h3>
-              <ul className="space-y-2">
-                <li className="flex items-center text-red-700">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-3"></span>
-                  Sikap Mental
-                </li>
-                <li className="flex items-center text-red-700">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-3"></span>
-                  Skill / Keahlian
-                </li>
-                <li className="flex items-center text-red-700">
-                  <span className="w-2 h-2 bg-red-600 rounded-full mr-3"></span>
-                  Spiritual / Kesadaran
-                </li>
-              </ul>
-            </div>
+            {/* Note */}
+            <p className="mt-3 text-xs text-gray-500">*Jika lupa Username/Password hubungi HR</p>
 
-            {/* Final Slogan */}
-            <div className="text-center mt-4">
-              <p className="text-gray-800 font-semibold text-base">CIPTAKAN KARYA BUKAN DRAMA</p>
-            </div>
+            {/* Button Masuk */}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isLoading}
+              className="mt-5 w-full h-12 rounded-xl bg-red-600 text-white text-base md:text-lg font-semibold shadow hover:bg-red-700 active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Memproses...' : 'Masuk'}
+            </button>
+
+            {/* Hashtag */}
+            <p className="mt-4 text-center text-xs text-red-600 font-medium">#BEKERJAADALAHIBADAH</p>
           </div>
         </div>
+
+        {/* Bottom content di area merah */}
+        <div className="w-full max-w-md mt-6 text-white">
+          {/* Kotak gelap semi-transparan (selebar card di atasnya) */}
+          <div className="w-full bg-black/10 rounded-md px-4 py-3">
+            <h3 className="text-sm md:text-base font-semibold">3 Hal Penting</h3>
+            <ul className="mt-2 space-y-1.5 text-sm md:text-base leading-relaxed">
+              <li>- Sikap Mental</li>
+              <li>- Skill/Keahlian</li>
+              <li>- Spiritual / Kesadaran</li>
+            </ul>
+          </div>
+
+          <p className="mt-6 text-center text-sm md:text-base font-semibold">CIPTAKAN KARYA BUKAN DRAMA</p>
+        </div>
       </div>
+
+      {/* Footer copyright di paling bawah */}
+      <footer className="text-center text-white/90 text-[11px] md:text-xs py-2">
+        © 2025 Bosgil Group
+      </footer>
     </div>
   );
 };

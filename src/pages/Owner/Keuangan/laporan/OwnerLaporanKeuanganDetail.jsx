@@ -4,6 +4,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../../../config/environment';
+import { normalizeImageUrl } from '../../../../utils/url';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -13,7 +14,6 @@ import {
   Edit,
   Trash2,
   RefreshCw,
-  Image as ImageIcon,
   X
 } from 'lucide-react';
 
@@ -78,6 +78,7 @@ const OwnerLaporanKeuanganDetail = () => {
     try {
       await laporanKeuanganService.deleteLaporanKeuangan(id);
       toast.success('Data laporan keuangan berhasil dihapus');
+      try { sessionStorage.setItem('owner.lapkeu.returning','1'); } catch(_){}
       navigate('/owner/keuangan/laporan');
     } catch (error) {
       console.error('Error deleting laporan keuangan:', error);
@@ -150,74 +151,57 @@ const OwnerLaporanKeuanganDetail = () => {
       }
     }
     
-         // Fix URLs for all images
-     return processedImages.map(img => {
-       if (img && img.url) {
-         let fixedUrl = img.url;
-         
-         // Fix double http:// issue
-         if (fixedUrl.startsWith('http://http://')) {
-           fixedUrl = fixedUrl.replace('http://http://', 'http://');
-           console.log(`🔍 Fixed double http:// in detail: ${img.url} -> ${fixedUrl}`);
-         }
-         
-         // Fix old IP addresses and localhost issues
-         if (fixedUrl.includes('192.168.30.116:3000')) {
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('192.168.30.116:3000')) {
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('localhost:5173')) {
-           // Fix localhost:5173 to use backend URL
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://localhost:5173', baseUrl);
-           console.log(`🔍 Fixed localhost:5173 in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.startsWith('/uploads/')) {
-           // If URL starts with /uploads/, add the backend base URL
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = `${baseUrl}${fixedUrl}`;
-           console.log(`🔍 Fixed relative upload URL in detail: ${img.url} -> ${fixedUrl}`);
-         }
-         
-         return { ...img, url: fixedUrl };
-       }
-       return img;
-     });
+    // Fix URLs for all images via helper
+    return processedImages.map(img => {
+      if (img && img.url) {
+        const fixedUrl = normalizeImageUrl(img.url);
+        if (fixedUrl !== img.url) {
+          console.log(`🔍 Normalized image URL: ${img.url} -> ${fixedUrl}`);
+        }
+        return { ...img, url: fixedUrl };
+      }
+      return img;
+    });
   };
 
-  // Render content with images inline
+  // Render content with images inline (pertahankan teks di sekitar placeholder)
   const renderContentWithImages = (content, images = []) => {
     if (!content) return [];
-    
+
     const parts = [];
-    const lines = content.split('\n');
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // Check if line contains image placeholder
-      const imgMatch = line.match(/\[IMG:(\d+)\]/);
-      if (imgMatch) {
-        const imageId = parseInt(imgMatch[1]);
-        const image = images.find(img => img.id === imageId);
-        
-        if (image) {
-          parts.push({
-            type: 'image',
-            data: image
-          });
-        }
-      } else {
-        parts.push({
-          type: 'text',
-          data: line
-        });
+    const regex = /\[IMG:(\d+)\]/g;
+    let lastIndex = 0;
+    let match;
+
+    while ((match = regex.exec(content)) !== null) {
+      const start = match.index;
+      const end = regex.lastIndex;
+      // Tambahkan teks sebelum placeholder jika ada
+      if (start > lastIndex) {
+        const textSeg = content.slice(lastIndex, start);
+        if (textSeg) parts.push({ type: 'text', data: textSeg });
       }
+      const imgId = parseInt(match[1]);
+      const image = images.find((img) => img.id === imgId);
+      if (image) {
+        parts.push({ type: 'image', data: image });
+      } else {
+        // Jika image tidak ditemukan, tampilkan placeholder sebagai teks apa adanya
+        parts.push({ type: 'text', data: match[0] });
+      }
+      lastIndex = end;
     }
-    
+
+    // Sisa teks setelah placeholder terakhir
+    if (lastIndex < content.length) {
+      const tail = content.slice(lastIndex);
+      if (tail) parts.push({ type: 'text', data: tail });
+    }
+
+    // Fallback: bila tidak ada part sama sekali, tampilkan seluruh content sebagai teks
+    if (parts.length === 0) {
+      parts.push({ type: 'text', data: content });
+    }
     return parts;
   };
 
@@ -250,50 +234,52 @@ const OwnerLaporanKeuanganDetail = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/owner/keuangan/laporan')}
-                className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Kembali</span>
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Detail Laporan Keuangan</h1>
-                <p className="text-gray-600">Informasi lengkap laporan keuangan</p>
-              </div>
+    <div className="px-0 py-2 bg-gray-50 min-h-screen">
+      {/* Header ala list */}
+      <div className="bg-red-800 text-white p-4 mb-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { try { sessionStorage.setItem('owner.lapkeu.returning','1'); } catch(_){}; navigate('/owner/keuangan/laporan') }}
+              aria-label="Kembali"
+              className="inline-flex items-center bg-white/0 text-white hover:text-gray-100"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-bold">Detail Laporan Keuangan</h1>
+              <p className="text-sm opacity-90">Owner - Keuangan</p>
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => navigate(`/owner/keuangan/laporan/${id}/edit`)}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-              >
-                <Edit className="h-4 w-4" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={handleDelete}
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>Hapus</span>
-              </button>
-            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { try { sessionStorage.setItem('owner.lapkeu.returning','1'); } catch(_){}; navigate(`/owner/keuangan/laporan/${id}/edit`) }}
+              className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
+            >
+              <Edit className="h-4 w-4" />
+              <span>Edit</span>
+            </button>
+            <button
+              onClick={handleDelete}
+              className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Hapus</span>
+            </button>
           </div>
         </div>
       </div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
+        Terakhir diupdate: {new Date(laporanData.updated_at || laporanData.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})}
+        {' '}pukul {new Date(laporanData.updated_at || laporanData.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}
+      </div>
 
       {/* Summary Card */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-white shadow-sm border mb-4">
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2 bg-blue-100">
                 <Calendar className="h-6 w-6 text-blue-600" />
               </div>
               <div>
@@ -303,7 +289,7 @@ const OwnerLaporanKeuanganDetail = () => {
             </div>
             
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100">
                 <User className="h-6 w-6 text-green-600" />
               </div>
               <div>
@@ -313,7 +299,7 @@ const OwnerLaporanKeuanganDetail = () => {
             </div>
             
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
+              <div className="p-2 bg-purple-100">
                 <Clock className="h-6 w-6 text-purple-600" />
               </div>
               <div>
@@ -326,16 +312,19 @@ const OwnerLaporanKeuanganDetail = () => {
       </div>
 
       {/* Content Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white shadow-sm border mb-4">
+        <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Isi Laporan</h2>
         </div>
-        <div className="p-6">
+        <div className="p-4">
           <div className="prose max-w-none">
+            {contentParts.length === 0 && (
+              <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{laporanData.isi_laporan || '-'}</div>
+            )}
             {contentParts.map((part, index) => (
               <div key={index}>
                 {part.type === 'image' ? (
-                  <div className="my-4">
+                  <div className="my-3">
                     <img
                       src={part.data.url}
                       alt={part.data.name || 'Laporan Keuangan Image'}
@@ -350,9 +339,7 @@ const OwnerLaporanKeuanganDetail = () => {
                     />
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                    {part.data}
-                  </div>
+                  <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{part.data}</div>
                 )}
               </div>
             ))}
@@ -360,37 +347,7 @@ const OwnerLaporanKeuanganDetail = () => {
         </div>
       </div>
 
-      {/* Images Gallery */}
-      {laporanData.images && processImages(laporanData.images).length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border mb-6">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Galeri Gambar</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {processImages(laporanData.images).map((image, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={image.url}
-                    alt={image.name || `Image ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => openFullScreenImage(image.url)}
-                    onError={(e) => {
-                      console.error(`❌ Failed to load image ${index + 1}:`, image.url);
-                      e.target.style.border = '2px solid red';
-                      e.target.style.backgroundColor = '#fee';
-                      e.target.alt = 'Gambar gagal dimuat';
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
-                    <ImageIcon className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Galeri gambar dihilangkan sesuai permintaan */}
 
       {/* Full Screen Image Modal */}
       {showFullScreenModal && fullScreenImage && (

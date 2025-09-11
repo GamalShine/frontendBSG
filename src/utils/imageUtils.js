@@ -82,12 +82,6 @@ export const parseImagesString = (imagesData, baseUrl = '') => {
           console.log(`🔍 Fixed double http:// URL: ${validImage.url} -> ${fixedUrl}`);
         }
 
-        if (fixedUrl.includes('192.168.30.116:3000')) {
-          const baseUrlClean = baseUrl.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrlClean);
-          console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${fixedUrl}`);
-        }
-
         if (fixedUrl.includes('/api/uploads/')) {
           fixedUrl = fixedUrl.replace('/api/uploads/', '/uploads/');
           console.log(`🔍 Fixed /api in upload URL: ${validImage.url} -> ${fixedUrl}`);
@@ -107,11 +101,6 @@ export const parseImagesString = (imagesData, baseUrl = '') => {
 
         if (fixedUri.startsWith('http://http://')) {
           fixedUri = fixedUri.replace('http://http://', 'http://');
-        }
-
-        if (fixedUri.includes('192.168.30.116:3000')) {
-          const baseUrlClean = baseUrl.replace('/api', '');
-          fixedUri = fixedUri.replace('http://192.168.30.116:3000', baseUrlClean);
         }
 
         if (fixedUri.includes('/api/uploads/')) {

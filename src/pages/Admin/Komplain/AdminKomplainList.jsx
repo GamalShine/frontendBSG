@@ -135,7 +135,7 @@ const AdminKomplainList = () => {
 
   const handleEdit = (id) => {
     // Navigate to edit page
-    navigate(`/admin/komplain/${id}/edit`);
+    navigate(`/admin/operasional/komplain/${id}/edit`);
   };
 
   const handleDelete = (id) => {
@@ -207,7 +207,7 @@ const AdminKomplainList = () => {
         <h1 className="text-3xl font-bold text-gray-900">Daftar Komplain</h1>
         <Button 
           className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => navigate('/admin/komplain/new')}
+          onClick={() => navigate('/admin/operasional/komplain/new')}
         >
           <Plus className="w-4 h-4 mr-2" />
           Tambah Komplain

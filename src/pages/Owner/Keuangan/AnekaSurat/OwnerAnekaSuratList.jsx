@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { anekaSuratService } from '../../../../services/anekaSuratService';
+import { API_CONFIG } from '../../../../config/constants';
 import { toast } from 'react-hot-toast';
 import { 
   Plus, 
@@ -19,7 +20,8 @@ import {
   User,
   X,
   Upload,
-  File
+  File,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -66,9 +68,18 @@ const OwnerAnekaSuratList = () => {
       const response = await anekaSuratService.getAllAnekaSurat();
       
       if (response.success) {
-        setAnekaSurat(response.data || []);
+        // Normalisasi lampiran agar selalu array
+        const normalized = (response.data || []).map((item) => {
+          let lampiran = item.lampiran;
+          if (typeof lampiran === 'string') {
+            try { lampiran = JSON.parse(lampiran); } catch { lampiran = []; }
+          }
+          if (!Array.isArray(lampiran)) lampiran = [];
+          return { ...item, lampiran };
+        });
+        setAnekaSurat(normalized);
         // Auto-expand categories that have documents
-        const categoriesWithDocs = new Set(response.data.map(item => item.jenis_dokumen));
+        const categoriesWithDocs = new Set((response.data || []).map(item => item.jenis_dokumen));
         setExpandedCategories(categoriesWithDocs);
       } else {
         toast.error('Gagal memuat data aneka surat');
@@ -79,6 +90,68 @@ const OwnerAnekaSuratList = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper: paksa download file menggunakan anchor[download]
+  const downloadFile = (url, suggestedName) => {
+    if (!url || url === '#') {
+      toast.error('URL lampiran tidak valid');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    if (suggestedName) a.download = suggestedName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Helper: buka URL di tab baru dengan fallback bila popup terblokir
+  const openInNewTab = (url) => {
+    if (!url || url === '#') {
+      toast.error('URL lampiran tidak valid');
+      return;
+    }
+    const win = window.open(url, '_blank', 'noopener');
+    if (!win) {
+      // Fallback menggunakan anchor
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  // Helper: bangun URL lampiran dengan BASE_HOST backend
+  const getAttachmentUrl = (rawPathOrUrl) => {
+    if (!rawPathOrUrl) return '#';
+    // Jika sudah absolute URL, kembalikan apa adanya
+    if (/^https?:\/\//i.test(rawPathOrUrl)) return rawPathOrUrl;
+    // Pastikan tidak ada leading slash ganda
+    const normalized = String(rawPathOrUrl)
+      .replace(/\\/g, '/') // backslash -> slash
+      .replace(/^\/+/, '');
+    return `${API_CONFIG.BASE_HOST}/${normalized}`;
+  };
+
+  // Helper: gunakan endpoint download backend jika memungkinkan
+  const buildDownloadUrl = (doc, file) => {
+    const rawPath = file?.file_path || file?.url || '';
+    // jika ada doc.id dan nama file, gunakan endpoint download backend
+    if (doc?.id && rawPath) {
+      // ambil nama file dari path (segment terakhir)
+      const parts = String(rawPath).split('/');
+      const filename = parts[parts.length - 1];
+      if (filename) {
+        return `${API_CONFIG.BASE_URL}/admin/aneka-surat/${doc.id}/download/${filename}`;
+      }
+    }
+    // fallback ke file statis
+    return getAttachmentUrl(rawPath);
   };
 
   const handleFileUpload = (e) => {
@@ -196,6 +269,33 @@ const OwnerAnekaSuratList = () => {
     setSelectedSurat(null);
   };
 
+  // Helper: format tanggal + jam Indonesia untuk banner "Terakhir diupdate"
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  // Hitung waktu terakhir diupdate dari entri terbaru
+  const lastUpdatedText = useMemo(() => {
+    if (!anekaSurat || anekaSurat.length === 0) return '-';
+    const latest = anekaSurat[0];
+    const dt = latest?.created_at;
+    return formatDateTime(dt);
+  }, [anekaSurat]);
+
+  // Reset filter seperti tampilan sebelumnya
+  const resetFilters = () => {
+    setSearchTerm('');
+    setJenisFilter('all');
+  };
+
   const openEditModal = (surat) => {
     setSelectedSurat(surat);
     setFormData({
@@ -274,31 +374,49 @@ const OwnerAnekaSuratList = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-red-600 text-white">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <button 
-              onClick={() => window.history.back()}
-              className="p-2 bg-red-700 rounded-lg"
-            >
-              <ChevronDown className="w-5 h-5 rotate-90" />
-            </button>
-            <div className="text-center">
-              <div className="text-sm opacity-75">H01-P6</div>
-              <h1 className="text-xl font-bold">Aneka Surat</h1>
+      {/* Header - mengikuti style sebelumnya */}
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-4 min-w-0">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT</h1>
+              <p className="text-sm text-red-100">Kelola dan monitor semua dokumen hukum & perjanjian</p>
             </div>
-            <button 
-              onClick={() => setShowAddModal(true)}
-              className="p-2 bg-red-700 rounded-lg"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
           </div>
-          <div className="text-center text-sm opacity-75 mt-2">
-            Terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
+          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
+            <button
+              onClick={resetFilters}
+              aria-label="Reset Filter"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">RESET FILTER</span>
+            </button>
+            <button
+              onClick={loadAnekaSurat}
+              aria-label="Refresh"
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+            >
+              <ChevronDown className={`h-4 w-4 rotate-180 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline font-semibold">Refresh</span>
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              aria-label="Tambah Aneka Surat"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">Tambah</span>
+            </button>
           </div>
         </div>
+      </div>
+
+      {/* Info Bar Abu-abu */}
+      <div className="bg-gray-100 px-4 sm:px-6 py-2">
+        <p className="text-gray-700 text-sm">Daftar aneka surat terbaru berada di paling atas • Terakhir diupdate: {lastUpdatedText}</p>
       </div>
 
       {/* Search and Filter */}
@@ -329,115 +447,146 @@ const OwnerAnekaSuratList = () => {
 
       {/* Content */}
       <div className="px-4 py-4">
-        {Object.keys(groupedData).length === 0 ? (
-        <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Tidak ada dokumen ditemukan</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {Object.entries(groupedData).map(([jenis, documents]) => (
-              <div key={jenis} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <button
-                  onClick={() => toggleCategory(jenis)}
-                  className="w-full px-4 py-3 bg-red-50 text-red-700 flex items-center justify-between hover:bg-red-100 transition-colors"
-                >
-                  <div>
-                    <div className="font-bold text-lg">{jenis}</div>
-                    <div className="text-sm">{documents.length} dokumen</div>
-                  </div>
-                  {expandedCategories.has(jenis) ? (
-                    <ChevronUp className="w-5 h-5" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5" />
-                  )}
-                </button>
-                
-                {expandedCategories.has(jenis) && (
-                  <div className="p-4 space-y-4">
-                    {documents.map((doc) => (
-                      <div key={doc.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="font-bold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
-                            <div className="flex items-center text-sm text-gray-500 mb-2">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}
+        <div className="bg-white rounded-lg shadow-sm border">
+          {Object.keys(groupedData).length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Tidak ada dokumen ditemukan</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupedData).map(([jenis, documents]) => (
+                <div key={jenis} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <button
+                    onClick={() => toggleCategory(jenis)}
+                    className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <FileText className="w-6 h-6" />
+                      <span className="text-lg font-semibold">{jenis}</span>
+                      <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
+                        {documents.length}
+                      </span>
+                    </div>
+                    {expandedCategories.has(jenis) ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5" />
+                    )}
+                  </button>
+
+                  {expandedCategories.has(jenis) && (
+                    <div className="p-4 space-y-4">
+                      {documents.map((doc) => (
+                        <div key={doc.id} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-bold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
+                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                {format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                                <User className="w-4 h-4 mr-1" />
+                                {doc.user_nama || 'Admin'}
+                              </div>
                             </div>
-                            <div className="flex items-center text-sm text-gray-500 mb-2">
-                              <User className="w-4 h-4 mr-1" />
-                              {doc.user_nama || 'Admin'}
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => openEditModal(doc)}
+                                className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(doc)}
+                                className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => openEditModal(doc)}
-                              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(doc)}
-                              className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+
+                          {doc.lampiran && (
+                            <div>
+                              <div className="flex items-center text-sm text-gray-600 mb-2">
+                                <Paperclip className="w-4 h-4 mr-1" />
+                                {Array.isArray(doc.lampiran) ? doc.lampiran.length : 1} Lampiran
+                              </div>
+                              <div className="space-y-2">
+                                {Array.isArray(doc.lampiran) ? doc.lampiran.map((file, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                      {getFileIcon(file.file_name || file.name)}
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900 break-anywhere md:truncate max-w-[14rem]">
+                                          {file.file_name || file.name}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {getFileType(file.file_name || file.name)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const url = getAttachmentUrl(file.file_path || file.url);
+                                        const name = file.file_name || file.name || (url.split('/').pop() || 'file');
+                                        downloadFile(url, name);
+                                      }}
+                                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )) : (
+                                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                      <FileText className="w-6 h-6 text-gray-600" />
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900">Dokumen</div>
+                                        <div className="text-xs text-gray-500">File</div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const raw = doc?.lampiran;
+                                        let firstPath = '';
+                                        let firstName = '';
+                                        if (typeof raw === 'string') {
+                                          try {
+                                            const arr = JSON.parse(raw);
+                                            if (Array.isArray(arr) && arr[0]?.file_path) {
+                                              firstPath = arr[0].file_path;
+                                              firstName = arr[0].file_name || '';
+                                            }
+                                          } catch {}
+                                        }
+                                        if (firstPath) {
+                                          const url = getAttachmentUrl(firstPath);
+                                          const name = firstName || (url.split('/').pop() || 'file');
+                                          downloadFile(url, name);
+                                        } else {
+                                          toast.error('Lampiran tidak tersedia');
+                                        }
+                                      }}
+                                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        
-                        {/* Attachments */}
-                        {doc.lampiran && (
-                          <div>
-                            <div className="flex items-center text-sm text-gray-600 mb-2">
-                              <Paperclip className="w-4 h-4 mr-1" />
-                              {Array.isArray(doc.lampiran) ? doc.lampiran.length : 1} Lampiran
-                            </div>
-                            <div className="space-y-2">
-                              {Array.isArray(doc.lampiran) ? doc.lampiran.map((file, index) => (
-                                <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex items-center space-x-3">
-                                    {getFileIcon(file.file_name || file.name)}
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900">
-                                        {file.file_name || file.name}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {getFileType(file.file_name || file.name)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => window.open(file.file_path || file.url, '_blank')}
-                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
-                                  >
-                                    <Download className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              )) : (
-                                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex items-center space-x-3">
-                                    <FileText className="w-6 h-6 text-gray-600" />
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900">Dokumen</div>
-                                      <div className="text-xs text-gray-500">File</div>
-                                    </div>
-                                  </div>
-                                  <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
-                                    <Download className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add Modal */}

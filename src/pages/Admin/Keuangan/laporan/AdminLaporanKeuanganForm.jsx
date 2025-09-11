@@ -241,17 +241,6 @@ const AdminLaporanKeuanganForm = () => {
                     fixedUrl = fixedUrl.replace('http://http://', 'http://');
                     console.log(`🔍 Fixed double http:// in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
-
-                  // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  }
                 }
 
                 return {
@@ -287,17 +276,6 @@ const AdminLaporanKeuanganForm = () => {
               if (cleanUrl.startsWith('http://http://')) {
                 cleanUrl = cleanUrl.replace('http://http://', 'http://');
                 console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${cleanUrl}`);
-              }
-
-              // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
               }
 
               if (cleanUrl.startsWith('http') || cleanUrl.startsWith('data:')) {
@@ -624,17 +602,6 @@ const AdminLaporanKeuanganForm = () => {
             console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
           }
 
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          }
-
           return { ...img, url: fixedUrl };
         }
         return img;
@@ -753,49 +720,46 @@ const AdminLaporanKeuanganForm = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigate('/admin/keuangan/laporan')}
-                className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Kembali</span>
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {isEditMode ? 'Edit Laporan Keuangan' : 'Tambah Laporan Keuangan'}
-                </h1>
-                <p className="text-gray-600">
-                  {isEditMode ? 'Perbarui data laporan keuangan' : 'Buat laporan keuangan baru'}
-                </p>
-              </div>
-            </div>
+    <div className="px-0 py-2 bg-gray-50 min-h-screen">
+      {/* Header ala Owner */}
+      <div className="bg-red-800 text-white p-4 mb-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+              onClick={() => navigate('/admin/keuangan/laporan')}
+              aria-label="Kembali"
+              className="inline-flex items-center bg-white/0 text-white hover:text-gray-100"
             >
-              <Save className="h-4 w-4" />
-              <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+              <ArrowLeft className="h-5 w-5" />
             </button>
+            <div>
+              <h1 className="text-2xl font-bold">{isEditMode ? 'Edit Laporan Keuangan' : 'Tambah Laporan Keuangan'}</h1>
+              <p className="text-sm opacity-90">Admin - Keuangan</p>
+            </div>
           </div>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+          </button>
         </div>
       </div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
+        {isEditMode ? 'Mode Edit' : 'Mode Tambah'}
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-4">
           {/* Basic Info */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white shadow-sm border">
+            <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Informasi Laporan</h2>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-4">
               {/* Tanggal Laporan */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -808,7 +772,7 @@ const AdminLaporanKeuanganForm = () => {
                     value={formData.tanggal_laporan}
                     onChange={handleInputChange}
                     required
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                   <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
@@ -858,7 +822,7 @@ const AdminLaporanKeuanganForm = () => {
                   onFocus={updateFormatState}
                   onPaste={handleEditorPaste}
                   data-placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
-                  className="w-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                  className="w-full min-h-[400px] p-4 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
                 />
               </div>
             </div>
@@ -866,19 +830,19 @@ const AdminLaporanKeuanganForm = () => {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Image Upload */}
-          <div className="bg-white rounded-lg shadow-sm border">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white border">
+            <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Gambar</h2>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 space-y-3">
               {/* Upload New Images */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Upload Gambar Baru
                 </label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                <div className="border-2 border-dashed border-gray-300 p-4 text-center">
                   <input
                     type="file"
                     multiple
@@ -910,7 +874,7 @@ const AdminLaporanKeuanganForm = () => {
                         <img
                           src={imagePreviewUrls[index]}
                           alt={`Preview ${index + 1}`}
-                          className="w-full h-20 object-cover rounded-lg"
+                          className="w-full h-20 object-cover"
                         />
                         <button
                           onClick={() => removeImage(index)}
@@ -938,15 +902,6 @@ const AdminLaporanKeuanganForm = () => {
                           imageUrl = imageUrl.replace('http://http://', 'http://');
                         }
                         
-                        // Fix old IP addresses
-                        if (imageUrl.includes('192.168.30.116:3000')) {
-                          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-                        } else if (imageUrl.includes('192.168.30.116:3000')) {
-                          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                          imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-                        }
-                        
                         // If relative URL, add base URL
                         if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
                           const baseUrl = envConfig.BASE_URL.replace('/api', '');
@@ -959,7 +914,7 @@ const AdminLaporanKeuanganForm = () => {
                         <img
                             src={imageUrl}
                             alt={image.name || `Gambar ${index + 1}`}
-                          className="w-full h-20 object-cover rounded-lg cursor-pointer hover:opacity-75"
+                          className="w-full h-20 object-cover cursor-pointer hover:opacity-75"
                             onClick={() => insertImage(imageUrl, image.id)}
                             onError={(e) => {
                               console.error(`❌ Failed to load existing image ${index + 1}:`, imageUrl);
@@ -975,7 +930,7 @@ const AdminLaporanKeuanganForm = () => {
                               console.log(`✅ Successfully loaded existing image ${index + 1}:`, imageUrl);
                             }}
                         />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 rounded-lg flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
                           <span className="text-white text-xs opacity-0 hover:opacity-100">Klik untuk sisipkan</span>
                         </div>
                           <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 py-0.5 rounded">
@@ -991,7 +946,7 @@ const AdminLaporanKeuanganForm = () => {
           </div>
 
           {/* Help */}
-          <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+          <div className="bg-blue-50 border border-blue-200 p-4">
             <h3 className="text-lg font-semibold text-blue-900 mb-3">Panduan</h3>
             <div className="space-y-3 text-sm text-blue-800">
               <div>

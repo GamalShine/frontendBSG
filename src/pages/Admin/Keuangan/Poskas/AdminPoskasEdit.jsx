@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { API_CONFIG } from '../../../../config/constants';
+import { normalizeImageUrl } from '../../../../utils/url';
 
 const AdminPoskasEdit = () => {
   const { id } = useParams();
@@ -200,7 +201,7 @@ const AdminPoskasEdit = () => {
                 console.log(`🔍 Creating image element for image ${index + 1}:`, image);
                 
                 const img = document.createElement('img');
-                img.src = image.url || image.uri;
+                img.src = normalizeImageUrl(image.url || image.uri);
                 img.alt = `Gambar ${index + 1}`;
                 img.className = 'max-w-full h-auto my-2 rounded-lg shadow-sm editor-image';
                 img.setAttribute('data-image-id', image.id);
@@ -333,20 +334,8 @@ const AdminPoskasEdit = () => {
            }).forEach((image, index) => {
             console.log(`🔍 Processing image ${index + 1}:`, image);
             
-                         // Construct the correct image URL
-             let imageUrl = '';
-             if (image.url) {
-               if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-                 // Already absolute URL or data URL
-                 imageUrl = image.url;
-               } else {
-                 // Relative URL, add base URL
-                 const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-                 imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-               }
-             } else if (image.uri) {
-               imageUrl = image.uri;
-             }
+                         // Build URL via helper
+            const imageUrl = normalizeImageUrl(image.url || image.uri);
              
              console.log(`🔍 Final image URL for editor: ${imageUrl}`);
              
@@ -480,41 +469,13 @@ const AdminPoskasEdit = () => {
           serverPath: image.serverPath || ''
         };
         
-        // Fix URLs - replace old IP with current base URL
+        // Normalisasi URL menggunakan helper
         if (validImage.url) {
-          let fixedUrl = validImage.url;
-          
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// URL: ${validImage.url} -> ${fixedUrl}`);
+          const normalized = normalizeImageUrl(validImage.url);
+          if (normalized !== validImage.url) {
+            console.log(`🔍 Normalized image url: ${validImage.url} -> ${normalized}`);
           }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          } else if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP URL: ${validImage.url} -> ${baseUrl}`);
-          }
-          
-          validImage.url = fixedUrl;
-        }
-        
-        // Ensure URL is absolute
-        if (validImage.url && !validImage.url.startsWith('http') && !validImage.url.startsWith('data:')) {
-          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-          validImage.url = `${baseUrl}${validImage.url.startsWith('/') ? '' : '/'}${validImage.url}`;
-        } else if (validImage.url && validImage.url.startsWith('http')) {
-          // Check if absolute URL has /api in wrong place
-          if (validImage.url.includes('/api/uploads/')) {
-            // Remove /api from upload URLs
-            validImage.url = validImage.url.replace('/api/uploads/', '/uploads/');
-            console.log(`🔍 Fixed /api in absolute upload URL: ${image.url} -> ${validImage.url}`);
-          }
+          validImage.url = normalized;
         }
         
         return validImage;
@@ -758,21 +719,8 @@ const AdminPoskasEdit = () => {
   // Add image to editor
   const addImageToEditor = (image) => {
     if (editorRef.current) {
-      // Construct the correct image URL
-      let imageUrl = '';
-      if (image.url) {
-        if (image.url.startsWith('http') || image.url.startsWith('data:')) {
-          // Already absolute URL or data URL
-          imageUrl = image.url;
-        } else {
-          // Relative URL, add base URL
-          const baseUrl = API_CONFIG.BASE_URL.replace('/api', '');
-          imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-        }
-      } else if (image.uri) {
-        // Fallback to uri if url is not available
-        imageUrl = image.uri;
-      }
+      // Build URL via helper
+      const imageUrl = normalizeImageUrl(image.url || image.uri);
       
       if (!imageUrl) {
         console.error('❌ No valid URL for image:', image);

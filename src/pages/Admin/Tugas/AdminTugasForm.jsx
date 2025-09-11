@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Save, CheckSquare, Calendar, User, ChevronRight } from 'lucide-react'
-import { tugasService } from '../../../services/tugasService'
+import { tugasService, adminTugasService } from '../../../services/tugasService'
 import { userService } from '../../../services/userService'
 import toast from 'react-hot-toast'
 
@@ -61,7 +61,7 @@ const AdminTugasForm = () => {
       const loadTask = async () => {
         try {
           setLoading(true)
-          const response = await tugasService.getTugasById(id)
+          const response = await adminTugasService.getAdminTugasById(id)
           if (response.success) {
             const task = response.data
             setFormData({
@@ -164,9 +164,9 @@ const AdminTugasForm = () => {
 
       let response
       if (isEditMode) {
-        response = await tugasService.updateTugas(id, tugasData)
+        response = await adminTugasService.updateTugasByAdmin(id, tugasData)
       } else {
-        response = await tugasService.createTugas(tugasData)
+        response = await adminTugasService.createTugasByAdmin(tugasData)
       }
       
       if (response.success) {
@@ -496,3 +496,7 @@ const AdminTugasForm = () => {
 }
 
 export default AdminTugasForm
+
+
+
+

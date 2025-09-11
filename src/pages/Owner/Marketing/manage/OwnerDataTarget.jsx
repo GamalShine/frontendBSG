@@ -21,6 +21,7 @@ const OwnerDataTarget = () => {
   const [stats, setStats] = useState({});
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0, itemsPerPage: 10 });
 
   // Debounce search text to reduce refetch churn
   useEffect(() => {
@@ -49,6 +50,7 @@ const OwnerDataTarget = () => {
       // shape: { success, data: { items, pagination, statistics } }
       setDataTarget(response?.data?.items || []);
       setStats(response?.data?.statistics || {});
+      setPagination(response?.data?.pagination || { currentPage: page, totalPages: 1, totalItems: 0, itemsPerPage: limit });
     } catch (err) {
       setError('Gagal mengambil data target');
       console.error('Error fetching data target:', err);
@@ -193,6 +195,9 @@ const OwnerDataTarget = () => {
                 <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Nama Target</TableHead>
                 <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Target Nominal</TableHead>
                 <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Dibuat Pada</TableHead>
+                <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Dibuat Oleh</TableHead>
+                <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Diubah Pada</TableHead>
+                <TableHead className="whitespace-nowrap px-4 md:px-6 py-3 text-left">Diubah Oleh</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -209,10 +214,47 @@ const OwnerDataTarget = () => {
                   <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left">
                     {target.created_at ? new Date(target.created_at).toLocaleDateString('id-ID') : '-'}
                   </TableCell>
+                  <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left">
+                    {target.creator?.nama || '-'}
+                  </TableCell>
+                  <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left">
+                    {target.updated_at ? new Date(target.updated_at).toLocaleDateString('id-ID') : '-'}
+                  </TableCell>
+                  <TableCell className="px-4 md:px-6 py-4 whitespace-nowrap text-left">
+                    {target.updater?.nama || '-'}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Pagination */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 px-6 py-4">
+          <div className="text-sm text-gray-600">
+            Menampilkan {dataTarget.length > 0 ? ((pagination.currentPage - 1) * pagination.itemsPerPage + 1) : 0}
+            {' - '}
+            {(pagination.currentPage - 1) * pagination.itemsPerPage + dataTarget.length}
+            {' dari '}
+            {pagination.totalItems} data
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1 border rounded disabled:opacity-50"
+              disabled={pagination.currentPage <= 1 || loading}
+              onClick={() => setFilters(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+            >
+              Prev
+            </button>
+            <span className="text-sm text-gray-600">Hal {pagination.currentPage} / {pagination.totalPages}</span>
+            <button
+              className="px-3 py-1 border rounded disabled:opacity-50"
+              disabled={pagination.currentPage >= pagination.totalPages || loading}
+              onClick={() => setFilters(prev => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
+            >
+              Next
+            </button>
+          </div>
         </div>
       </div>
     </div>

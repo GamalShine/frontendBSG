@@ -23,7 +23,12 @@ import {
   Building,
   MapPin,
   Calendar,
-  Phone
+  Phone,
+  ChevronDown,
+  ChevronRight,
+  Truck,
+  Factory,
+  Store
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -37,6 +42,7 @@ const AdminDataSupplier = () => {
   const [kategoriFilter, setKategoriFilter] = useState('all');
   const [divisiFilter, setDivisiFilter] = useState('all');
   const [stats, setStats] = useState({});
+  const [activeSection, setActiveSection] = useState('');
 
   useEffect(() => {
     fetchSuppliers();
@@ -97,6 +103,64 @@ const AdminDataSupplier = () => {
     return colors[divisi] || 'bg-gray-100 text-gray-800';
   };
 
+  // Group suppliers by category
+  const groupedSuppliers = {
+    'SUPPLIER OUTLET': suppliers.filter(s => s.kategori_supplier === 'SUPPLIER OUTLET'),
+    'SUPPLIER TOKO TEPUNG & BB': suppliers.filter(s => s.kategori_supplier === 'SUPPLIER TOKO TEPUNG & BB'),
+    'SUPPLIER PRODUKSI': suppliers.filter(s => s.kategori_supplier === 'SUPPLIER PRODUKSI'),
+    'SUPPLIER KAMBING': suppliers.filter(s => s.kategori_supplier === 'SUPPLIER KAMBING')
+  };
+
+  const renderSupplierCard = (supplier) => (
+    <div key={supplier.id} className="bg-gray-50 rounded-lg p-4 border hover:shadow-md transition-shadow">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex-1">
+          <h4 className="font-semibold text-gray-900">{supplier.nama_supplier}</h4>
+          {supplier.npwp && (
+            <p className="text-sm text-gray-500">NPWP: {supplier.npwp}</p>
+          )}
+        </div>
+        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getDivisiColor(supplier.divisi)}`}>
+          {supplier.divisi}
+        </span>
+      </div>
+      
+      <div className="space-y-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Phone className="h-4 w-4" />
+          <span>{supplier.no_hp_supplier}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Calendar className="h-4 w-4" />
+          <span>{format(new Date(supplier.tanggal_kerjasama), 'dd MMM yyyy', { locale: id })}</span>
+        </div>
+        <div className="flex items-start gap-2 text-sm text-gray-600">
+          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
+          <span className="line-clamp-2">{supplier.alamat}</span>
+        </div>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <Link to={`/admin/operasional/data-supplier/detail/${supplier.id}`}>
+          <button className="p-1.5 text-gray-400 hover:text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
+            <Eye className="h-4 w-4" />
+          </button>
+        </Link>
+        <Link to={`/admin/operasional/data-supplier/edit/${supplier.id}`}>
+          <button className="p-1.5 text-gray-400 hover:text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
+            <Edit className="h-4 w-4" />
+          </button>
+        </Link>
+        <button 
+          onClick={() => handleDelete(supplier.id)}
+          className="p-1.5 text-red-400 hover:text-red-600 border border-gray-300 rounded hover:bg-red-50"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -126,222 +190,287 @@ const AdminDataSupplier = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Data Supplier</h1>
-        <p className="text-gray-600">Kelola data supplier perusahaan</p>
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">A01-O2</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA SUPPLIER</h1>
+              <p className="text-sm text-red-100">Kelola dan monitor semua data supplier perusahaan</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => { setSearchTerm(''); setKategoriFilter('all'); setDivisiFilter('all'); }} 
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              RESET FILTER
+            </button>
+            <Link to="/admin/operasional/data-supplier/form">
+              <button className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
+                <Plus className="h-4 w-4" />
+                <span className="font-semibold">Tambah</span>
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+      
+      {/* Info Bar */}
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+        Data supplier terbaru berada di paling atas
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center">
-              <Building className="h-8 w-8 text-blue-600" />
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Supplier</p>
+      <div className="px-6 py-6">
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Building className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Supplier</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.total_suppliers || 0}</p>
               </div>
             </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-blue-600 font-bold text-sm">O</span>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <span className="text-green-600 font-bold text-sm">O</span>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Supplier Outlet</p>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Supplier Outlet</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.outlet_count || 0}</p>
               </div>
             </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                <span className="text-green-600 font-bold text-sm">P</span>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <span className="text-purple-600 font-bold text-sm">P</span>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Supplier Produksi</p>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Supplier Produksi</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.produksi_count || 0}</p>
               </div>
             </div>
-          </CardBody>
-        </Card>
-        
-        <Card>
-          <CardBody className="p-4">
-            <div className="flex items-center">
-              <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
-                <span className="text-purple-600 font-bold text-sm">M</span>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <span className="text-orange-600 font-bold text-sm">M</span>
               </div>
-              <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Supplier Marketing</p>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Supplier Marketing</p>
                 <p className="text-2xl font-bold text-gray-900">{stats.marketing_divisi_count || 0}</p>
               </div>
             </div>
-          </CardBody>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* Filters and Actions */}
-      <Card className="mb-6">
-        <CardBody className="p-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col lg:flex-row gap-4 flex-1">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
+        {/* Filters and Actions */}
+        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Cari Supplier</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
                   type="text"
-                  placeholder="Cari supplier..."
+                  placeholder="Masukkan nama supplier..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
                 />
               </div>
-              
-              <Select 
-                value={kategoriFilter} 
-                onValueChange={setKategoriFilter}
-                placeholder="Kategori Supplier"
-                className="w-48"
-                options={[
-                  { value: 'all', label: 'Semua Kategori' },
-                  { value: 'SUPPLIER OUTLET', label: 'Supplier Outlet' },
-                  { value: 'SUPPLIER TOKO TEPUNG & BB', label: 'Supplier Toko Tepung & BB' },
-                  { value: 'SUPPLIER PRODUKSI', label: 'Supplier Produksi' },
-                  { value: 'SUPPLIER KAMBING', label: 'Supplier Kambing' }
-                ]}
-              />
-              
-              <Select 
-                value={divisiFilter} 
-                onValueChange={setDivisiFilter}
-                placeholder="Divisi"
-                className="w-48"
-                options={[
-                  { value: 'all', label: 'Semua Divisi' },
-                  { value: 'PRODUKSI', label: 'Produksi' },
-                  { value: 'MARKETING', label: 'Marketing' },
-                  { value: 'OPERASIONAL', label: 'Operasional' }
-                ]}
-              />
             </div>
             
-            <Link to="/admin/operasional/data-supplier/form">
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Tambah Supplier
-              </Button>
-            </Link>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Kategori Supplier</label>
+              <select 
+                value={kategoriFilter} 
+                onChange={(e) => setKategoriFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              >
+                <option value="all">Semua Kategori</option>
+                <option value="SUPPLIER OUTLET">Supplier Outlet</option>
+                <option value="SUPPLIER TOKO TEPUNG & BB">Supplier Toko Tepung & BB</option>
+                <option value="SUPPLIER PRODUKSI">Supplier Produksi</option>
+                <option value="SUPPLIER KAMBING">Supplier Kambing</option>
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Divisi</label>
+              <select 
+                value={divisiFilter} 
+                onChange={(e) => setDivisiFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              >
+                <option value="all">Semua Divisi</option>
+                <option value="PRODUKSI">Produksi</option>
+                <option value="MARKETING">Marketing</option>
+                <option value="OPERASIONAL">Operasional</option>
+              </select>
+            </div>
           </div>
-        </CardBody>
-      </Card>
+        </div>
 
-      {/* Suppliers Table */}
-      <Card>
-        <CardHeader>
-          <h2 className="text-xl font-semibold text-gray-900">Daftar Supplier</h2>
-        </CardHeader>
-        <CardBody>
-          {suppliers.length === 0 ? (
-            <div className="text-center py-12">
-              <Building className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Tidak ada data supplier</p>
-              <p className="text-gray-400">Mulai dengan menambahkan supplier baru</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nama Supplier</TableHead>
-                    <TableHead>Kategori</TableHead>
-                    <TableHead>Divisi</TableHead>
-                    <TableHead>No. HP</TableHead>
-                    <TableHead>Tanggal Kerjasama</TableHead>
-                    <TableHead>Alamat</TableHead>
-                    <TableHead>Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-gray-900">{supplier.nama_supplier}</p>
-                          {supplier.npwp && (
-                            <p className="text-sm text-gray-500">NPWP: {supplier.npwp}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getKategoriColor(supplier.kategori_supplier)}>
-                          {supplier.kategori_supplier}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getDivisiColor(supplier.divisi)}>
-                          {supplier.divisi}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">{supplier.no_hp_supplier}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          <span className="text-sm">
-                            {format(new Date(supplier.tanggal_kerjasama), 'dd MMM yyyy', { locale: id })}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-xs">
-                          <div className="flex items-start gap-2">
-                            <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-gray-600 line-clamp-2">{supplier.alamat}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Link to={`/admin/operasional/data-supplier/detail/${supplier.id}`}>
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Link to={`/admin/operasional/data-supplier/edit/${supplier.id}`}>
-                            <Button size="sm" variant="outline">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => handleDelete(supplier.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardBody>
-      </Card>
+        {/* Data Sections by Category */}
+        <div className="space-y-6">
+          {/* Supplier Outlet Section */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <button
+              onClick={() => setActiveSection(activeSection === 'outlet' ? '' : 'outlet')}
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <Store className="w-6 h-6" />
+                <span className="text-lg font-semibold">Supplier Outlet</span>
+                <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
+                  {groupedSuppliers['SUPPLIER OUTLET'].length}
+                </span>
+              </div>
+              {activeSection === 'outlet' ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+            
+            {activeSection === 'outlet' && (
+              <div className="p-6">
+                {groupedSuppliers['SUPPLIER OUTLET'].length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupedSuppliers['SUPPLIER OUTLET'].map(renderSupplierCard)}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Tidak ada data supplier outlet
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Supplier Toko Tepung & BB Section */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <button
+              onClick={() => setActiveSection(activeSection === 'tepung' ? '' : 'tepung')}
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <Building className="w-6 h-6" />
+                <span className="text-lg font-semibold">Supplier Toko Tepung & BB</span>
+                <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
+                  {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].length}
+                </span>
+              </div>
+              {activeSection === 'tepung' ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+            
+            {activeSection === 'tepung' && (
+              <div className="p-6">
+                {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].map(renderSupplierCard)}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Tidak ada data supplier toko tepung & BB
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Supplier Produksi Section */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <button
+              onClick={() => setActiveSection(activeSection === 'produksi' ? '' : 'produksi')}
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <Factory className="w-6 h-6" />
+                <span className="text-lg font-semibold">Supplier Produksi</span>
+                <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
+                  {groupedSuppliers['SUPPLIER PRODUKSI'].length}
+                </span>
+              </div>
+              {activeSection === 'produksi' ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+            
+            {activeSection === 'produksi' && (
+              <div className="p-6">
+                {groupedSuppliers['SUPPLIER PRODUKSI'].length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupedSuppliers['SUPPLIER PRODUKSI'].map(renderSupplierCard)}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Tidak ada data supplier produksi
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Supplier Kambing Section */}
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <button
+              onClick={() => setActiveSection(activeSection === 'kambing' ? '' : 'kambing')}
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <Truck className="w-6 h-6" />
+                <span className="text-lg font-semibold">Supplier Kambing</span>
+                <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
+                  {groupedSuppliers['SUPPLIER KAMBING'].length}
+                </span>
+              </div>
+              {activeSection === 'kambing' ? (
+                <ChevronDown className="w-5 h-5" />
+              ) : (
+                <ChevronRight className="w-5 h-5" />
+              )}
+            </button>
+            
+            {activeSection === 'kambing' && (
+              <div className="p-6">
+                {groupedSuppliers['SUPPLIER KAMBING'].length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupedSuppliers['SUPPLIER KAMBING'].map(renderSupplierCard)}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Tidak ada data supplier kambing
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Last Updated Info */}
+        <div className="bg-gray-200 px-4 py-2 text-sm text-gray-600 mt-6 rounded-lg">
+          Data terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
+        </div>
+      </div>
     </div>
   );
 };

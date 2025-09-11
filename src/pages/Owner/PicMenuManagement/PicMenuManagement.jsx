@@ -6,11 +6,55 @@ import {
   Edit3, 
   User, 
   X,
-  Save,
   Trash2
 } from 'lucide-react';
+
 import { toast } from 'react-hot-toast';
 import { picMenuService } from '../../../services/picMenuService';
+import { userService } from '../../../services/userService';
+
+// Daftar key menu yang tersedia untuk di-assign oleh Owner (lengkap + legacy)
+const MENU_KEYS = [
+  // Global / Umum
+  { key: 'AdminDashboard', label: 'Dashboard' },
+  { key: 'AdminChatPrivate', label: 'Chat Private' },
+
+  // Keuangan (Admin)
+  { key: 'AdminKeuanganPoskas', label: 'Keuangan • POSKAS' },
+  { key: 'AdminKeuanganOmsetHarian', label: 'Keuangan • Omset Harian' },
+  { key: 'AdminKeuanganLaporan', label: 'Keuangan • Laporan Keuangan' },
+  { key: 'AdminAnekaGrafik', label: 'Keuangan • Aneka Grafik' },
+  { key: 'AdminKeuanganDaftarGaji', label: 'Keuangan • Daftar Gaji' },
+  { key: 'AdminKeuanganAnekaSurat', label: 'Keuangan • Aneka Surat' },
+
+  // SDM (Admin)
+  { key: 'AdminSDMStruktur', label: 'SDM • Struktur, Jobdesk & SOP' },
+  { key: 'AdminSDMDataTim', label: 'SDM • Data Tim' },
+  { key: 'AdminSDMKPI', label: 'SDM • KPI' },
+  { key: 'AdminSDMTimMerahBiru', label: 'SDM • Tim Merah/Biru' },
+
+  // Operasional (Admin)
+  { key: 'AdminDataSupplier', label: 'Operasional • Data Supplier' },
+  { key: 'AdminOperasionalDataSewa', label: 'Operasional • Data Sewa' },
+  { key: 'AdminDataInvestor', label: 'Operasional • Data Investor' },
+  { key: 'AdminOperasionalDaftarSaran', label: 'Operasional • Daftar Saran' },
+  { key: 'AdminOperasionalDaftarKomplain', label: 'Operasional • Daftar Komplain' },
+  { key: 'AdminDataBinaLingkungan', label: 'Operasional • Data Bina Lingkungan' },
+  { key: 'AdminDataAset', label: 'Operasional • Data Aset' },
+
+  // Marketing (Admin)
+  { key: 'AdminMarketingDataTarget', label: 'Marketing • Data Target' },
+  { key: 'AdminMedsos', label: 'Marketing • Media Sosial' },
+
+  // Settings (Admin)
+  { key: 'AdminSettings', label: 'Settings' },
+
+  // Legacy keys (dipertahankan untuk kompatibilitas backward)
+  { key: 'AdminSdmStrukturSop', label: 'LEGACY • Struktur & SOP SDM' },
+  { key: 'AdminDataTraining', label: 'LEGACY • Data Training' },
+  { key: 'AdminPengumuman', label: 'LEGACY • Pengumuman' },
+  { key: 'AdminTugas', label: 'LEGACY • Daftar Tugas' }
+];
 
 const PicMenuManagement = () => {
   const { user } = useAuth();
@@ -39,10 +83,18 @@ const PicMenuManagement = () => {
       setLoading(true);
       const response = await picMenuService.getAllPicMenus();
       if (response.success) {
-        setPicMenus(response.data);
+        // Frontend workaround: assign ui_id when backend id is invalid (<= 0)
+        const raw = Array.isArray(response.data) ? response.data : [];
+        let maxValidId = raw.reduce((m, it) => (Number(it.id) > 0 ? Math.max(m, Number(it.id)) : m), 0);
+        let counter = maxValidId + 1;
+        const normalized = raw.map((it) => ({
+          ...it,
+          ui_id: Number(it.id) > 0 ? Number(it.id) : counter++
+        }));
+        setPicMenus(normalized);
       } else {
         // Fallback to mock data if API fails
-        setPicMenus([
+        const fallback = [
           {
             id: 1,
             nama: 'Data Investor',
@@ -70,7 +122,8 @@ const PicMenuManagement = () => {
             created_at: '2025-08-01 14:36:19',
             updated_at: '2025-08-01 14:36:19'
           }
-        ]);
+        ].map((it) => ({ ...it, ui_id: it.id }));
+        setPicMenus(fallback);
       }
     } catch (error) {
       console.error('Error loading PIC menus:', error);
@@ -82,16 +135,19 @@ const PicMenuManagement = () => {
 
   const loadAdminUsers = async () => {
     try {
-      // Mock admin users data
-      const mockAdmins = [
-        { id: 1, nama: 'Vega Anggara', email: 'dlain@bosgil.com', role: 'admin' },
-        { id: 2, nama: 'Admin Marketing', email: 'admin.marketing@bosgil.com', role: 'admin' },
-        { id: 3, nama: 'Admin Keuangan', email: 'admin.keuangan@bosgil.com', role: 'admin' },
-        { id: 4, nama: 'Admin SDM', email: 'admin.sdm@bosgil.com', role: 'admin' }
-      ];
-      setAdminUsers(mockAdmins);
+      const res = await userService.getUsers({ page: 1, limit: 100, role: 'admin' });
+      // Normalisasi berbagai bentuk respons { success, data: [...]} atau { data: { users: [...] }}
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.data?.users)
+        ? res.data.users
+        : Array.isArray(res)
+        ? res
+        : [];
+      setAdminUsers(list);
     } catch (error) {
       console.error('Error loading admin users:', error);
+      toast.error('Gagal memuat daftar admin');
     }
   };
 
@@ -209,17 +265,12 @@ const PicMenuManagement = () => {
           <div className="text-center py-12">
             <div className="bg-white rounded-lg p-8 shadow-sm">
               <User className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Belum ada menu
-              </h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Belum ada menu</h3>
               <p className="text-gray-500 mb-4">
                 {searchTerm ? 'Tidak ada menu yang sesuai dengan pencarian' : 'Mulai dengan menambahkan menu pertama'}
               </p>
               {!searchTerm && (
-                <button
-                  onClick={handleAddMenu}
-                  className="bg-red-800 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                >
+                <button onClick={handleAddMenu} className="bg-red-800 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-colors">
                   Tambah Menu Pertama
                 </button>
               )}
@@ -230,24 +281,28 @@ const PicMenuManagement = () => {
             {filteredMenus.map((menu) => {
               const admin = getAdminById(menu.id_user);
               return (
-                <div key={menu.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  {/* Menu Header */}
+                <div key={menu.ui_id || menu.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
                   <div className="p-4 border-b border-gray-100">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">{menu.nama}</h3>
-                        <p className="text-sm text-gray-600">{menu.link}</p>
+                        <p className="text-sm text-gray-600">{getMenuLabel(menu.link)}</p>
                       </div>
                       <button
-                        onClick={() => handleEditMenu(menu)}
-                        className="text-red-600 hover:text-red-700 p-2"
+                        onClick={() => {
+                          if (!(menu.id > 0)) {
+                            toast.error('Data belum memiliki ID valid dari server. Silakan refresh atau hubungi admin.');
+                            return;
+                          }
+                          handleEditMenu(menu);
+                        }}
+                        className={`p-2 ${menu.id > 0 ? 'text-red-600 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'}`}
+                        disabled={!(menu.id > 0)}
                       >
                         <Edit3 className="h-5 w-5" />
                       </button>
                     </div>
                   </div>
-
-                  {/* PIC Info */}
                   <div className="p-4 bg-pink-50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -260,12 +315,17 @@ const PicMenuManagement = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-red-800">
-                          PIC
-                        </span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-red-800">PIC</span>
                         <button
-                          onClick={() => handleDeleteMenu(menu.id)}
-                          className="text-red-600 hover:text-red-700 p-1"
+                          onClick={() => {
+                            if (!(menu.id > 0)) {
+                              toast.error('Tidak bisa menghapus: ID belum valid dari server.');
+                              return;
+                            }
+                            handleDeleteMenu(menu.id);
+                          }}
+                          className={`p-1 ${menu.id > 0 ? 'text-red-600 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'}`}
+                          disabled={!(menu.id > 0)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -279,181 +339,198 @@ const PicMenuManagement = () => {
         )}
       </div>
 
-      {/* Add Menu Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  Tambah PIC Menu
-                </h3>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Masukkan nama menu:
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nama}
-                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Nama menu"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Link (Opsional):
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.link}
-                    onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Link menu"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    PIC (Admin):
-                  </label>
-                  <select
-                    value={formData.id_user}
-                    onChange={(e) => setFormData({ ...formData, id_user: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Pilih Admin</option>
-                    {adminUsers.map((admin) => (
-                      <option key={admin.id} value={admin.id}>
-                        {admin.nama} • {admin.email} • {admin.role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="px-6 py-4 border-t border-gray-200 flex space-x-3">
+    {/* Add Menu Modal */}
+    {showAddModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] flex flex-col">
+          {/* Modal Header */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Tambah PIC Menu
+              </h3>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="text-gray-400 hover:text-gray-600"
               >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveMenu}
-                className="flex-1 px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Tambah
+                <X className="h-6 w-6" />
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Edit Menu Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-800">
-                  Edit PIC Menu
-                </h3>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+          {/* Modal Content */}
+          <div className="flex-1 p-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Masukkan nama menu:
+                </label>
+                <input
+                  type="text"
+                  value={formData.nama}
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Nama menu"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Key Menu:
+                </label>
+                <select
+                  value={formData.link}
+                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
-                  <X className="h-6 w-6" />
-                </button>
+                  <option value="">Pilih Key Menu</option>
+                  {MENU_KEYS.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.label} • {opt.key}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PIC (Admin):
+                </label>
+                <select
+                  value={formData.id_user}
+                  onChange={(e) => setFormData({ ...formData, id_user: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Pilih Admin</option>
+                  {adminUsers.map((admin) => (
+                    <option key={admin.id} value={admin.id}>
+                      {admin.nama} • {admin.email} • {admin.role}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
+          </div>
 
-            {/* Modal Content */}
-            <div className="flex-1 p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Nama Menu:
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nama}
-                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Nama menu"
-                  />
-                </div>
+          {/* Modal Actions */}
+          <div className="px-6 py-4 border-t border-gray-200 flex space-x-3">
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleSaveMenu}
+              className="flex-1 px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Tambah
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Link (Opsional):
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.link}
-                    onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                    placeholder="Link menu"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    PIC (Admin):
-                  </label>
-                  <select
-                    value={formData.id_user}
-                    onChange={(e) => setFormData({ ...formData, id_user: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Pilih Admin</option>
-                    {adminUsers.map((admin) => (
-                      <option key={admin.id} value={admin.id}>
-                        {admin.nama} • {admin.email} • {admin.role}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="px-6 py-4 border-t border-gray-200 flex space-x-3">
+    {/* Edit Menu Modal */}
+    {showEditModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-[500px] max-h-[90vh] flex flex-col">
+          {/* Modal Header */}
+          <div className="px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Edit PIC Menu
+              </h3>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                className="text-gray-400 hover:text-gray-600"
               >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveMenu}
-                className="flex-1 px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Simpan
+                <X className="h-6 w-6" />
               </button>
             </div>
           </div>
+
+          {/* Modal Content */}
+          <div className="flex-1 p-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Menu:
+                </label>
+                <input
+                  type="text"
+                  value={formData.nama}
+                  onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Nama menu"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Key Menu:
+                </label>
+                <select
+                  value={formData.link}
+                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Pilih Key Menu</option>
+                  {MENU_KEYS.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.label} • {opt.key}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PIC (Admin):
+                </label>
+                <select
+                  value={formData.id_user}
+                  onChange={(e) => setFormData({ ...formData, id_user: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="">Pilih Admin</option>
+                  {adminUsers.map((admin) => (
+                    <option key={admin.id} value={admin.id}>
+                      {admin.nama} • {admin.email} • {admin.role}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Modal Actions */}
+          <div className="px-6 py-4 border-t border-gray-200 flex space-x-3">
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleSaveMenu}
+              className="flex-1 px-4 py-2 bg-red-800 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Simpan
+            </button>
+          </div>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
+
 };
+
+// Helper untuk menampilkan label dari key menu
+function getMenuLabel(key) {
+  const found = MENU_KEYS.find((k) => k.key === key);
+  return found ? found.label : key;
+}
 
 export default PicMenuManagement;

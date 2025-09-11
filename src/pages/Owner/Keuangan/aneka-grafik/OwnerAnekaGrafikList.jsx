@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { anekaGrafikService } from '../../services/anekaGrafikService';
@@ -160,6 +160,14 @@ const AnekaGrafikList = () => {
     });
   };
 
+  // Terakhir diupdate diambil dari entri terbaru (diasumsikan data terurut desc)
+  const lastUpdatedText = useMemo(() => {
+    if (!anekaGrafik || anekaGrafik.length === 0) return '-';
+    const latest = anekaGrafik[0];
+    const dt = latest?.created_at || latest?.tanggal_grafik;
+    return formatDateTime(dt);
+  }, [anekaGrafik]);
+
   const truncateText = (text, maxLength = 100) => {
     if (!text) return '-';
     if (text.length <= maxLength) return text;
@@ -201,24 +209,11 @@ const AnekaGrafikList = () => {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Stats Cards */}
-        <div className="p-6 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1">{stats.total_records || 0}</div>
-              <div className="text-blue-100">Total Grafik</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1">{stats.total_this_month || 0}</div>
-              <div className="text-blue-100">Grafik Bulan Ini</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold mb-1">{stats.total_this_year || 0}</div>
-              <div className="text-blue-100">Grafik Tahun Ini</div>
-            </div>
-          </div>
-        </div>
+      {/* Last Update Info */}
+      <div className="bg-gray-200 rounded-md px-4 py-2 mb-4 border border-gray-300">
+        <p className="text-sm text-gray-700">Terakhir diupdate: {lastUpdatedText}</p>
       </div>
 
       {/* Search and Filter Section */}

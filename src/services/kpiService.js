@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { API_CONFIG } from '../config/constants.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 // Get auth token helper
 const getAuthToken = () => {

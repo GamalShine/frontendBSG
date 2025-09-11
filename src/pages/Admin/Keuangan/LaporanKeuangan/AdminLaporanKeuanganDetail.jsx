@@ -107,6 +107,27 @@ const LaporanKeuanganDetail = () => {
     });
   };
 
+  // Helper untuk membersihkan URL dari duplikasi protokol/path
+  const aggressivelyCleanUrl = (url) => {
+    if (!url) return '';
+    let cleaned = url.trim();
+    cleaned = cleaned.replace(/^https?:\/\/https?:\/\//, match => match.replace('http://http://', 'http://').replace('https://https://', 'https://'));
+    cleaned = cleaned.replace(/([^:])\/+/g, '$1/');
+    return cleaned;
+  };
+
+  // Normalisasi URL gambar agar environment-agnostic
+  const constructImageUrl = (imageUrl) => {
+    if (!imageUrl) return '';
+    if (imageUrl.startsWith('file://')) return imageUrl;
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return aggressivelyCleanUrl(imageUrl);
+    }
+    const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
+    const pathPart = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+    return aggressivelyCleanUrl(`${baseUrl}${pathPart}`);
+  };
+
   // Helper function to safely process images
   const processImages = (images) => {
     if (!images) return [];
@@ -150,42 +171,24 @@ const LaporanKeuanganDetail = () => {
       }
     }
     
-         // Fix URLs for all images
-     return processedImages.map(img => {
-       if (img && img.url) {
-         let fixedUrl = img.url;
-         
-         // Fix double http:// issue
-         if (fixedUrl.startsWith('http://http://')) {
-           fixedUrl = fixedUrl.replace('http://http://', 'http://');
-           console.log(`🔍 Fixed double http:// in detail: ${img.url} -> ${fixedUrl}`);
-         }
-         
-         // Fix old IP addresses and localhost issues
-         if (fixedUrl.includes('192.168.30.116:3000')) {
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('192.168.30.116:3000')) {
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-           console.log(`🔍 Fixed old IP in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.includes('localhost:5173')) {
-           // Fix localhost:5173 to use backend URL
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = fixedUrl.replace('http://localhost:5173', baseUrl);
-           console.log(`🔍 Fixed localhost:5173 in detail: ${img.url} -> ${fixedUrl}`);
-         } else if (fixedUrl.startsWith('/uploads/')) {
-           // If URL starts with /uploads/, add the backend base URL
-           const baseUrl = envConfig.BASE_URL.replace('/api', '');
-           fixedUrl = `${baseUrl}${fixedUrl}`;
-           console.log(`🔍 Fixed relative upload URL in detail: ${img.url} -> ${fixedUrl}`);
-         }
-         
-         return { ...img, url: fixedUrl };
-       }
-       return img;
-     });
+    // Normalisasi URL untuk semua gambar
+    return processedImages.map(img => {
+      if (!img) return img;
+      let urlCandidate = img.url;
+      if (!urlCandidate && img.serverPath) {
+        const cleanServerPath = img.serverPath.startsWith('/') ? img.serverPath : `/${img.serverPath}`;
+        urlCandidate = cleanServerPath;
+      }
+      if (!urlCandidate) return img;
+
+      // Perbaiki path ganda uploads
+      if (typeof urlCandidate === 'string' && urlCandidate.includes('/uploads//uploads/')) {
+        urlCandidate = urlCandidate.replace('/uploads//uploads/', '/uploads/');
+      }
+
+      const normalized = constructImageUrl(urlCandidate);
+      return { ...img, url: normalized };
+    });
   };
 
   // Render content with images inline

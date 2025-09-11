@@ -25,6 +25,7 @@ const OwnerLaporanKeuangan = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -34,13 +35,19 @@ const OwnerLaporanKeuangan = () => {
     total_this_month: 0,
     total_this_year: 0
   });
+  const [monthsView, setMonthsView] = useState('months'); // 'months' | 'monthContent'
+  const [availableMonths, setAvailableMonths] = useState([]); // [{year, month}]
 
   useEffect(() => {
     if (user) {
-      loadLaporanKeuangan();
+      if (monthsView === 'months') {
+        loadAvailableMonths();
+      } else {
+        loadLaporanKeuangan();
+      }
       loadStats();
     }
-  }, [user, currentPage, searchTerm, dateFilter]);
+  }, [user, monthsView, currentPage, monthFilter]);
 
   const loadLaporanKeuangan = async () => {
     try {
@@ -48,8 +55,9 @@ const OwnerLaporanKeuangan = () => {
       const response = await laporanKeuanganService.getAllLaporanKeuangan(
         currentPage,
         10,
-        searchTerm,
-        dateFilter
+        '',
+        '',
+        monthFilter
       );
       
       if (response.success) {
@@ -67,6 +75,68 @@ const OwnerLaporanKeuangan = () => {
     }
   };
 
+  const loadAvailableMonths = async () => {
+    try {
+      setLoading(true);
+      const res = await laporanKeuanganService.getAvailableMonths();
+      if (res?.success) {
+        setAvailableMonths(res.data || []);
+      } else {
+        setAvailableMonths([]);
+      }
+    } catch (e) {
+      console.error('Error loading available months:', e);
+      setAvailableMonths([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Grouping helpers
+  const getMonthKey = (dateStr) => {
+    if (!dateStr) return 'Unknown';
+    const d = new Date(dateStr);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const formatMonthHeader = (monthKey) => {
+    if (!monthKey || monthKey === 'Unknown') return 'Tidak diketahui';
+    const [y, m] = monthKey.split('-').map(Number);
+    const date = new Date(y, m - 1, 1);
+    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
+
+  const groupByMonth = (items) => {
+    const groups = {};
+    items.forEach((it) => {
+      const key = getMonthKey(it.tanggal_laporan);
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(it);
+    });
+    return groups;
+  };
+
+  // Folder icon (mirroring Medsos style)
+  const FolderIcon = ({ open = false }) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={`w-10 h-10 ${open ? 'text-yellow-600' : 'text-yellow-500'}`}
+    >
+      <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
+    </svg>
+  );
+
+  const monthFilterLabel = () => {
+    if (!monthFilter) return '';
+    const [y, m] = monthFilter.split('-').map(Number);
+    const d = new Date(y, (m || 1) - 1, 1);
+    return d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
+
   const loadStats = async () => {
     try {
       const response = await laporanKeuanganService.getStats();
@@ -77,6 +147,40 @@ const OwnerLaporanKeuangan = () => {
       console.error('Error loading stats:', error);
     }
   };
+
+  const openMonthFolder = (year, month) => {
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+    setMonthFilter(monthKey);
+    setCurrentPage(1);
+    setMonthsView('monthContent');
+    try {
+      sessionStorage.setItem('owner.lapkeu.lastMonth', monthKey);
+    } catch (_) {}
+  };
+
+  const backToMonths = () => {
+    setMonthsView('months');
+    setMonthFilter('');
+    setLaporanKeuangan([]);
+    setCurrentPage(1);
+  };
+
+  // Restore folder terakhir hanya saat kembali dari detail/edit/tambah
+  useEffect(() => {
+    try {
+      const returning = sessionStorage.getItem('owner.lapkeu.returning');
+      const lastMonth = sessionStorage.getItem('owner.lapkeu.lastMonth');
+      if (returning === '1' && lastMonth) {
+        setMonthFilter(lastMonth);
+        setCurrentPage(1);
+        setMonthsView('monthContent');
+      }
+      // reset flag apapun kondisinya agar tidak auto-restore saat refresh/akses baru
+      sessionStorage.setItem('owner.lapkeu.returning', '0');
+    } catch (_) {}
+    // hanya jalan saat mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus data laporan keuangan ini?')) {
@@ -154,31 +258,33 @@ const OwnerLaporanKeuangan = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Laporan Keuangan</h1>
-              <p className="text-gray-600">Kelola data laporan keuangan outlet</p>
-            </div>
+    <div className="px-0 py-2 bg-gray-50 min-h-screen">
+      {/* Header ala Medsos */}
+      <div className="bg-red-800 text-white p-4 mb-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
+            <p className="text-sm opacity-90">Owner - Keuangan</p>
+          </div>
+          {monthsView === 'months' && (
             <Link
               to="/owner/keuangan/laporan/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              aria-label="Tambah Laporan Keuangan"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
             >
               <Plus className="h-4 w-4" />
-              <span>Tambah Laporan</span>
+              <span className="hidden sm:inline">Tambah</span>
             </Link>
-          </div>
+          )}
         </div>
       </div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="bg-white shadow-sm border p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
+            <div className="p-2 bg-blue-100">
               <Calendar className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -188,9 +294,9 @@ const OwnerLaporanKeuangan = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="bg-white shadow-sm border p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-lg">
+            <div className="p-2 bg-green-100">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <div>
@@ -200,9 +306,9 @@ const OwnerLaporanKeuangan = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="bg-white shadow-sm border p-4">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
+            <div className="p-2 bg-purple-100">
               <Calendar className="h-5 w-5 text-purple-600" />
             </div>
             <div>
@@ -213,208 +319,208 @@ const OwnerLaporanKeuangan = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Filter & Pencarian</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cari
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari laporan keuangan..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
+      {/* Months Folder Grid */}
+      {monthsView === 'months' && (
+        <div className="bg-white shadow-sm border mb-4">
+          <div className="p-3 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Bulan</h2>
+            {loading && <div className="text-sm text-gray-600">Memuat daftar bulan...</div>}
+            {!loading && availableMonths.length === 0 && (
+              <div className="text-sm text-gray-600">Belum ada data bulan tersedia</div>
+            )}
+            {!loading && availableMonths.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {availableMonths.map(({ year, month }) => {
+                  const label = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+                  return (
+                    <div
+                      key={`${year}-${month}`}
+                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      onClick={() => openMonthFolder(year, month)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <FolderIcon />
+                        <div>
+                          <div className="font-semibold text-gray-800 group-hover:text-red-700">{label}</div>
+                          <div className="text-xs text-gray-500">Folder Bulan</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tanggal
-              </label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setDateFilter('');
-                }}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span>Reset</span>
-              </button>
-            </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Data Table */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Daftar Laporan Keuangan</h2>
-            {selectedItems.length > 0 && (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
-                  {selectedItems.length} item dipilih
-                </span>
-                <button
-                  onClick={handleBulkDelete}
-                  className="flex items-center space-x-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+      {/* Month Content Table */}
+      {monthsView === 'monthContent' && (
+        <div className="bg-white shadow-sm border">
+          <div className="bg-red-800 text-white px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">{monthFilterLabel()}</h2>
+                <p className="text-xs opacity-90">Daftar Laporan Keuangan</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/owner/keuangan/laporan/new"
+                  className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Hapus ({selectedItems.length})</span>
+                  <Plus className="h-4 w-4" /> Tambah
+                </Link>
+                <button
+                  onClick={backToMonths}
+                  className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
+                >
+                  Kembali
                 </button>
               </div>
-            )}
+            </div>
           </div>
-        </div>
 
-        {loading ? (
-          <LoadingSpinner />
-        ) : laporanKeuangan.length === 0 ? (
-          <div className="p-8 text-center">
-            <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</h3>
-            <p className="text-gray-500 mb-4">Belum ada data laporan keuangan yang tersedia</p>
-            <Link
-              to="/owner/keuangan/laporan/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Laporan Pertama</span>
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.length === laporanKeuangan.length && laporanKeuangan.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tanggal
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Judul
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dibuat Oleh
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {laporanKeuangan.map((laporan) => (
-                    <tr key={laporan.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+          {loading ? (
+            <LoadingSpinner />
+          ) : laporanKeuangan.length === 0 ? (
+            <div className="p-5 text-center">
+              <DollarSign className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</h3>
+              <p className="text-gray-500 mb-4">Belum ada data laporan keuangan yang tersedia</p>
+              <Link
+                to="/owner/keuangan/laporan/new"
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white hover:bg-green-600 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Tambah Laporan Pertama</span>
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="table-responsive">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         <input
                           type="checkbox"
-                          checked={selectedItems.includes(laporan.id)}
-                          onChange={() => handleCheckboxChange(laporan.id)}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                          checked={selectedItems.length === laporanKeuangan.length && laporanKeuangan.length > 0}
+                          onChange={handleSelectAll}
+                          className="border-gray-300 text-red-600 focus:ring-red-500"
                         />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(laporan.tanggal_laporan)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        <div className="max-w-xs">
-                          {truncateText(laporan.judul_laporan, 150)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {laporan.user_nama || 'Admin'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <Link
-                            to={`/owner/keuangan/laporan/${laporan.id}`}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                          <Link
-                            to={`/owner/keuangan/laporan/${laporan.id}/edit`}
-                            className="text-green-600 hover:text-green-900"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(laporan.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                        Tanggal
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                        Judul
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                        Dibuat Oleh
+                      </th>
+                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
+                        Aksi
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {(() => {
+                      const groups = groupByMonth(laporanKeuangan);
+                      const entries = Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+                      if (entries.length === 0) return (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-12 text-center text-gray-500">Tidak ada data</td>
+                        </tr>
+                      );
+                      return entries.map(([monthKey, items]) => (
+                        <React.Fragment key={monthKey}>
+                          {items.map((laporan) => (
+                            <tr key={laporan.id} className="hover:bg-gray-50">
+                              <td className="px-4 sm:px-6 py-2 whitespace-nowrap text-sm text-gray-900">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedItems.includes(laporan.id)}
+                                  onChange={() => handleCheckboxChange(laporan.id)}
+                                  className="border-gray-300 text-red-600 focus:ring-red-500"
+                                />
+                              </td>
+                              <td className="px-4 sm:px-6 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
+                                {formatDate(laporan.tanggal_laporan)}
+                              </td>
+                              <td className="px-4 sm:px-6 py-2 text-sm text-gray-900">
+                                <div className="max-w-[14rem] md:max-w-xs break-anywhere md:truncate">
+                                  {truncateText(laporan.judul_laporan, 150)}
+                                </div>
+                              </td>
+                              <td className="px-4 sm:px-6 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
+                                {laporan.user_nama || 'Admin'}
+                              </td>
+                              <td className="px-4 sm:px-6 py-2 whitespace-nowrap text-sm font-medium">
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    to={`/owner/keuangan/laporan/${laporan.id}`}
+                                    className="text-blue-600 hover:text-blue-900"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Link>
+                                  <Link
+                                    to={`/owner/keuangan/laporan/${laporan.id}/edit`}
+                                    className="text-green-600 hover:text-green-900"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Link>
+                                  <button
+                                    onClick={() => handleDelete(laporan.id)}
+                                    className="text-red-600 hover:text-red-900"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                    >
-                      Sebelumnya
-                    </button>
-                    <span className="px-3 py-1 text-sm text-gray-700">
-                      Halaman {currentPage} dari {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                    >
-                      Selanjutnya
-                    </button>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-3 py-2 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Sebelumnya
+                      </button>
+                      <span className="px-3 py-2 text-sm text-gray-700">
+                        Halaman {currentPage} dari {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Selanjutnya
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
 
 export default OwnerLaporanKeuangan;
-

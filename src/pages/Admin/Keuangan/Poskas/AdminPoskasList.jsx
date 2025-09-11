@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { poskasService } from '../../../../services/poskasService';
@@ -65,6 +65,14 @@ const AdminPoskasList = () => {
     }
   }
 
+  // kalkulasi teks terakhir diupdate dari poskas terbaru
+  const lastUpdatedText = useMemo(() => {
+    if (!poskas || poskas.length === 0) return '-'
+    const latest = poskas[0]
+    const dt = latest?.created_at || latest?.tanggal_poskas
+    return formatDateTime(dt)
+  }, [poskas])
+
   // Call test on component mount
   useEffect(() => {
     testApiConnection()
@@ -104,8 +112,23 @@ const AdminPoskasList = () => {
       const poskasData = data?.poskas || data?.items || data?.data || data || []
       const totalPages = data?.totalPages || data?.last_page || data?.total_pages || 1
       const totalItems = data?.total || data?.total_items || data?.count || 0
-      
-      setPoskas(poskasData)
+
+      // Sort newest first: created_at desc -> tanggal_poskas desc -> id desc
+      const sortedPoskas = [...(Array.isArray(poskasData) ? poskasData : [])].sort((a, b) => {
+        const aCreated = a?.created_at ? new Date(a.created_at).getTime() : 0
+        const bCreated = b?.created_at ? new Date(b.created_at).getTime() : 0
+        if (bCreated !== aCreated) return bCreated - aCreated
+
+        const aTanggal = a?.tanggal_poskas ? new Date(a.tanggal_poskas).getTime() : 0
+        const bTanggal = b?.tanggal_poskas ? new Date(b.tanggal_poskas).getTime() : 0
+        if (bTanggal !== aTanggal) return bTanggal - aTanggal
+
+        const aId = typeof a?.id === 'number' ? a.id : parseInt(a?.id || 0)
+        const bId = typeof b?.id === 'number' ? b.id : parseInt(b?.id || 0)
+        return (bId || 0) - (aId || 0)
+      })
+
+      setPoskas(sortedPoskas)
       setTotalPages(totalPages)
       setTotalItems(totalItems)
       
@@ -201,6 +224,19 @@ const AdminPoskasList = () => {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
+    })
+  }
+
+  // tampilkan tanggal + jam untuk banner "Terakhir diupdate"
+  function formatDateTime(dateString) {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
@@ -309,7 +345,7 @@ const AdminPoskasList = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Daftar pos kas terbaru berada di paling atas</div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">

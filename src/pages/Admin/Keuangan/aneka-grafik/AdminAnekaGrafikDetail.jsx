@@ -199,19 +199,19 @@ const AdminAnekaGrafikDetail = () => {
   };
 
   // Helper function to construct proper image URLs (same as form)
+  // Generic cleanup: no IP/port specific logic
+  const aggressivelyCleanUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://http://')) return url.replace('http://http://', 'http://');
+    if (url.startsWith('https://https://')) return url.replace('https://https://', 'https://');
+    return url;
+  };
+
   const constructImageUrl = (imageUrl) => {
     if (!imageUrl) return '';
     
-    // Fix double http:// issue
-    if (imageUrl.startsWith('http://http://')) {
-      imageUrl = imageUrl.replace('http://http://', 'http://');
-    }
-    
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.116:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.116:3000', baseUrl);
-    }
+    // Pre-clean duplicated protocols
+    imageUrl = aggressivelyCleanUrl(imageUrl);
     
     // Fix /api/uploads/ path
     if (imageUrl.includes('/api/uploads/')) {
@@ -248,16 +248,8 @@ const AdminAnekaGrafikDetail = () => {
 
     return processedImages.map((img) => {
       if (img && img.url) {
-        // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.116:3000http://192.168.30.116:3000')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.116:3000' + match[1];
-          }
-        }
-        
-        // Apply final URL construction
-        img.url = constructImageUrl(img.url);
+        const cleaned = aggressivelyCleanUrl(img.url);
+        img.url = constructImageUrl(cleaned);
       }
       return img;
     });

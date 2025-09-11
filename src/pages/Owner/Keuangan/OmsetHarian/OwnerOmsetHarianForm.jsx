@@ -340,17 +340,6 @@ const OwnerOmsetHarianForm = () => {
                     fixedUrl = fixedUrl.replace('http://http://', 'http://');
                     console.log(`🔍 Fixed double http:// in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
-                  
-                  // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.116:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  }
                 }
                 
                 const processedImg = {
@@ -393,17 +382,6 @@ const OwnerOmsetHarianForm = () => {
               if (cleanUrl.startsWith('http://http://')) {
                 cleanUrl = cleanUrl.replace('http://http://', 'http://');
                 console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${cleanUrl}`);
-              }
-              
-              // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.116:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.116:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
               }
               
               if (cleanUrl.startsWith('http') || cleanUrl.startsWith('data:')) {
@@ -722,17 +700,6 @@ const OwnerOmsetHarianForm = () => {
           if (fixedUrl.startsWith('http://http://')) {
             fixedUrl = fixedUrl.replace('http://http://', 'http://');
             console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.116:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.116:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
           
           return { ...img, url: fixedUrl };
