@@ -135,9 +135,12 @@ const AdminDataBinaLingkungan = () => {
           />
           <select value={lokasiFilter} onChange={(e) => setLokasiFilter(e.target.value)} className="border rounded px-3 py-2">
             <option value="">Semua Lokasi</option>
-            {locations.map((loc) => (
-              <option key={loc} value={loc}>{loc}</option>
-            ))}
+            {locations.map((loc, idx) => {
+              const label = typeof loc === 'string' ? loc : (loc?.lokasi ?? '');
+              return (
+                <option key={label || idx} value={label}>{label}</option>
+              );
+            })}
           </select>
           <select
             value={pagination.itemsPerPage}

@@ -142,15 +142,26 @@ const AdminAnekaGrafikList = () => {
 
   const getPhotoUrl = (item) => {
     if (!item) return '';
-    
+    // Resolve base host: prefer absolute BASE_URL, else fallback to window.location.origin
+    const baseHost = (() => {
+      const base = API_CONFIG.BASE_URL || '';
+      if (typeof base === 'string' && /^https?:\/\//i.test(base)) {
+        // strip trailing /api if present
+        return base.replace(/\/?api\/?$/, '');
+      }
+      // use provided BASE_HOST if valid, else window origin
+      const host = (API_CONFIG.BASE_HOST || '').trim();
+      return host || window.location.origin;
+    })();
+
     if (item.photo_url) {
       if (item.photo_url.startsWith('http')) {
         return item.photo_url;
       } else if (item.photo_url.startsWith('/')) {
-        // Already an absolute path on the backend host (e.g. "/uploads/..." from DB)
-        return new URL(item.photo_url, API_CONFIG.BASE_URL).toString();
+        // Absolute path on backend host (e.g. "/uploads/..." from DB)
+        return new URL(item.photo_url, baseHost).toString();
       } else {
-        return new URL(`/uploads/${item.photo_url}`, API_CONFIG.BASE_URL).toString();
+        return new URL(`/uploads/${item.photo_url}`, baseHost).toString();
       }
     }
     
