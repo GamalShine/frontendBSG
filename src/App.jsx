@@ -33,6 +33,7 @@ import AdminKomplainDetail from './pages/Admin/Komplain/AdminKomplainDetail'
 import AdminKomplainForm from './pages/Admin/Komplain/AdminKomplainForm'
 import AdminKomplainEdit from './pages/Admin/Komplain/AdminKomplainEdit'
 import AdminDaftarKomplain from './pages/Admin/Operasional/DaftarKomplain/AdminDaftarKomplain'
+import AdminDaftarKomplainForm from './pages/Admin/Operasional/DaftarKomplain/AdminDaftarKomplainForm'
 
 // Tugas Pages
 import TugasList from './pages/Tugas/TugasList'
@@ -114,6 +115,11 @@ import AdminAnekaGrafikList from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaG
 import AdminAnekaGrafikDetail from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikDetail'
 import AdminAnekaGrafikForm from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikForm'
 import AdminAnekaGrafik from './pages/Admin/Dashboard/AnekaGrafik'
+// Admin Daftar Gaji Pages
+import AdminDaftarGaji from './pages/Admin/Keuangan/DaftarGaji/AdminDaftarGaji'
+import AdminDaftarGajiForm from './pages/Admin/Keuangan/DaftarGaji/AdminDaftarGajiForm'
+import AdminDaftarGajiDetail from './pages/Admin/Keuangan/DaftarGaji/AdminDaftarGajiDetail'
+import AdminDaftarGajiEdit from './pages/Admin/Keuangan/DaftarGaji/AdminDaftarGajiEdit'
 
 // Admin Operasional Pages
 import AdminDataSupplier from './pages/Admin/Operasional/DataSupplier/AdminDataSupplier'
@@ -126,8 +132,15 @@ import AdminDataBinaLingkunganDetail from './pages/Admin/Operasional/DataBinaLin
 import AdminDataBinaLingkunganEdit from './pages/Admin/Operasional/DataBinaLingkungan/AdminDataBinaLingkunganEdit'
 import AdminDataAset from './pages/Admin/Operasional/DataAset/AdminDataAset'
 import AdminDataInvestor from './pages/Admin/Operasional/DataInvestor/AdminDataInvestor'
-import AdminDaftarKomplainForm from './pages/Admin/Operasional/DaftarKomplain/AdminDaftarKomplainForm'
+import AdminDataInvestorForm from './pages/Admin/Operasional/DataInvestor/AdminDataInvestorForm'
+import AdminDataInvestorDetail from './pages/Admin/Operasional/DataInvestor/AdminDataInvestorDetail'
+import AdminDataInvestorEdit from './pages/Admin/Operasional/DataInvestor/AdminDataInvestorEdit'
 import AdminJadwalPembayaran from './pages/Admin/Operasional/JadwalPembayaran/AdminJadwalPembayaran'
+// Admin Data Sewa Pages
+import AdminDataSewa from './pages/Admin/Operasional/DataSewa/AdminDataSewa'
+import AdminDataSewaForm from './pages/Admin/Operasional/DataSewa/AdminDataSewaForm'
+import AdminDataSewaDetail from './pages/Admin/Operasional/DataSewa/AdminDataSewaDetail'
+import AdminDataSewaEdit from './pages/Admin/Operasional/DataSewa/AdminDataSewaEdit'
 
 // Admin SDM Pages
 import AdminDataTim from './pages/Admin/SDM/manage/AdminDataTim'
@@ -838,6 +851,38 @@ const App = () => {
                       <AdminDataSupplier />
                     </Layout>
                   </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+              
+              {/* Admin Operasional - Data Sewa */}
+              <Route path="/admin/operasional/sewa" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataSewa">
+                    <Layout>
+                      <AdminDataSewa />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/operasional/sewa/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDataSewaForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/operasional/sewa/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDataSewaDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/operasional/sewa/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminDataSewaEdit />
+                  </Layout>
                 </ProtectedRoute>
               } />
               
@@ -2117,6 +2162,41 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
                     <AdminPoskasEdit />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Admin Daftar Gaji Routes */}
+              <Route path="/admin/keuangan/gaji" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDaftarGaji">
+                    <Layout>
+                      <AdminDaftarGaji />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/gaji/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDaftarGajiForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/gaji/:id" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDaftarGajiDetail />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin/keuangan/gaji/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminDaftarGajiEdit />
                   </Layout>
                 </ProtectedRoute>
               } />

@@ -70,6 +70,27 @@ export const trainingService = {
         } catch (error) {
             throw error.response?.data || error.message
         }
+    },
+
+    // Admin: list trainings for admin (alias for AdminTrainingList.jsx)
+    async getAdminTrainings(params = {}) {
+        try {
+            // Backend expects /admin/training/users for list
+            const response = await api.get('/admin/training/users', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Admin: stats for admin (alias for AdminTrainingList.jsx)
+    async getAdminStats(params = {}) {
+        try {
+            const response = await api.get(API_ENDPOINTS.TRAINING.STATS, { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     }
 }
 
