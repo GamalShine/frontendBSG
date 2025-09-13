@@ -33,6 +33,29 @@ export const CardBody = ({ children, className = '', ...props }) => {
   )
 }
 
+export const CardContent = ({ children, className = '', ...props }) => {
+  // Alias untuk kompatibilitas dengan penggunaan CardContent di berbagai halaman
+  return (
+    <div
+      className={`px-4 py-3 ${className}`}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+export const CardTitle = ({ children, className = '', as: Tag = 'h3', ...props }) => {
+  return (
+    <Tag
+      className={`text-lg font-semibold leading-none tracking-tight ${className}`}
+      {...props}
+    >
+      {children}
+    </Tag>
+  )
+}
+
 export const CardFooter = ({ children, className = '', ...props }) => {
   return (
     <div
@@ -44,4 +67,4 @@ export const CardFooter = ({ children, className = '', ...props }) => {
   )
 }
 
-export default Card 
+export default Card

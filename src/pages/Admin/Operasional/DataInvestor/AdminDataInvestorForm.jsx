@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { dataInvestorService } from '@/services/dataInvestorService';
 import { toast } from 'react-hot-toast';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminDataInvestorForm = ({ isOpen, onClose, onSuccess, editData = null, initialOpenAttachmentModal = false }) => {
   const [formData, setFormData] = useState({
@@ -396,7 +397,7 @@ return (
           </button>
           <div>
             <h2 className="text-xl font-semibold">{title}</h2>
-            <p className="text-sm text-red-100">H01-P4</p>
+            <p className="text-sm text-red-100">{MENU_CODES.operasional.dataInvestor}</p>
           </div>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-red-700 rounded-lg transition-colors">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { anekaSuratService } from '../../../../services/anekaSuratService';
 import { toast } from 'react-hot-toast';
@@ -12,6 +13,7 @@ import {
   ChevronUp,
   ChevronDown,
   FileText,
+  FileType,
   Image,
   Download,
   Paperclip,
@@ -21,10 +23,14 @@ import {
   Upload,
   File,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  FileClock,
+  FileCheck
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { MENU_CODES } from '@/config/menuCodes';
+import LoadingSpinner from '@/components/UI/LoadingSpinner';
 
 const AdminAnekaSurat = () => {
   const { user } = useAuth();
@@ -33,6 +39,10 @@ const AdminAnekaSurat = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [jenisFilter, setJenisFilter] = useState('all');
   const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [dateFilter, setDateFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -358,7 +368,7 @@ const AdminAnekaSurat = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K3</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaSurat}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT - ADMIN</h1>
               <p className="text-sm text-red-100">Kelola dan verifikasi dokumen aneka surat</p>
@@ -511,109 +521,51 @@ const AdminAnekaSurat = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <input 
-                      type="checkbox" 
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      checked={selectedItems.length === anekaSurat.length}
-                      onChange={handleSelectAll}
-                    />
-                </button>
-                
-                {expandedCategories.has(jenis) && (
-                  <div className="p-4 space-y-4">
-                    {documents.map((doc) => (
-                      <div key={doc.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="font-bold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
-                            <div className="flex items-center text-sm text-gray-500 mb-2">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}
-                            </div>
-                            <div className="flex items-center text-sm text-gray-500 mb-2">
-                              <User className="w-4 h-4 mr-1" />
-                              {doc.user_nama || 'Admin'}
-                            </div>
-                            {doc.status_deleted && (
-                              <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Deleted
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex space-x-2">
-                            <button
-                              onClick={() => openEditModal(doc)}
-                              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(doc)}
-                              className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Attachments */}
-                        {doc.lampiran && (
-                          <div>
-                            <div className="flex items-center text-sm text-gray-600 mb-2">
-                              <Paperclip className="w-4 h-4 mr-1" />
-                              {Array.isArray(doc.lampiran) ? doc.lampiran.length : 1} Lampiran
-                            </div>
-                            <div className="space-y-2">
-                              {Array.isArray(doc.lampiran) ? doc.lampiran.map((file, index) => (
-                                <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex items-center space-x-3">
-                                    {getFileIcon(file.file_name || file.name)}
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900">
-                                        {file.file_name || file.name}
-                                      </div>
-                                      <div className="text-xs text-gray-500">
-                                        {getFileType(file.file_name || file.name)}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => window.open(file.file_path || file.url, '_blank')}
-                                    className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
-                                  >
-                                    <Download className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              )) : (
-                                <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex items-center space-x-3">
-                                    <FileText className="w-6 h-6 text-gray-600" />
-                                    <div>
-                                      <div className="text-sm font-medium text-gray-900">Dokumen</div>
-                                      <div className="text-xs text-gray-500">File</div>
-                                    </div>
-                                  </div>
-                                  <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">
-                                    <Download className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Pilih</th>
+                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Jenis</th>
+                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Judul</th>
+                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Tanggal</th>
+                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {anekaSurat.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                        checked={selectedItems.includes(doc.id)}
+                        onChange={() => setSelectedItems(prev => prev.includes(doc.id) ? prev.filter(id => id !== doc.id) : [...prev, doc.id])}
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{doc.jenis_dokumen || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{doc.judul_dokumen || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => openEditModal(doc)} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200" title="Edit">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openDeleteModal(doc)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" title="Hapus">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-12 text-center text-gray-500">
+            Belum ada dokumen.
           </div>
         )}
       </div>
 
-      {/* Add Modal */}
-      {showAddModal && (
+        {/* Add Modal */}
+        {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="p-6">

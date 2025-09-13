@@ -33,6 +33,7 @@ import {
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { dataSupplierService } from '@/services/dataSupplierService';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const OwnerDataSupplier = () => {
   const [suppliers, setSuppliers] = useState([]);
@@ -195,7 +196,7 @@ const OwnerDataSupplier = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-O2</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.dataSupplier}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA SUPPLIER</h1>
               <p className="text-sm text-red-100">Monitor dan lihat semua data supplier perusahaan</p>

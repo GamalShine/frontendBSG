@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const OwnerAnekaSuratList = () => {
   const { user } = useAuth();
@@ -378,7 +379,7 @@ const OwnerAnekaSuratList = () => {
       <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center gap-4 min-w-0">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaSurat}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT</h1>
               <p className="text-sm text-red-100">Kelola dan monitor semua dokumen hukum & perjanjian</p>

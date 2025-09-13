@@ -7,6 +7,7 @@ import Input from '@/components/UI/Input'
 import Table, { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/UI/Table'
 import { Dialog, DialogContent, DialogHeader as UIDialogHeader, DialogTitle } from '@/components/UI/Dialog'
 import { Search, Filter, Plus, Edit, Trash2, Eye, Calendar, TrendingUp, DollarSign, RefreshCw } from 'lucide-react'
+import { MENU_CODES } from '@/config/menuCodes'
 
 const OwnerDaftarSaran = () => {
   const [items, setItems] = useState([])
@@ -225,7 +226,7 @@ const OwnerDaftarSaran = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-O1</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.daftarSaran}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">SARAN {roleLabel}</h1>
               <p className="text-sm text-red-100">Kelola saran dari outlet/pegawai</p>

@@ -13,45 +13,45 @@ import { toast } from 'react-hot-toast';
 import { picMenuService } from '../../../services/picMenuService';
 import { userService } from '../../../services/userService';
 
-// Daftar key menu yang tersedia untuk di-assign oleh Owner (lengkap + legacy)
+// Daftar key menu yang tersedia untuk di-assign oleh Owner (diseragamkan sesuai foto)
 const MENU_KEYS = [
-  // Global / Umum
+  // Global / Umum (opsional)
   { key: 'AdminDashboard', label: 'Dashboard' },
   { key: 'AdminChatPrivate', label: 'Chat Private' },
 
   // Keuangan (Admin)
   { key: 'AdminKeuanganPoskas', label: 'Keuangan • POSKAS' },
   { key: 'AdminKeuanganOmsetHarian', label: 'Keuangan • Omset Harian' },
-  { key: 'AdminKeuanganLaporan', label: 'Keuangan • Laporan Keuangan' },
+  { key: 'AdminLaporanKeuangan', label: 'Keuangan • Laporan Keuangan' },
   { key: 'AdminAnekaGrafik', label: 'Keuangan • Aneka Grafik' },
-  { key: 'AdminKeuanganDaftarGaji', label: 'Keuangan • Daftar Gaji' },
-  { key: 'AdminKeuanganAnekaSurat', label: 'Keuangan • Aneka Surat' },
+  { key: 'AdminDaftarGaji', label: 'Keuangan • Daftar Gaji' },
+  { key: 'AdminAnekaSurat', label: 'Keuangan • Aneka Surat' },
 
   // SDM (Admin)
-  { key: 'AdminSDMStruktur', label: 'SDM • Struktur, Jobdesk & SOP' },
-  { key: 'AdminSDMDataTim', label: 'SDM • Data Tim' },
-  { key: 'AdminSDMKPI', label: 'SDM • KPI' },
-  { key: 'AdminSDMTimMerahBiru', label: 'SDM • Tim Merah/Biru' },
+  { key: 'AdminSdmStrukturSop', label: 'SDM • Struktur & SOP' },
+  { key: 'AdminSdmDataTim', label: 'SDM • Data Tim' },
+  { key: 'AdminSdmKpi', label: 'SDM • KPI' },
+  { key: 'AdminTimMerahBiru', label: 'SDM • Tim Merah/Biru' },
+  { key: 'AdminDataTraining', label: 'SDM • Data Training' },
 
   // Operasional (Admin)
   { key: 'AdminDataSupplier', label: 'Operasional • Data Supplier' },
-  { key: 'AdminOperasionalDataSewa', label: 'Operasional • Data Sewa' },
+  { key: 'AdminDataSewa', label: 'Operasional • Data Sewa' },
+  { key: 'AdminJadwalPembayaran', label: 'Operasional • Jadwal Pembayaran/Perawatan' },
   { key: 'AdminDataInvestor', label: 'Operasional • Data Investor' },
-  { key: 'AdminOperasionalDaftarSaran', label: 'Operasional • Daftar Saran' },
-  { key: 'AdminOperasionalDaftarKomplain', label: 'Operasional • Daftar Komplain' },
+  { key: 'AdminDaftarSaran', label: 'Operasional • Daftar Saran' },
+  { key: 'AdminDaftarKomplain', label: 'Operasional • Daftar Komplain' },
   { key: 'AdminDataBinaLingkungan', label: 'Operasional • Data Bina Lingkungan' },
   { key: 'AdminDataAset', label: 'Operasional • Data Aset' },
 
   // Marketing (Admin)
-  { key: 'AdminMarketingDataTarget', label: 'Marketing • Data Target' },
-  { key: 'AdminMedsos', label: 'Marketing • Media Sosial' },
+  { key: 'AdminDataTarget', label: 'Marketing • Data Target' },
+  { key: 'AdminMarketingMedsos', label: 'Marketing • Media Sosial' },
 
   // Settings (Admin)
   { key: 'AdminSettings', label: 'Settings' },
 
-  // Legacy keys (dipertahankan untuk kompatibilitas backward)
-  { key: 'AdminSdmStrukturSop', label: 'LEGACY • Struktur & SOP SDM' },
-  { key: 'AdminDataTraining', label: 'LEGACY • Data Training' },
+  // Legacy keys (dipertahankan bila masih ada data lama)
   { key: 'AdminPengumuman', label: 'LEGACY • Pengumuman' },
   { key: 'AdminTugas', label: 'LEGACY • Daftar Tugas' }
 ];

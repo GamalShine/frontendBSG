@@ -4,6 +4,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { ownerAnekaGrafikService } from '../../../../services/anekaGrafikService';
 import { toast } from 'react-hot-toast';
 import { API_CONFIG } from '../../../../config/constants';
+import { MENU_CODES } from '@/config/menuCodes';
 import { 
   Plus, 
   Search, 
@@ -196,7 +197,7 @@ const OwnerAnekaGrafikList = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-S4</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaGrafik}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA GRAFIK</h1>
               <p className="text-sm text-red-100">Kelola daftar grafik keuangan</p>

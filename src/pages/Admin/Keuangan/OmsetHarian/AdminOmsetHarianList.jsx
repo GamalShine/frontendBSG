@@ -16,6 +16,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminOmsetHarianList = () => {
   const navigate = useNavigate();
@@ -192,7 +193,7 @@ const AdminOmsetHarianList = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.omsetHarian}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">OMSET HARIAN</h1>
               <p className="text-sm text-red-100">Kelola data omset harian outlet</p>

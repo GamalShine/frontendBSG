@@ -591,9 +591,9 @@ const AdminPoskasForm = () => {
     });
 
     try {
-      console.log('📤 Sending upload request to: /api/upload/poskas');
+      console.log('📤 Sending upload request to: /upload/poskas');
       
-      const response = await fetch('/api/upload/poskas', {
+      const response = await fetch(`${envConfig.BASE_URL}/upload/poskas`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -697,11 +697,12 @@ const AdminPoskasForm = () => {
             return {
               uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
               id: img.id,
-              name: `poskas_${img.id}.jpg`,
-              // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
+              // Gunakan nama file dari server bila tersedia
+              name: uploadedFile.filename || (uploadedFile.path ? uploadedFile.path.split('/').pop() : `poskas_${img.id}.jpg`),
+              // Jika relatif, prefix dengan BASE_URL tanpa /api karena static route '/uploads'
               url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
                 ? uploadedFile.url
-                : `${envConfig.BASE_URL}${uploadedFile.url}`,
+                : `${envConfig.BASE_URL.replace('/api','')}${uploadedFile.url}`,
               serverPath: uploadedFile.serverPath || uploadedFile.path // Prefer serverPath if available
             };
           } else {
@@ -710,7 +711,7 @@ const AdminPoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `${envConfig.BASE_URL}/uploads/poskas/temp_${img.id}.jpg`,
+              url: `${envConfig.BASE_URL.replace('/api','')}/uploads/poskas/temp_${img.id}.jpg`,
               serverPath: `poskas/temp_${img.id}.jpg`
             };
           }

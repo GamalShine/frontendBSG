@@ -4,6 +4,7 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { anekaGrafikService } from '../../../../services/anekaGrafikService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../../../config/environment';
+import { MENU_CODES } from '@/config/menuCodes';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -419,9 +420,9 @@ const AdminAnekaGrafikDetail = () => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                ANEKA GRAFIK
-              </div>
+              <span className="text-sm font-semibold bg-red-50 text-red-700 rounded px-2 py-1 border border-red-200">
+                {MENU_CODES.keuangan.anekaGrafik}
+              </span>
             </div>
           </div>
         </div>

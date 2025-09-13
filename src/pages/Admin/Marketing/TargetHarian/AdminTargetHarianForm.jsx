@@ -108,6 +108,62 @@ const AdminTargetHarianForm = () => {
     setForm(prev => ({ ...prev, isi_target: content }));
   };
 
+  // Paste image support ala AdminLaporanKeuanganForm
+  const handleEditorPaste = async (e) => {
+    const items = e.clipboardData?.items || [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type && item.type.indexOf('image') !== -1) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error('Gambar terlalu besar. Maksimal 10MB');
+          continue;
+        }
+        if (selectedImages.length >= 5) {
+          toast.error('Maksimal 5 gambar per data target');
+          continue;
+        }
+        const imageId = Date.now() + Math.floor(Math.random() * 1000);
+        const imageWithId = { file, id: imageId };
+        setSelectedImages(prev => [...prev, imageWithId]);
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const imageUrl = ev.target.result;
+          setImagePreviewUrls(prev => [...prev, imageUrl]);
+
+          // Sisipkan gambar ke posisi kursor
+          const img = document.createElement('img');
+          img.src = imageUrl;
+          img.alt = 'Pasted image';
+          img.className = 'pasted-image';
+          img.setAttribute('data-image-id', imageId);
+
+          const selection = window.getSelection();
+          if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(img);
+            range.collapse(false);
+            const br = document.createElement('br');
+            range.insertNode(br);
+            range.collapse(false);
+          } else if (editorRef.current) {
+            editorRef.current.appendChild(img);
+          }
+
+          // Trigger change agar form.isi_target terupdate
+          const event = new Event('input', { bubbles: true });
+          editorRef.current?.dispatchEvent(event);
+          toast.success('Gambar berhasil ditambahkan');
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
   const getEditorContent = () => {
     if (!editorRef.current) return '';
     let content = editorRef.current.innerHTML || '';
@@ -198,7 +254,7 @@ const AdminTargetHarianForm = () => {
 
   return (
     <div className="px-0 py-2 bg-gray-50 min-h-screen">
-      {/* Header ala acuan */}
+      {/* Header merah ala referensi */}
       <div className="bg-red-800 text-white p-4 mb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -218,45 +274,69 @@ const AdminTargetHarianForm = () => {
       </div>
       <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">Mode Tambah</div>
 
-      <div className="max-w-4xl mx-auto mb-12 px-4">
-        <form id="form-data-target" onSubmit={handleSubmit} className="bg-white shadow-sm border p-6 space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Target</label>
-            <input type="date" name="tanggal_target" value={form.tanggal_target} onChange={handleChange} className="w-full border rounded px-3 py-2" required />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Isi Data Target</label>
-            <div className="flex items-center gap-2 mb-2">
-              <button type="button" onClick={() => exec('bold')} className={`px-2 py-1 rounded border ${isBold ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white'}`}>B</button>
-              <button type="button" onClick={() => exec('italic')} className={`px-2 py-1 rounded border ${isItalic ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white'}`}>I</button>
-              <button type="button" onClick={() => exec('underline')} className={`px-2 py-1 rounded border ${isUnderline ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white'}`}>U</button>
+      {/* Grid dua kolom: form utama + sidebar gambar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Kolom kiri (2/3) */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="bg-white shadow-sm border">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Informasi Target</h2>
             </div>
-            <div
-              ref={editorRef}
-              contentEditable
-              onInput={handleEditorChange}
-              onMouseUp={handleEditorInteraction}
-              onKeyUp={handleEditorInteraction}
-              data-placeholder="Tulis data target di sini..."
-              className="w-full border rounded px-3 py-2 min-h-[200px] focus:outline-none focus:ring-2 focus:ring-red-500"
-              suppressContentEditableWarning
-            />
-            <p className="text-xs text-gray-500 mt-1">Anda dapat paste gambar langsung ke editor, atau unggah dari file.</p>
-          </div>
+            <form id="form-data-target" onSubmit={handleSubmit} className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Tanggal Target *</label>
+                <input type="date" name="tanggal_target" value={form.tanggal_target} onChange={handleChange} required className="w-full pl-3 pr-3 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+              </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gambar (opsional)</label>
-            <input type="file" accept="image/*" multiple onChange={onSelectFiles} className="block w-full text-sm" />
-            {(selectedImages.length > 0) && (
-              <p className="text-xs text-gray-500 mt-1">{selectedImages.length} file dipilih. Akan diupload saat simpan.</p>
-            )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Isi Target *</label>
+                {/* Toolbar */}
+                <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200 mb-3">
+                  <button type="button" onClick={() => { exec('bold'); }} className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBold ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`} aria-pressed={isBold} title="Bold">B</button>
+                  <button type="button" onClick={() => { exec('italic'); }} className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalic ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`} aria-pressed={isItalic} title="Italic">I</button>
+                  <button type="button" onClick={() => { exec('underline'); }} className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderline ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`} aria-pressed={isUnderline} title="Underline">U</button>
+                </div>
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorChange}
+                  onMouseUp={handleEditorInteraction}
+                  onKeyUp={handleEditorInteraction}
+                  onFocus={handleEditorInteraction}
+                  onPaste={handleEditorPaste}
+                  data-placeholder="Tulis data target di sini... (Anda bisa paste gambar langsung dari clipboard)"
+                  className="w-full min-h-[400px] p-4 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                  suppressContentEditableWarning
+                />
+                <p className="text-xs text-gray-500 mt-1">Maksimal 5 gambar. Anda bisa paste gambar atau unggah dari file di panel kanan.</p>
+              </div>
+            </form>
           </div>
+        </div>
 
-          <div className="flex items-center gap-3">
-            <button type="button" className="px-4 py-2 border" onClick={() => navigate('/admin/marketing/data-target')}>Batal</button>
+        {/* Sidebar kanan (1/3) */}
+        <div className="space-y-4">
+          <div className="bg-white border">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Gambar</h2>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Gambar Baru</label>
+                <div className="border-2 border-dashed border-gray-300 p-4 text-center">
+                  <input type="file" multiple accept="image/*" onChange={onSelectFiles} className="hidden" id="image-upload-target" />
+                  <label htmlFor="image-upload-target" className="cursor-pointer inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                    <span>Pilih Gambar</span>
+                  </label>
+                  <p className="text-sm text-gray-500 mt-2">Maksimal 5 gambar, format JPG, PNG, GIF</p>
+                </div>
+              </div>
+              {(selectedImages.length > 0) && (
+                <p className="text-xs text-gray-500">{selectedImages.length} file akan diupload saat simpan.</p>
+              )}
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

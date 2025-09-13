@@ -321,12 +321,55 @@ const OwnerPoskasDetail = () => {
                 imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
                 console.log(`🔍 Fixed /api in upload URL: ${image.url} -> ${imageUrl}`);
               }
+              // Handle legacy temp_ filenames by attempting fallbacks
+              if (imageUrl.includes('/uploads/poskas/temp_')) {
+                const baseHost = envConfig.BASE_URL.replace('/api', '');
+                const tryNames = [];
+                if (image.filename) tryNames.push(image.filename);
+                if (image.name) tryNames.push(image.name);
+                // Also try converting underscore to hyphen variant commonly used by server
+                if (image.name && image.name.includes('poskas_')) {
+                  tryNames.push(image.name.replace('poskas_', 'poskas-'));
+                }
+                if (image.filename && image.filename.includes('poskas_')) {
+                  tryNames.push(image.filename.replace('poskas_', 'poskas-'));
+                }
+                // Deduplicate
+                const uniqueNames = Array.from(new Set(tryNames.filter(Boolean)));
+                for (const nm of uniqueNames) {
+                  const candidate = `${baseHost}/uploads/poskas/${nm}`;
+                  console.log(`🔍 Trying fallback candidate for temp_:`, candidate);
+                  // Return first candidate; onError handler will handle if not exists
+                  if (candidate) return candidate;
+                }
+              }
               console.log(`🔍 Using absolute URL: ${imageUrl}`);
               return imageUrl;
             } else {
               // Relative URL, add base URL without /api
               const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              const fullUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+              let fullUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+              if (fullUrl.includes('/api/uploads/')) {
+                fullUrl = fullUrl.replace('/api/uploads/', '/uploads/');
+              }
+              // Handle temp_ fallback for relative URLs too
+              if (fullUrl.includes('/uploads/poskas/temp_')) {
+                const tryNames = [];
+                if (image.filename) tryNames.push(image.filename);
+                if (image.name) tryNames.push(image.name);
+                if (image.name && image.name.includes('poskas_')) {
+                  tryNames.push(image.name.replace('poskas_', 'poskas-'));
+                }
+                if (image.filename && image.filename.includes('poskas_')) {
+                  tryNames.push(image.filename.replace('poskas_', 'poskas-'));
+                }
+                const uniqueNames = Array.from(new Set(tryNames.filter(Boolean)));
+                for (const nm of uniqueNames) {
+                  const candidate = `${baseUrl}/uploads/poskas/${nm}`;
+                  console.log(`🔍 Trying fallback candidate for temp_ (relative):`, candidate);
+                  if (candidate) return candidate;
+                }
+              }
               console.log(`🔍 Using relative URL with base: ${fullUrl}`);
               return fullUrl;
             }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { targetHarianService } from '../../../../services/targetHarianService';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, Edit, Trash2, Plus } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminTargetHarianList = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ const AdminTargetHarianList = () => {
   const [stats, setStats] = useState({ total_records: 0, total_this_month: 0, total_this_year: 0 });
   const [showFilters, setShowFilters] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [lastUpdatedMain, setLastUpdatedMain] = useState(null);
 
   // Helpers & memo
   const formatDate = (dateString) => {
@@ -79,6 +81,25 @@ const AdminTargetHarianList = () => {
           setError('Gagal memuat daftar tahun');
         } finally {
           setLoading(false);
+        }
+      })();
+      // Muat stats dan last updated untuk halaman utama
+      (async () => {
+        try {
+          const s = await targetHarianService.stats();
+          if (s?.success) setStats(s.data || {});
+        } catch (_) {}
+        try {
+          const res = await targetHarianService.getAll({ page: 1, limit: 100 });
+          const arr = res?.data || res?.data?.items || res || [];
+          const itemsArr = Array.isArray(arr) ? arr : (res?.data?.items || []);
+          const latest = (itemsArr || []).reduce((max, it) => {
+            const t = new Date(it.updated_at || it.tanggal_target || it.created_at).getTime();
+            return Math.max(max, isFinite(t) ? t : 0);
+          }, 0);
+          setLastUpdatedMain(latest ? new Date(latest) : new Date());
+        } catch (_) {
+          setLastUpdatedMain(new Date());
         }
       })();
     } else {
@@ -155,9 +176,12 @@ const AdminTargetHarianList = () => {
       {/* Header ala Owner Laporan Keuangan */}
       <div className="bg-red-800 text-white p-4 mb-0">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">DATA TARGET</h1>
-            <p className="text-sm opacity-90">Admin - Marketing</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.dataTarget}</span>
+            <div>
+              <h1 className="text-2xl font-bold">DATA TARGET</h1>
+              <p className="text-sm opacity-90">Admin - Marketing</p>
+            </div>
           </div>
           {view === 'yearContent' ? (
             <button onClick={backToYears} className="inline-flex items-center gap-2 px-3 py-2 bg-white text-red-700 hover:bg-red-50 transition-colors">Kembali</button>
@@ -166,38 +190,61 @@ const AdminTargetHarianList = () => {
           )}
         </div>
       </div>
+      {/* Info bar ditempel tepat di bawah header */}
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1">
+        Terakhir diupdate: {(view === 'years' ? (lastUpdatedMain ? new Date(lastUpdatedMain) : new Date()) : new Date()).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})}
+        {' '}
+        pukul {(view === 'years' ? (lastUpdatedMain ? new Date(lastUpdatedMain) : new Date()) : new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}
+      </div>
 
       {/* Years Grid / Toolbar */}
       {view === 'years' ? (
-        <div className="px-4 py-4">
+        <div className="py-4">
+          {/* Cards ringkas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-6">
+            <div className="bg-white shadow-sm border p-4">
+              <p className="text-sm font-medium text-gray-500">Total Records</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_records || 0}</p>
+            </div>
+            <div className="bg-white shadow-sm border p-4">
+              <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_this_month || 0}</p>
+            </div>
+            <div className="bg-white shadow-sm border p-4">
+              <p className="text-sm font-medium text-gray-500">Tahun Ini</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.total_this_year || 0}</p>
+            </div>
+          </div>
           {error && (
             <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-3">{error}</div>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {loading && (
-              <div className="col-span-full text-sm text-gray-600">Memuat daftar tahun...</div>
-            )}
-            {!loading && years.length === 0 && (
-              <div className="col-span-full text-sm text-gray-600">Belum ada data</div>
-            )}
-            {!loading && years.map(({ year: y }) => (
-              <div key={y} className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all" onClick={() => openYear(y)}>
-                <div className="flex items-center space-x-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-red-500"><path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" /></svg>
-                  <div>
-                    <div className="font-semibold text-gray-800 group-hover:text-red-700">{y}</div>
-                    <div className="text-xs text-gray-500">Folder Tahun</div>
+          <div className="bg-white shadow-sm border">
+            <div className="p-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Tahun</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {loading && (
+                  <div className="col-span-full text-sm text-gray-600">Memuat daftar tahun...</div>
+                )}
+                {!loading && years.length === 0 && (
+                  <div className="col-span-full text-sm text-gray-600">Belum ada data</div>
+                )}
+                {!loading && years.map(({ year: y }) => (
+                  <div key={y} className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all" onClick={() => openYear(y)}>
+                    <div className="flex items-center space-x-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500"><path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" /></svg>
+                      <div>
+                        <div className="font-semibold text-gray-800 group-hover:text-red-700">{y}</div>
+                        <div className="text-xs text-gray-500">Folder Tahun</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       ) : (
         <>
-          {/* Info bar */}
-          <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
-
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 mb-4 px-4">
             <div className="bg-white shadow-sm border p-4">
@@ -252,7 +299,7 @@ const AdminTargetHarianList = () => {
           )}
 
           {/* Panel Tahun + Tabel */}
-          <div className="bg-white shadow-sm border mx-4 overflow-x-auto">
+          <div className="bg-white shadow-sm border overflow-x-auto">
             <div className="bg-red-800 text-white px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>

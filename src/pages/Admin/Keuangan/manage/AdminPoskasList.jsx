@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Card, { CardHeader, CardBody } from '@/components/UI/Card';
+import Card, { CardHeader, CardBody, CardTitle, CardContent } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
-import { Input } from '@/components/UI/Input';
+import Input from '@/components/UI/Input';
 import Badge from '@/components/UI/Badge';
 import { 
   Table, 
@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminPoskasList = () => {
   const [poskas, setPoskas] = useState([]);
@@ -200,63 +201,79 @@ const AdminPoskasList = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Daftar Poskas</h1>
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Tambah Poskas
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filter & Pencarian
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Cari poskas..."
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-10"
-              />
+    <div className="p-0 space-y-6">
+      {/* Header merah + badge kode */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.poskas}</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
+              <p className="text-sm text-red-100">Kelola data poskas (versi manage)</p>
             </div>
-            
-            <Select value={statusFilter} onValueChange={(value) => handleFilter('status', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={kategoriFilter} onValueChange={(value) => handleFilter('kategori', value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kategori" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kategori</SelectItem>
-                <SelectItem value="peralatan">Peralatan</SelectItem>
-                <SelectItem value="pelatihan">Pelatihan</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
-                <SelectItem value="operasional">Operasional</SelectItem>
-                <SelectItem value="lainnya">Lainnya</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {format(new Date(), 'dd MMMM yyyy', { locale: id })}</div>
+
+      {/* Konten utama */}
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-900">Daftar Poskas</h1>
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Tambah Poskas
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              Filter & Pencarian
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Cari poskas..."
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              
+              <Select value={statusFilter} onValueChange={(value) => handleFilter('status', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={kategoriFilter} onValueChange={(value) => handleFilter('kategori', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Kategori</SelectItem>
+                  <SelectItem value="peralatan">Peralatan</SelectItem>
+                  <SelectItem value="pelatihan">Pelatihan</SelectItem>
+                  <SelectItem value="maintenance">Maintenance</SelectItem>
+                  <SelectItem value="operasional">Operasional</SelectItem>
+                  <SelectItem value="lainnya">Lainnya</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -290,7 +307,7 @@ const AdminPoskasList = () => {
             <p className="text-sm text-gray-600">Rejected</p>
           </CardContent>
         </Card>
-      </Card>
+      </div>
 
       {/* Table */}
       <Card>
@@ -456,9 +473,9 @@ const AdminPoskasList = () => {
           )}
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 };
 
 export default AdminPoskasList;
-

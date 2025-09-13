@@ -20,6 +20,7 @@ import {
   MoreVertical
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { MENU_CODES } from '@/config/menuCodes'
 
 const AdminDaftarTugas = () => {
   const [tugas, setTugas] = useState([])
@@ -185,7 +186,7 @@ const AdminDaftarTugas = () => {
                 <ChevronRight className="h-5 w-5 rotate-180" />
               </button>
               <div>
-                <div className="text-xs font-medium text-red-200">H01-S4</div>
+                <div className="text-xs font-medium text-red-200">{MENU_CODES.sdm.daftarTugas}</div>
                 <div className="text-lg font-bold">Daftar Tugas</div>
               </div>
             </div>

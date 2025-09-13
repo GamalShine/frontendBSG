@@ -475,16 +475,18 @@ const App = () => {
               {/* Admin Operasional - Saran */}
               <Route path="/admin/operasional/saran" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDaftarSaran />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDaftarSaran">
+                    <Layout>
+                      <AdminDaftarSaran />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
 
               {/* Admin Operasional - Jadwal Pembayaran/Perawatan */}
               <Route path="/admin/operasional/jadwal-pembayaran" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <RequireMenuKey requiredKey="AdminOperasionalJadwalPembayaran">
+                  <RequireMenuKey requiredKey="AdminJadwalPembayaran">
                     <Layout>
                       <AdminJadwalPembayaran />
                     </Layout>
@@ -495,9 +497,11 @@ const App = () => {
               {/* Admin Marketing - Data Target (ratakan penamaan) */}
               <Route path="/admin/marketing/data-target" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminTargetHarianList />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDataTarget">
+                    <Layout>
+                      <AdminTargetHarianList />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               <Route path="/admin/marketing/data-target/new" element={
@@ -630,6 +634,18 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Divisi SDM Routes */}
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/divisi/sdm/struktur" element={<Navigate to="/divisi/sdm/struktur-jobdesk-sop" replace />} />
+
+              <Route path="/divisi/sdm/struktur-jobdesk-sop" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <StrukturJobdeskSOP />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               {/* Tim Chat Routes */}
               <Route path="/tim/chat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -646,6 +662,18 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <TimChatRoom />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Tim SDM Routes */}
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/tim/sdm/struktur" element={<Navigate to="/tim/sdm/struktur-jobdesk-sop" replace />} />
+
+              <Route path="/tim/sdm/struktur-jobdesk-sop" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <StrukturJobdeskSOP />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -719,33 +747,41 @@ const App = () => {
               {/* Admin Operasional Komplain Routes (new namespace) */}
               <Route path="/admin/operasional/komplain" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDaftarKomplain />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDaftarKomplain">
+                    <Layout>
+                      <AdminDaftarKomplain />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
 
               <Route path="/admin/operasional/komplain/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <AdminDaftarKomplainForm />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDaftarKomplain">
+                    <Layout>
+                      <AdminDaftarKomplainForm />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
 
               <Route path="/admin/operasional/komplain/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminKomplainDetail />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDaftarKomplain">
+                    <Layout>
+                      <AdminKomplainDetail />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
 
               <Route path="/admin/operasional/komplain/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
-                  <Layout>
-                    <AdminKomplainEdit />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDaftarKomplain">
+                    <Layout>
+                      <AdminKomplainEdit />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
 
@@ -753,16 +789,20 @@ const App = () => {
               {/* Admin Keuangan Routes */}
               <Route path="/admin/keuangan/laporan" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminLaporanKeuangan />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminLaporanKeuangan">
+                    <Layout>
+                      <AdminLaporanKeuangan />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               <Route path="/admin/keuangan/surat" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AnekaSurat />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminAnekaSurat">
+                    <Layout>
+                      <AnekaSurat />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -857,7 +897,7 @@ const App = () => {
               
               <Route path="/admin/marketing/medsos" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <RequireMenuKey requiredKey="AdminMedsos">
+                  <RequireMenuKey requiredKey="AdminMarketingMedsos">
                     <Layout>
                       <AdminMedsos />
                     </Layout>
@@ -914,11 +954,26 @@ const App = () => {
               } />
               
               {/* Admin SDM Routes */}
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/sdm/struktur-jobdesk-sop" replace />} />
+
+              <Route path="/admin/sdm/struktur-jobdesk-sop" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminSdmStrukturSop">
+                    <Layout>
+                      <StrukturJobdeskSOP />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+
               <Route path="/admin/sdm/tim" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDataTim />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminSdmDataTim">
+                    <Layout>
+                      <AdminDataTim />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               <Route path="/admin/sdm/tim/new" element={
@@ -938,9 +993,11 @@ const App = () => {
               
               <Route path="/admin/sdm/tim-merah-biru" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminTimMerahBiru />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminTimMerahBiru">
+                    <Layout>
+                      <AdminTimMerahBiru />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -1027,9 +1084,11 @@ const App = () => {
               {/* Admin KPI Routes */}
               <Route path="/admin/sdm/kpi" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminKPI />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminSdmKpi">
+                    <Layout>
+                      <AdminKPI />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -1349,9 +1408,11 @@ const App = () => {
               {/* Admin Operasional Routes */}
               <Route path="/admin/operasional/aset" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminDataAset />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDataAset">
+                    <Layout>
+                      <AdminDataAset />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -1424,9 +1485,11 @@ const App = () => {
                              {/* Alternative Routes for backward compatibility */}
                <Route path="/admin/operasional/aset" element={
                  <ProtectedRoute requiredPermissions={['read']}>
-                   <Layout>
-                     <AdminDataAset />
-                   </Layout>
+                   <RequireMenuKey requiredKey="AdminDataAset">
+                     <Layout>
+                       <AdminDataAset />
+                     </Layout>
+                   </RequireMenuKey>
                  </ProtectedRoute>
                } />
                <Route path="/owner/operasional/aset" element={
@@ -1440,9 +1503,11 @@ const App = () => {
                {/* Data Investor Routes */}
                <Route path="/admin/operasional/investor" element={
                  <ProtectedRoute requiredPermissions={['read']}>
-                   <Layout>
-                     <AdminDataInvestor />
-                   </Layout>
+                   <RequireMenuKey requiredKey="AdminDataInvestor">
+                     <Layout>
+                       <AdminDataInvestor />
+                     </Layout>
+                   </RequireMenuKey>
                  </ProtectedRoute>
                } />
                <Route path="/owner/operasional/investor" element={
@@ -1726,6 +1791,17 @@ const App = () => {
               } />
 
               {/* Owner SDM Routes */}
+              {/* Backward compatibility: redirect old path to new */}
+              <Route path="/owner/sdm/struktur" element={<Navigate to="/owner/sdm/struktur-jobdesk-sop" replace />} />
+
+              <Route path="/owner/sdm/struktur-jobdesk-sop" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <StrukturJobdeskSOP />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               <Route path="/owner/sdm/tim" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
@@ -2013,9 +2089,11 @@ const App = () => {
               {/* Admin Poskas Routes */}
               <Route path="/admin/keuangan/poskas" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminPoskasList />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminKeuanganPoskas">
+                    <Layout>
+                      <AdminPoskasList />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -2046,9 +2124,11 @@ const App = () => {
               {/* Admin Omset Harian Routes */}
               <Route path="/admin/keuangan/omset-harian" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminOmsetHarianList />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminKeuanganOmsetHarian">
+                    <Layout>
+                      <AdminOmsetHarianList />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -2071,9 +2151,11 @@ const App = () => {
               {/* Admin Aneka Grafik Routes */}
               <Route path="/admin/keuangan/aneka-grafik" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminAnekaGrafikList />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminAnekaGrafik">
+                    <Layout>
+                      <AdminAnekaGrafikList />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               
@@ -2121,9 +2203,11 @@ const App = () => {
               {/* Admin Training Routes */}
               <Route path="/admin/training" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminTrainingList />
-                  </Layout>
+                  <RequireMenuKey requiredKey="AdminDataTraining">
+                    <Layout>
+                      <AdminTrainingList />
+                    </Layout>
+                  </RequireMenuKey>
                 </ProtectedRoute>
               } />
               

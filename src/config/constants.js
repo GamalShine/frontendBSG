@@ -204,6 +204,22 @@ export const API_ENDPOINTS = {
 
     // Health Check
     HEALTH: '/health',
+
+    // SDM - Struktur, Jobdesk, SOP
+    SDM: {
+        STRUKTUR_ORGANISASI: '/struktur-organisasi',
+        JOBDESK: {
+            STRUCTURE: '/jobdesk/structure',
+            DIVISIONS: '/jobdesk/divisions',
+            DEPARTMENTS_BY_DIVISION: (divisiId) => `/jobdesk/divisions/${divisiId}/departments`,
+            POSITIONS_BY_DEPARTMENT: (departmentId) => `/jobdesk/departments/${departmentId}/positions`,
+        },
+        SOP: {
+            STRUCTURE: '/sop/structure',
+            DIVISIONS: '/sop/divisions',
+            CATEGORIES_BY_DIVISION: (divisiId) => `/sop/divisions/${divisiId}/categories`,
+        }
+    },
 }
 
 // Helper function untuk mendapatkan full URL dengan endpoint

@@ -11,10 +11,13 @@ const AdminDataTarget = () => {
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState({ totalTarget: 0, totalNominal: 0 });
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
     if (view === 'years') {
       loadYears();
+      loadStatsAndLastUpdated();
     } else if (view === 'yearContent' && selectedYear) {
       loadItems(selectedYear, pagination.currentPage);
     }
@@ -31,6 +34,33 @@ const AdminDataTarget = () => {
       setYears([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStatsAndLastUpdated = async () => {
+    try {
+      // Ambil banyak item untuk hitung ringkas di halaman utama
+      const res = await dataTargetService.getAll({ page: 1, limit: 1000 });
+      if (res?.success) {
+        const its = res.data.items || [];
+        const totalTarget = res.data.pagination?.totalItems ?? its.length;
+        const totalNominal = (res.data.statistics?.totalNominal != null)
+          ? Number(res.data.statistics.totalNominal)
+          : its.reduce((a,b)=> a + (Number(b.target_nominal)||0), 0);
+        setStats({ totalTarget, totalNominal });
+        const latest = its.reduce((max, it) => {
+          const t = new Date(it.updated_at || it.created_at).getTime();
+          return Math.max(max, isFinite(t) ? t : 0);
+        }, 0);
+        setLastUpdated(latest ? new Date(latest) : new Date());
+      } else {
+        setStats({ totalTarget: 0, totalNominal: 0 });
+        setLastUpdated(new Date());
+      }
+    } catch (e) {
+      console.error('Error loading stats/lastUpdated:', e);
+      setStats({ totalTarget: 0, totalNominal: 0 });
+      setLastUpdated(new Date());
     }
   };
 
@@ -83,59 +113,83 @@ const AdminDataTarget = () => {
           </div>
           <Link
             to="/admin/marketing/target/new"
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50"
+            className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
           >
             <Plus className="h-4 w-4" />
             <span>Tambah</span>
           </Link>
         </div>
       </div>
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600 -mt-1">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1">Terakhir diupdate: {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
-      <div className="px-6 py-4">
-        {/* Grid Years */}
+      <div className="py-4">
+        {/* Stats Cards (halaman utama sebelum folder) */}
         {view === 'years' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            {loading && (
-              <div className="col-span-full text-sm text-gray-600">Memuat daftar tahun...</div>
-            )}
-            {!loading && years.length === 0 && (
-              <div className="col-span-full text-sm text-gray-600">Belum ada data</div>
-            )}
-            {!loading && years.map(({ year }) => (
-              <div
-                key={year}
-                className="group rounded-2xl p-5 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow-lg transition-all"
-                onClick={() => openYear(year)}
-              >
-                <div className="flex items-center space-x-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500">
-                    <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
-                  </svg>
-                  <div>
-                    <div className="font-semibold text-gray-800 group-hover:text-red-700">{year}</div>
-                    <div className="text-xs text-gray-500">Folder Tahun</div>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="bg-white shadow-sm border p-4">
+              <div className="text-sm text-gray-500">Total Target</div>
+              <div className="text-2xl font-bold text-gray-900">{stats.totalTarget || 0}</div>
+            </div>
+            <div className="bg-white shadow-sm border p-4">
+              <div className="text-sm text-gray-500">Total Nominal</div>
+              <div className="text-2xl font-bold text-gray-900">{`Rp ${(stats.totalNominal||0).toLocaleString('id-ID')}`}</div>
+            </div>
+            <div className="bg-white shadow-sm border p-4">
+              <div className="text-sm text-gray-500">Jumlah Tahun</div>
+              <div className="text-2xl font-bold text-gray-900">{years.length}</div>
+            </div>
+          </div>
+        )}
+        {/* Grid Years dibungkus card putih ala Owner */}
+        {view === 'years' && (
+          <div className="bg-white shadow-sm border mb-4">
+            <div className="p-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Tahun</h2>
+              {loading && (
+                <div className="text-sm text-gray-600">Memuat daftar tahun...</div>
+              )}
+              {!loading && years.length === 0 && (
+                <div className="text-sm text-gray-600">Belum ada data</div>
+              )}
+              {!loading && years.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {years.map(({ year }) => (
+                    <div
+                      key={year}
+                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      onClick={() => openYear(year)}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500">
+                          <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
+                        </svg>
+                        <div>
+                          <div className="font-semibold text-gray-800 group-hover:text-red-700">{year}</div>
+                          <div className="text-xs text-gray-500">Folder Tahun</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
           </div>
         )}
 
         {/* Year Content */}
         {view === 'yearContent' && (
-          <div className="bg-white rounded-lg shadow-lg border">
-            <div className="bg-red-800 text-white px-6 py-4 rounded-t-lg">
+          <div className="bg-white shadow-sm border">
+            <div className="bg-red-800 text-white px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold">{selectedYear}</h2>
                   <p className="text-xs opacity-90">Daftar Data Target</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Link to="/admin/marketing/target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded">
+                  <Link to="/admin/marketing/target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">
                     <Plus className="h-4 w-4" /> Tambah
                   </Link>
-                  <button onClick={backToYears} className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded">Kembali</button>
+                  <button onClick={backToYears} className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">Kembali</button>
                 </div>
               </div>
             </div>

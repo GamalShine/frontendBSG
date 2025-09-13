@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { ownerDataAsetService } from '@/services/dataAsetService';
 import { toast } from 'react-hot-toast';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const OwnerDataAset = () => {
   const [activeSection, setActiveSection] = useState('properti');
@@ -307,7 +308,7 @@ const OwnerDataAset = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-O1</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.dataAset}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA ASET</h1>
               <p className="text-sm text-red-100">Monitor dan lihat semua aset perusahaan</p>

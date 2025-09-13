@@ -889,114 +889,64 @@ const AdminPoskasEdit = () => {
         toast.error('Terjadi kesalahan saat memperbarui laporan: ' + (error.response?.data?.message || error.message));
       }
     } finally {
-      setIsSubmitting(false);
     }
   };
 
-  // Upload new images to server
-  const uploadNewImagesToServer = async (images) => {
-    const uploadedImages = [];
-    
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      try {
-        const formData = new FormData();
-        formData.append('images', image); // Use 'images' field name as expected by backend
-        
-        // Upload to server
-        const response = await uploadService.uploadFile(formData);
-        
-        if (response.success && response.data && response.data.length > 0) {
-          const uploadedFile = response.data[0]; // Get first uploaded file
-          
-          // Use stored ID if available, otherwise generate new one
-          let imageId;
-          if (newImageIds[i]) {
-            imageId = newImageIds[i];
-            console.log(`🔍 Using stored ID for uploaded image ${i + 1}: ${imageId}`);
-          } else {
-            const timestamp = Date.now();
-            imageId = timestamp + Math.floor(Math.random() * 1000);
-            console.log(`🔍 Generated new ID for uploaded image ${i + 1}: ${imageId}`);
-          }
-          
-          uploadedImages.push({
-            uri: `file://temp/${imageId}.jpg`,
-            id: imageId,
-            name: `poskas_${imageId}.jpg`,
-            url: uploadedFile.url,
-            serverPath: uploadedFile.path
-          });
-          
-          console.log(`✅ Uploaded new image: ${image.name} -> ${uploadedFile.url} with ID: ${imageId}`);
-        } else {
-          console.error(`❌ Upload response invalid:`, response);
-        }
-      } catch (error) {
-        console.error(`❌ Error uploading image ${image.name}:`, error);
-      }
-    }
-    
-    return uploadedImages;
-  };
-
-  // Get editor content
+  // Ambil konten editor dan konversi ke teks dengan placeholder [IMG:id]
   const getEditorContent = () => {
-    if (editorRef.current) {
-      const content = editorRef.current.innerHTML;
-      console.log('🔍 Debug: Getting editor content:', content);
-      
-      // Convert HTML content to text with [IMG:id] placeholders
-      let processedContent = content;
-      
-      // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
-      const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
-      processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
-        console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
-        return `[IMG:${imageId}]`;
-      });
-      
-      // Then, replace base64 images with [IMG:id] placeholders using stored IDs
-      const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-      let imgMatch;
-      let imgIndex = 0;
-      
-      while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-        // Use stored ID if available, otherwise generate new one
-        let imgId;
-        if (newImageIds[imgIndex]) {
-          imgId = newImageIds[imgIndex];
-          console.log(`🔍 Using stored ID for base64 image ${imgIndex + 1}: ${imgId}`);
-        } else {
-          const timestamp = Date.now();
-          imgId = timestamp + Math.floor(Math.random() * 1000);
-          console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
-        }
-        
-        const placeholder = `[IMG:${imgId}]`;
-        processedContent = processedContent.replace(imgMatch[0], placeholder);
-        console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
-        imgIndex++;
+    if (!editorRef.current) return '';
+    const content = editorRef.current.innerHTML;
+    console.log('🔍 Debug: Getting editor content:', content);
+
+    // Convert HTML content to text with [IMG:id] placeholders
+    let processedContent = content;
+
+    // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
+    const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
+    processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
+      console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
+      return `[IMG:${imageId}]`;
+    });
+
+    // Then, replace base64 images with [IMG:id] placeholders using stored IDs
+    const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
+    let imgMatch;
+    let imgIndex = 0;
+
+    while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
+      // Use stored ID if available, otherwise generate new one
+      let imgId;
+      if (newImageIds[imgIndex]) {
+        imgId = newImageIds[imgIndex];
+        console.log(`🔍 Using stored ID for base64 image ${imgIndex + 1}: ${imgId}`);
+      } else {
+        const timestamp = Date.now();
+        imgId = timestamp + Math.floor(Math.random() * 1000);
+        console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
       }
-      
-      // Remove any remaining HTML tags but keep line breaks
-      processedContent = processedContent
-        .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-        .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-        .replace(/<\/div>/gi, '') // Remove closing div tags
-        .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-        .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-        .replace(/&amp;/g, '&') // Convert &amp; to &
-        .replace(/&lt;/g, '<') // Convert &lt; to <
-        .replace(/&gt;/g, '>') // Convert &gt; to >
-        .replace(/&quot;/g, '"') // Convert &quot; to "
-        .replace(/&#39;/g, "'") // Convert &#39; to '
-        .trim();
-      
-      console.log('🔍 Debug: Processed content:', processedContent);
-      return processedContent;
+
+      const placeholder = `[IMG:${imgId}]`;
+      processedContent = processedContent.replace(imgMatch[0], placeholder);
+      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
+      imgIndex++;
     }
-    return '';
+
+    // Remove any remaining HTML tags but keep line breaks
+    processedContent = processedContent
+      .replace(/<br\s*\/?>(?=\n)?/gi, '\n') // Convert <br> to line breaks
+      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
+      .replace(/<\/div>/gi, '') // Remove closing div tags
+      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
+      .replace(/&amp;/g, '&') // Convert &amp; to &
+      .replace(/&lt;/g, '<') // Convert &lt; to <
+      .replace(/&gt;/g, '>') // Convert &gt; to >
+      .replace(/&quot;/g, '"') // Convert &quot; to "
+      .replace(/&#39;/g, "'") // Convert &#39; to '
+      .trim();
+
+    console.log('🔍 Debug: Processed content:', processedContent);
+    return processedContent;
   };
 
   if (loading) {

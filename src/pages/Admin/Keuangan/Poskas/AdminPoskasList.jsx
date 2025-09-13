@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { API_ENDPOINTS, API_CONFIG } from '../../../../config/constants';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminPoskasList = () => {
   const { user } = useAuth()
@@ -310,7 +311,7 @@ const AdminPoskasList = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">H01-K1</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.poskas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
               <p className="text-sm text-red-100">Kelola data posisi kas outlet</p>

@@ -4,6 +4,7 @@ import { ArrowLeft, Save, CheckSquare, Calendar, User, ChevronRight } from 'luci
 import { tugasService, adminTugasService } from '../../../services/tugasService'
 import { userService } from '../../../services/userService'
 import toast from 'react-hot-toast'
+import { MENU_CODES } from '@/config/menuCodes'
 
 const AdminTugasForm = () => {
   const navigate = useNavigate()
@@ -219,7 +220,7 @@ const AdminTugasForm = () => {
                 <ChevronRight className="h-5 w-5 rotate-180" />
               </button>
               <div>
-                <div className="text-xs font-medium text-red-200">H01-S4</div>
+                <div className="text-xs font-medium text-red-200">{MENU_CODES.sdm.daftarTugas}</div>
                 <div className="text-lg font-bold">
                   {isEditMode ? 'Edit Tugas' : 'Tambah Tugas Baru'}
                 </div>

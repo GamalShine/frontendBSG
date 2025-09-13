@@ -170,7 +170,7 @@ export const MenuProvider = ({ children }) => {
             {
               id: 'struktur-jobdesk-sop',
               title: 'STRUKTUR, JOBDESK & S.O.P.',
-              path: '/owner/sdm/struktur',
+              path: '/owner/sdm/struktur-jobdesk-sop',
               permissions: ['read']
             },
             {
@@ -327,10 +327,10 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'lap-keu',
-              title: 'LAP. KEU',
+              title: 'LAPORAN KEUANGAN',
               path: '/admin/keuangan/laporan',
               permissions: ['read'],
-              picKey: 'AdminKeuanganLaporan'
+              picKey: 'AdminLaporanKeuangan'
             },
             {
               id: 'aneka-grafik',
@@ -344,14 +344,14 @@ export const MenuProvider = ({ children }) => {
               title: 'DAFTAR GAJI',
               path: '/admin/keuangan/gaji',
               permissions: ['read'],
-              picKey: 'AdminKeuanganDaftarGaji'
+              picKey: 'AdminDaftarGaji'
             },
             {
               id: 'aneka-surat',
               title: 'ANEKA SURAT',
               path: '/admin/keuangan/surat',
               permissions: ['read'],
-              picKey: 'AdminKeuanganAnekaSurat'
+              picKey: 'AdminAnekaSurat'
             }
           ]
         });
@@ -365,31 +365,38 @@ export const MenuProvider = ({ children }) => {
           children: [
             {
               id: 'struktur-jobdesk-sop',
-              title: 'STRUKTUR, JOBDESK & S.O.P.',
-              path: '/admin/sdm/struktur',
+              title: 'STRUKTUR & SOP',
+              path: '/admin/sdm/struktur-jobdesk-sop',
               permissions: ['read'],
-              picKey: 'AdminSDMStruktur'
+              picKey: 'AdminSdmStrukturSop'
             },
             {
               id: 'data-tim',
               title: 'DATA TIM',
               path: '/admin/sdm/tim',
               permissions: ['read'],
-              picKey: 'AdminSDMDataTim'
+              picKey: 'AdminSdmDataTim'
             },
             {
               id: 'kpi',
               title: 'KPI',
               path: '/admin/sdm/kpi',
               permissions: ['read'],
-              picKey: 'AdminSDMKPI'
+              picKey: 'AdminSdmKpi'
             },
             {
               id: 'tim-merah-biru',
               title: 'TIM MERAH/BIRU',
               path: '/admin/sdm/tim-merah-biru',
               permissions: ['read'],
-              picKey: 'AdminSDMTimMerahBiru'
+              picKey: 'AdminTimMerahBiru'
+            },
+            {
+              id: 'data-training',
+              title: 'DATA TRAINING',
+              path: '/admin/training',
+              permissions: ['read'],
+              picKey: 'AdminDataTraining'
             }
           ]
         });
@@ -420,14 +427,14 @@ export const MenuProvider = ({ children }) => {
               title: 'DATA SEWA',
               path: '/admin/operasional/sewa',
               permissions: ['read'],
-              picKey: 'AdminOperasionalDataSewa'
+              picKey: 'AdminDataSewa'
             },
             {
               id: 'jadwal-pembayaran',
               title: 'JADWAL PEMBAYARAN/PERAWATAN',
               path: '/admin/operasional/jadwal-pembayaran',
               permissions: ['read'],
-              picKey: 'AdminOperasionalJadwalPembayaran'
+              picKey: 'AdminJadwalPembayaran'
             },
             {
               id: 'data-investor',
@@ -441,14 +448,14 @@ export const MenuProvider = ({ children }) => {
               title: 'DAFTAR SARAN',
               path: '/admin/operasional/saran',
               permissions: ['read'],
-              picKey: 'AdminOperasionalDaftarSaran'
+              picKey: 'AdminDaftarSaran'
             },
             {
               id: 'daftar-komplain',
               title: 'DAFTAR KOMPLAIN',
               path: '/admin/operasional/komplain',
               permissions: ['read'],
-              picKey: 'AdminOperasionalDaftarKomplain'
+              picKey: 'AdminDaftarKomplain'
             },
             {
               id: 'data-bina-lingkungan',
@@ -472,14 +479,14 @@ export const MenuProvider = ({ children }) => {
               title: 'DATA TARGET',
               path: '/admin/marketing/data-target',
               permissions: ['read'],
-              picKey: 'AdminMarketingDataTarget'
+              picKey: 'AdminDataTarget'
             },
             {
               id: 'medsos',
-              title: 'MEDSOS',
+              title: 'MEDIA SOSIAL',
               path: '/admin/marketing/medsos',
               permissions: ['read'],
-              picKey: 'AdminMedsos'
+              picKey: 'AdminMarketingMedsos'
             }
           ]
         });
@@ -575,6 +582,21 @@ export const MenuProvider = ({ children }) => {
             }
           ]
         });
+        // Menu SDM untuk Divisi
+        baseMenus.push({
+          id: 'sdm',
+          title: 'SDM',
+          icon: 'Users2',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'struktur-jobdesk-sop',
+              title: 'STRUKTUR, JOBDESK & S.O.P.',
+              path: '/divisi/sdm/struktur-jobdesk-sop',
+              permissions: ['read']
+            }
+          ]
+        });
         // Menu Daftar Tugas untuk Divisi
         baseMenus.push({
           id: 'daftar-tugas',
@@ -598,6 +620,21 @@ export const MenuProvider = ({ children }) => {
               title: 'POSKAS',
               path: '/tim/keuangan/poskas',
               permissions: ['read', 'create']
+            }
+          ]
+        });
+        // Menu SDM untuk Tim
+        baseMenus.push({
+          id: 'sdm',
+          title: 'SDM',
+          icon: 'Users2',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'struktur-jobdesk-sop',
+              title: 'STRUKTUR, JOBDESK & S.O.P.',
+              path: '/tim/sdm/struktur-jobdesk-sop',
+              permissions: ['read']
             }
           ]
         });

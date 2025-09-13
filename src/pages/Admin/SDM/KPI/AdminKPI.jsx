@@ -14,6 +14,7 @@ import {
   Edit3,
   Trash2
 } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminKPI = () => {
   const { user } = useAuth();
@@ -103,28 +104,39 @@ const AdminKPI = () => {
     return kpiData[activeTab] || [];
   };
 
-  // Fungsi untuk mendapatkan URL foto
+  // Fungsi untuk mendapatkan URL foto (aman terhadap BASE_URL tidak valid)
   const getPhotoUrl = (item) => {
     if (!item) return '';
-    
+
+    // Jika value sudah absolute URL
     if (typeof item === 'string') {
-      // Fallback untuk item string
       return 'https://placehold.co/400x300?text=KPI+Photo';
     }
-    
-    if (item.photo_url) {
-      if (item.photo_url.startsWith('http')) {
-        return item.photo_url;
-      } else if (item.photo_url.startsWith('/')) {
-        // e.g. "/uploads/..." from DB
-        return new URL(item.photo_url, API_CONFIG.BASE_URL).toString();
-      } else {
-        return new URL(`/uploads/${item.photo_url}`, API_CONFIG.BASE_URL).toString();
-      }
+
+    const raw = item.photo_url;
+    if (!raw) {
+      return 'https://placehold.co/400x300?text=No+Image';
     }
-    
-    // Fallback image
-    return 'https://placehold.co/400x300?text=No+Image';
+
+    if (raw.startsWith('http')) {
+      return raw;
+    }
+
+    // Tentukan base yang valid: BASE_HOST -> BASE_URL -> window.location.origin
+    const base = (API_CONFIG && API_CONFIG.BASE_HOST && API_CONFIG.BASE_HOST.startsWith('http'))
+      ? API_CONFIG.BASE_HOST
+      : ((API_CONFIG && API_CONFIG.BASE_URL && API_CONFIG.BASE_URL.startsWith('http'))
+          ? API_CONFIG.BASE_URL
+          : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost'));
+
+    const path = raw.startsWith('/') ? raw : `/uploads/${raw}`;
+
+    try {
+      return new URL(path, base).toString();
+    } catch {
+      // Jika tetap gagal, fallback ke gabungan sederhana
+      return `${base.replace(/\/$/, '')}${path}`;
+    }
   };
 
   // Modal functions
@@ -253,7 +265,7 @@ const AdminKPI = () => {
                 <ChevronRight className="h-5 w-5 rotate-180" />
               </button>
             <div>
-                <div className="text-xs font-medium text-red-200">H01-S4</div>
+                <div className="text-xs font-medium text-red-200">{MENU_CODES.sdm.kpi}</div>
                 <div className="text-lg font-bold">KPI SDM</div>
               </div>
             </div>

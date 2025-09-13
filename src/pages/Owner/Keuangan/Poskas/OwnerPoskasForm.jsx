@@ -166,7 +166,10 @@ const OwnerPoskasForm = () => {
         if (parsedImages.length > 0) {
           parsedImages.forEach(img => {
             const placeholder = `[IMG:${img.id}]`;
-            const imageUrl = img.url?.startsWith('http') ? img.url : `${envConfig.BASE_URL}${img.url}`;
+            // Backend menyajikan static uploads di '/uploads' (bukan '/api/uploads')
+            const imageUrl = img.url?.startsWith('http')
+              ? img.url
+              : `${envConfig.BASE_URL.replace('/api','')}${img.url}`;
             const imgTag = `<img src="${imageUrl}" alt="Poskas Image" data-img-id="${img.id}" />`;
             processedContent = processedContent.replace(new RegExp(placeholder, 'g'), imgTag);
           });
@@ -491,9 +494,10 @@ const OwnerPoskasForm = () => {
         }
       });
       
-      console.log('📤 Sending upload request to /api/upload/poskas');
+      console.log('📤 Sending upload request to /upload/poskas');
       
-      const response = await fetch(`${envConfig.BASE_URL}/api/upload/poskas`, {
+      // BASE_URL sudah mengandung '/api', jadi cukup tambahkan '/upload/poskas'
+      const response = await fetch(`${envConfig.BASE_URL}/upload/poskas`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -597,11 +601,12 @@ const OwnerPoskasForm = () => {
             return {
               uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
               id: img.id,
-              name: `poskas_${img.id}.jpg`,
-              // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
+              // Gunakan nama file dari server jika tersedia, fallback ke basename dari path
+              name: uploadedFile.filename || (uploadedFile.path ? uploadedFile.path.split('/').pop() : `poskas_${img.id}.jpg`),
+              // Jika relatif, prefix dengan BASE_URL tanpa /api karena static route ada di '/uploads'
               url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
                 ? uploadedFile.url
-                : `${envConfig.BASE_URL}${uploadedFile.url}`,
+                : `${envConfig.BASE_URL.replace('/api','')}${uploadedFile.url}`,
               serverPath: uploadedFile.serverPath || uploadedFile.path // Prefer serverPath if available
             };
           } else {
@@ -610,7 +615,7 @@ const OwnerPoskasForm = () => {
               uri: `file://temp/${img.id}.jpg`,
               id: img.id,
               name: `poskas_${img.id}.jpg`,
-              url: `${envConfig.BASE_URL}/uploads/poskas/temp_${img.id}.jpg`,
+              url: `${envConfig.BASE_URL.replace('/api','')}/uploads/poskas/temp_${img.id}.jpg`,
               serverPath: `poskas/temp_${img.id}.jpg`
             };
           }
