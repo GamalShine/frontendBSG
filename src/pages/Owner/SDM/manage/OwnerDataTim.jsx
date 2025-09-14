@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Users, Search } from 'lucide-react';
 import { ownerSdmService } from '@/services/ownerSdmService';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const OwnerDataTim = () => {
   const [loading, setLoading] = useState(true);
@@ -54,7 +55,7 @@ const OwnerDataTim = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">OWN-SDM</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.dataTim}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TIM</h1>
               <p className="text-sm text-red-100">Struktur tim: divisi, jabatan, dan karyawan</p>

@@ -147,17 +147,6 @@ const OwnerDataSupplier = () => {
             <Eye className="h-4 w-4" />
           </button>
         </Link>
-        <Link to={`/owner/operasional/data-supplier/edit/${supplier.id}`}>
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
-            <Edit className="h-4 w-4" />
-          </button>
-        </Link>
-        <button 
-          onClick={() => handleDelete(supplier.id)}
-          className="p-1.5 text-red-400 hover:text-red-600 border border-gray-300 rounded hover:bg-red-50"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
       </div>
     </div>
   );
@@ -301,29 +290,6 @@ const OwnerDataSupplier = () => {
                 <option value="SUPPLIER KAMBING">Supplier Kambing</option>
               </select>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Divisi</label>
-              <select 
-                value={divisiFilter} 
-                onChange={(e) => setDivisiFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                <option value="all">Semua Divisi</option>
-                <option value="PRODUKSI">Produksi</option>
-                <option value="MARKETING">Marketing</option>
-                <option value="OPERASIONAL">Operasional</option>
-              </select>
-            </div>
-            
-            <div className="flex items-end">
-              <Link to="/owner/operasional/data-supplier/form" className="w-full">
-                <button className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm">
-                  <Plus className="h-4 w-4" />
-                  <span className="font-semibold">Tambah</span>
-                </button>
-              </Link>
-            </div>
           </div>
         </div>
 
@@ -333,7 +299,7 @@ const OwnerDataSupplier = () => {
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <button
               onClick={() => setActiveSection(activeSection === 'outlet' ? '' : 'outlet')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between"
             >
               <div className="flex items-center space-x-3">
                 <Store className="w-6 h-6" />
@@ -348,7 +314,6 @@ const OwnerDataSupplier = () => {
                 <ChevronRight className="w-5 h-5" />
               )}
             </button>
-            
             {activeSection === 'outlet' && (
               <div className="p-6">
                 {groupedSuppliers['SUPPLIER OUTLET'].length > 0 ? (
@@ -356,9 +321,7 @@ const OwnerDataSupplier = () => {
                     {groupedSuppliers['SUPPLIER OUTLET'].map(renderSupplierCard)}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Tidak ada data supplier outlet
-                  </div>
+                  <div className="text-center py-8 text-gray-500">Tidak ada data supplier outlet</div>
                 )}
               </div>
             )}
@@ -368,7 +331,7 @@ const OwnerDataSupplier = () => {
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <button
               onClick={() => setActiveSection(activeSection === 'tepung' ? '' : 'tepung')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between"
             >
               <div className="flex items-center space-x-3">
                 <Building className="w-6 h-6" />
@@ -383,7 +346,6 @@ const OwnerDataSupplier = () => {
                 <ChevronRight className="w-5 h-5" />
               )}
             </button>
-            
             {activeSection === 'tepung' && (
               <div className="p-6">
                 {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].length > 0 ? (
@@ -391,9 +353,7 @@ const OwnerDataSupplier = () => {
                     {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].map(renderSupplierCard)}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    Tidak ada data supplier toko tepung & BB
-                  </div>
+                  <div className="text-center py-8 text-gray-500">Tidak ada data supplier toko tepung & BB</div>
                 )}
               </div>
             )}
@@ -403,7 +363,7 @@ const OwnerDataSupplier = () => {
           <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <button
               onClick={() => setActiveSection(activeSection === 'produksi' ? '' : 'produksi')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between"
             >
               <div className="flex items-center space-x-3">
                 <Factory className="w-6 h-6" />

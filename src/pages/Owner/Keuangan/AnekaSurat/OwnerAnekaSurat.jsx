@@ -274,83 +274,62 @@ const OwnerAnekaSurat = () => {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.length === anekaSurat.length && anekaSurat.length > 0}
-                    onChange={handleSelectAll}
-                  />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis Dokumen</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Judul</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {anekaSurat.map((doc) => (
-                <tr key={doc.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
+        {/* Grid Cards */}
+        {loading ? (
+          <div className="p-6"><LoadingSpinner /></div>
+        ) : anekaSurat.length === 0 ? (
+          <div className="px-6 py-10 text-center text-gray-500">Tidak ada dokumen</div>
+        ) : (
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* Checkbox pilih semua di posisi pertama grid (opsional) */}
+            <div className="hidden"></div>
+            {anekaSurat.map((doc) => (
+              <div key={doc.id} className="border border-gray-200 rounded-lg p-4 h-full flex flex-col">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={selectedItems.includes(doc.id)}
                       onChange={() => handleCheckboxChange(doc.id)}
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                     />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
                       <FileType className="h-5 w-5 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-900">{doc.jenis_dokumen || '-'}</span>
+                      <span className="text-sm font-semibold text-gray-900">{doc.jenis_dokumen || '-'}</span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900">{doc.judul_dokumen || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{formatDate(doc.created_at || doc.createdAt)}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        to={`/owner/keuangan/aneka-surat/${doc.id}`}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                        title="Lihat"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                      <Link
-                        to={`/owner/keuangan/aneka-surat/${doc.id}/edit`}
-                        className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg"
-                        title="Edit"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(doc.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        title="Hapus"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && anekaSurat.length === 0 && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-10 text-center text-gray-500">
-                    Tidak ada dokumen
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                  <div className="text-xs text-gray-500">{formatDate(doc.created_at || doc.createdAt)}</div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold text-gray-900 mb-1">{doc.judul_dokumen || '-'}</h3>
+                </div>
+                <div className="flex items-center justify-end gap-2 mt-3">
+                  <Link
+                    to={`/owner/keuangan/aneka-surat/${doc.id}`}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                    title="Lihat"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    to={`/owner/keuangan/aneka-surat/${doc.id}/edit`}
+                    className="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg"
+                    title="Edit"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={() => handleDelete(doc.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    title="Hapus"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (

@@ -13,7 +13,8 @@ import {
   Trash2, 
   TrendingUp,
   RefreshCw,
-  DollarSign
+  DollarSign,
+  MoreVertical
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { API_ENDPOINTS, API_CONFIG } from '../../../../config/constants';
@@ -52,10 +53,8 @@ const AdminPoskasList = () => {
           'Content-Type': 'application/json'
         }
       })
-      
       const data = await response.json()
       console.log('🧪 API Test Response:', data)
-      
       if (response.ok) {
         console.log('✅ API connection successful')
       } else {
@@ -64,6 +63,85 @@ const AdminPoskasList = () => {
     } catch (error) {
       console.error('❌ API test error:', error)
     }
+  }
+
+  // ===== Bulk actions (selectedItems) at component scope =====
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
+
+  const getSelectedEntries = () => {
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) return []
+    const byId = new Map(poskas.map(p => [p.id, p]))
+    return selectedItems.map(id => byId.get(id)).filter(Boolean)
+  }
+
+  const handleBulkCopy = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) {
+      toast.error('Pilih minimal satu pos kas terlebih dahulu')
+      return
+    }
+    const combined = entries
+      .map(e => `${formatDate(e.tanggal_poskas)}\n${(e.isi_poskas || '').replace(/<[^>]*>/g, '')}`)
+      .join('\n\n---\n\n')
+    await navigator.clipboard.writeText(combined)
+    toast.success(`Menyalin ${entries.length} pos kas`)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkDownload = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) {
+      toast.error('Pilih minimal satu pos kas terlebih dahulu')
+      return
+    }
+    const combined = entries
+      .map(e => `${formatDate(e.tanggal_poskas)}\n${(e.isi_poskas || '').replace(/<[^>]*>/g, '')}`)
+      .join('\n\n---\n\n')
+    const blob = new Blob([combined], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `admin_poskas_selected_${entries.length}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkShare = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) {
+      toast.error('Pilih minimal satu pos kas terlebih dahulu')
+      return
+    }
+    const combined = entries
+      .map(e => `${formatDate(e.tanggal_poskas)}\n${(e.isi_poskas || '').replace(/<[^>]*>/g, '')}`)
+      .join('\n\n---\n\n')
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Pos Kas (${entries.length} entri)`, text: combined })
+      } catch (e) {
+        console.warn('Share dibatalkan/gagal:', e)
+      }
+    } else {
+      await navigator.clipboard.writeText(combined)
+      toast.success('Teks disalin untuk dibagikan')
+    }
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkOpenAll = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) {
+      toast.error('Pilih minimal satu pos kas terlebih dahulu')
+      return
+    }
+    entries.forEach(e => {
+      const url = `/admin/keuangan/poskas/${e.id}`
+      window.open(url, '_blank')
+    })
+    setShowBulkMenu(false)
   }
 
   // kalkulasi teks terakhir diupdate dari poskas terbaru
@@ -79,40 +157,67 @@ const AdminPoskasList = () => {
     testApiConnection()
   }, [])
 
+  // Ensure month change triggers reload (useEffect depends on dateFilter)
+  const handleMonthChange = (e) => {
+    setDateFilter(e.target.value)
+    setCurrentPage(1)
+  }
+
   const loadPoskas = async () => {
     try {
       setLoading(true)
-      const params = {
-        page: currentPage,
-        limit: 10,
-        search: searchTerm,
-        date: dateFilter
-      }
-      
-      console.log('🔄 Loading poskas with params:', params)
       console.log('👤 User role:', user.role, 'User ID:', user.id)
-      
-      // Admin can see all poskas - using same method as working example
-      const response = await poskasService.getPoskas(params)
-      
-      console.log('📦 Poskas response:', response)
-      
-      // Handle different response structures
-      let data = response
-      
-      // Check if response has data property
-      if (response && typeof response === 'object' && 'data' in response) {
-        data = response.data
+
+      // Decide which endpoint to call based on filters
+      let poskasData = []
+
+      // 1) Month filter via /keuangan-poskas/month/:year/:month
+      if (dateFilter) {
+        const [yearStr, monthStr] = dateFilter.split('-')
+        const year = parseInt(yearStr, 10)
+        const month = parseInt(monthStr, 10)
+        console.log('📅 Using month filter:', { year, month })
+        try {
+          const resp = await poskasService.getPoskasByMonth(year, month)
+          const monthData = resp?.data || resp || []
+          poskasData = Array.isArray(monthData) ? monthData : (monthData.items || monthData.rows || [])
+        } catch (e) {
+          console.warn('⚠️ Month endpoint failed, fallback to all:', e)
+        }
       }
-      
-      console.log('📋 Processed poskas data:', data)
-      console.log('📊 Data type:', typeof data)
-      console.log('📋 Data keys:', Object.keys(data || {}))
-      
-      // Try to extract poskas from different possible structures
-      const poskasData = data?.poskas || data?.items || data?.data || data || []
-      const totalPages = data?.totalPages || data?.last_page || data?.total_pages || 1
-      const totalItems = data?.total || data?.total_items || data?.count || 0
+
+      // 2) Search term via /keuangan-poskas/search/:term
+      if (searchTerm && searchTerm.trim().length > 0) {
+        console.log('🔎 Using search term:', searchTerm)
+        if (poskasData.length > 0) {
+          const term = searchTerm.toLowerCase()
+          poskasData = poskasData.filter(item => (item.isi_poskas || '').toLowerCase().includes(term))
+        } else {
+          try {
+            const resp = await poskasService.searchPoskas(searchTerm)
+            const searchData = resp?.data || resp || []
+            poskasData = Array.isArray(searchData) ? searchData : (searchData.items || searchData.rows || [])
+          } catch (e) {
+            console.warn('⚠️ Search endpoint failed, fallback to all:', e)
+          }
+        }
+      }
+
+      // 3) Fetch all only when no filters provided
+      const hasAnyFilter = (dateFilter && dateFilter.length > 0) || (searchTerm && searchTerm.trim().length > 0)
+      if (!hasAnyFilter) {
+        const params = { page: currentPage, limit: 10 }
+        console.log('📦 Fetching all with params:', params)
+        const response = await poskasService.getPoskas(params)
+        let data = response
+        if (response && typeof response === 'object' && 'data' in response) {
+          data = response.data
+        }
+        poskasData = data?.poskas || data?.items || data?.data || data || []
+      }
+
+      const totalItems = Array.isArray(poskasData) ? poskasData.length : 0
+      const totalPages = Math.max(1, Math.ceil(totalItems / 10))
 
       // Sort newest first: created_at desc -> tanggal_poskas desc -> id desc
       const sortedPoskas = [...(Array.isArray(poskasData) ? poskasData : [])].sort((a, b) => {
@@ -223,7 +328,7 @@ const AdminPoskasList = () => {
     const date = new Date(dateString)
     return date.toLocaleDateString('id-ID', {
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric'
     })
   }
@@ -324,16 +429,6 @@ const AdminPoskasList = () => {
             >
               PENCARIAN
             </button>
-            <div className="relative group">
-              <button className="p-2 hover:bg-red-700 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 20.25a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" /></svg>
-              </button>
-              <div className="hidden group-hover:block absolute right-0 mt-2 w-40 bg-white text-gray-700 rounded-lg shadow-lg overflow-hidden z-20">
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Bagikan</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Copy</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Download PDF</button>
-              </div>
-            </div>
             <Link
               to="/admin/keuangan/poskas/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
@@ -349,7 +444,7 @@ const AdminPoskasList = () => {
       <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -406,13 +501,13 @@ const AdminPoskasList = () => {
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
-                  type="date"
+                  type="month"
                   value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
+                  onChange={handleMonthChange}
                   className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
@@ -432,22 +527,43 @@ const AdminPoskasList = () => {
       )}
 
       {/* Data Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
         <div className="px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900">Daftar Pos Kas</h2>
-            {selectedItems.length > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600">{selectedItems.length} item dipilih</span>
+            <div className="flex items-center gap-3">
+              {selectedItems.length > 0 && (
+                <>
+                  <span className="text-sm text-gray-600 hidden sm:inline">{selectedItems.length} item dipilih</span>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Hapus ({selectedItems.length})</span>
+                  </button>
+                </>
+              )}
+              <div className="relative">
                 <button
-                  onClick={handleBulkDelete}
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  onClick={() => setShowBulkMenu(v => !v)}
+                  aria-label="Aksi massal"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Hapus ({selectedItems.length})</span>
+                  <MoreVertical className="h-4 w-4" />
                 </button>
+                {showBulkMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
+                    <div className="py-1">
+                      <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                      <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                      <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                      <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -471,21 +587,44 @@ const AdminPoskasList = () => {
           </div>
         ) : (
           <>
-            <div className="relative overflow-x-auto max-h-[60vh] overflow-y-auto">
+            <div className="relative overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="sticky top-0 bg-red-50 z-10">
+                <thead className="sticky top-0 bg-red-700 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold text-red-700 uppercase tracking-wider">No</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold text-red-700 uppercase tracking-wider">Tanggal</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold text-red-700 uppercase tracking-wider">Keterangan</th>
-                    <th className="px-6 py-3 text-left text-[11px] font-extrabold text-red-700 uppercase tracking-wider">Aksi</th>
+                    <th className="pl-6 pr-0 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.length === poskas.length && poskas.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-white text-white focus:ring-white"
+                        aria-label="Pilih semua"
+                      />
+                    </th>
+                    <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
+                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
+                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {poskas.map((poskasItem, idx) => (
-                    <tr key={poskasItem.id} className="hover:bg-gray-50/80">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <tr
+                      key={poskasItem.id}
+                      className="hover:bg-gray-50/80 cursor-pointer"
+                      onClick={() => navigate(`/admin/keuangan/poskas/${poskasItem.id}`)}
+                    >
+                      <td className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(poskasItem.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => handleCheckboxChange(poskasItem.id)}
+                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                          aria-label={`Pilih baris ${idx + 1}`}
+                        />
+                      </td>
+                      <td className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
+                      <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{formatDate(poskasItem.tanggal_poskas).toUpperCase()}</span>
                           {(() => {
@@ -498,7 +637,7 @@ const AdminPoskasList = () => {
                           })()}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
+                      <td className="px-12 py-4 text-sm text-gray-900">
                         {poskasItem.isi_poskas ? (
                           <div
                             className="truncate max-w-md"
@@ -510,28 +649,24 @@ const AdminPoskasList = () => {
                           />
                         ) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.includes(poskasItem.id)}
-                            onChange={() => handleCheckboxChange(poskasItem.id)}
-                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                          />
                           <Link
                             to={`/admin/keuangan/poskas/${poskasItem.id}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
                           <Link
                             to={`/admin/keuangan/poskas/${poskasItem.id}/edit`}
+                            onClick={(e) => e.stopPropagation()}
                             className="text-green-600 hover:text-green-900"
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
                           <button
-                            onClick={() => handleDelete(poskasItem.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(poskasItem.id) }}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="h-4 w-4" />

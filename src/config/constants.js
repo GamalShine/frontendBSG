@@ -59,6 +59,8 @@ export const API_ENDPOINTS = {
         UPDATE: (id) => `/keuangan-poskas/${id}`,
         UPDATE_UPLOAD: (id) => `/keuangan-poskas/${id}/upload`,
         DELETE: (id) => `/keuangan-poskas/${id}`,
+        MONTH: (year, month) => `/keuangan-poskas/month/${year}/${month}`,
+        SEARCH: (term) => `/keuangan-poskas/search/${encodeURIComponent(term)}`,
 
         // Admin Poskas
         ADMIN: {

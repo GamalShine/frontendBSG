@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronDown, ChevronRight, Users, Search } from 'lucide-react';
 import { adminSdmService } from '@/services/adminSdmService';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminDataTim = () => {
   const navigate = useNavigate();
@@ -56,7 +57,7 @@ const AdminDataTim = () => {
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">ADM-SDM</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.dataTim}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TIM</h1>
               <p className="text-sm text-red-100">Kelola data tim: divisi, jabatan, dan karyawan</p>

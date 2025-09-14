@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { ownerAnekaGrafikService } from '../../../../services/anekaGrafikService';
 import { toast } from 'react-hot-toast';
 import { API_CONFIG } from '../../../../config/constants';
 import { MENU_CODES } from '@/config/menuCodes';
 import { 
-  Plus, 
   Search, 
   Calendar, 
   Filter,
@@ -211,13 +210,6 @@ const OwnerAnekaGrafikList = () => {
             >
               PENCARIAN
             </button>
-            <Link
-              to="/owner/keuangan/aneka-grafik/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="font-semibold">Tambah</span>
-            </Link>
           </div>
         </div>
       </div>

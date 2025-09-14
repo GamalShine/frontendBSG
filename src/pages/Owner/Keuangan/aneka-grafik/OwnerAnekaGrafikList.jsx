@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { anekaGrafikService } from '../../services/anekaGrafikService';
 import { toast } from 'react-hot-toast';
 import { 
-  Plus, 
   Search, 
   Calendar, 
   Filter,
@@ -244,15 +243,6 @@ const AnekaGrafikList = () => {
                 className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
-
-            {/* Add Button */}
-            <button
-              onClick={() => navigate('/keuangan/aneka-grafik/new')}
-              className="flex items-center space-x-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Grafik</span>
-            </button>
           </div>
         </div>
       </div>

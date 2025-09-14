@@ -13,9 +13,11 @@ import {
   Trash2,
   TrendingUp,
   RefreshCw,
-  DollarSign
+  DollarSign,
+  MoreVertical
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const OwnerLaporanKeuangan = () => {
   const navigate = useNavigate();
@@ -37,6 +39,7 @@ const OwnerLaporanKeuangan = () => {
   });
   const [monthsView, setMonthsView] = useState('months'); // 'months' | 'monthContent'
   const [availableMonths, setAvailableMonths] = useState([]); // [{year, month}]
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -48,6 +51,58 @@ const OwnerLaporanKeuangan = () => {
       loadStats();
     }
   }, [user, monthsView, currentPage, monthFilter]);
+
+  // ===== Bulk actions (selectedItems) - scope komponen =====
+  const getSelectedEntries = () => {
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) return []
+    const byId = new Map(laporanKeuangan.map(p => [p.id, p]))
+    return selectedItems.map(id => byId.get(id)).filter(Boolean)
+  }
+
+  const handleBulkCopy = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu laporan terlebih dahulu')
+    const combined = entries.map(e => `${formatDate(e.tanggal_laporan)}\n${(e.isi_laporan || '').replace(/<[^>]*>/g, '')}`).join('\n\n---\n\n')
+    await navigator.clipboard.writeText(combined)
+    toast.success(`Menyalin ${entries.length} laporan`)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkDownload = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu laporan terlebih dahulu')
+    const combined = entries.map(e => `${formatDate(e.tanggal_laporan)}\n${(e.isi_laporan || '').replace(/<[^>]*>/g, '')}`).join('\n\n---\n\n')
+    const blob = new Blob([combined], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `owner_laporan_selected_${entries.length}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkShare = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu laporan terlebih dahulu')
+    const combined = entries.map(e => `${formatDate(e.tanggal_laporan)}\n${(e.isi_laporan || '').replace(/<[^>]*>/g, '')}`).join('\n\n---\n\n')
+    if (navigator.share) {
+      try { await navigator.share({ title: `Laporan Keuangan (${entries.length})`, text: combined }) } catch {}
+    } else {
+      await navigator.clipboard.writeText(combined)
+      toast.success('Teks disalin untuk dibagikan')
+    }
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkOpenAll = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu laporan terlebih dahulu')
+    entries.forEach(e => window.open(`/owner/keuangan/laporan/${e.id}`, '_blank'))
+    setShowBulkMenu(false)
+  }
 
   const loadLaporanKeuangan = async () => {
     try {
@@ -218,18 +273,16 @@ const OwnerLaporanKeuangan = () => {
     }
   }
 
-  // Handle bulk delete
+  // Handle bulk delete (satu definisi saja)
   const handleBulkDelete = async () => {
     if (selectedItems.length === 0) {
       toast.error('Pilih item yang akan dihapus')
       return
     }
-
     if (window.confirm(`Apakah Anda yakin ingin menghapus ${selectedItems.length} data laporan keuangan yang dipilih?`)) {
       try {
         const deletePromises = selectedItems.map(id => laporanKeuanganService.deleteLaporanKeuangan(id))
         await Promise.all(deletePromises)
-        
         toast.success(`${selectedItems.length} data laporan keuangan berhasil dihapus`)
         setSelectedItems([])
         loadLaporanKeuangan()
@@ -256,15 +309,18 @@ const OwnerLaporanKeuangan = () => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
   };
-
+  
   return (
     <div className="px-0 py-2 bg-gray-50 min-h-screen">
-      {/* Header ala Medsos */}
+      {/* Header + Badge Code */}
       <div className="bg-red-800 text-white p-4 mb-0">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
-            <p className="text-sm opacity-90">Owner - Keuangan</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
+            <div>
+              <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
+              <p className="text-sm opacity-90">Owner - Keuangan</p>
+            </div>
           </div>
           {monthsView === 'months' && (
             <Link
@@ -278,11 +334,11 @@ const OwnerLaporanKeuangan = () => {
           )}
         </div>
       </div>
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
+    <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="bg-white shadow-sm border p-4">
+    {/* Stats Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+      <div className="bg-white shadow-sm border p-4">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-blue-100">
               <Calendar className="h-5 w-5 text-blue-600" />
@@ -359,9 +415,18 @@ const OwnerLaporanKeuangan = () => {
         <div className="bg-white shadow-sm border">
           <div className="bg-red-800 text-white px-4 py-3">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">{monthFilterLabel()}</h2>
-                <p className="text-xs opacity-90">Daftar Laporan Keuangan</p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={backToMonths}
+                  aria-label="Kembali"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded border border-white/60 text-white hover:bg-white/10"
+                >
+                  &lt;
+                </button>
+                <div>
+                  <h2 className="text-lg font-semibold">{monthFilterLabel()}</h2>
+                  <p className="text-xs opacity-90">Daftar Laporan Keuangan</p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Link
@@ -370,12 +435,26 @@ const OwnerLaporanKeuangan = () => {
                 >
                   <Plus className="h-4 w-4" /> Tambah
                 </Link>
-                <button
-                  onClick={backToMonths}
-                  className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
-                >
-                  Kembali
-                </button>
+                {/* Titik tiga dipindah ke sebelah kanan tombol Kembali */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowBulkMenu(v => !v)}
+                    aria-label="Aksi massal"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-white/60 text-white hover:bg-white/10"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                  {showBulkMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20 text-gray-900">
+                      <div className="py-1">
+                        <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                        <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                        <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                        <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -397,33 +476,26 @@ const OwnerLaporanKeuangan = () => {
             </div>
           ) : (
             <>
-              <div className="table-responsive">
+              <div className="table-responsive mt-6">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="sticky top-0 bg-red-700 z-10">
                     <tr>
-                      <th className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="pl-4 sm:pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
                         <input
                           type="checkbox"
                           checked={selectedItems.length === laporanKeuangan.length && laporanKeuangan.length > 0}
                           onChange={handleSelectAll}
-                          className="border-gray-300 text-red-600 focus:ring-red-500"
+                          className="rounded border-white text-white focus:ring-white"
+                          aria-label="Pilih semua"
                         />
                       </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                        Tanggal
-                      </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                        Judul
-                      </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                        Dibuat Oleh
-                      </th>
-                      <th className="px-4 sm:px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                        Aksi
-                      </th>
+                      <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                      <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Judul</th>
+                      <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
+                      <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-100">
                     {(() => {
                       const groups = groupByMonth(laporanKeuangan);
                       const entries = Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
@@ -435,42 +507,50 @@ const OwnerLaporanKeuangan = () => {
                       return entries.map(([monthKey, items]) => (
                         <React.Fragment key={monthKey}>
                           {items.map((laporan) => (
-                            <tr key={laporan.id} className="hover:bg-gray-50">
-                              <td className="px-4 sm:px-6 py-2 whitespace-nowrap text-sm text-gray-900">
+                            <tr
+                              key={laporan.id}
+                              className="hover:bg-gray-50/80 cursor-pointer"
+                              onClick={() => navigate(`/owner/keuangan/laporan/${laporan.id}`)}
+                            >
+                              <td className="pl-4 sm:pl-6 pr-0 py-2 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="checkbox"
                                   checked={selectedItems.includes(laporan.id)}
+                                  onClick={(e) => e.stopPropagation()}
                                   onChange={() => handleCheckboxChange(laporan.id)}
-                                  className="border-gray-300 text-red-600 focus:ring-red-500"
+                                  className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                  aria-label={`Pilih baris ${laporan.id}`}
                                 />
                               </td>
-                              <td className="px-4 sm:px-6 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
+                              <td className="pl-0 pr-12 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                                 {formatDate(laporan.tanggal_laporan)}
                               </td>
-                              <td className="px-4 sm:px-6 py-2 text-sm text-gray-900">
+                              <td className="px-12 py-2 text-sm text-gray-900">
                                 <div className="max-w-[14rem] md:max-w-xs break-anywhere md:truncate">
                                   {truncateText(laporan.judul_laporan, 150)}
                                 </div>
                               </td>
-                              <td className="px-4 sm:px-6 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-12 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                                 {laporan.user_nama || 'Admin'}
                               </td>
-                              <td className="px-4 sm:px-6 py-2 whitespace-nowrap text-sm font-medium">
-                                <div className="flex items-center gap-2">
+                              <td className="px-12 py-2 whitespace-nowrap text-sm font-medium">
+                                <div className="flex items-center gap-3">
                                   <Link
                                     to={`/owner/keuangan/laporan/${laporan.id}`}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="text-blue-600 hover:text-blue-900"
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Link>
                                   <Link
                                     to={`/owner/keuangan/laporan/${laporan.id}/edit`}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="text-green-600 hover:text-green-900"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Link>
                                   <button
-                                    onClick={() => handleDelete(laporan.id)}
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(laporan.id) }}
                                     className="text-red-600 hover:text-red-900"
                                   >
                                     <Trash2 className="h-4 w-4" />

@@ -12,7 +12,10 @@ import {
   Eye,
   Edit,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  MoreVertical,
+  Copy as CopyIcon,
+  Share2
 } from 'lucide-react';
 
 const OwnerDaftarKomplain = () => {
@@ -24,6 +27,8 @@ const OwnerDaftarKomplain = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [users, setUsers] = useState([]);
   const [userMap, setUserMap] = useState({});
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -56,11 +61,18 @@ const OwnerDaftarKomplain = () => {
   const loadUsers = async () => {
     try {
       const res = await userService.getUsers({ page: 1, limit: 200 });
-      const list = res?.data?.users || (Array.isArray(res) ? res : []);
+      const list = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res?.data?.users)
+        ? res.data.users
+        : Array.isArray(res)
+        ? res
+        : [];
       setUsers(list);
       const map = {};
       list.forEach((u) => {
-        map[u.id] = u.nama || u.full_name || u.username || `User ${u.id}`;
+        // Utamakan username; fallback ke nama, full_name, email, lalu User {id}
+        map[u.id] = u.username || u.nama || u.full_name || u.email || `User ${u.id}`;
       });
       setUserMap(map);
     } catch (e) {
@@ -73,6 +85,12 @@ const OwnerDaftarKomplain = () => {
     return userMap[id] || `User ${id}`;
   };
 
+  const usernameById = (id) => {
+    if (!id && id !== 0) return '-'
+    const u = users.find(u => String(u.id) === String(id))
+    return (u?.username || u?.nama || u?.full_name || u?.email || `User ${id}`)
+  }
+
   const pihakTerkaitNames = (value) => {
     if (!value) return [];
     try {
@@ -84,9 +102,10 @@ const OwnerDaftarKomplain = () => {
       // Support array of IDs or array of objects {id,nama}
       return arr.map((it) => {
         if (typeof it === 'object' && it) {
-          return it.nama || nameById(it.id);
+          // Prioritaskan username jika ada
+          return it.username || usernameById(it.id);
         }
-        return nameById(it);
+        return usernameById(it);
       });
     } catch (e) {
       // If not JSON, maybe comma-separated
@@ -95,7 +114,7 @@ const OwnerDaftarKomplain = () => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      return arr.map((id) => nameById(Number(id)));
+      return arr.map((id) => usernameById(Number(id)));
     }
   };
 
@@ -126,6 +145,89 @@ const OwnerDaftarKomplain = () => {
     const d = new Date(dateString);
     return d.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
   };
+
+  const truncateText = (text, maxLength = 150) => {
+    if (!text) return '-';
+    const s = String(text);
+    if (s.length <= maxLength) return s;
+    return s.substring(0, maxLength) + '...';
+  };
+
+  // Selection handlers (mirip Omset)
+  const handleCheckboxChange = (id) => {
+    setSelectedItems((prev) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const handleSelectAll = () => {
+    if (!filteredItems?.length) return
+    if (selectedItems.length === filteredItems.length) {
+      setSelectedItems([])
+    } else {
+      setSelectedItems(filteredItems.map(it => it.id))
+    }
+  }
+
+  const getSelectedEntries = () => {
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) return []
+    const byId = new Map((items || []).map(it => [it.id, it]))
+    return selectedItems.map(id => byId.get(id)).filter(Boolean)
+  }
+
+  const handleBulkCopy = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu komplain terlebih dahulu')
+    const combined = entries.map(e => {
+      const tgl = formatDate(e?.created_at || e?.tanggal_pelaporan)
+      const pelapor = e?.pelapor?.nama || '-'
+      const judul = e?.judul_komplain || '-'
+      const desk = e?.deskripsi_komplain || ''
+      return `${tgl}\n${pelapor} — ${judul}${desk ? `, ${desk}` : ''}`
+    }).join('\n\n---\n\n')
+    await navigator.clipboard.writeText(combined)
+    toast.success(`Menyalin ${entries.length} komplain`)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkDownload = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu komplain terlebih dahulu')
+    const combined = entries.map(e => {
+      const tgl = formatDate(e?.created_at || e?.tanggal_pelaporan)
+      const pelapor = e?.pelapor?.nama || '-'
+      const judul = e?.judul_komplain || '-'
+      const desk = e?.deskripsi_komplain || ''
+      return `${tgl}\n${pelapor} — ${judul}${desk ? `, ${desk}` : ''}`
+    }).join('\n\n---\n\n')
+    const blob = new Blob([combined], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `owner_komplain_selected_${entries.length}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkShare = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu komplain terlebih dahulu')
+    const combined = entries.map(e => {
+      const tgl = formatDate(e?.created_at || e?.tanggal_pelaporan)
+      const pelapor = e?.pelapor?.nama || '-'
+      const judul = e?.judul_komplain || '-'
+      const desk = e?.deskripsi_komplain || ''
+      return `${tgl}\n${pelapor} — ${judul}${desk ? `, ${desk}` : ''}`
+    }).join('\n\n---\n\n')
+    if (navigator.share) {
+      try { await navigator.share({ title: `Komplain (${entries.length})`, text: combined }) } catch {}
+    } else {
+      await navigator.clipboard.writeText(combined)
+      toast.success('Teks disalin untuk dibagikan')
+    }
+    setShowBulkMenu(false)
+  }
 
   const handleDelete = async (id) => {
     if (!window.confirm('Hapus komplain ini?')) return;
@@ -267,11 +369,32 @@ const OwnerDaftarKomplain = () => {
         </div>
       )}
 
-      {/* Data Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mx-6 mb-6 overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Daftar Komplain</h2>
+      {/* Data Table (match Omset Harian) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
+        <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Daftar Komplain</h2>
+          <div className="flex items-center gap-3">
+            {selectedItems.length > 0 && (
+              <span className="text-sm text-gray-600 hidden sm:inline">{selectedItems.length} item dipilih</span>
+            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowBulkMenu(v => !v)}
+                aria-label="Aksi massal"
+                className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showBulkMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
+                  <div className="py-1">
+                    <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                    <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                    <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -293,46 +416,60 @@ const OwnerDaftarKomplain = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="sticky top-0 bg-red-50 z-10">
+              <thead className="sticky top-0 bg-red-700 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">No</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Judul</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Pelapor</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Penerima</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Pihak Terkait</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Tanggal</th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Aksi</th>
+                  <th className="pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.length === filteredItems.length && filteredItems.length > 0}
+                      onChange={handleSelectAll}
+                      className="rounded border-white text-white focus:ring-white"
+                      aria-label="Pilih semua"
+                    />
+                  </th>
+                  <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Judul</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Pelapor</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Penerima</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Pihak Terkait</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Status</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                  <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {filteredItems.map((row, idx) => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{row?.judul_komplain || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={row.id} className="hover:bg-gray-50/80">
+                    <td className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(row.id)}
+                        onChange={() => handleCheckboxChange(row.id)}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                        aria-label={`Pilih baris ${idx + 1}`}
+                      />
+                    </td>
+                    <td className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
+                    <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">{row?.judul_komplain || '-'}</td>
+                    <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div>
-                        <p className="font-medium">{row?.pelapor?.nama || '-'}</p>
-                        {row?.pelapor?.email && (
-                          <p className="text-xs text-gray-500">{row.pelapor.email}</p>
+                        <p className="font-medium">{(row?.Pelapor?.nama || row?.pelapor?.nama) || '-'}</p>
+                        {((row?.Pelapor?.email || row?.pelapor?.email)) && (
+                          <p className="text-xs text-gray-500">{row?.Pelapor?.email || row?.pelapor?.email}</p>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {row?.penerima_komplain?.nama || nameById(row?.penerima_komplain_id) || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">{(row?.PenerimaKomplain?.nama || row?.penerima_komplain?.nama) || nameById(row?.penerima_komplain_id) || '-'}</td>
+                    <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                       {(() => {
                         const names = pihakTerkaitNames(row?.pihak_terkait);
                         return names.length ? names.join(', ') : '-';
                       })()}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{row?.status || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(row?.created_at || row?.tanggal_pelaporan)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex items-center space-x-3">
+                    <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{row?.status || '-'}</td>
+                    <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(row?.created_at || row?.tanggal_pelaporan).toUpperCase()}</td>
+                    <td className="px-12 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <div className="flex items-center gap-3">
                         <button
                           onClick={() => navigate(`/owner/operasional/komplain/${row.id}`)}
                           className="text-blue-600 hover:text-blue-900"

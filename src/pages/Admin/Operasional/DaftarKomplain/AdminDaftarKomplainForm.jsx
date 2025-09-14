@@ -242,7 +242,7 @@ const AdminDaftarKomplainForm = () => {
               >
                 <option value="">-- Pilih User --</option>
                 {users.map((u) => {
-                  const label = u.nama || u.full_name || u.username || u.name || u.nama_lengkap || u.displayName || u.email || `User ${u.id}`;
+                  const label = u.username || u.nama || u.full_name || u.name || u.nama_lengkap || u.displayName || u.email || `User ${u.id}`;
                   return (
                     <option key={u.id} value={`${u.id}`}>{label}</option>
                   );
@@ -253,7 +253,7 @@ const AdminDaftarKomplainForm = () => {
                 (() => {
                   const sel = users.find((u) => String(u.id) === String(form.penerima_komplain_id));
                   if (!sel) return null;
-                  const label = sel.nama || sel.full_name || sel.username || sel.name || sel.nama_lengkap || sel.displayName || sel.email || `User ${sel.id}`;
+                  const label = sel.username || sel.nama || sel.full_name || sel.name || sel.nama_lengkap || sel.displayName || sel.email || `User ${sel.id}`;
                   return (
                     <div className="mt-2 text-xs text-gray-700">
                       Dipilih: <span className="font-semibold">{label}</span>{sel.email ? ` • ${sel.email}` : ''}
@@ -276,7 +276,7 @@ const AdminDaftarKomplainForm = () => {
                   {users
                     .filter((u) => !(form.pihak_terkait || []).some((id) => String(id) === String(u.id)))
                     .map((u) => {
-                      const label = u.nama || u.full_name || u.username || u.name || u.nama_lengkap || u.displayName || u.email || `User ${u.id}`;
+                      const label = u.username || u.nama || u.full_name || u.name || u.nama_lengkap || u.displayName || u.email || `User ${u.id}`;
                       return (
                         <option key={u.id} value={`${u.id}`}>{label}</option>
                       );

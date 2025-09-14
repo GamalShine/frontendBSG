@@ -115,6 +115,7 @@ import AdminAnekaGrafikList from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaG
 import AdminAnekaGrafikDetail from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikDetail'
 import AdminAnekaGrafikForm from './pages/Admin/Keuangan/AnekaGrafik/AdminAnekaGrafikForm'
 import AdminAnekaGrafik from './pages/Admin/Dashboard/AnekaGrafik'
+import AdminAnekaSurat from './pages/Admin/Keuangan/AnekaSurat/AdminAnekaSurat'
 // Admin Daftar Gaji Pages
 import AdminDaftarGaji from './pages/Admin/Keuangan/DaftarGaji/AdminDaftarGaji'
 import AdminDaftarGajiForm from './pages/Admin/Keuangan/DaftarGaji/AdminDaftarGajiForm'
@@ -813,7 +814,7 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminAnekaSurat">
                     <Layout>
-                      <AnekaSurat />
+                      <AdminAnekaSurat />
                     </Layout>
                   </RequireMenuKey>
                 </ProtectedRoute>

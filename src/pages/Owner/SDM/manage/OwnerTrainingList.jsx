@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../../contexts/AuthContext'
-import { trainingService } from '../../../../services/trainingService'
+import { ownerTrainingService as trainingService } from '../../../../services/trainingService'
 import { 
   Search, 
   Plus, 
@@ -25,6 +25,7 @@ import Input from '@/components/UI/Input'
 import Select from '@/components/UI/Select'
 import Badge from '@/components/UI/Badge'
 import toast from 'react-hot-toast'
+import { MENU_CODES } from '@/config/menuCodes'
 
 const OwnerTrainingList = () => {
   const { user } = useAuth()
@@ -178,27 +179,25 @@ const OwnerTrainingList = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="mb-6">
+      {/* Header Merah + Badge (unified style) */}
+      <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Data Training Karyawan</h1>
-            <p className="text-gray-600">Kelola data training dan sertifikasi karyawan</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.dataTraining}</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TRAINING</h1>
+              <p className="text-sm text-red-100">Kelola data training dan sertifikasi karyawan</p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" onClick={exportData}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
+          <div className="flex items-center gap-2">
+            <Button className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent" onClick={exportData}>
+              <Download className="h-4 w-4" />
+              <span className="font-semibold">Export</span>
             </Button>
-            <Link to="/admin/training/new">
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah Data Training
-              </Button>
-            </Link>
           </div>
         </div>
       </div>
+      <div className="mb-2"></div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">

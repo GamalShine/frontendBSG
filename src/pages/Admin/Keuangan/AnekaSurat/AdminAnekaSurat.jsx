@@ -25,12 +25,15 @@ import {
   BarChart3,
   TrendingUp,
   FileClock,
-  FileCheck
+  FileCheck,
+  RefreshCw,
+  MoreVertical
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { MENU_CODES } from '@/config/menuCodes';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
+import { API_CONFIG } from '../../../../config/constants';
 
 const AdminAnekaSurat = () => {
   const { user } = useAuth();
@@ -54,6 +57,7 @@ const AdminAnekaSurat = () => {
   });
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState({});
+  const [showBulkMenu, setShowBulkMenu] = useState(false);
 
   const documentTypes = [
     'PERJANJIAN KERJA',
@@ -80,9 +84,18 @@ const AdminAnekaSurat = () => {
       const response = await anekaSuratService.getAllAnekaSurat();
       
       if (response.success) {
-        setAnekaSurat(response.data || []);
-        // Auto-expand categories that have documents
-        const categoriesWithDocs = new Set(response.data.map(item => item.jenis_dokumen));
+        // Normalisasi lampiran supaya selalu array (selaras dengan Owner)
+        const normalized = (response.data || []).map((item) => {
+          let lampiran = item.lampiran;
+          if (typeof lampiran === 'string') {
+            try { lampiran = JSON.parse(lampiran); } catch { lampiran = []; }
+          }
+          if (!Array.isArray(lampiran)) lampiran = [];
+          return { ...item, lampiran };
+        });
+        setAnekaSurat(normalized);
+        // Auto-expand categories yang memiliki dokumen
+        const categoriesWithDocs = new Set(normalized.map(item => item.jenis_dokumen));
         setExpandedCategories(categoriesWithDocs);
       } else {
         toast.error('Gagal memuat data aneka surat');
@@ -93,6 +106,134 @@ const AdminAnekaSurat = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ===== Bulk Actions helpers =====
+  const getSelectedEntries = () => {
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) return []
+    const byId = new Map(anekaSurat.map(d => [d.id, d]))
+    return selectedItems.map(id => byId.get(id)).filter(Boolean)
+  }
+
+  const buildCopyText = (doc) => {
+    const tanggal = doc?.created_at ? format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id }) : '-'
+    const title = doc?.judul_dokumen || '(Tanpa judul)'
+    const lampiran = Array.isArray(doc?.lampiran) ? doc.lampiran.map(f => (f.file_name || f.name)).filter(Boolean) : []
+    const lampiranText = lampiran.length ? `Lampiran: \n- ${lampiran.join('\n- ')}` : 'Lampiran: -'
+    return `${title}\nTanggal: ${tanggal}\n${lampiranText}`
+  }
+
+  const handleBulkCopy = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu dokumen terlebih dahulu')
+    const combined = entries.map(buildCopyText).join('\n\n---\n\n')
+    await navigator.clipboard.writeText(combined)
+    toast.success(`Menyalin ${entries.length} dokumen`)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkDownload = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu dokumen terlebih dahulu')
+    const combined = entries.map(buildCopyText).join('\n\n---\n\n')
+    const blob = new Blob([combined], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `admin_anekasurat_selected_${entries.length}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkShare = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu dokumen terlebih dahulu')
+    const combined = entries.map(buildCopyText).join('\n\n---\n\n')
+    if (navigator.share) {
+      try { await navigator.share({ title: `Aneka Surat (${entries.length})`, text: combined }) } catch {}
+    } else {
+      await navigator.clipboard.writeText(combined)
+      toast.success('Teks disalin untuk dibagikan')
+    }
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkOpenAll = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu dokumen terlebih dahulu')
+    entries.forEach(doc => {
+      const raw = Array.isArray(doc?.lampiran) ? doc.lampiran[0] : null
+      const firstUrl = raw ? getAttachmentUrl(raw.file_path || raw.url) : null
+      if (firstUrl) window.open(firstUrl, '_blank')
+    })
+    setShowBulkMenu(false)
+  }
+
+  // Format tanggal untuk info bar "Terakhir diupdate"
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const lastUpdatedText = React.useMemo(() => {
+    if (!anekaSurat || anekaSurat.length === 0) return '-';
+    const latest = anekaSurat[0];
+    const dt = latest?.created_at;
+    return formatDateTime(dt);
+  }, [anekaSurat]);
+
+  // Helpers lampiran
+  const getAttachmentUrl = (rawPathOrUrl) => {
+    if (!rawPathOrUrl) return '#';
+    if (/^https?:\/\//i.test(rawPathOrUrl)) return rawPathOrUrl;
+    const normalized = String(rawPathOrUrl)
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '');
+    return `${API_CONFIG.BASE_HOST}/${normalized}`;
+  };
+
+  const downloadFile = (url, suggestedName) => {
+    if (!url || url === '#') return;
+    const a = document.createElement('a');
+    a.href = url;
+    if (suggestedName) a.download = suggestedName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // Filtered + grouped data seperti Owner
+  const filteredData = anekaSurat.filter(item => {
+    const matchesSearch = !searchTerm || 
+      (item.judul_dokumen || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.jenis_dokumen || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesJenis = jenisFilter === 'all' || item.jenis_dokumen === jenisFilter;
+    return matchesSearch && matchesJenis;
+  });
+
+  const groupedData = {};
+  filteredData.forEach(item => {
+    const key = item.jenis_dokumen || 'LAINNYA';
+    if (!groupedData[key]) groupedData[key] = [];
+    groupedData[key].push(item);
+  });
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setJenisFilter('all');
+    setDateFilter('');
+    setStatusFilter('');
   };
 
   const loadStats = async () => {
@@ -128,7 +269,7 @@ const AdminAnekaSurat = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.jenis_dokumen || !formData.jenis_dokumen || formData.files.length === 0) {
+    if (!formData.jenis_dokumen || !formData.judul_dokumen || formData.files.length === 0) {
       toast.error('Semua field harus diisi');
       return;
     }
@@ -137,7 +278,7 @@ const AdminAnekaSurat = () => {
       setUploading(true);
       const formDataToSend = new FormData();
       formDataToSend.append('jenis_dokumen', formData.jenis_dokumen);
-      formDataToSend.append('judul_dokumen', formData.jenis_dokumen);
+      formDataToSend.append('judul_dokumen', formData.judul_dokumen);
       
       formData.files.forEach(file => {
         formDataToSend.append('files', file);
@@ -165,7 +306,7 @@ const AdminAnekaSurat = () => {
   const handleEdit = async (e) => {
     e.preventDefault();
     
-    if (!formData.jenis_dokumen || !formData.jenis_dokumen) {
+    if (!formData.jenis_dokumen || !formData.judul_dokumen) {
       toast.error('Jenis dokumen dan judul dokumen harus diisi');
       return;
     }
@@ -174,7 +315,7 @@ const AdminAnekaSurat = () => {
       setUploading(true);
       const formDataToSend = new FormData();
       formDataToSend.append('jenis_dokumen', formData.jenis_dokumen);
-      formDataToSend.append('judul_dokumen', formData.jenis_dokumen);
+      formDataToSend.append('judul_dokumen', formData.judul_dokumen);
       
       if (formData.files.length > 0) {
         formData.files.forEach(file => {
@@ -232,7 +373,7 @@ const AdminAnekaSurat = () => {
     setSelectedSurat(surat);
     setFormData({
       jenis_dokumen: surat.jenis_dokumen,
-      judul_dokumen: surat.jenis_dokumen,
+      judul_dokumen: surat.judul_dokumen,
       files: []
     });
     setShowEditModal(true);
@@ -275,23 +416,6 @@ const AdminAnekaSurat = () => {
     }
   };
 
-  const filteredData = anekaSurat.filter(item => {
-    const matchesSearch = !searchTerm || 
-      item.judul_dokumen.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.jenis_dokumen.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesJenis = jenisFilter === 'all' || item.jenis_dokumen === jenisFilter;
-    
-    return matchesSearch && matchesJenis;
-  });
-
-  const groupedData = {};
-  filteredData.forEach(item => {
-    if (!groupedData[item.jenis_dokumen]) {
-      groupedData[item.jenis_dokumen] = [];
-    }
-    groupedData[item.jenis_dokumen].push(item);
-  });
 
   const handleSelectAll = () => {
     if (selectedItems.length === anekaSurat.length) {
@@ -363,211 +487,192 @@ const AdminAnekaSurat = () => {
   };
 
   return (
-    <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-red-800 text-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header - samakan dengan Owner */}
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex items-center gap-4 min-w-0">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaSurat}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT - ADMIN</h1>
-              <p className="text-sm text-red-100">Kelola dan verifikasi dokumen aneka surat</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT</h1>
+              <p className="text-sm text-red-100">Kelola dan monitor semua dokumen hukum & perjanjian</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end"></div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
+            {/* Tombol Reset Filter & Refresh disembunyikan sesuai permintaan */}
             <button
-              onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              PENCARIAN
-            </button>
-            <Link
-              to="/admin/keuangan/aneka-surat/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              onClick={() => setShowAddModal(true)}
+              aria-label="Tambah Aneka Surat"
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              <span className="font-semibold">Tambah</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
-        {selectedItems.length > 0 ? (
-          <div className="flex items-center justify-between">
-            <span>{selectedItems.length} dokumen dipilih</span>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => handleBulkAction('approve')}
-                className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-              >
-                Setujui
-              </button>
-              <button 
-                onClick={() => handleBulkAction('reject')}
-                className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-              >
-                Tolak
-              </button>
-              <button 
-                onClick={() => handleBulkAction('delete')}
-                className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        ) : (
-          'Daftar dokumen terbaru berada di paling atas'
-        )}
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Dokumen</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_documents}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <FileType className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Jenis Dokumen</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.document_types}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <FileClock className="h-6 w-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Menunggu</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pending_documents}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <FileCheck className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Disetujui</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.approved_documents}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Search and Filters */}
-      {showFilters && (
-        <div className="bg-white p-4 border-b">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Cari dokumen..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+              <span className="hidden sm:inline font-semibold">Tambah</span>
+            </button>
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+              <button
+                onClick={() => setShowBulkMenu(v => !v)}
+                aria-label="Aksi massal"
+                className="inline-flex items-center justify-center w-9 py-2 min-h-[40px] rounded-lg border border-white/60 text-white hover:bg-white/10 leading-none"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showBulkMenu && (
+                <div className="absolute right-0 mt-2 w-56 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-100 z-20">
+                  <div className="py-1">
+                    <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                    <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                    <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                    <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+                  </div>
+                </div>
+              )}
             </div>
-            <select 
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">Semua Status</option>
-              <option value="PENDING">Menunggu</option>
-              <option value="APPROVED">Disetujui</option>
-              <option value="REJECTED">Ditolak</option>
-            </select>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Info Bar Abu-abu */}
+      <div className="bg-gray-100 px-4 sm:px-6 py-2">
+        <p className="text-gray-700 text-sm">Daftar aneka surat terbaru berada di paling atas • Terakhir diupdate: {lastUpdatedText}</p>
+      </div>
+
+      {/* Search and Filter - identik Owner */}
+      <div className="px-4 py-4 bg-white border-b">
+        <div className="flex flex-col space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Cari dokumen..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <select
+            value={jenisFilter}
+            onChange={(e) => setJenisFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          >
+            <option value="all">Semua Jenis Dokumen</option>
+            {documentTypes.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Content */}
-      <div className="bg-white mx-6 rounded-lg shadow border overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center items-center p-12">
-            <LoadingSpinner />
-          </div>
-        ) : anekaSurat.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Pilih</th>
-                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Jenis</th>
-                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Judul</th>
-                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Tanggal</th>
-                  <th className="px-6 py-3 text-left text-xs font-extrabold text-red-700 uppercase tracking-wider">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {anekaSurat.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-                        checked={selectedItems.includes(doc.id)}
-                        onChange={() => setSelectedItems(prev => prev.includes(doc.id) ? prev.filter(id => id !== doc.id) : [...prev, doc.id])}
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{doc.jenis_dokumen || '-'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{doc.judul_dokumen || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => openEditModal(doc)} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200" title="Edit">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => openDeleteModal(doc)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" title="Hapus">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-12 text-center text-gray-500">
-            Belum ada dokumen.
-          </div>
-        )}
+      <div className="px-4 py-4">
+        <div className="bg-white rounded-lg shadow-sm border">
+          {Object.keys(groupedData).length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600">Tidak ada dokumen ditemukan</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupedData).map(([jenis, documents]) => (
+                <div key={jenis} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <button
+                    onClick={() => toggleCategory(jenis)}
+                    className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <FileText className="w-6 h-6" />
+                      <span className="text-lg font-semibold">{jenis}</span>
+                      <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
+                        {documents.length}
+                      </span>
+                    </div>
+                    {expandedCategories.has(jenis) ? (
+                      <ChevronUp className="w-5 h-5" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5" />
+                    )}
+                  </button>
+
+                  {expandedCategories.has(jenis) && (
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {documents.map((doc) => (
+                        <div key={doc.id} className="border border-gray-200 rounded-lg p-4 h-full flex flex-col">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <h3 className="font-bold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
+                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                                <Calendar className="w-4 h-4 mr-1" />
+                                {format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}
+                              </div>
+                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                                <User className="w-4 h-4 mr-1" />
+                                {doc.user_nama || 'Admin'}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => openEditModal(doc)}
+                                className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(doc)}
+                                className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {doc.lampiran && (
+                            <div className="mt-3">
+                              <div className="flex items-center text-sm text-gray-600 mb-2">
+                                <Paperclip className="w-4 h-4 mr-1" />
+                                {Array.isArray(doc.lampiran) ? doc.lampiran.length : 1} Lampiran
+                              </div>
+                              <div className="space-y-2">
+                                {Array.isArray(doc.lampiran) ? doc.lampiran.map((file, index) => (
+                                  <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center space-x-3">
+                                      <FileText className="w-6 h-6 text-gray-600" />
+                                      <div>
+                                        <div className="text-sm font-medium text-gray-900 break-anywhere md:truncate max-w-[14rem]">
+                                          {file.file_name || file.name}
+                                        </div>
+                                        <div className="text-xs text-gray-500">Dokumen</div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const url = getAttachmentUrl(file.file_path || file.url);
+                                        const name = file.file_name || file.name || (url.split('/').pop() || 'file');
+                                        downloadFile(url, name);
+                                      }}
+                                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                )) : null}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-        {/* Add Modal */}
-        {showAddModal && (
+      {/* Add Modal */}
+      {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl ring-1 ring-black/5">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">Tambah Aneka Surat</h2>
@@ -579,26 +684,21 @@ const AdminAnekaSurat = () => {
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Jenis Dokumen *
                   </label>
-                  <div className="space-y-2">
+                  <select
+                    value={formData.jenis_dokumen}
+                    onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="">Pilih jenis dokumen</option>
                     {documentTypes.map((type) => (
-                      <label key={type} className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          name="jenis_dokumen"
-                          value={type}
-                          checked={formData.jenis_dokumen === type}
-                          onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
-                          className="text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm font-medium">{type}</span>
-                      </label>
+                      <option key={type} value={type}>{type}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 <div>
@@ -608,8 +708,8 @@ const AdminAnekaSurat = () => {
                   <input
                     type="text"
                     placeholder="Masukkan judul dokumen"
-                    value={formData.jenis_dokumen}
-                    onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
+                    value={formData.judul_dokumen}
+                    onChange={(e) => setFormData(prev => ({ ...prev, judul_dokumen: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
@@ -618,7 +718,7 @@ const AdminAnekaSurat = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Upload Lampiran *
                   </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors bg-gray-50">
                     <input
                       type="file"
                       multiple
@@ -629,13 +729,13 @@ const AdminAnekaSurat = () => {
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <div className="text-sm text-gray-600">Pilih file dokumen</div>
-                      <div className="text-xs text-gray-500">(Bisa pilih lebih dari 1 file)</div>
+                      <div className="text-sm text-gray-700 font-medium">Pilih file dokumen</div>
+                      <div className="text-xs text-gray-500 mt-1">Bisa pilih lebih dari 1 file</div>
                     </label>
                   </div>
                   
                   {formData.files.length > 0 && (
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-4 space-y-2">
                       {formData.files.map((file, index) => (
                         <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                           <div className="flex items-center space-x-2">
@@ -658,7 +758,7 @@ const AdminAnekaSurat = () => {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="w-full bg-red-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-red-600 text-white py-3.5 px-4 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
                   {uploading ? 'Menyimpan...' : 'Simpan Aneka Surat'}
                 </button>

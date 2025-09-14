@@ -22,6 +22,7 @@ const LaporanKeuanganForm = () => {
   const envConfig = getEnvironmentConfig();
 
   const [formData, setFormData] = useState({
+    judul_laporan: '',
     tanggal_laporan: '',
     isi_laporan: '',
     images: []
@@ -334,6 +335,7 @@ const LaporanKeuanganForm = () => {
         });
 
         setFormData({
+          judul_laporan: laporanData.judul_laporan || '',
           tanggal_laporan: processedTanggal,
           isi_laporan: editorContent,
           images: processedImages
@@ -507,6 +509,16 @@ const LaporanKeuanganForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!formData.judul_laporan || formData.judul_laporan.trim() === '') {
+      toast.error('Judul laporan harus diisi');
+      return;
+    }
+
+    if (formData.judul_laporan.trim().length < 3) {
+      toast.error('Judul laporan minimal 3 karakter');
+      return;
+    }
+
     if (!formData.tanggal_laporan) {
       toast.error('Tanggal laporan harus diisi');
       return;
@@ -616,6 +628,7 @@ const LaporanKeuanganForm = () => {
       });
 
       const submitData = {
+        judul_laporan: formData.judul_laporan,
         tanggal_laporan: formData.tanggal_laporan,
         isi_laporan: editorContent,
         images: finalImages
@@ -771,6 +784,25 @@ const LaporanKeuanganForm = () => {
               <h2 className="text-lg font-semibold text-gray-900">Informasi Laporan</h2>
             </div>
             <div className="p-6 space-y-6">
+              {/* Judul Laporan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Judul Laporan *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="judul_laporan"
+                    value={formData.judul_laporan}
+                    onChange={handleInputChange}
+                    required
+                    placeholder="Masukkan judul laporan"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <FileText className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+
               {/* Tanggal Laporan */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

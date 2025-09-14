@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog';
+
 import { ownerDataBinaLingkunganService as service } from '../../../../services/dataBinaLingkunganService';
 import {
   Search,
@@ -403,60 +405,61 @@ const OwnerDataBinaLingkungan = () => {
         </div>
       </div>
 
-      {/* Modal Form */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4">
-          <div className="bg-white rounded shadow-lg w-full max-w-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-semibold">{editingId ? 'Edit' : 'Tambah'} Data</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-600">Tutup</button>
-            </div>
-            <form onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm mb-1">Lokasi</label>
-                <input name="lokasi" value={form.lokasi} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+      {/* Modal Form (Dialog) */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Edit Data Bina Lingkungan' : 'Tambah Data Bina Lingkungan'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={onSubmit}>
+            <DialogBody>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                  <input name="lokasi" value={form.lokasi} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                  <input name="jabatan" value={form.jabatan} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
+                  <input name="nama" value={form.nama} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                  <input name="no_hp" value={form.no_hp} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                  <textarea name="alamat" value={form.alamat} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nominal</label>
+                  <input name="nominal" value={form.nominal} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lampiran (opsional)</label>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={(e) => setFiles(e.target.files)}
+                    className="w-full border rounded px-3 py-2"
+                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+                  />
+                  {files && files.length > 0 && (
+                    <div className="text-xs text-gray-600 mt-1">{files.length} file dipilih</div>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm mb-1">Jabatan</label>
-                <input name="jabatan" value={form.jabatan} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Nama</label>
-                <input name="nama" value={form.nama} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">No HP</label>
-                <input name="no_hp" value={form.no_hp} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm mb-1">Alamat</label>
-                <textarea name="alamat" value={form.alamat} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm mb-1">Nominal</label>
-                <input name="nominal" value={form.nominal} onChange={onChangeForm} className="w-full border rounded px-3 py-2" required />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm mb-1">Lampiran (opsional)</label>
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) => setFiles(e.target.files)}
-                  className="w-full border rounded px-3 py-2"
-                  accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
-                />
-                {files && files.length > 0 && (
-                  <div className="text-xs text-gray-600 mt-1">{files.length} file dipilih</div>
-                )}
-              </div>
-              <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded">Batal</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Simpan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </DialogBody>
+            <DialogFooter>
+              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded">Batal</button>
+              <button type="submit" className="px-4 py-2 bg-red-700 text-white rounded">Simpan</button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

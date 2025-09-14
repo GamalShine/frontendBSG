@@ -256,24 +256,15 @@ const AdminKPI = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header - Dark Red (WhatsApp-like) */}
-      <div className="bg-red-800 text-white">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button className="p-2 text-white hover:bg-red-700 rounded-full transition-colors">
-                <ChevronRight className="h-5 w-5 rotate-180" />
-              </button>
+      {/* Header - unified style with badge */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.kpi}</span>
             <div>
-                <div className="text-xs font-medium text-red-200">{MENU_CODES.sdm.kpi}</div>
-                <div className="text-lg font-bold">KPI SDM</div>
-              </div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">KPI SDM</h1>
+              <p className="text-sm text-red-100">Kelola indikator kinerja SDM</p>
             </div>
-            <button className="p-2 text-white hover:bg-red-700 rounded-full transition-colors">
-              <div className="w-1 h-1 bg-white rounded-full mb-1"></div>
-              <div className="w-1 h-1 bg-white rounded-full mb-1"></div>
-              <div className="w-1 h-1 bg-white rounded-full"></div>
-            </button>
           </div>
         </div>
       </div>

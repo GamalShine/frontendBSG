@@ -4,6 +4,7 @@ import Button from '@/components/UI/Button';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { API_CONFIG } from '@/config/constants';
 import { MENU_CODES } from '@/config/menuCodes';
+import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Skema data yang dibutuhkan (mock):
 // {
@@ -170,6 +171,11 @@ const OwnerDaftarGaji = () => {
         pinjaman: sum(employees, 'pinjaman_karyawan'),
         pph21: sum(employees, 'pph21'),
       };
+      const totalsFromBackend = {
+        totalGaji: sum(employees, 'total_gaji'),
+        totalPotongan: sum(employees, 'total_potongan'),
+        totalGajiDibayarkan: sum(employees, 'total_gaji_dibayarkan'),
+      };
       const sample = employees[0];
       const monthsDiff = (start) => {
         if (!start) return null;
@@ -186,7 +192,7 @@ const OwnerDaftarGaji = () => {
         ...prev,
         payrollByDepartment: {
           ...prev.payrollByDepartment,
-          [deptId]: { employeeSample, earning, deduction },
+          [deptId]: { employeeSample, earning, deduction, totalsFromBackend },
         },
       }));
     } catch (e) {
@@ -203,9 +209,26 @@ const OwnerDaftarGaji = () => {
   const lastUpdatedText = new Date(data.lastUpdated).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const breakdown = selectedDept ? data.payrollByDepartment[selectedDept] : null;
-  const earningTotal = breakdown ? Object.values(breakdown.earning).reduce((a, b) => a + (b || 0), 0) : 0;
-  const deductionTotal = breakdown ? Object.values(breakdown.deduction).reduce((a, b) => a + (b || 0), 0) : 0;
-  const takeHomePay = earningTotal - deductionTotal;
+  const earningTotalComputed = breakdown ? Object.values(breakdown.earning).reduce((a, b) => a + (b || 0), 0) : 0;
+  const deductionTotalComputed = breakdown ? Object.values(breakdown.deduction).reduce((a, b) => a + (b || 0), 0) : 0;
+  const earningTotal = breakdown?.totalsFromBackend?.totalGaji ?? earningTotalComputed;
+  const deductionTotal = breakdown?.totalsFromBackend?.totalPotongan ?? deductionTotalComputed;
+  const takeHomePay = breakdown?.totalsFromBackend?.totalGajiDibayarkan ?? (earningTotalComputed - deductionTotalComputed);
+
+  // Helpers: jumlah orang per dept dan per branch dari hierarchy
+  const deptEmployeeCount = (deptId) => {
+    for (const div of hierarchy) {
+      for (const jab of (div.children || [])) {
+        if (String(jab.id) === String(deptId)) return (jab.children || []).length || 0;
+      }
+    }
+    return 0;
+  };
+  const branchEmployeeCount = (branchId) => {
+    const div = hierarchy.find(d => String(d.id) === String(branchId));
+    if (!div) return 0;
+    return (div.children || []).reduce((sum, jab) => sum + ((jab.children || []).length || 0), 0);
+  };
 
   return (
     <div className="space-y-6">
@@ -221,7 +244,10 @@ const OwnerDaftarGaji = () => {
           </div>
         </div>
       </div>
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-700 flex items-center gap-2">
+        <Clock className="h-4 w-4 text-gray-600" />
+        <span>Terakhir diupdate: {lastUpdatedText}</span>
+      </div>
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -244,29 +270,31 @@ const OwnerDaftarGaji = () => {
         </CardHeader>
         <CardContent>
           {/* Daftar Cabang */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             {data.branches.map((branch) => (
-              <div key={branch.id}>
+              <div key={branch.id} className="border border-gray-200 rounded-md overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleBranch(branch.id)}
-                  className={`w-full text-center border border-gray-300 rounded-sm py-2 font-semibold tracking-wide hover:bg-gray-50 transition ${expandedBranch === branch.id ? 'bg-gray-100' : ''}`}
+                  className="w-full flex items-center justify-between px-4 py-2 bg-red-700 text-white"
                 >
-                  {branch.name}
+                  <span className="font-semibold">{branch.name}</span>
+                  <span className="text-sm opacity-90">{branchEmployeeCount(branch.id)} orang {expandedBranch === branch.id ? <ChevronUp className="inline h-4 w-4 ml-2"/> : <ChevronDown className="inline h-4 w-4 ml-2"/>}</span>
                 </button>
                 {expandedBranch === branch.id && (
-                  <div className="mt-2 pl-2 space-y-2">
+                  <div className="bg-white">
                     {loadingDept && (!branch.departments || branch.departments.length === 0) && (
-                      <div className="text-sm text-gray-500 px-2">Memuat divisi...</div>
+                      <div className="text-sm text-gray-500 px-4 py-2">Memuat divisi...</div>
                     )}
-                    {branch.departments && branch.departments.map((dept) => (
+                    {(branch.departments || []).map((dept) => (
                       <button
                         key={dept.id}
                         type="button"
                         onClick={() => handleSelectDept(dept.id)}
-                        className={`w-full text-center border border-gray-300 rounded-sm py-2 text-sm font-semibold tracking-wide hover:bg-blue-50 transition ${selectedDept === dept.id ? 'bg-blue-100' : ''}`}
+                        className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-gray-100 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
                       >
-                        {dept.name}
+                        <span className="text-sm font-semibold text-gray-800">{dept.name}</span>
+                        <span className="text-xs text-gray-600">{deptEmployeeCount(dept.id)} orang</span>
                       </button>
                     ))}
                   </div>
@@ -283,46 +311,55 @@ const OwnerDaftarGaji = () => {
                   <div className="p-3 text-sm text-gray-500">Memuat ringkasan gaji...</div>
                 )}
                 {!loadingSummary && breakdown && (
-                <div className="grid grid-cols-2">
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">NAMA</div>
-                  <div className="border-b border-gray-300 p-2 text-sm">{breakdown.employeeSample.nama}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POSISI</div>
-                  <div className="border-b border-gray-300 p-2 text-sm">{breakdown.employeeSample.posisi}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LAMA BEKERJA</div>
-                  <div className="border-b border-gray-300 p-2 text-sm">{breakdown.employeeSample.lamaBekerjaBulan} bulan</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">GAJI POKOK</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.gajiPokok)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN KINERJA</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.tunjanganKinerja)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN POSISI</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.tunjanganPosisi)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">UANG MAKAN</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.uangMakan)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LEMBUR</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.lembur)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BONUS</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.bonus)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL GAJI</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(earningTotal)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POTONGAN</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.potongan)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJSTK</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.bpjstk)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KESEHATAN</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.bpjsKesehatan)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KES. PENAMBAHAN</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.bpjsKesPenambahan)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">SP 1/2</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.spi2)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PINJAMAN KARYAWAN</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.pinjaman)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PPH 21</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.pph21)}</div>
-                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL POTONGAN</div>
-                  <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(deductionTotal)}</div>
-                  <div className="col-span-2 p-2 text-sm font-semibold text-center">TOTAL GAJI YANG DI BAYARKAN</div>
-                  <div className="col-span-2 border-t border-gray-300 p-3 text-center text-lg font-bold font-mono">{currency(takeHomePay)}</div>
-                </div>
+                  <div className="w-full">
+                    {/* Highlight nama karyawan */}
+                    <div className="px-4 py-3 bg-red-50 text-red-800 font-semibold border-b border-gray-200">{breakdown.employeeSample.nama}</div>
+                    <div className="grid grid-cols-2">
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">NAMA</div>
+                      <div className="border-b border-gray-300 p-2 text-sm">{breakdown.employeeSample.nama}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">DIVISI</div>
+                      <div className="border-b border-gray-300 p-2 text-sm">{data.branches.find(b => (b.departments||[]).some(d => String(d.id)===String(selectedDept)))?.name || '-'}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POSISI</div>
+                      <div className="border-b border-gray-300 p-2 text-sm">{breakdown.employeeSample.posisi}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LAMA BEKERJA</div>
+                      <div className="border-b border-gray-300 p-2 text-sm">{breakdown.employeeSample.lamaBekerjaBulan} bulan</div>
+
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">GAJI POKOK</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.gajiPokok)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN KINERJA</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.tunjanganKinerja)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN POSISI</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.tunjanganPosisi)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">UANG MAKAN</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.uangMakan)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LEMBUR</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.lembur)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BONUS</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.earning.bonus)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL GAJI</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(earningTotal)}</div>
+
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POTONGAN</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.potongan)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJSTK</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.bpjstk)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KESEHATAN</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.bpjsKesehatan)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KES PENAMBAHAN</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.bpjsKesPenambahan)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">SP 1/2</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.spi2)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PINJAMAN KARYAWAN</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.pinjaman)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PPH 21</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(breakdown.deduction.pph21)}</div>
+                      <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL POTONGAN</div>
+                      <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(deductionTotal)}</div>
+
+                      <div className="col-span-2 p-2 text-sm font-semibold text-center">TOTAL GAJI DIBAYARKAN</div>
+                      <div className="col-span-2 border-t border-gray-300 p-3 text-center text-lg font-bold font-mono">{currency(takeHomePay)}</div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

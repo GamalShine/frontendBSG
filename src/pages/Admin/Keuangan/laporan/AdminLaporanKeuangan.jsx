@@ -16,6 +16,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminLaporanKeuangan = () => {
   const navigate = useNavigate();
@@ -251,12 +252,15 @@ const AdminLaporanKeuangan = () => {
 
   return (
     <div className="px-0 py-2 bg-gray-50 min-h-screen">
-      {/* Header ala Owner */}
+      {/* Header + Badge Code */}
       <div className="bg-red-800 text-white p-4 mb-0">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
-            <p className="text-sm opacity-90">Admin - Keuangan</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
+            <div>
+              <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
+              <p className="text-sm opacity-90">Admin - Keuangan</p>
+            </div>
           </div>
           <button
             onClick={() => navigate('/admin/keuangan/laporan/new')}

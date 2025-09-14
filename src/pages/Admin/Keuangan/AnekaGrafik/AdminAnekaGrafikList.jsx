@@ -317,20 +317,6 @@ const AdminAnekaGrafikList = () => {
               PENCARIAN
             </button>
             <button
-              onClick={resetFilters}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              RESET FILTER
-            </button>
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span className="font-semibold">Refresh</span>
-            </button>
-            <button
               onClick={handleAdd}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >

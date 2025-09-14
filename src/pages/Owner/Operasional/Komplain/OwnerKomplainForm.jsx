@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
@@ -14,17 +14,25 @@ import {
   Save, 
   X 
 } from 'lucide-react';
+import { userService } from '@/services/userService';
+import { komplainService } from '@/services/komplainService';
+import toast from 'react-hot-toast';
 
 const OwnerKomplainForm = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     judul_komplain: '',
     deskripsi_komplain: '',
-    kategori: '',
-    prioritas: '',
+    kategori: 'lainnya',
+    prioritas: 'berproses',
     status: 'menunggu',
-    target_selesai: ''
+    target_selesai: '',
+    penerima_komplain_id: '',
+    pihak_terkait: []
   });
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [pihakSelect, setPihakSelect] = useState('');
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -33,26 +41,68 @@ const OwnerKomplainForm = () => {
     }));
   };
 
+  // Batas tanggal minimum untuk target_selesai (tidak boleh tanggal lampau)
+  const today = new Date().toISOString().split('T')[0];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.judul_komplain || !formData.deskripsi_komplain || 
-        !formData.kategori || !formData.prioritas) {
-      alert('Mohon lengkapi semua field yang wajib diisi');
+    if (!formData.judul_komplain || !formData.deskripsi_komplain || !formData.kategori || !formData.prioritas) {
+      toast.error('Mohon lengkapi semua field yang wajib diisi');
       return;
     }
 
     try {
-      // Simulate API call
-      console.log('Creating komplain:', formData);
-      alert('Komplain berhasil dibuat');
-      navigate('/owner/operasional/komplain');
+      const payload = {
+        judul_komplain: formData.judul_komplain.trim(),
+        deskripsi_komplain: formData.deskripsi_komplain.trim(),
+        kategori: formData.kategori || 'lainnya',
+        prioritas: formData.prioritas || 'berproses',
+        status: formData.status || 'menunggu',
+        penerima_komplain_id: formData.penerima_komplain_id ? Number(formData.penerima_komplain_id) : undefined,
+        // Kirim sebagai array angka; backend akan stringify
+        pihak_terkait: Array.isArray(formData.pihak_terkait)
+          ? formData.pihak_terkait.map((n) => Number(n))
+          : (formData.pihak_terkait || [])
+              .toString()
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((n) => Number(n)),
+        lampiran: [],
+        target_selesai: formData.target_selesai || undefined,
+      }
+      await komplainService.createKomplain(payload)
+      toast.success('Komplain berhasil dibuat')
+      navigate('/owner/operasional/komplain')
     } catch (err) {
-      alert('Gagal membuat komplain');
-      console.error('Error creating komplain:', err);
+      const msg = typeof err === 'string' ? err : err?.message || 'Gagal membuat komplain'
+      toast.error(msg)
+      console.error('Error creating komplain:', err)
     }
   };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingUsers(true)
+        const res = await userService.getUsers({ page: 1, limit: 100 })
+        if (res?.success) {
+          setUsers(res.data?.users || [])
+        } else if (Array.isArray(res)) {
+          setUsers(res)
+        } else if (Array.isArray(res?.data)) {
+          setUsers(res.data)
+        }
+      } catch (e) {
+        console.error('Gagal memuat users untuk owner komplain form:', e)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+    load()
+  }, [])
 
   return (
     <div className="p-6 space-y-6">
@@ -110,9 +160,7 @@ const OwnerKomplainForm = () => {
 
               {/* Kategori */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Kategori <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Kategori <span className="text-red-500">*</span></label>
                 <Select 
                   value={formData.kategori} 
                   onValueChange={(value) => handleInputChange('kategori', value)}
@@ -131,9 +179,7 @@ const OwnerKomplainForm = () => {
 
               {/* Prioritas */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Prioritas <span className="text-red-500">*</span>
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Prioritas <span className="text-red-500">*</span></label>
                 <Select 
                   value={formData.prioritas} 
                   onValueChange={(value) => handleInputChange('prioritas', value)}
@@ -149,11 +195,9 @@ const OwnerKomplainForm = () => {
                 </Select>
               </div>
 
-              {/* Status - Default to 'menunggu' for new komplain */}
+              {/* Status - Default 'menunggu' */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                 <Select 
                   value={formData.status} 
                   onValueChange={(value) => handleInputChange('status', value)}
@@ -179,7 +223,68 @@ const OwnerKomplainForm = () => {
                   type="date"
                   value={formData.target_selesai}
                   onChange={(e) => handleInputChange('target_selesai', e.target.value)}
+                  min={today}
                 />
+              </div>
+
+              {/* Penerima Komplain */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Penerima Komplain</label>
+                <select
+                  value={formData.penerima_komplain_id}
+                  onChange={(e) => handleInputChange('penerima_komplain_id', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="">-- Pilih User --</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.username || u.nama || u.full_name || `User ${u.id}`}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Pihak Terkait (single select + Tambah + chips) */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pihak Terkait</label>
+                <div className="flex gap-2">
+                  <select
+                    value={pihakSelect}
+                    onChange={(e) => setPihakSelect(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">-- Pilih User --</option>
+                    {users
+                      .filter((u) => !(formData.pihak_terkait || []).some((id) => String(id) === String(u.id)))
+                      .map((u) => (
+                        <option key={u.id} value={u.id}>{u.username || u.nama || u.full_name || `User ${u.id}`}</option>
+                      ))}
+                  </select>
+                  <Button type="button" onClick={() => {
+                    if (!pihakSelect) return;
+                    if ((formData.pihak_terkait||[]).some((id)=> String(id)===String(pihakSelect))) return;
+                    handleInputChange('pihak_terkait', [...(formData.pihak_terkait||[]), pihakSelect]);
+                    setPihakSelect('');
+                  }}>
+                    Tambah
+                  </Button>
+                </div>
+                <div className="mt-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[60px] max-h-40 overflow-y-auto">
+                  {(formData.pihak_terkait||[]).length === 0 ? (
+                    <span className="text-xs text-gray-500">Belum ada pihak terkait yang dipilih</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {users
+                        .filter((u) => (formData.pihak_terkait||[]).some((id)=> String(id)===String(u.id)))
+                        .map((u) => (
+                          <span key={`pt-${u.id}`} className="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-full bg-red-50 text-red-700 border border-red-200">
+                            {u.username || u.nama || u.full_name || `User ${u.id}`}
+                            <button type="button" className="ml-1 text-red-600 hover:text-red-800" onClick={() => {
+                              handleInputChange('pihak_terkait', (formData.pihak_terkait||[]).filter((id)=> String(id)!==String(u.id)))
+                            }}>×</button>
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

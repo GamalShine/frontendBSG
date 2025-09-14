@@ -17,5 +17,21 @@ export const dataSewaService = {
   getById: async (id) => {
     const res = await api.get(`/admin/data-sewa/${id}`);
     return res.data;
+  },
+  create: async (formData) => {
+    const res = await api.post('/admin/data-sewa', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  update: async (id, formData) => {
+    const res = await api.put(`/admin/data-sewa/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  remove: async (id) => {
+    const res = await api.delete(`/admin/data-sewa/${id}`);
+    return res.data;
   }
 };

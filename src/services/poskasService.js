@@ -12,6 +12,28 @@ export const poskasService = {
         }
     },
 
+    // Search poskas by term
+    async searchPoskas(searchTerm) {
+        try {
+            const url = API_ENDPOINTS.POSKAS.SEARCH(searchTerm)
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get poskas by month (year, month as numbers)
+    async getPoskasByMonth(year, month) {
+        try {
+            const url = API_ENDPOINTS.POSKAS.MONTH(year, month)
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
     // Get poskas by ID
     async getPoskasById(id) {
         try {

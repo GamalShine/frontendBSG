@@ -20,16 +20,20 @@ const OwnerDaftarKomplainForm = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [users, setUsers] = useState([]);
+  const [pihakSelect, setPihakSelect] = useState('');
 
   useEffect(() => {
     const loadUsers = async () => {
       try {
         const res = await userService.getUsers({ page: 1, limit: 100 });
-        if (res?.success) {
-          setUsers(res.data?.users || []);
-        } else if (Array.isArray(res)) {
-          setUsers(res);
-        }
+        const list = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res?.data?.users)
+          ? res.data.users
+          : Array.isArray(res)
+          ? res
+          : [];
+        setUsers(list);
       } catch (e) {
         console.error('Gagal memuat users untuk selector:', e);
         toast.error('Gagal memuat daftar user');
@@ -56,9 +60,24 @@ const OwnerDaftarKomplainForm = () => {
     });
   };
 
-  const onChangeMultiPihakTerkait = (e) => {
-    const selected = Array.from(e.target.selectedOptions).map((opt) => opt.value);
-    setForm((prev) => ({ ...prev, pihak_terkait: selected }));
+  const addPihakTerkait = () => {
+    if (!pihakSelect) return;
+    setForm((prev) => {
+      const exists = Array.isArray(prev.pihak_terkait)
+        ? prev.pihak_terkait.some((id) => String(id) === String(pihakSelect))
+        : false;
+      if (exists) return prev;
+      const next = [...(prev.pihak_terkait || []), pihakSelect];
+      return { ...prev, pihak_terkait: next };
+    });
+    setPihakSelect('');
+  };
+
+  const removePihakTerkait = (id) => {
+    setForm((prev) => ({
+      ...prev,
+      pihak_terkait: (prev.pihak_terkait || []).filter((x) => String(x) !== String(id))
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -75,17 +94,15 @@ const OwnerDaftarKomplainForm = () => {
       prioritas: form.prioritas || 'berproses',
       status: form.status || 'menunggu',
       penerima_komplain_id: form.penerima_komplain_id ? Number(form.penerima_komplain_id) : undefined,
-      pihak_terkait: JSON.stringify(
-        Array.isArray(form.pihak_terkait)
-          ? form.pihak_terkait.map((n) => Number(n))
-          : (form.pihak_terkait || '')
-              .toString()
-              .split(',')
-              .map((s) => s.trim())
-              .filter(Boolean)
-              .map((n) => Number(n))
-      ),
-      lampiran: JSON.stringify([]),
+      pihak_terkait: Array.isArray(form.pihak_terkait)
+        ? form.pihak_terkait.map((n) => Number(n))
+        : (form.pihak_terkait || '')
+            .toString()
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((n) => Number(n)),
+      lampiran: [],
       target_selesai: form.target_selesai || undefined,
     };
 
@@ -216,27 +233,85 @@ const OwnerDaftarKomplainForm = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">-- Pilih User --</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nama || u.full_name || u.username || `User ${u.id}`}</option>
-                ))}
+                {users.map((u) => {
+                  const label = u.username || u.nama || u.full_name || u.name || u.nama_lengkap || u.displayName || u.email || `User ${u.id}`;
+                  return (
+                    <option key={u.id} value={`${u.id}`}>{label}</option>
+                  );
+                })}
               </select>
               <p className="mt-1 text-xs text-gray-500">Opsional. Jika diisi, komplain akan ditugaskan ke user tersebut.</p>
+              {form.penerima_komplain_id && (
+                (() => {
+                  const sel = users.find((u) => String(u.id) === String(form.penerima_komplain_id));
+                  if (!sel) return null;
+                  const label = sel.username || sel.nama || sel.full_name || sel.name || sel.nama_lengkap || sel.displayName || sel.email || `User ${sel.id}`;
+                  return (
+                    <div className="mt-2 text-xs text-gray-700">
+                      Dipilih: <span className="font-semibold">{label}</span>{sel.email ? ` • ${sel.email}` : ''}
+                    </div>
+                  );
+                })()
+              )}
             </div>
 
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">Pihak Terkait</label>
-              <select
-                multiple
-                name="pihak_terkait"
-                value={form.pihak_terkait}
-                onChange={onChangeMultiPihakTerkait}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-red-500 focus:border-transparent h-32"
-              >
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.nama || u.full_name || u.username || `User ${u.id}`}</option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-500">Bisa pilih lebih dari satu.</p>
+              <div className="flex gap-2">
+                <select
+                  name="pihak_terkait_select"
+                  value={pihakSelect}
+                  onChange={(e) => setPihakSelect(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">-- Pilih User --</option>
+                  {users
+                    .filter((u) => !(form.pihak_terkait || []).some((id) => String(id) === String(u.id)))
+                    .map((u) => {
+                      const label = u.username || u.nama || u.full_name || u.name || u.nama_lengkap || u.displayName || u.email || `User ${u.id}`;
+                      return (
+                        <option key={u.id} value={`${u.id}`}>{label}</option>
+                      );
+                    })}
+                </select>
+                <button
+                  type="button"
+                  onClick={addPihakTerkait}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Tambah
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">Tambah beberapa pihak terkait dengan memilih dari dropdown lalu klik Tambah.</p>
+              <div className="mt-2 p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-[80px] max-h-40 overflow-y-auto">
+                {Array.isArray(form.pihak_terkait) && form.pihak_terkait.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {users
+                      .filter((u) => (form.pihak_terkait || []).some((id) => String(id) === String(u.id)))
+                      .map((u) => {
+                        const label = u.nama || u.full_name || u.username || `User ${u.id}`;
+                        return (
+                          <span
+                            key={`pt-${u.id}`}
+                            className="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-full bg-red-50 text-red-700 border border-red-200"
+                          >
+                            {label}
+                            <button
+                              type="button"
+                              onClick={() => removePihakTerkait(u.id)}
+                              className="ml-1 text-red-600 hover:text-red-800"
+                              aria-label={`Hapus ${label}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-500">Belum ada pihak terkait yang dipilih</span>
+                )}
+              </div>
             </div>
 
             <div>

@@ -135,6 +135,19 @@ export const ownerTrainingService = {
         }
     },
 
+    // Export owner trainings as CSV
+    async exportOwnerTrainings(params = {}) {
+        try {
+            const response = await api.get('/owner/training/export', {
+                params,
+                responseType: 'blob'
+            })
+            return { success: true, data: response.data }
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
     // Get training by status
     async getOwnerTrainingByStatus(status, params = {}) {
         try {

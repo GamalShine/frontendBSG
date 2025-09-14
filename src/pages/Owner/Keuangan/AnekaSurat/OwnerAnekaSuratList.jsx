@@ -386,31 +386,7 @@ const OwnerAnekaSuratList = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
-            <button
-              onClick={resetFilters}
-              aria-label="Reset Filter"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span className="hidden sm:inline font-semibold">RESET FILTER</span>
-            </button>
-            <button
-              onClick={loadAnekaSurat}
-              aria-label="Refresh"
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
-            >
-              <ChevronDown className={`h-4 w-4 rotate-180 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline font-semibold">Refresh</span>
-            </button>
-            <button
-              onClick={() => setShowAddModal(true)}
-              aria-label="Tambah Aneka Surat"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline font-semibold">Tambah</span>
-            </button>
+            {/* Tombol header disembunyikan untuk Owner (view-only) */}
           </div>
         </div>
       </div>
@@ -477,9 +453,9 @@ const OwnerAnekaSuratList = () => {
                   </button>
 
                   {expandedCategories.has(jenis) && (
-                    <div className="p-4 space-y-4">
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {documents.map((doc) => (
-                        <div key={doc.id} className="border border-gray-200 rounded-lg p-4">
+                        <div key={doc.id} className="border border-gray-200 rounded-lg p-4 h-full flex flex-col">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <h3 className="font-bold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
@@ -492,24 +468,10 @@ const OwnerAnekaSuratList = () => {
                                 {doc.user_nama || 'Admin'}
                               </div>
                             </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => openEditModal(doc)}
-                                className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => openDeleteModal(doc)}
-                                className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
                           </div>
 
                           {doc.lampiran && (
-                            <div>
+                            <div className="mt-3">
                               <div className="flex items-center text-sm text-gray-600 mb-2">
                                 <Paperclip className="w-4 h-4 mr-1" />
                                 {Array.isArray(doc.lampiran) ? doc.lampiran.length : 1} Lampiran

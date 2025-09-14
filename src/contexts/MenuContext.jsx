@@ -186,6 +186,12 @@ export const MenuProvider = ({ children }) => {
               permissions: ['read']
             },
             {
+              id: 'data-training',
+              title: 'DATA TRAINING',
+              path: '/owner/training',
+              permissions: ['read']
+            },
+            {
               id: 'tim-merah-biru',
               title: 'TIM MERAH/BIRU',
               path: '/owner/sdm/tim-merah-biru',

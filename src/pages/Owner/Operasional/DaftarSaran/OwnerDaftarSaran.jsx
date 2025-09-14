@@ -5,8 +5,8 @@ import Card, { CardHeader, CardBody } from '@/components/UI/Card'
 import Button from '@/components/UI/Button'
 import Input from '@/components/UI/Input'
 import Table, { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/UI/Table'
-import { Dialog, DialogContent, DialogHeader as UIDialogHeader, DialogTitle } from '@/components/UI/Dialog'
-import { Search, Filter, Plus, Edit, Trash2, Eye, Calendar, TrendingUp, DollarSign, RefreshCw } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog'
+import { Search, Filter, Plus, Edit, Trash2, Eye, Calendar, TrendingUp, DollarSign, RefreshCw, MoreVertical, Copy as CopyIcon, Share2 } from 'lucide-react'
 import { MENU_CODES } from '@/config/menuCodes'
 
 const OwnerDaftarSaran = () => {
@@ -24,6 +24,7 @@ const OwnerDaftarSaran = () => {
   const [submitting, setSubmitting] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [selectedItems, setSelectedItems] = useState([])
+  const [showBulkMenu, setShowBulkMenu] = useState(false)
 
   const roleLabel = '- Owner'
   const useOwnerEndpoint = true // Owner melihat semua data
@@ -43,6 +44,60 @@ const OwnerDaftarSaran = () => {
     } finally {
       setLoading(false)
     }
+
+  // Bulk helper untuk teks gabungan
+  const getSelectedEntries = () => {
+    if (!Array.isArray(selectedItems) || selectedItems.length === 0) return []
+    const byId = new Map((items || []).map(it => [it.id, it]))
+    return selectedItems.map(id => byId.get(id)).filter(Boolean)
+  }
+
+  const handleBulkCopy = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu saran terlebih dahulu')
+    const combined = entries.map(e => {
+      const tgl = e.created_at ? new Date(e.created_at).toLocaleDateString('id-ID', { year:'numeric', month:'long', day:'numeric' }) : '-'
+      return `${tgl}\n${e.nama || '-'} — ${e.saran || '-'}${e.deskripsi_saran ? `, ${e.deskripsi_saran}` : ''}`
+    }).join('\n\n---\n\n')
+    await navigator.clipboard.writeText(combined)
+    toast.success(`Menyalin ${entries.length} saran`)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkDownload = () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu saran terlebih dahulu')
+    const combined = entries.map(e => {
+      const tgl = e.created_at ? new Date(e.created_at).toLocaleDateString('id-ID', { year:'numeric', month:'long', day:'numeric' }) : '-'
+      return `${tgl}\n${e.nama || '-'} — ${e.saran || '-'}${e.deskripsi_saran ? `, ${e.deskripsi_saran}` : ''}`
+    }).join('\n\n---\n\n')
+    const blob = new Blob([combined], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `owner_saran_selected_${entries.length}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    setShowBulkMenu(false)
+  }
+
+  const handleBulkShare = async () => {
+    const entries = getSelectedEntries()
+    if (entries.length === 0) return toast.error('Pilih minimal satu saran terlebih dahulu')
+    const combined = entries.map(e => {
+      const tgl = e.created_at ? new Date(e.created_at).toLocaleDateString('id-ID', { year:'numeric', month:'long', day:'numeric' }) : '-'
+      return `${tgl}\n${e.nama || '-'} — ${e.saran || '-'}${e.deskripsi_saran ? `, ${e.deskripsi_saran}` : ''}`
+    }).join('\n\n---\n\n')
+    if (navigator.share) {
+      try { await navigator.share({ title: `Saran (${entries.length})`, text: combined }) } catch {}
+    } else {
+      await navigator.clipboard.writeText(combined)
+      toast.success('Teks disalin untuk dibagikan')
+    }
+    setShowBulkMenu(false)
+  }
   }
 
   // Selection handlers
@@ -228,46 +283,34 @@ const OwnerDaftarSaran = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.daftarSaran}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">SARAN {roleLabel}</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR SARAN</h1>
               <p className="text-sm text-red-100">Kelola saran dari outlet/pegawai</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              className="px-4 py-2 rounded-full border border-white/60 text-white bg-transparent"
             >
               PENCARIAN
             </button>
             <button
               onClick={() => { fetchData() }}
-              className="px-3 py-2 rounded-lg border border-white/60 text-white hover:bg-white/10 inline-flex items-center gap-2"
+              className="px-4 py-2 rounded-full border border-white/60 text-white bg-transparent inline-flex items-center gap-2"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
-            <div className="relative group">
-              <button className="p-2 hover:bg-red-700 rounded-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.75a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 13.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM12 20.25a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" />
-                </svg>
-              </button>
-              <div className="hidden group-hover:block absolute right-0 mt-2 w-40 bg-white text-gray-700 rounded-lg shadow-lg overflow-hidden z-20">
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Bagikan</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Copy</button>
-                <button className="w-full text-left px-4 py-2 hover:bg-gray-50">Download PDF</button>
-              </div>
-            </div>
-            <Button className="bg-white text-red-700 hover:bg-red-50" onClick={openCreate}>
-              <Plus className="w-4 h-4 mr-2" />
-              Tambah
+            <Button className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent" onClick={openCreate}>
+              <Plus className="w-4 h-4" />
+              <span className="font-semibold">Tambah</span>
             </Button>
           </div>
         </div>
       </div>
       <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
-      <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -351,43 +394,64 @@ const OwnerDaftarSaran = () => {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-6 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">List Saran</h2>
-            {selectedItems.length > 0 && (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-600">{selectedItems.length} item dipilih</span>
-                <Button onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700 text-white">
-                  <Trash2 className="w-4 h-4 mr-2" /> Hapus ({selectedItems.length})
-                </Button>
+            <h2 className="text-base font-semibold text-gray-900">Daftar Saran</h2>
+            <div className="flex items-center gap-3">
+              {selectedItems.length > 0 && (
+                <>
+                  <span className="text-sm text-gray-600 hidden sm:inline">{selectedItems.length} item dipilih</span>
+                  <Button onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700 text-white">
+                    <Trash2 className="w-4 h-4 mr-2" /> Hapus ({selectedItems.length})
+                  </Button>
+                </>
+              )}
+              <div className="relative">
+                <button
+                  onClick={() => setShowBulkMenu(v => !v)}
+                  aria-label="Aksi massal"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+                {showBulkMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
+                    <div className="py-1">
+                      <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                      <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                      <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </CardHeader>
-        <CardBody>
+        <CardBody className="p-0">
           <div className="relative overflow-x-auto max-h-[60vh] overflow-y-auto">
             <Table>
-              <TableHeader className="sticky top-0 bg-red-50 z-10">
+              <TableHeader className="sticky top-0 bg-red-700 z-10">
                 <TableRow>
-                  <TableHead>
+                  <TableHead className="pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
                     <input
                       type="checkbox"
                       onChange={handleSelectAll}
                       checked={filteredItems.length > 0 && selectedItems.length === filteredItems.length}
-                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      className="rounded border-white text-white focus:ring-white"
                     />
                   </TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Saran</TableHead>
-                  <TableHead>Deskripsi</TableHead>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Aksi</TableHead>
+                  <TableHead className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</TableHead>
+                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</TableHead>
+                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Saran</TableHead>
+                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Deskripsi</TableHead>
+                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Nama</TableHead>
+                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredItems.map((item) => (
+                {filteredItems.map((item, idx) => (
                   <TableRow key={item.id} className="hover:bg-gray-50/80">
-                    <TableCell>
+                    <TableCell className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
                       <input
                         type="checkbox"
                         checked={selectedItems.includes(item.id)}
@@ -395,32 +459,39 @@ const OwnerDaftarSaran = () => {
                         className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{item.nama}</TableCell>
-                    <TableCell className="max-w-sm truncate" title={item.saran}>{item.saran}</TableCell>
-                    <TableCell className="max-w-md truncate" title={item.deskripsi_saran || '-'}>
-                      {item.deskripsi_saran || '-'}
+                    <TableCell className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</TableCell>
+                    <TableCell className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase() : '-'}
                     </TableCell>
-                    <TableCell>
-                      {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : '-'}
+                    <TableCell className="px-12 py-4 text-sm text-gray-900">
+                      <div className="md:truncate max-w-[14rem] md:max-w-md" title={item.saran || '-'}>
+                        {item.saran || '-'}
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openDetail(item)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(item)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                    <TableCell className="px-12 py-4 text-sm text-gray-900">
+                      <div className="md:truncate max-w-[14rem] md:max-w-md" title={item.deskripsi_saran || '-'}>
+                        {item.deskripsi_saran || '-'}
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama || '-'}</TableCell>
+                    <TableCell className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => openDetail(item)} className="text-blue-600 hover:text-blue-900" title="Lihat">
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => openEdit(item)} className="text-green-600 hover:text-green-900" title="Edit">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleDelete(item)} className="text-red-600 hover:text-red-900" title="Hapus">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
                 {filteredItems.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-gray-500 py-6">
+                    <TableCell colSpan={7} className="text-center text-gray-500 py-6">
                       Tidak ada data
                     </TableCell>
                   </TableRow>
@@ -432,79 +503,87 @@ const OwnerDaftarSaran = () => {
       </Card>
 
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg">
-          <UIDialogHeader>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
             <DialogTitle>{current ? 'Edit Saran' : 'Tambah Saran'}</DialogTitle>
-          </UIDialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Saran<span className="text-red-500">*</span></label>
-              <Input
-                value={formData.saran}
-                onChange={(e) => setFormData((p) => ({ ...p, saran: e.target.value }))}
-                placeholder="Tulis saran singkat"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-              <textarea
-                value={formData.deskripsi_saran}
-                onChange={(e) => setFormData((p) => ({ ...p, deskripsi_saran: e.target.value }))}
-                placeholder="Detail saran (opsional)"
-                rows={4}
-                className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <DialogBody>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Saran<span className="text-red-500">*</span></label>
+                  <Input
+                    value={formData.saran}
+                    onChange={(e) => setFormData((p) => ({ ...p, saran: e.target.value }))}
+                    placeholder="Tulis saran singkat"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
+                  <textarea
+                    value={formData.deskripsi_saran}
+                    onChange={(e) => setFormData((p) => ({ ...p, deskripsi_saran: e.target.value }))}
+                    placeholder="Detail saran (opsional)"
+                    rows={4}
+                    className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </DialogBody>
+            <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                 Batal
               </Button>
               <Button type="submit" disabled={submitting}>
                 {submitting ? 'Menyimpan...' : 'Simpan'}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
       <Dialog open={showDetail} onOpenChange={setShowDetail}>
         <DialogContent className="max-w-xl">
-          <UIDialogHeader>
+          <DialogHeader>
             <DialogTitle>Detail Saran</DialogTitle>
-          </UIDialogHeader>
+          </DialogHeader>
           {current && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500">Nama</p>
-                <p className="font-medium">{current.nama}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Saran</p>
-                <p className="font-medium">{current.saran}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Deskripsi</p>
-                <p>{current.deskripsi_saran || '-'}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-500">Dibuat</p>
-                  <p>{current.created_at ? new Date(current.created_at).toLocaleString('id-ID') : '-'}</p>
+            <>
+              <DialogBody>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Nama</p>
+                    <p className="font-medium">{current.nama}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Saran</p>
+                    <p className="font-medium">{current.saran}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Deskripsi</p>
+                    <p>{current.deskripsi_saran || '-'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Dibuat</p>
+                      <p>{current.created_at ? new Date(current.created_at).toLocaleString('id-ID') : '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Diupdate</p>
+                      <p>{current.updated_at ? new Date(current.updated_at).toLocaleString('id-ID') : '-'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Diupdate</p>
-                  <p>{current.updated_at ? new Date(current.updated_at).toLocaleString('id-ID') : '-'}</p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
+              </DialogBody>
+              <DialogFooter>
                 <Button variant="outline" onClick={() => setShowDetail(false)}>Tutup</Button>
                 <Button onClick={() => { setShowDetail(false); openEdit(current) }}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
                 </Button>
-              </div>
-            </div>
+              </DialogFooter>
+            </>
           )}
         </DialogContent>
       </Dialog>
