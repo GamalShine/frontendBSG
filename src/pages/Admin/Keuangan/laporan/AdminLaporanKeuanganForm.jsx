@@ -22,6 +22,7 @@ const AdminLaporanKeuanganForm = () => {
   const envConfig = getEnvironmentConfig();
 
   const [formData, setFormData] = useState({
+    judul_laporan: '',
     tanggal_laporan: '',
     isi_laporan: '',
     images: []
@@ -326,6 +327,7 @@ const AdminLaporanKeuanganForm = () => {
         });
 
         setFormData({
+          judul_laporan: laporanData.judul_laporan || '',
           tanggal_laporan: processedTanggal,
           isi_laporan: editorContent,
           images: processedImages
@@ -418,55 +420,70 @@ const AdminLaporanKeuanganForm = () => {
     const content = editorRef.current.innerHTML;
     if (!content || content.trim() === '') return '';
 
-    console.log('🔍 Debug: Getting editor content:', content);
+    let html = content;
 
-    let processedContent = content;
-
-    // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
+    // Convert existing image tags with data-image-id to placeholders [IMG:id]
     const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
-    processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
-      console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
-      return `[IMG:${imageId}]`;
-    });
+    html = html.replace(existingImgRegex, (_m, imageId) => `[IMG:${imageId}]`);
 
-    // Then, replace base64 images with [IMG:id] placeholders
+    // Convert base64 images to placeholders as well
     const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-    let imgMatch;
-    let imgIndex = 0;
-
-    while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-      // Generate new ID for base64 images
-      const timestamp = Date.now();
-      const imgId = timestamp + Math.floor(Math.random() * 1000);
-      console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
-
-      const placeholder = `[IMG:${imgId}]`;
-      processedContent = processedContent.replace(imgMatch[0], placeholder);
-      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
-      imgIndex++;
+    let match;
+    while ((match = base64ImgRegex.exec(html)) !== null) {
+      const imgId = Date.now() + Math.floor(Math.random() * 1000);
+      html = html.replace(match[0], `[IMG:${imgId}]`);
     }
 
-    // Remove any remaining HTML tags but keep line breaks
-    processedContent = processedContent
-      .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-      .replace(/<\/div>/gi, '') // Remove closing div tags
-      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-      .replace(/&amp;/g, '&') // Convert &amp; to &
-      .replace(/&lt;/g, '<') // Convert &lt; to <
-      .replace(/&gt;/g, '>') // Convert &gt; to >
-      .replace(/&quot;/g, '"') // Convert &quot; to "
-      .replace(/&#39;/g, "'") // Convert &#39; to '
-      .trim();
+    // Normalize <b>/<i> to semantic tags
+    html = html.replace(/<\s*b\s*>/gi, '<strong>')
+               .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+               .replace(/<\s*i\s*>/gi, '<em>')
+               .replace(/<\s*\/\s*i\s*>/gi, '</em>');
 
-    console.log('🔍 Debug: Processed content:', processedContent);
-    return processedContent;
+    // Turn paragraph endings into <br>
+    html = html.replace(/<\s*p[^>]*>/gi, '')
+               .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+               .replace(/<\s*div[^>]*>/gi, '')
+               .replace(/<\s*\/\s*div\s*>/gi, '');
+
+    // Allow only <strong>, <em>, <u>, <br>; remove others
+    const placeholders = {
+      strongOpen: '%%STRONG_OPEN%%', strongClose: '%%STRONG_CLOSE%%',
+      emOpen: '%%EM_OPEN%%', emClose: '%%EM_CLOSE%%',
+      uOpen: '%%U_OPEN%%', uClose: '%%U_CLOSE%%',
+      brTag: '%%BR%%'
+    };
+    html = html.replace(/<strong>/gi, placeholders.strongOpen)
+               .replace(/<\/strong>/gi, placeholders.strongClose)
+               .replace(/<em>/gi, placeholders.emOpen)
+               .replace(/<\/em>/gi, placeholders.emClose)
+               .replace(/<u>/gi, placeholders.uOpen)
+               .replace(/<\/u>/gi, placeholders.uClose)
+               .replace(/<br\s*\/?\s*>/gi, placeholders.brTag);
+
+    // Strip remaining tags
+    html = html.replace(/<[^>]*>/g, '');
+
+    // Restore allowed tags
+    html = html.replace(new RegExp(placeholders.strongOpen, 'gi'), '<strong>')
+               .replace(new RegExp(placeholders.strongClose, 'gi'), '</strong>')
+               .replace(new RegExp(placeholders.emOpen, 'gi'), '<em>')
+               .replace(new RegExp(placeholders.emClose, 'gi'), '</em>')
+               .replace(new RegExp(placeholders.uOpen, 'gi'), '<u>')
+               .replace(new RegExp(placeholders.uClose, 'gi'), '</u>')
+               .replace(new RegExp(placeholders.brTag, 'gi'), '<br>');
+
+    // Basic sanitize
+    html = html.replace(/<script.*?>[\s\S]*?<\/script>/gi, '')
+               .replace(/&nbsp;/g, ' ')
+               .trim();
+
+    return html;
   };
 
+  // Upload selected images to server and return array aligned with input order
   const uploadImagesToServer = async (images) => {
     const uploadedFiles = [];
-
     for (const image of images) {
       try {
         const formData = new FormData();
@@ -482,9 +499,14 @@ const AdminLaporanKeuanganForm = () => {
 
         if (response.ok) {
           const result = await response.json();
-          uploadedFiles.push(result.data[0]);
+          if (result?.success && Array.isArray(result.data) && result.data[0]) {
+            uploadedFiles.push(result.data[0]);
+          } else {
+            console.error('Invalid upload response:', result);
+            uploadedFiles.push(null);
+          }
         } else {
-          console.error('Failed to upload image:', image.file.name);
+          console.error('Failed to upload image');
           uploadedFiles.push(null);
         }
       } catch (error) {
@@ -492,12 +514,21 @@ const AdminLaporanKeuanganForm = () => {
         uploadedFiles.push(null);
       }
     }
-
     return uploadedFiles;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.judul_laporan || formData.judul_laporan.trim() === '') {
+      toast.error('Judul laporan harus diisi');
+      return;
+    }
+
+    if (formData.judul_laporan.trim().length < 3) {
+      toast.error('Judul laporan minimal 3 karakter');
+      return;
+    }
 
     if (!formData.tanggal_laporan) {
       toast.error('Tanggal laporan harus diisi');
@@ -608,6 +639,7 @@ const AdminLaporanKeuanganForm = () => {
       });
 
       const submitData = {
+        judul_laporan: formData.judul_laporan,
         tanggal_laporan: formData.tanggal_laporan,
         isi_laporan: editorContent,
         images: finalImages
@@ -646,15 +678,17 @@ const AdminLaporanKeuanganForm = () => {
   };
 
   const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
 
     if (files.length === 0) return;
 
-    if (files.length > 5) {
+    // Batasi maksimal total 5 gambar
+    if (selectedImages.length + files.length > 5) {
       toast.error('Maksimal 5 gambar');
       return;
     }
 
+    // Validasi tipe
     const validFiles = files.filter(file => {
       const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type);
       if (!isValidType) {
@@ -663,16 +697,17 @@ const AdminLaporanKeuanganForm = () => {
       }
       return true;
     });
-
     if (validFiles.length === 0) return;
 
-    setSelectedImages(prev => [...prev, ...validFiles]);
+    // Bungkus ke objek { file, id } agar kompatibel dengan uploadImagesToServer (menggunakan image.file)
+    const withIds = validFiles.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
+    setSelectedImages(prev => [...prev, ...withIds]);
 
-    // Create preview URLs
-    validFiles.forEach(file => {
+    // Buat preview untuk setiap file
+    withIds.forEach(({ file }) => {
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviewUrls(prev => [...prev, e.target.result]);
+      reader.onload = (ev) => {
+        setImagePreviewUrls(prev => [...prev, ev.target.result]);
       };
       reader.readAsDataURL(file);
     });
@@ -760,6 +795,26 @@ const AdminLaporanKeuanganForm = () => {
               <h2 className="text-lg font-semibold text-gray-900">Informasi Laporan</h2>
             </div>
             <div className="p-4 space-y-4">
+              {/* Judul Laporan */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Judul Laporan *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="judul_laporan"
+                    value={formData.judul_laporan}
+                    onChange={handleInputChange}
+                    maxLength={255}
+                    required
+                    placeholder="Masukkan judul laporan"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <FileText className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+
               {/* Tanggal Laporan */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -244,6 +244,25 @@ const AdminOmsetHarianList = () => {
     return text.substring(0, maxLength) + '...';
   };
 
+  // Format konten untuk preview list: hilangkan tag HTML & placeholder gambar, konversi marker markdown ke HTML (<strong>/<em>/<u>)
+  const formatPreviewHtml = (content) => {
+    if (!content) return '';
+    let t = String(content);
+    // Hilangkan tag HTML yang mungkin tersisa
+    t = t.replace(/<[^>]*>/g, '');
+    // Hilangkan placeholder gambar [IMG:123]
+    t = t.replace(/\[IMG:\d+\]/g, '');
+    // Konversi markdown-like -> HTML
+    t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>'); // **bold**
+    t = t.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, (m, p1, p2) => `${p1}<em>${p2}</em>`); // *italic*
+    t = t.replace(/__(.+?)__/g, '<u>$1</u>'); // __underline__
+    // Hilangkan heading markdown (#, ##, ###) di awal baris
+    t = t.replace(/^\s*#{1,6}\s*/gm, '');
+    // Normalisasi whitespace & baris baru
+    t = t.replace(/\s+/g, ' ').trim();
+    return t;
+  };
+
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header - match POSKAS style */}
@@ -467,9 +486,10 @@ const AdminOmsetHarianList = () => {
                           </div>
                         </td>
                         <td className="px-12 py-4 text-sm text-gray-900">
-                          <div className="md:truncate max-w-[14rem] md:max-w-md">
-                            {truncateText(omset.isi_omset, 150)}
-                          </div>
+                          <div
+                            className="md:truncate max-w-[14rem] md:max-w-md"
+                            dangerouslySetInnerHTML={{ __html: formatPreviewHtml(omset.isi_omset) }}
+                          />
                         </td>
                         <td className="px-12 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           <div className="flex items-center gap-3">

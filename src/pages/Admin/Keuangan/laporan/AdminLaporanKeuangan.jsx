@@ -206,6 +206,46 @@ const AdminLaporanKeuangan = () => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
+  // Format preview HTML: remove unsafe tags and image placeholders, keep strong/em/u/br
+  const formatPreviewHtml = (content) => {
+    if (!content) return '';
+    let html = String(content);
+    // Remove image placeholders
+    html = html.replace(/\[IMG:\d+\]/g, '');
+    // Normalize <b>/<i> tags
+    html = html.replace(/<\s*b\s*>/gi, '<strong>')
+               .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+               .replace(/<\s*i\s*>/gi, '<em>')
+               .replace(/<\s*\/\s*i\s*>/gi, '</em>');
+    // Temporarily protect allowed tags
+    const p = {
+      so: '%%STRONG_O%%', sc: '%%STRONG_C%%',
+      eo: '%%EM_O%%', ec: '%%EM_C%%',
+      uo: '%%U_O%%', uc: '%%U_C%%',
+      br: '%%BR%%'
+    };
+    html = html.replace(/<strong>/gi, p.so)
+               .replace(/<\/strong>/gi, p.sc)
+               .replace(/<em>/gi, p.eo)
+               .replace(/<\/em>/gi, p.ec)
+               .replace(/<u>/gi, p.uo)
+               .replace(/<\/u>/gi, p.uc)
+               .replace(/<br\s*\/?\s*>/gi, p.br);
+    // Strip other tags
+    html = html.replace(/<[^>]*>/g, '');
+    // Restore allowed
+    html = html.replace(new RegExp(p.so, 'g'), '<strong>')
+               .replace(new RegExp(p.sc, 'g'), '</strong>')
+               .replace(new RegExp(p.eo, 'g'), '<em>')
+               .replace(new RegExp(p.ec, 'g'), '</em>')
+               .replace(new RegExp(p.uo, 'g'), '<u>')
+               .replace(new RegExp(p.uc, 'g'), '</u>')
+               .replace(new RegExp(p.br, 'g'), '<br>');
+    // Sanitize basic
+    html = html.replace(/<script.*?>[\s\S]*?<\/script>/gi, '');
+    return html;
+  };
+
   // Grouping helpers
   const getMonthKey = (dateStr) => {
     if (!dateStr) return 'Unknown';
@@ -403,11 +443,14 @@ const AdminLaporanKeuangan = () => {
                           <td className="px-6 py-4">
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {extractTitle(item.isi_laporan)}
+                                {item.judul_laporan && item.judul_laporan.trim() !== ''
+                                  ? item.judul_laporan
+                                  : extractTitle(item.isi_laporan)}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {truncateContent(item.isi_laporan)}
-                              </div>
+                              <div
+                                className="text-sm text-gray-500 md:truncate max-w-[40ch]"
+                                dangerouslySetInnerHTML={{ __html: formatPreviewHtml(item.isi_laporan) }}
+                              />
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

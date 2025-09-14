@@ -60,6 +60,33 @@ const AdminPoskasEdit = () => {
     } catch (_) {}
   };
 
+  // Helper: upload only new images for Edit flow and return server metadata
+  const uploadNewImagesToServer = async (images) => {
+    if (!images || images.length === 0) return [];
+    const results = [];
+    for (const img of images) {
+      try {
+        const file = img?.file || img; // accept File or {file,id}
+        if (!file) { results.push(null); continue; }
+        const formData = new FormData();
+        formData.append('images', file);
+        const res = await fetch(`${API_CONFIG.BASE_URL}/upload/poskas`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: formData,
+        });
+        if (!res.ok) { results.push(null); continue; }
+        const json = await res.json();
+        const first = Array.isArray(json?.data) ? json.data[0] : null;
+        results.push(first || null);
+      } catch (err) {
+        console.error('❌ uploadNewImagesToServer error:', err);
+        results.push(null);
+      }
+    }
+    return results;
+  };
+
   const placeCaretAtEnd = (el) => {
     if (!el) return;
     const range = document.createRange();
@@ -694,11 +721,42 @@ const AdminPoskasEdit = () => {
 
     console.log(`🔍 Generated IDs for selected images:`, newIds);
 
-    // Create preview URLs
-    validFiles.forEach(file => {
+    // Create preview URLs and INSERT images into editor with data-image-id so they are referenced
+    validFiles.forEach((file, idx) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setImagePreviewUrls(prev => [...prev, e.target.result]);
+        const dataUrl = e.target.result;
+        setImagePreviewUrls(prev => [...prev, dataUrl]);
+
+        // Insert into editor at caret/end with data-image-id matching newIds[idx]
+        const imageId = newIds[idx];
+        if (editorRef.current && imageId) {
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          img.alt = `New image ${idx + 1}`;
+          img.className = 'pasted-image';
+          img.setAttribute('data-image-id', imageId);
+
+          // Insert at current selection or append at end
+          const sel = window.getSelection();
+          if (sel && sel.rangeCount > 0) {
+            const range = sel.getRangeAt(0);
+            range.deleteContents();
+            range.insertNode(img);
+            range.collapse(false);
+
+            const br = document.createElement('br');
+            range.insertNode(br);
+            range.collapse(false);
+          } else {
+            editorRef.current.appendChild(img);
+            editorRef.current.appendChild(document.createElement('br'));
+          }
+
+          // Trigger input event so state/toolbar updates
+          const evt = new Event('input', { bubbles: true });
+          editorRef.current.dispatchEvent(evt);
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -809,32 +867,67 @@ const AdminPoskasEdit = () => {
       console.log('🔍 Debug: Has images in content:', hasImagesInContent);
       
       if (hasImagesInContent) {
-        // Save with images - use existing logic
+        // Save with images
         console.log('🔍 Debug: Saving with images...');
-        
-        // Prepare images data for JSON submission
+
+        // Kumpulkan ID gambar yang benar-benar dipakai di konten editor
+        const usedIds = new Set();
+        const idRegex = /\[IMG:(\d+(?:\.\d+)?)\]/g;
+        let m;
+        while ((m = idRegex.exec(editorContent)) !== null) {
+          usedIds.add(String(m[1]));
+        }
+        console.log('🔍 Used image IDs in content:', Array.from(usedIds));
+
+        // Siapkan data gambar untuk dikirim (hanya yang dipakai)
         let allImagesData = [];
-        
-        // Add existing images
-        const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
-        allImagesData = [...allExistingImages];
-        
-        // Upload new images if any
+
+        // 1) Ambil gambar existing yang masih direferensikan
+        const existingUsed = (existingImages || [])
+          .filter(img => img && img.id && (img.url || img.uri))
+          .filter(img => usedIds.has(String(img.id)));
+        allImagesData.push(...existingUsed);
+
+        // 2) Upload gambar baru (File) bila ada, lalu padankan ID-nya dari newImageIds dan filter by usedIds
         if (selectedImages.length > 0) {
           console.log('🔍 Uploading new images to server...');
           const uploadedNewImages = await uploadNewImagesToServer(selectedImages);
-          allImagesData = [...allImagesData, ...uploadedNewImages];
-          console.log('🔍 New images uploaded:', uploadedNewImages.length);
+          console.log('🔍 Uploaded new images metadata:', uploadedNewImages);
+
+          const mappedNew = uploadedNewImages.map((uploaded, index) => {
+            if (!uploaded) return null;
+            const idForThis = newImageIds[index];
+            if (!idForThis) return null;
+            // Bangun objek gambar baru dengan id sesuai placeholder di konten
+            return {
+              id: idForThis,
+              name: uploaded.filename || (uploaded.path ? uploaded.path.split('/').pop() : `poskas_${idForThis}.jpg`),
+              url: uploaded.url && /^https?:\/\//i.test(uploaded.url)
+                ? uploaded.url
+                : `${API_CONFIG.BASE_URL.replace('/api','')}${uploaded.url}`,
+              serverPath: uploaded.serverPath || uploaded.path,
+            };
+          }).filter(Boolean)
+            // Hanya sertakan yang benar-benar dipakai di konten
+            .filter(img => usedIds.has(String(img.id)));
+
+          allImagesData.push(...mappedNew);
         }
-        
-        console.log('🔍 Debug: All images to send:', allImagesData);
+
+        // Urutkan allImagesData mengikuti urutan kemunculan di konten (usedIds sequence)
+        const order = Array.from(usedIds);
+        allImagesData.sort((a, b) => order.indexOf(String(a.id)) - order.indexOf(String(b.id)));
+        console.log('🔍 Debug: Final images to send (ordered by content):', allImagesData);
 
         // Use the existing PUT route with JSON data
-        const response = await poskasService.updatePoskas(id, {
+        const updatePayload = {
           tanggal_poskas: finalFormData.tanggal_poskas,
           isi_poskas: finalFormData.isi_poskas,
-          images: allImagesData
-        });
+          // Konsisten dengan create: kirim sebagai array of objects
+          images: allImagesData || []
+        };
+        console.log('🔍 Debug: Update payload being sent:', updatePayload);
+        const response = await poskasService.updatePoskas(id, updatePayload);
         
         console.log('🔍 Debug: Service response:', response);
         
@@ -892,61 +985,55 @@ const AdminPoskasEdit = () => {
     }
   };
 
-  // Ambil konten editor dan konversi ke teks dengan placeholder [IMG:id]
+  // Ambil konten editor dan konversi, mempertahankan <strong>/<em>/<u>/<br> + placeholder [IMG:id]
   const getEditorContent = () => {
     if (!editorRef.current) return '';
-    const content = editorRef.current.innerHTML;
-    console.log('🔍 Debug: Getting editor content:', content);
+    let html = editorRef.current.innerHTML || '';
+    console.log('🔍 Debug: Getting editor content:', html);
 
-    // Convert HTML content to text with [IMG:id] placeholders
-    let processedContent = content;
+    // Replace existing image tags with [IMG:id]
+    html = html.replace(/<img[^>]*data-image-id="(\d+)"[^>]*>/g, (_m, id) => `[IMG:${id}]`);
+    // Replace base64 images with new IDs
+    html = html.replace(/<img[^>]*src="data:image[^"]*"[^>]*>/g, () => `[IMG:${Date.now() + Math.floor(Math.random()*1000)}]`);
 
-    // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
-    const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
-    processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
-      console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
-      return `[IMG:${imageId}]`;
-    });
+    // Normalize <b>/<i> to <strong>/<em>
+    html = html.replace(/<\s*b\s*>/gi, '<strong>')
+               .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+               .replace(/<\s*i\s*>/gi, '<em>')
+               .replace(/<\s*\/\s*i\s*>/gi, '</em>');
 
-    // Then, replace base64 images with [IMG:id] placeholders using stored IDs
-    const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-    let imgMatch;
-    let imgIndex = 0;
+    // Block to line breaks
+    html = html.replace(/<\s*p[^>]*>/gi, '')
+               .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+               .replace(/<\s*div[^>]*>/gi, '')
+               .replace(/<\s*\/\s*div\s*>/gi, '');
 
-    while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-      // Use stored ID if available, otherwise generate new one
-      let imgId;
-      if (newImageIds[imgIndex]) {
-        imgId = newImageIds[imgIndex];
-        console.log(`🔍 Using stored ID for base64 image ${imgIndex + 1}: ${imgId}`);
-      } else {
-        const timestamp = Date.now();
-        imgId = timestamp + Math.floor(Math.random() * 1000);
-        console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
-      }
+    // Protect allowed tags
+    const ph = { so:'%%SO%%', sc:'%%SC%%', eo:'%%EO%%', ec:'%%EC%%', uo:'%%UO%%', uc:'%%UC%%', br:'%%BR%%' };
+    html = html.replace(/<strong>/gi, ph.so)
+               .replace(/<\/strong>/gi, ph.sc)
+               .replace(/<em>/gi, ph.eo)
+               .replace(/<\/em>/gi, ph.ec)
+               .replace(/<u>/gi, ph.uo)
+               .replace(/<\/u>/gi, ph.uc)
+               .replace(/<br\s*\/?\s*>/gi, ph.br);
 
-      const placeholder = `[IMG:${imgId}]`;
-      processedContent = processedContent.replace(imgMatch[0], placeholder);
-      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
-      imgIndex++;
-    }
+    // Strip others
+    html = html.replace(/<[^>]*>/g, '');
 
-    // Remove any remaining HTML tags but keep line breaks
-    processedContent = processedContent
-      .replace(/<br\s*\/?>(?=\n)?/gi, '\n') // Convert <br> to line breaks
-      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-      .replace(/<\/div>/gi, '') // Remove closing div tags
-      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-      .replace(/&amp;/g, '&') // Convert &amp; to &
-      .replace(/&lt;/g, '<') // Convert &lt; to <
-      .replace(/&gt;/g, '>') // Convert &gt; to >
-      .replace(/&quot;/g, '"') // Convert &quot; to "
-      .replace(/&#39;/g, "'") // Convert &#39; to '
-      .trim();
+    // Restore allowed
+    html = html.replace(new RegExp(ph.so,'g'), '<strong>')
+               .replace(new RegExp(ph.sc,'g'), '</strong>')
+               .replace(new RegExp(ph.eo,'g'), '<em>')
+               .replace(new RegExp(ph.ec,'g'), '</em>')
+               .replace(new RegExp(ph.uo,'g'), '<u>')
+               .replace(new RegExp(ph.uc,'g'), '</u>')
+               .replace(new RegExp(ph.br,'g'), '<br>');
 
-    console.log('🔍 Debug: Processed content:', processedContent);
-    return processedContent;
+    // Basic sanitize
+    html = html.replace(/<script.*?>[\s\S]*?<\/script>/gi, '').replace(/&nbsp;/g, ' ').trim();
+    console.log('🔍 Debug: Processed content:', html);
+    return html;
   };
 
   if (loading) {

@@ -197,11 +197,20 @@ const OwnerOmsetHarianDetail = () => {
   };
 
   const parseFormattedText = (text) => {
-    let parsedText = text;
-    parsedText = parsedText.replace(/<b>(.*?)<\/b>/g, '**$1**');
-    parsedText = parsedText.replace(/<i>(.*?)<\/i>/g, '*$1*');
-    parsedText = parsedText.replace(/<u>(.*?)<\/u>/g, '__$1__');
-    return parsedText;
+    if (!text) return '';
+    let html = text;
+    // Convert markdown-like markers to HTML
+    // Bold: **text**
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    // Italic: *text*
+    html = html.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, (m, p1, p2) => `${p1}<em>${p2}</em>`);
+    // Underline: __text__
+    html = html.replace(/__(.+?)__/g, '<u>$1</u>');
+    // Preserve line breaks
+    html = html.replace(/\n/g, '<br>');
+    // Basic sanitize: strip script tags
+    html = html.replace(/<script.*?>[\s\S]*?<\/script>/gi, '');
+    return html;
   };
 
   // Render content with images inline
@@ -543,9 +552,11 @@ const OwnerOmsetHarianDetail = () => {
             {contentParts.map((part, index) => {
               if (part.type === 'text') {
                 return (
-                  <pre key={index} className="whitespace-pre-wrap text-gray-700 leading-relaxed font-sans">
-                    {part.content}
-                  </pre>
+                  <div
+                    key={index}
+                    className="whitespace-pre-wrap text-gray-700 leading-relaxed font-sans"
+                    dangerouslySetInnerHTML={{ __html: part.content }}
+                  />
                 );
               } else if (part.type === 'image') {
                 return (

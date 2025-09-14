@@ -205,11 +205,17 @@ const AdminPoskasDetail = () => {
   };
 
   const parseFormattedText = (text) => {
-    let parsedText = text;
-    parsedText = parsedText.replace(/<b>(.*?)<\/b>/g, '**$1**');
-    parsedText = parsedText.replace(/<i>(.*?)<\/i>/g, '*$1*');
-    parsedText = parsedText.replace(/<u>(.*?)<\/u>/g, '__$1__');
-    return parsedText;
+    if (!text) return '';
+    let html = String(text);
+    // Convert markdown-like markers to HTML
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, (m, p1, p2) => `${p1}<em>${p2}</em>`);
+    html = html.replace(/__(.+?)__/g, '<u>$1</u>');
+    // Preserve line breaks
+    html = html.replace(/\n/g, '<br>');
+    // Basic sanitize
+    html = html.replace(/<script.*?>[\s\S]*?<\/script>/gi, '');
+    return html;
   };
 
   // Render content with images inline (sama seperti admin)
@@ -581,9 +587,10 @@ const AdminPoskasDetail = () => {
                   <div key={index}>
                     {part.type === 'text' ? (
                       <div className="mb-4">
-                        <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
-                          {part.content}
-                        </p>
+                        <div
+                          className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap"
+                          dangerouslySetInnerHTML={{ __html: part.content }}
+                        />
                       </div>
                     ) : part.type === 'image' ? (
                       <div className="mb-6">

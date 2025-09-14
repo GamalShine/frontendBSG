@@ -86,6 +86,27 @@ const AdminPoskasForm = () => {
   const [isItalicActive, setIsItalicActive] = useState(false);
   const [isUnderlineActive, setIsUnderlineActive] = useState(false);
 
+  // Selection helpers to preserve cursor/selection in contenteditable
+  const saveSelection = () => {
+    try {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      }
+    } catch (_) {}
+  };
+
+  const restoreSelection = () => {
+    try {
+      const range = savedRangeRef.current;
+      if (range) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } catch (_) {}
+  };
+
   const updateFormatState = () => {
     try {
       setIsBoldActive(document.queryCommandState('bold'));

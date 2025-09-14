@@ -69,6 +69,13 @@ const AdminLaporanKeuanganDetail = () => {
     }
   };
 
+  // Helper to derive title if judul_laporan empty
+  const deriveTitle = (content) => {
+    if (!content) return 'Laporan Keuangan';
+    const firstLine = content.split('\n')[0] || '';
+    return firstLine.trim() || 'Laporan Keuangan';
+  };
+
   const handleDelete = async () => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus data laporan keuangan ini?')) {
       return;
@@ -294,6 +301,15 @@ const AdminLaporanKeuanganDetail = () => {
         <div className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center space-x-3">
+              <div className="p-2 bg-yellow-100">
+                <FileText className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Judul</p>
+                <p className="text-lg font-semibold text-gray-900">{(laporanData.judul_laporan || '').trim() || deriveTitle(laporanData.isi_laporan)}</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100">
                 <Calendar className="h-6 w-6 text-blue-600" />
               </div>
@@ -329,12 +345,16 @@ const AdminLaporanKeuanganDetail = () => {
       {/* Content Section */}
       <div className="bg-white shadow-sm border mb-4">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Isi Laporan</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">{(laporanData.judul_laporan || '').trim() || 'Isi Laporan'}</h2>
+          <div className="text-sm text-gray-500">Isi Laporan</div>
         </div>
         <div className="p-4">
           <div className="prose max-w-none">
             {contentParts.length === 0 && (
-              <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{laporanData.isi_laporan || '-'}</div>
+              <div
+                className="whitespace-pre-wrap font-sans text-sm leading-relaxed"
+                dangerouslySetInnerHTML={{ __html: laporanData.isi_laporan || '-' }}
+              />
             )}
             {contentParts.map((part, index) => (
               <div key={index}>
@@ -354,7 +374,10 @@ const AdminLaporanKeuanganDetail = () => {
                     />
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{part.data}</div>
+                  <div
+                    className="whitespace-pre-wrap font-sans text-sm leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: part.data }}
+                  />
                 )}
               </div>
             ))}
