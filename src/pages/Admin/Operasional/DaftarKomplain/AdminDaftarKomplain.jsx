@@ -107,6 +107,23 @@ const AdminDaftarKomplain = () => {
     return s.substring(0, maxLength) + '...';
   };
 
+  const getLastUpdated = () => {
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const latest = items.reduce((acc, it) => {
+      const d = it?.created_at || it?.tanggal_pelaporan || it?.createdAt;
+      const t = d ? new Date(d).getTime() : 0;
+      return t > acc ? t : acc;
+    }, 0);
+    if (!latest) return null;
+    try {
+      return new Date(latest).toLocaleString('id-ID', {
+        year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      });
+    } catch {
+      return null;
+    }
+  };
+
   // Selection handlers (paritas Omset)
   const handleCheckboxChange = (id) => {
     setSelectedItems(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
@@ -226,7 +243,12 @@ const AdminDaftarKomplain = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Daftar komplain terbaru berada di paling atas</div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+        {(() => {
+          const lu = getLastUpdated();
+          return lu ? `Terakhir diupdate: ${lu}` : 'Terakhir diupdate: -';
+        })()}
+      </div>
 
       {/* Stats Cards - match Omset Harian (3 cols) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 mt-4">
@@ -312,33 +334,10 @@ const AdminDaftarKomplain = () => {
         </div>
       )}
 
-      {/* Data Table - Omset style */}
+      {/* Daftar Komplain - Grid Cards */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
         <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Daftar Komplain</h2>
-          <div className="flex items-center gap-3">
-            {selectedItems.length > 0 && (
-              <span className="text-sm text-gray-600 hidden sm:inline">{selectedItems.length} item dipilih</span>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setShowBulkMenu(v => !v)}
-                aria-label="Aksi massal"
-                className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-              {showBulkMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
-                  <div className="py-1">
-                    <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
-                    <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
-                    <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
         {loading ? (
@@ -358,78 +357,32 @@ const AdminDaftarKomplain = () => {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="sticky top-0 bg-red-700 z-10">
-                  <tr>
-                    <th className="pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.length === paginatedItems.length && paginatedItems.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-white text-white focus:ring-white"
-                        aria-label="Pilih semua"
-                      />
-                    </th>
-                    <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {paginatedItems.map((row, idx) => {
-                    const displayIndex = (currentPage - 1) * pageSize + (idx + 1);
-                    const pelapor = row?.Pelapor || row?.pelapor;
-                    return (
-                      <tr key={row.id} className="hover:bg-gray-50/80">
-                        <td className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.includes(row.id)}
-                            onChange={() => handleCheckboxChange(row.id)}
-                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                            aria-label={`Pilih baris ${displayIndex}`}
-                          />
-                        </td>
-                        <td className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{displayIndex}</td>
-                        <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(row?.created_at || row?.tanggal_pelaporan).toUpperCase()}</td>
-                        <td className="px-12 py-4 text-sm text-gray-900">
-                          <div className="md:truncate max-w-[14rem] md:max-w-md">
-                            <span className="font-medium">{pelapor?.username || pelapor?.nama || '-'}</span>
-                            {' — '}
-                            {truncateText(row?.judul_komplain || '-', 60)}
-                            {row?.deskripsi_komplain ? `, ${truncateText(row.deskripsi_komplain, 90)}` : ''}
-                          </div>
-                        </td>
-                        <td className="px-12 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => navigate(`/admin/operasional/komplain/${row.id}`)}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => navigate(`/admin/operasional/komplain/${row.id}/edit`)}
-                              className="text-green-600 hover:text-green-900"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(row.id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                            <button onClick={() => navigator.clipboard.writeText((row?.deskripsi_komplain||'').toString())} title="Copy" className="text-gray-700 hover:text-gray-900"><CopyIcon className="h-4 w-4"/></button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {paginatedItems.map((row, idx) => {
+                  const pelapor = row?.Pelapor || row?.pelapor || {};
+                  return (
+                    <div key={row.id} className="relative border rounded-lg p-4 hover:shadow-md transition-shadow">
+                      {/* Actions */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1">
+                        <button title="Lihat" onClick={() => navigate(`/admin/operasional/komplain/${row.id}`)} className="p-2 rounded hover:bg-gray-100 text-gray-700"><Eye className="h-4 w-4"/></button>
+                        <button title="Edit" onClick={() => navigate(`/admin/operasional/komplain/${row.id}/edit`)} className="p-2 rounded hover:bg-gray-100 text-amber-600"><Edit className="h-4 w-4"/></button>
+                        <button title="Hapus" onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-gray-100 text-red-600"><Trash2 className="h-4 w-4"/></button>
+                        <button title="Copy deskripsi" onClick={() => navigator.clipboard.writeText((row?.deskripsi_komplain||'').toString())} className="p-2 rounded hover:bg-gray-100 text-gray-700"><CopyIcon className="h-4 w-4"/></button>
+                      </div>
+                      <div className="pr-16">
+                        <div className="text-xs text-gray-500">{formatDate(row?.created_at || row?.tanggal_pelaporan)}</div>
+                        <h3 className="text-base font-semibold text-gray-900 mt-0.5">{row?.judul_komplain || '-'}</h3>
+                        <p className="text-sm text-gray-700 mt-1 line-clamp-2">{truncateText(row?.deskripsi_komplain, 140)}</p>
+                        <div className="mt-2 text-sm text-gray-700 space-y-1">
+                          <div><span className="text-gray-500">Pelapor:</span> <span className="font-medium">{pelapor?.username || pelapor?.nama || '-'}</span></div>
+                          <div className="capitalize"><span className="text-gray-500">Status:</span> {row?.status || '-'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Pagination */}

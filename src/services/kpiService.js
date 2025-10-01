@@ -14,7 +14,9 @@ export const kpiService = {
   // Get all KPIs
   getAllKPIs: async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/kpi`);
+      const response = await axios.get(`${API_BASE_URL}/kpi`, {
+        headers: { ...getAuthToken() }
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching KPIs:', error);
@@ -25,7 +27,9 @@ export const kpiService = {
   // Get KPIs by category
   getKPIsByCategory: async (category) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/kpi/category/${category}`);
+      const response = await axios.get(`${API_BASE_URL}/kpi/category/${category}`, {
+        headers: { ...getAuthToken() }
+      });
       return response.data;
     } catch (error) {
       console.error(`Error fetching KPI ${category}:`, error);
@@ -36,7 +40,9 @@ export const kpiService = {
   // Get KPI by ID
   getKPIById: async (id) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/kpi/${id}`);
+      const response = await axios.get(`${API_BASE_URL}/kpi/${id}`, {
+        headers: { ...getAuthToken() }
+      });
       return response.data;
     } catch (error) {
       console.error('Error fetching KPI by ID:', error);
@@ -68,7 +74,9 @@ export const kpiService = {
       };
       
       console.log('📝 Creating KPI with data:', kpiData);
-      const response = await axios.post(`${API_BASE_URL}/kpi`, kpiData);
+      const response = await axios.post(`${API_BASE_URL}/kpi`, kpiData, {
+        headers: { 'Content-Type': 'application/json', ...getAuthToken() }
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating KPI:', error);
@@ -100,7 +108,9 @@ export const kpiService = {
       };
       
       console.log('📝 Updating KPI with data:', kpiData);
-      const response = await axios.put(`${API_BASE_URL}/kpi/${id}`, kpiData);
+      const response = await axios.put(`${API_BASE_URL}/kpi/${id}`, kpiData, {
+        headers: { 'Content-Type': 'application/json', ...getAuthToken() }
+      });
       return response.data;
     } catch (error) {
       console.error('Error updating KPI:', error);
@@ -111,7 +121,9 @@ export const kpiService = {
   // Delete KPI
   deleteKPI: async (id) => {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/kpi/${id}`);
+      const response = await axios.delete(`${API_BASE_URL}/kpi/${id}`, {
+        headers: { ...getAuthToken() }
+      });
       return response.data;
     } catch (error) {
       console.error('Error deleting KPI:', error);

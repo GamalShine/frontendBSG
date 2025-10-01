@@ -17,13 +17,12 @@ const TimBiruList = () => {
   const [timBiru, setTimBiru] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [divisiFilter, setDivisiFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
     loadTimBiru()
-  }, [currentPage, divisiFilter])
+  }, [currentPage, searchTerm])
 
   const loadTimBiru = async () => {
     try {
@@ -31,15 +30,13 @@ const TimBiruList = () => {
       const params = {
         page: currentPage,
         limit: 10,
-        search: searchTerm,
-        divisi: divisiFilter,
+        search: searchTerm
       }
       
       const response = await timService.getTimBiru(params)
       console.log('🔍 Tim Biru response:', response)
       
       if (response.success) {
-        // Backend returns data directly, not nested in timBiru property
         setTimBiru(response.data || [])
         setTotalPages(response.pagination?.totalPages || 1)
       } else {
@@ -121,22 +118,6 @@ const TimBiruList = () => {
             </div>
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Divisi</label>
-            <select
-              value={divisiFilter}
-              onChange={(e) => setDivisiFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Semua Divisi</option>
-              <option value="IT">IT</option>
-              <option value="HR">HR</option>
-              <option value="Finance">Finance</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Operations">Operations</option>
-            </select>
-          </div>
-          
           <div className="flex items-end">
             <button
               onClick={handleSearch}
@@ -162,12 +143,6 @@ const TimBiruList = () => {
                   Prestasi
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Divisi
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Tanggal Dibuat
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -178,13 +153,13 @@ const TimBiruList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
                     Memuat data...
                   </td>
                 </tr>
               ) : timBiru.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
                     Tidak ada data Tim Biru ditemukan
                   </td>
                 </tr>
@@ -197,8 +172,7 @@ const TimBiruList = () => {
                           <User className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{tim.nama}</div>
-                          <div className="text-sm text-gray-500">{tim.posisi}</div>
+                          <div className="text-sm font-medium text-gray-900">{tim.employee?.nama || tim.employee?.name || '-'}</div>
                         </div>
                       </div>
                     </td>
@@ -209,14 +183,6 @@ const TimBiruList = () => {
                           {tim.keterangan || '-'}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{tim.divisi}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                        Aktif
-                      </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {formatDate(tim.created_at)}

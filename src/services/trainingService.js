@@ -12,31 +12,45 @@ export const trainingService = {
         }
     },
 
-    // Get training by ID
+    // Get user training detail by user ID (admin)
     async getTrainingById(id) {
         try {
-            const response = await api.get(API_ENDPOINTS.TRAINING.BY_ID(id))
+            // Backend route: GET /api/admin/training/users/:id
+            const response = await api.get(`/admin/training/users/${id}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Create new training
+    // Update training status for a user (admin)
+    async updateUserTrainingStatus(userId, trainingData) {
+        try {
+            // Backend route: PUT /api/admin/training/users/:id/training
+            const response = await api.put(`/admin/training/users/${userId}/training`, trainingData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Backward compatibility wrappers
     async createTraining(trainingData) {
         try {
-            const response = await api.post(API_ENDPOINTS.TRAINING.LIST, trainingData)
-            return response.data
+            const userId = trainingData?.user_id || trainingData?.id
+            if (!userId) throw new Error('user_id diperlukan')
+            return await trainingService.updateUserTrainingStatus(userId, trainingData)
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update training
+    // Update training (treat id as user id)
     async updateTraining(id, trainingData) {
         try {
-            const response = await api.put(API_ENDPOINTS.TRAINING.BY_ID(id), trainingData)
-            return response.data
+            const userId = id || trainingData?.user_id
+            if (!userId) throw new Error('user_id diperlukan')
+            return await trainingService.updateUserTrainingStatus(userId, trainingData)
         } catch (error) {
             throw error.response?.data || error.message
         }

@@ -17,9 +17,9 @@ const AdminAnekaSuratForm = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="container mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
+      {/* Content full width */}
+      <div className="w-full">
+        <div className="bg-white p-6 md:p-8 border-t border-gray-200">
           <h2 className="text-xl font-bold text-gray-800 mb-4">Form Aneka Surat</h2>
           <div className="text-center py-12">
             <p className="text-gray-600 text-lg">Halaman ini sedang dalam pengembangan</p>

@@ -27,6 +27,7 @@ export const MENU_CODES = {
     daftarKomplain: 'H01-P6',
     binaLingkungan: 'H01-P7',
     jadwalPembayaran: 'H01-P8',
+    daftarPengajuan: 'H01-P9',
   },
   marketing: {
     dataTarget: 'H01-M1',

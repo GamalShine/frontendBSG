@@ -1,50 +1,36 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
 import { trainingService } from '@/services/trainingService'
-import { 
-  ArrowLeft, 
-  Save, 
-  BookOpen,
-  Calendar,
-  Clock,
-  Users,
-  MapPin
-} from 'lucide-react'
+import { userService } from '@/services/userService'
+import { ArrowLeft, Save, Users, CheckSquare, RefreshCw } from 'lucide-react'
 import Card, { CardHeader, CardBody } from '@/components/UI/Card'
 import Button from '@/components/UI/Button'
 import Input from '@/components/UI/Input'
 import Select from '@/components/UI/Select'
-import Textarea from '@/components/UI/Textarea'
 import toast from 'react-hot-toast'
 
 const AdminTrainingForm = () => {
   const navigate = useNavigate()
   const { id } = useParams()
-  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [users, setUsers] = useState([])
+  const [usersLoading, setUsersLoading] = useState(true)
+  const usersEmpty = users.length === 0
+  const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
-    judul_training: '',
-    deskripsi: '',
-    tipe: 'technical',
-    tanggal_training: new Date().toISOString().split('T')[0],
-    waktu_mulai: '09:00',
-    waktu_selesai: '17:00',
-    lokasi: '',
-    kapasitas: 20,
-    status: 'upcoming',
-    target_audience: 'all',
-    materi: '',
-    instruktur: '',
-    biaya: 0,
+    user_id: '',
+    training_dasar: false,
+    training_leadership: false,
+    training_skill: false,
+    training_lanjutan: false,
     catatan: ''
   })
-  const [errors, setErrors] = useState({})
 
   const isEditMode = !!id
 
   useEffect(() => {
+    loadUsers()
     if (isEditMode) {
       loadTraining()
     }
@@ -53,25 +39,17 @@ const AdminTrainingForm = () => {
   const loadTraining = async () => {
     try {
       setLoading(true)
-      const response = await trainingService.getTrainingDetail(id)
+      const response = await trainingService.getTrainingById(id)
       
       if (response.success) {
-        const data = response.data
+        const d = response.data || {}
         setFormData({
-          judul_training: data.judul_training || '',
-          deskripsi: data.deskripsi || '',
-          tipe: data.tipe || 'technical',
-          tanggal_training: data.tanggal_training ? new Date(data.tanggal_training).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          waktu_mulai: data.waktu_mulai || '09:00',
-          waktu_selesai: data.waktu_selesai || '17:00',
-          lokasi: data.lokasi || '',
-          kapasitas: data.kapasitas || 20,
-          status: data.status || 'upcoming',
-          target_audience: data.target_audience || 'all',
-          materi: data.materi || '',
-          instruktur: data.instruktur || '',
-          biaya: data.biaya || 0,
-          catatan: data.catatan || ''
+          user_id: d.user_id || d.id || '',
+          training_dasar: !!d.training_dasar,
+          training_leadership: !!d.training_leadership,
+          training_skill: !!d.training_skill,
+          training_lanjutan: !!d.training_lanjutan,
+          catatan: d.catatan || ''
         })
       } else {
         toast.error('Gagal memuat data training')
@@ -86,11 +64,46 @@ const AdminTrainingForm = () => {
     }
   }
 
+  const loadUsers = async () => {
+    // Ambil data user dari tabel users (1x call, limit besar)
+    const LIMIT = 1000
+    try {
+      setUsersLoading(true)
+      const res = await userService.getUsers({ page: 1, limit: LIMIT })
+      // Normalisasi hasil response agar konsisten menjadi array
+      const candidates = [
+        res?.data?.data,
+        res?.data?.rows,
+        res?.data?.users,
+        res?.data?.list,
+        res?.data,
+        res?.rows,
+        res?.users,
+        res?.list,
+        Array.isArray(res) ? res : null
+      ]
+      let list = []
+      for (const c of candidates) { if (Array.isArray(c)) { list = c; break } }
+
+      setUsers(list)
+      console.log('[AdminTrainingForm] users loaded total:', Array.isArray(list) ? list.length : 0)
+      if (!list.length) {
+        toast.error('Tidak ada data karyawan yang tersedia pada tabel users')
+      }
+    } catch (e) {
+      setUsers([])
+      toast.error('Gagal memuat daftar karyawan dari tabel users')
+      console.error('loadUsers error:', e)
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }))
     if (errors[name]) {
       setErrors(prev => ({
@@ -103,20 +116,8 @@ const AdminTrainingForm = () => {
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.judul_training.trim()) {
-      newErrors.judul_training = 'Judul training wajib diisi'
-    }
-
-    if (!formData.deskripsi.trim()) {
-      newErrors.deskripsi = 'Deskripsi training wajib diisi'
-    }
-
-    if (!formData.tanggal_training) {
-      newErrors.tanggal_training = 'Tanggal training wajib diisi'
-    }
-
-    if (!formData.lokasi.trim()) {
-      newErrors.lokasi = 'Lokasi training wajib diisi'
+    if (!formData.user_id) {
+      newErrors.user_id = 'Pilih karyawan terlebih dahulu'
     }
 
     setErrors(newErrors)
@@ -133,22 +134,43 @@ const AdminTrainingForm = () => {
 
     try {
       setSaving(true)
-      
-      let response
-      if (isEditMode) {
-        response = await trainingService.updateTraining(id, formData)
-      } else {
-        response = await trainingService.createTraining(formData)
+
+      // Pastikan user terpilih valid dan bisa diedit (bukan owner)
+      const selected = users.find(u => String(u?.id ?? u?.user_id ?? u?._id) === String(formData.user_id))
+      if (!selected) {
+        toast.error('Pengguna tidak ditemukan atau tidak dapat diedit')
+        setSaving(false)
+        return
       }
+      if (String(selected?.role || '').toLowerCase() === 'owner') {
+        toast.error('Status training untuk role Owner tidak dapat diedit')
+        setSaving(false)
+        return
+      }
+
+      const payload = {
+        user_id: Number(formData.user_id),
+        training_dasar: !!formData.training_dasar,
+        training_leadership: !!formData.training_leadership,
+        training_skill: !!formData.training_skill,
+        training_lanjutan: !!formData.training_lanjutan,
+        catatan: formData.catatan || ''
+      }
+
+      const response = isEditMode
+        ? await trainingService.updateTraining(id, payload)
+        : await trainingService.createTraining(payload)
 
       if (response.success) {
         toast.success(isEditMode ? 'Training berhasil diperbarui' : 'Training berhasil dibuat')
         navigate('/admin/training')
       } else {
-        toast.error(response.message || 'Gagal menyimpan training')
+        const msg = response.message || 'Gagal menyimpan training'
+        toast.error(msg)
       }
     } catch (error) {
-      toast.error('Gagal menyimpan training')
+      const msg = error?.message || error?.response?.data?.message || 'Gagal menyimpan training'
+      toast.error(msg)
       console.error('Error saving training:', error)
     } finally {
       setSaving(false)
@@ -179,10 +201,10 @@ const AdminTrainingForm = () => {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {isEditMode ? 'Edit Training' : 'Tambah Training Baru'}
+              {isEditMode ? 'Edit Status Training Karyawan' : 'Tambah Status Training Karyawan'}
             </h1>
             <p className="text-gray-600">
-              {isEditMode ? 'Perbarui informasi training' : 'Buat sesi training baru untuk perusahaan'}
+              {isEditMode ? 'Perbarui status training karyawan' : 'Set status training untuk karyawan'}
             </p>
           </div>
         </div>
@@ -192,267 +214,138 @@ const AdminTrainingForm = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Basic Information */}
             <Card>
               <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Informasi Dasar</h3>
-              </CardHeader>
-              <CardBody className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Judul Training *
-                  </label>
-                  <Input
-                    name="judul_training"
-                    value={formData.judul_training}
-                    onChange={handleChange}
-                    placeholder="Masukkan judul training..."
-                    error={errors.judul_training}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Deskripsi *
-                  </label>
-                  <Textarea
-                    name="deskripsi"
-                    value={formData.deskripsi}
-                    onChange={handleChange}
-                    placeholder="Masukkan deskripsi training..."
-                    rows={4}
-                    error={errors.deskripsi}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tipe Training
-                    </label>
-                    <Select
-                      name="tipe"
-                      value={formData.tipe}
-                      onChange={handleChange}
-                    >
-                      <option value="technical">Technical</option>
-                      <option value="soft_skill">Soft Skill</option>
-                      <option value="management">Management</option>
-                      <option value="safety">Safety</option>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Status
-                    </label>
-                    <Select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleChange}
-                    >
-                      <option value="upcoming">Upcoming</option>
-                      <option value="ongoing">Ongoing</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </Select>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Schedule Information */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Jadwal & Lokasi</h3>
-              </CardHeader>
-              <CardBody className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tanggal Training *
-                    </label>
-                    <Input
-                      type="date"
-                      name="tanggal_training"
-                      value={formData.tanggal_training}
-                      onChange={handleChange}
-                      error={errors.tanggal_training}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Waktu Mulai
-                    </label>
-                    <Input
-                      type="time"
-                      name="waktu_mulai"
-                      value={formData.waktu_mulai}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Waktu Selesai
-                    </label>
-                    <Input
-                      type="time"
-                      name="waktu_selesai"
-                      value={formData.waktu_selesai}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Lokasi *
-                  </label>
-                  <Input
-                    name="lokasi"
-                    value={formData.lokasi}
-                    onChange={handleChange}
-                    placeholder="Masukkan lokasi training..."
-                    error={errors.lokasi}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Kapasitas Peserta
-                    </label>
-                    <Input
-                      type="number"
-                      name="kapasitas"
-                      value={formData.kapasitas}
-                      onChange={handleChange}
-                      min="1"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Biaya per Peserta
-                    </label>
-                    <Input
-                      type="number"
-                      name="biaya"
-                      value={formData.biaya}
-                      onChange={handleChange}
-                      min="0"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-
-            {/* Additional Information */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Informasi Tambahan</h3>
-              </CardHeader>
-              <CardBody className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Instruktur
-                  </label>
-                  <Input
-                    name="instruktur"
-                    value={formData.instruktur}
-                    onChange={handleChange}
-                    placeholder="Masukkan nama instruktur..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Materi Training
-                  </label>
-                  <Textarea
-                    name="materi"
-                    value={formData.materi}
-                    onChange={handleChange}
-                    placeholder="Masukkan materi yang akan diajarkan..."
-                    rows={4}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Target Audience
-                  </label>
-                  <Select
-                    name="target_audience"
-                    value={formData.target_audience}
-                    onChange={handleChange}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Pilih Karyawan</h3>
+                  <button
+                    type="button"
+                    onClick={loadUsers}
+                    className="inline-flex items-center gap-2 text-sm px-3 py-1 rounded border border-gray-300 hover:bg-gray-50"
                   >
-                    <option value="all">Semua Karyawan</option>
-                    <option value="admin">Admin Only</option>
-                    <option value="leader">Leader Only</option>
-                    <option value="divisi">Divisi Only</option>
-                  </Select>
+                    <RefreshCw className="h-4 w-4" /> Muat ulang
+                  </button>
                 </div>
-
+              </CardHeader>
+              <CardBody className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Catatan
-                  </label>
-                  <Textarea
-                    name="catatan"
-                    value={formData.catatan}
-                    onChange={handleChange}
-                    placeholder="Catatan tambahan..."
-                    rows={3}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Karyawan *</label>
+                  <p className="text-xs text-gray-500 mb-2">Jumlah data karyawan: {users.length}</p>
+                  {usersLoading ? (
+                    <div className="text-sm text-gray-500">Memuat daftar karyawan...</div>
+                  ) : (
+                    <>
+                      {(() => {
+                        const options = users
+                          .map(u => {
+                            const uid = (u?.id ?? u?.user_id ?? u?._id)
+                            if (!uid) return null
+                            // Backend melarang edit training untuk role 'owner'
+                            if (String(u?.role || '').toLowerCase() === 'owner') return null
+                            const label = u?.nama || u?.username || u?.full_name || u?.email || `User ${uid}`
+                            return { value: String(uid), label }
+                          })
+                          .filter(Boolean)
+
+                        return (
+                          <Select
+                            name="user_id"
+                            value={String(formData.user_id || '')}
+                            onValueChange={(val) => handleChange({ target: { name: 'user_id', value: val, type: 'text' } })}
+                            options={options}
+                            placeholder={users.length ? '-- Pilih karyawan --' : 'Tidak ada opsi tersedia'}
+                            disabled={isEditMode || users.length === 0}
+                          />
+                        )
+                      })()}
+                      {users.length === 0 && (
+                        <>
+                          <Input
+                            type="number"
+                            name="user_id"
+                            value={formData.user_id}
+                            onChange={handleChange}
+                            placeholder="Masukkan User ID secara manual"
+                            className="mt-2"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Tidak ada opsi dari tabel users. Isi User ID secara manual, lalu simpan.</p>
+                        </>
+                      )}
+                    </>
+                  )}
+                  {errors.user_id && (
+                    <p className="text-sm text-red-600 mt-1">{errors.user_id}</p>
+                  )}
                 </div>
               </CardBody>
             </Card>
-          </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Actions */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Aksi</h3>
-              </CardHeader>
-              <CardBody>
-                <div className="space-y-3">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Menyimpan...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        {isEditMode ? 'Update Training' : 'Simpan Training'}
-                      </>
-                    )}
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold text-gray-900">Status Training</h3>
+            </CardHeader>
+            <CardBody className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" name="training_dasar" checked={formData.training_dasar} onChange={handleChange} />
+                  <span className="flex items-center gap-2"><CheckSquare className="h-4 w-4" /> Training Dasar</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" name="training_leadership" checked={formData.training_leadership} onChange={handleChange} />
+                  <span className="flex items-center gap-2"><CheckSquare className="h-4 w-4" /> Training Leadership</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" name="training_skill" checked={formData.training_skill} onChange={handleChange} />
+                  <span className="flex items-center gap-2"><CheckSquare className="h-4 w-4" /> Training Skill</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" name="training_lanjutan" checked={formData.training_lanjutan} onChange={handleChange} />
+                  <span className="flex items-center gap-2"><CheckSquare className="h-4 w-4" /> Training Lanjutan</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
+                <Input name="catatan" value={formData.catatan} onChange={handleChange} placeholder="Catatan tambahan (opsional)" />
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold text-gray-900">Aksi</h3>
+            </CardHeader>
+            <CardBody>
+              <div className="space-y-3">
+                <Button type="submit" className="w-full" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      {isEditMode ? 'Update Status' : 'Simpan Status'}
+                    </>
+                  )}
+                </Button>
+                <Link to="/admin/training">
+                  <Button variant="outline" className="w-full">
+                    Batal
                   </Button>
-                  
-                  <Link to="/admin/training">
-                    <Button variant="outline" className="w-full">
-                      Batal
-                    </Button>
-                  </Link>
-                </div>
-              </CardBody>
-            </Card>
-          </div>
+                </Link>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
         </div>
       </form>
     </div>
   )
 }
 
-export default AdminTrainingForm 
+export default AdminTrainingForm

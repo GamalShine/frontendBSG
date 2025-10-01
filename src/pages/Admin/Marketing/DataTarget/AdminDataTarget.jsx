@@ -142,9 +142,11 @@ const AdminDataTarget = () => {
         )}
         {/* Grid Years dibungkus card putih ala Owner */}
         {view === 'years' && (
-          <div className="bg-white shadow-sm border mb-4">
-            <div className="p-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Tahun</h2>
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Pilih Tahun</h2>
+            </div>
+            <div className="p-3">
               {loading && (
                 <div className="text-sm text-gray-600">Memuat daftar tahun...</div>
               )}
@@ -152,17 +154,19 @@ const AdminDataTarget = () => {
                 <div className="text-sm text-gray-600">Belum ada data</div>
               )}
               {!loading && years.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {years.map(({ year }) => (
                     <div
                       key={year}
-                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
                       onClick={() => openYear(year)}
                     >
-                      <div className="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500">
-                          <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
-                        </svg>
+                      <div className="flex items-center gap-3">
+                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500">
+                            <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
+                          </svg>
+                        </div>
                         <div>
                           <div className="font-semibold text-gray-800 group-hover:text-red-700">{year}</div>
                           <div className="text-xs text-gray-500">Folder Tahun</div>
@@ -178,7 +182,7 @@ const AdminDataTarget = () => {
 
         {/* Year Content */}
         {view === 'yearContent' && (
-          <div className="bg-white shadow-sm border">
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
             <div className="bg-red-800 text-white px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -186,11 +190,21 @@ const AdminDataTarget = () => {
                   <p className="text-xs opacity-90">Daftar Data Target</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Link to="/admin/marketing/target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">
+                  <Link to="/admin/marketing/target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">
                     <Plus className="h-4 w-4" /> Tambah
                   </Link>
-                  <button onClick={backToYears} className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">Kembali</button>
+                  <button onClick={backToYears} className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Kembali</button>
                 </div>
+              </div>
+            </div>
+
+            {/* Summary bar */}
+            <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
+              <div>
+                Total Tahun {selectedYear}: <span className="font-semibold">{(pagination.totalItems || 0).toLocaleString('id-ID')}</span>
+              </div>
+              <div>
+                Ditampilkan: <span className="font-semibold">{(items?.length || 0).toLocaleString('id-ID')}</span>
               </div>
             </div>
 
@@ -201,12 +215,12 @@ const AdminDataTarget = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                  <thead className="sticky top-0 bg-red-700 z-10 shadow">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Target</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nominal</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dibuat Oleh</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dibuat</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Nama Target</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Nominal</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Dibuat</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">

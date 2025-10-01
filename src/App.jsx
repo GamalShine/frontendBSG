@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MenuProvider, useMenu } from './contexts/MenuContext'
@@ -9,20 +9,11 @@ import RequireMenuKey from './components/RouteGuards/RequireMenuKey'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import AdminDashboard from './pages/Admin/Dashboard/AdminDashboard'
+import AdminVideoLibrary from './pages/Admin/Dashboard/AdminVideoLibrary'
 import OwnerDashboard from './pages/Owner/Dashboard/OwnerDashboard'
 import NotFound from './pages/NotFound'
 
-// Chat Pages
-import ChatPrivate from './pages/Chat/ChatPrivate'
-import ChatRoom from './pages/Chat/ChatRoom'
-import AdminChatPrivate from './pages/Admin/Chat/ChatPrivate/AdminChatPrivate'
-import AdminChatRoom from './pages/Admin/Chat/ChatRoom/AdminChatRoom'
-import OwnerChatPrivate from './pages/Owner/Chat/ChatPrivate/OwnerChatPrivate'
-import OwnerChatRoom from './pages/Owner/Chat/ChatRoom/OwnerChatRoom'
-import DivisiChatPrivate from './pages/Divisi/Chat/ChatPrivate/DivisiChatPrivate'
-import DivisiChatRoom from './pages/Divisi/Chat/ChatRoom/DivisiChatRoom'
-import TimChatPrivate from './pages/Tim/Chat/ChatPrivate/TimChatPrivate'
-import TimChatRoom from './pages/Tim/Chat/ChatRoom/TimChatRoom'
+// Chat pages dihapus untuk seluruh role
 
 // Komplain Pages
 import KomplainList from './pages/Komplain/KomplainList'
@@ -81,6 +72,11 @@ import OwnerTimMerahBiruList from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahB
 import OwnerTimMerahBiruDetail from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruDetail'
 import OwnerTimMerahBiruForm from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruForm'
 import OwnerTimMerahBiruEdit from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruEdit'
+// SDM SOP & Aturan Pages
+import OwnerSopAturan from './pages/Owner/SDM/SopAturan/OwnerSopAturan'
+import AdminSopAturan from './pages/Admin/SDM/SopAturan/AdminSopAturan'
+import DivisiSopAturan from './pages/Divisi/SDM/SopAturan/DivisiSopAturan'
+import TimSopAturan from './pages/Tim/SDM/SopAturan/TimSopAturan'
 
 // Owner KPI Pages
 import OwnerKPI from './pages/Owner/SDM/KPI/OwnerKPI'
@@ -88,6 +84,21 @@ import OwnerKPIList from './pages/Owner/SDM/KPI/OwnerKPIList'
 import OwnerKPIDetail from './pages/Owner/SDM/KPI/OwnerKPIDetail'
 import OwnerKPIForm from './pages/Owner/SDM/KPI/OwnerKPIForm'
 import OwnerKPIEdit from './pages/Owner/SDM/KPI/OwnerKPIEdit'
+
+// Leader Pages
+import LeaderJobdeskSaya from './pages/Leader/Jobdesk/LeaderJobdeskSaya'
+import LeaderStrukturJobdesk from './pages/Leader/Jobdesk/LeaderStrukturJobdesk'
+import LeaderSOPAturan from './pages/Leader/SOPAturan/LeaderSOPAturan'
+import LeaderSaranList from './pages/Leader/Saran/LeaderSaranList'
+import LeaderKPI from './pages/Leader/KPI/LeaderKPI'
+import LeaderKPISaya from './pages/Leader/KPI/LeaderKPISaya'
+import LeaderKPITim from './pages/Leader/KPI/LeaderKPITim'
+import LeaderTimMerahBiru from './pages/Leader/Tim/LeaderTimMerahBiru'
+import LeaderProfile from './pages/Leader/Profile/LeaderProfile'
+import LeaderSlipGajiSaya from './pages/Leader/SlipGaji/LeaderSlipGajiSaya'
+import LeaderDaftarPengajuan from './pages/Leader/Pengajuan/LeaderDaftarPengajuan'
+import LeaderTugasSaya from './pages/Leader/Tugas/LeaderTugasSaya'
+// Removed placeholder; now using real page from pages/Leader/SlipGaji/LeaderSlipGajiSaya.jsx
 
 // Owner Management Pages
 import PicMenuManagement from './pages/Owner/PicMenuManagement/PicMenuManagement'
@@ -193,9 +204,11 @@ import OwnerKomplainDetail from './pages/Owner/Operasional/Komplain/OwnerKomplai
 import OwnerKomplainForm from './pages/Owner/Operasional/Komplain/OwnerKomplainForm'
 import OwnerKomplainEdit from './pages/Owner/Operasional/Komplain/OwnerKomplainEdit'
 import OwnerDaftarKomplain from './pages/Owner/Operasional/DaftarKomplain/OwnerDaftarKomplain'
+import OwnerDaftarPengajuan from './pages/Owner/Operasional/Pengajuan/OwnerDaftarPengajuan'
 import OwnerDaftarKomplainForm from './pages/Owner/Operasional/DaftarKomplain/OwnerDaftarKomplainForm'
 
-// Admin Data Target (deprecated) removed
+// Admin Data Target
+import AdminDataTarget from './pages/Admin/Marketing/DataTarget/AdminDataTarget'
 import AdminTargetHarianList from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianList'
 import AdminTargetHarianDetail from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianDetail'
 import AdminTargetHarianForm from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianForm'
@@ -299,6 +312,7 @@ const LoginWrapper = () => {
   if (isAuthenticated) {
     const defaultPath = user?.role === 'owner' ? '/owner/dashboard'
       : user?.role === 'admin' ? '/admin/dashboard'
+      : user?.role === 'leader' ? '/leader/dashboard'
       : '/dashboard'
     return <Navigate to={defaultPath} replace />
   }
@@ -329,19 +343,18 @@ const ProtectedRoute = ({ children, requiredPermissions = [] }) => {
   return children
 }
 
-// Main App Component
-const App = () => {
+// Modal-aware Routes Wrapper for background routes
+const ModalSwitch = () => {
+  const location = useLocation()
+  const state = location.state
+  const backgroundLocation = state && state.backgroundLocation
+
   return (
     <ErrorBoundary>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true,
-        }}
-      >
-        <AuthProvider>
-          <MenuProvider>
-            <Routes>
+      <AuthProvider>
+        <MenuProvider>
+          {/* Main routes. If a modal is open, render the background location here */}
+          <Routes location={backgroundLocation || location}>
               {/* Public Routes */}
               <Route path="/login" element={<LoginWrapper />} />
               
@@ -359,6 +372,13 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerJadwalPembayaran />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/owner/pengajuan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDaftarPengajuan />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -394,6 +414,15 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Admin Video Library */}
+              <Route path="/admin/video-library" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AdminVideoLibrary />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               <Route path="/owner/dashboard" element={
                 <ProtectedRoute>
                   <Layout>
@@ -402,71 +431,113 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Chat Routes */}
-              <Route path="/chat" element={<Navigate to="/chat/private" replace />} />
-              
-              <Route path="/chat/private" element={
-                <ProtectedRoute requiredPermissions={['read']}>
+              {/* Leader Dashboard route */}
+              <Route path="/leader/dashboard" element={
+                <ProtectedRoute>
                   <Layout>
-                    <ChatPrivate />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/chat/room/:roomId" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <ChatRoom />
+                    <Dashboard />
                   </Layout>
                 </ProtectedRoute>
               } />
 
-              {/* Admin Chat Routes */}
-              <Route path="/admin/chat" element={
+              {/* Leader Routes */}
+              <Route path="/leader/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <AdminChatPrivate />
+                    <LeaderStrukturJobdesk />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/sdm/jobdesk-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderJobdeskSaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/sdm/sop-aturan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderSOPAturan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/sdm/saran" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderSaranList />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/sdm/kpi" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderKPI />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/sdm/kpi-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderKPISaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/sdm/kpi-tim" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderKPITim />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/tugas-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderTugasSaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/pengajuan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderDaftarPengajuan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/slip-gaji-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderSlipGajiSaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/tugas/tim" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderTimMerahBiru />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leader/profile" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderProfile />
                   </Layout>
                 </ProtectedRoute>
               } />
 
-              {/* Backward compatibility: redirect old path to new */}
-              <Route path="/admin/chat/private" element={<Navigate to="/admin/chat" replace />} />
-              
-              <Route path="/admin/chat/room/:roomId" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminChatRoom />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-            <Route path="/owner/pic-menu-management" element={
+              {/* Chat routes dihapus */}
+            <Route path="/owner/pic-menu" element={
               <ProtectedRoute requiredPermissions={['read']}>
                 <Layout>
                   <PicMenuManagement />
                 </Layout>
               </ProtectedRoute>
             } />
+            {/* Backward compatibility: redirect old path to new */}
+            <Route path="/owner/pic-menu-management" element={<Navigate to="/owner/pic-menu" replace />} />
               
-              {/* Owner Chat Routes */}
-              <Route path="/owner/chat" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <OwnerChatPrivate />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-
-              {/* Backward compatibility: redirect old path to new */}
-              <Route path="/owner/chat/private" element={<Navigate to="/owner/chat" replace />} />
-              
-              <Route path="/owner/chat/room/:roomId" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <OwnerChatRoom />
-                  </Layout>
-                </ProtectedRoute>
-              } />
+              {/* Owner chat routes dihapus */}
 
               {/* Owner Settings - Kelola Akun */}
               <Route path="/owner/settings/kelola-akun" element={
@@ -508,12 +579,12 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Admin Marketing - Data Target (ratakan penamaan) */}
+              {/* Admin Marketing - Data Target */}
               <Route path="/admin/marketing/data-target" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDataTarget">
                     <Layout>
-                      <AdminTargetHarianList />
+                      <AdminDataTarget />
                     </Layout>
                   </RequireMenuKey>
                 </ProtectedRoute>
@@ -628,31 +699,14 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Divisi Chat Routes */}
-              <Route path="/divisi/chat" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <DivisiChatPrivate />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-
-              {/* Backward compatibility: redirect old path to new */}
-              <Route path="/divisi/chat/private" element={<Navigate to="/divisi/chat" replace />} />
-              
-              <Route path="/divisi/chat/room/:roomId" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <DivisiChatRoom />
-                  </Layout>
-                </ProtectedRoute>
-              } />
+              {/* Divisi Chat Routes dihapus */}
 
               {/* Divisi SDM Routes */}
               {/* Backward compatibility: redirect old path to new */}
-              <Route path="/divisi/sdm/struktur" element={<Navigate to="/divisi/sdm/struktur-jobdesk-sop" replace />} />
+              <Route path="/divisi/sdm/struktur" element={<Navigate to="/divisi/sdm/struktur-jobdesk" replace />} />
+              <Route path="/divisi/sdm/struktur-jobdesk-sop" element={<Navigate to="/divisi/sdm/struktur-jobdesk" replace />} />
 
-              <Route path="/divisi/sdm/struktur-jobdesk-sop" element={
+              <Route path="/divisi/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <StrukturJobdeskSOP />
@@ -660,31 +714,44 @@ const App = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Tim Chat Routes */}
-              <Route path="/tim/chat" element={
+              {/* SDM - S.O.P dan Aturan */}
+              <Route path="/owner/sdm/sop-aturan" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <TimChatPrivate />
+                    <OwnerSopAturan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/sdm/sop-aturan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminSopAturan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/divisi/sdm/sop-aturan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <DivisiSopAturan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/tim/sdm/sop-aturan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <TimSopAturan />
                   </Layout>
                 </ProtectedRoute>
               } />
 
-              {/* Backward compatibility: redirect old path to new */}
-              <Route path="/tim/chat/private" element={<Navigate to="/tim/chat" replace />} />
-              
-              <Route path="/tim/chat/room/:roomId" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <TimChatRoom />
-                  </Layout>
-                </ProtectedRoute>
-              } />
+              {/* Tim Chat Routes dihapus */}
 
               {/* Tim SDM Routes */}
               {/* Backward compatibility: redirect old path to new */}
-              <Route path="/tim/sdm/struktur" element={<Navigate to="/tim/sdm/struktur-jobdesk-sop" replace />} />
+              <Route path="/tim/sdm/struktur" element={<Navigate to="/tim/sdm/struktur-jobdesk" replace />} />
+              <Route path="/tim/sdm/struktur-jobdesk-sop" element={<Navigate to="/tim/sdm/struktur-jobdesk" replace />} />
 
-              <Route path="/tim/sdm/struktur-jobdesk-sop" element={
+              <Route path="/tim/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <StrukturJobdeskSOP />
@@ -895,6 +962,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
+              {/* Keep the standalone form route for direct navigation (non-modal) */}
               <Route path="/admin/operasional/data-supplier/form" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <Layout>
@@ -1001,11 +1069,12 @@ const App = () => {
               
               {/* Admin SDM Routes */}
               {/* Backward compatibility: redirect old path to new */}
-              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/sdm/struktur-jobdesk-sop" replace />} />
+              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/struktur-jobdesk-sop" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
 
-              <Route path="/admin/sdm/struktur-jobdesk-sop" element={
+              <Route path="/admin/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
-                  <RequireMenuKey requiredKey="AdminSdmStrukturSop">
+                  <RequireMenuKey requiredKey={["AdminSdmStrukturJobdesk", "AdminSdmStrukturSop"]}>
                     <Layout>
                       <StrukturJobdeskSOP />
                     </Layout>
@@ -1063,7 +1132,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/admin/sdm/tim/merah/new" element={
+              <Route path="/admin/sdm/tim/:type/form" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <Layout>
                     <AdminTimMerahBiruForm />
@@ -1071,31 +1140,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/admin/sdm/tim/merah/form" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <AdminTimMerahBiruForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/sdm/tim/biru/new" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <AdminTimMerahBiruForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/sdm/tim/biru/form" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <AdminTimMerahBiruForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/sdm/tim/merah/:id/edit" element={
+              <Route path="/admin/sdm/tim/:type/edit/:id" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
                     <AdminTimMerahBiruEdit />
@@ -1107,14 +1152,6 @@ const App = () => {
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <AdminTimMerahBiruDetail />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/sdm/tim/biru/:id/edit" element={
-                <ProtectedRoute requiredPermissions={['update']}>
-                  <Layout>
-                    <AdminTimMerahBiruEdit />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -1838,9 +1875,10 @@ const App = () => {
 
               {/* Owner SDM Routes */}
               {/* Backward compatibility: redirect old path to new */}
-              <Route path="/owner/sdm/struktur" element={<Navigate to="/owner/sdm/struktur-jobdesk-sop" replace />} />
+              <Route path="/owner/sdm/struktur" element={<Navigate to="/owner/sdm/struktur-jobdesk" replace />} />
+              <Route path="/owner/sdm/struktur-jobdesk-sop" element={<Navigate to="/owner/sdm/struktur-jobdesk" replace />} />
 
-              <Route path="/owner/sdm/struktur-jobdesk-sop" element={
+              <Route path="/owner/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <StrukturJobdeskSOP />
@@ -1923,7 +1961,7 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/owner/sdm/tim/merah/new" element={
+              <Route path="/owner/sdm/tim/:type/form" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <Layout>
                     <OwnerTimMerahBiruForm />
@@ -1931,50 +1969,18 @@ const App = () => {
                 </ProtectedRoute>
               } />
               
-              <Route path="/owner/sdm/tim/merah/form" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <OwnerTimMerahBiruForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/owner/sdm/tim/biru/new" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <OwnerTimMerahBiruForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/owner/sdm/tim/biru/form" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <OwnerTimMerahBiruForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/owner/sdm/tim/merah/:id/edit" element={
+              <Route path="/owner/sdm/tim/:type/edit/:id" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
                     <OwnerTimMerahBiruEdit />
                   </Layout>
                 </ProtectedRoute>
               } />
-              
+
               <Route path="/owner/sdm/tim/merah/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <OwnerTimMerahBiruDetail />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/owner/sdm/tim/biru/:id/edit" element={
-                <ProtectedRoute requiredPermissions={['update']}>
-                  <Layout>
-                    <OwnerTimMerahBiruEdit />
                   </Layout>
                 </ProtectedRoute>
               } />
@@ -2398,7 +2404,6 @@ const App = () => {
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </MenuProvider>
           <Toaster 
             position="top-right"
             toastOptions={{
@@ -2419,13 +2424,39 @@ const App = () => {
                 iconTheme: {
                   primary: '#EF4444',
                   secondary: '#fff',
-                },
-              },
+                }
+              }
             }}
           />
-        </AuthProvider>
-      </BrowserRouter>
+
+          {/* Modal routes. Only render when backgroundLocation exists */}
+          {backgroundLocation && (
+            <Routes>
+              <Route path="/admin/operasional/data-supplier/form" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <AdminDataSupplierForm />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          )}
+
+        </MenuProvider>
+      </AuthProvider>
     </ErrorBoundary>
+  )
+}
+
+// Main App Component that sets up the Router and renders modal-aware routes
+const App = () => {
+  return (
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <ModalSwitch />
+    </BrowserRouter>
   )
 }
 

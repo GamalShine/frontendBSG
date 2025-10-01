@@ -318,25 +318,25 @@ const AdminLaporanKeuangan = () => {
 
       {/* Months Folder Grid */}
       {monthsView === 'months' && (
-        <div className="bg-white shadow-sm border mb-4">
-          <div className="p-3 border-b border-gray-200">
+        <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Bulan</h2>
             {loading && <div className="text-sm text-gray-600">Memuat daftar bulan...</div>}
             {!loading && availableMonths.length === 0 && (
               <div className="text-sm text-gray-600">Belum ada data bulan tersedia</div>
             )}
             {!loading && availableMonths.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-1">
                 {availableMonths.map(({ year, month }) => {
                   const label = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
                   return (
                     <div
                       key={`${year}-${month}`}
-                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
                       onClick={() => openMonthFolder(year, month)}
                     >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-10 h-10 bg-yellow-100 flex items-center justify-center text-yellow-700 font-bold">{month}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors text-yellow-700 font-bold w-10 h-10 flex items-center justify-center">{month}</div>
                         <div>
                           <div className="font-semibold text-gray-800 group-hover:text-red-700">{label}</div>
                           <div className="text-xs text-gray-500">Folder Bulan</div>
@@ -353,60 +353,63 @@ const AdminLaporanKeuangan = () => {
 
       {/* Month Content Table */}
       {monthsView === 'monthContent' && (
-      <div className="bg-white shadow-sm border">
+      <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
         <div className="bg-red-800 text-white px-4 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">{formatMonthHeader(monthFilter)}</h2>
-              <p className="text-xs opacity-90">Data Laporan Keuangan ({totalItems} item)</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={backToMonths}
+                aria-label="Kembali"
+                className="inline-flex items-center justify-center h-8 w-8 rounded border border-white/60 text-white hover:bg-white/10"
+              >
+                &lt;
+              </button>
+              <div>
+                <h2 className="text-lg font-semibold">{formatMonthHeader(monthFilter)}</h2>
+                <p className="text-xs opacity-90">Daftar Laporan Keuangan</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/admin/keuangan/laporan/new')}
-                className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
+                className="bg-white border border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg"
               >
                 <Plus className="h-4 w-4" /> Tambah
-              </button>
-              <button
-                onClick={backToMonths}
-                className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
-              >
-                Kembali
               </button>
             </div>
           </div>
         </div>
-        
+
+        {/* Ringkasan di dalam folder */}
+        <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
+          <div>
+            Total {formatMonthHeader(monthFilter)}: <span className="font-semibold">{(totalItems || 0).toLocaleString('id-ID')}</span>
+          </div>
+          <div>
+            Ditampilkan: <span className="font-semibold">{(laporanKeuangan?.length || 0).toLocaleString('id-ID')}</span>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <thead className="sticky top-0 bg-red-700 z-10 shadow">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="pl-4 sm:pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
                   <input
                     type="checkbox"
                     checked={selectedItems.length === laporanKeuangan.length && laporanKeuangan.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                    className="rounded border-white text-white focus:ring-white"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  Judul
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  Dibuat
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Judul</th>
+                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
+                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat</th>
+                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {laporanKeuangan.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
@@ -428,8 +431,8 @@ const AdminLaporanKeuangan = () => {
                         </td>
                       </tr>
                       {items.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
+                        <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/keuangan/laporan/${item.id}`)}>
+                          <td className="pl-4 sm:pl-6 pr-0 py-3 whitespace-nowrap text-sm text-gray-900" onClick={(e) => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={selectedItems.includes(item.id)}
@@ -437,45 +440,39 @@ const AdminLaporanKeuangan = () => {
                               className="rounded border-gray-300 text-red-600 focus:ring-red-500"
                             />
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-4 md:px-6 py-3 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                             {formatDate(item.tanggal_laporan)}
                           </td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {item.judul_laporan && item.judul_laporan.trim() !== ''
-                                  ? item.judul_laporan
-                                  : extractTitle(item.isi_laporan)}
-                              </div>
-                              <div
-                                className="text-sm text-gray-500 md:truncate max-w-[40ch]"
-                                dangerouslySetInnerHTML={{ __html: formatPreviewHtml(item.isi_laporan) }}
-                              />
+                          <td className="px-4 md:px-6 py-3 text-sm text-gray-900">
+                            <div className="max-w-[14rem] md:max-w-md break-anywhere md:truncate">
+                              {item.judul_laporan && item.judul_laporan.trim() !== ''
+                                ? item.judul_laporan
+                                : extractTitle(item.isi_laporan)}
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          <td className="px-4 md:px-6 py-3 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                             {item.user_nama || 'Unknown'}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className="px-4 md:px-6 py-3 whitespace-nowrap text-sm text-gray-500">
                             {formatDateTime(item.created_at)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center space-x-2">
+                          <td className="px-4 md:px-6 py-3 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
                               <Link
                                 to={`/admin/keuangan/laporan/${item.id}`}
-                                className="text-blue-600 hover:text-blue-900"
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-blue-600 hover:bg-blue-50"
                               >
                                 <Eye className="h-4 w-4" />
                               </Link>
                               <Link
                                 to={`/admin/keuangan/laporan/${item.id}/edit`}
-                                className="text-green-600 hover:text-green-900"
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-green-600 hover:bg-green-50"
                               >
                                 <Edit className="h-4 w-4" />
                               </Link>
                               <button
                                 onClick={() => handleDelete(item.id)}
-                                className="text-red-600 hover:text-red-900"
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-600 hover:bg-red-50"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -492,7 +489,7 @@ const AdminLaporanKeuangan = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-3 py-2 border-t border-gray-200">
+          <div className="px-3 py-2 border-t border-gray-200 bg-white">
             <div className="flex items-center justify-between">
               <div className="text-sm text-gray-700">
                 Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} item
@@ -501,7 +498,7 @@ const AdminLaporanKeuangan = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Sebelumnya
                 </button>
@@ -511,7 +508,7 @@ const AdminLaporanKeuangan = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Selanjutnya
                 </button>

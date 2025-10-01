@@ -654,32 +654,40 @@ const handleSubmit = async (e) => {
 };
 
 return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header merah full-width */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/admin/keuangan/omset-harian')}
-              className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-3 py-2 rounded-lg border border-white/60 hover:bg-white/10"
+              title="Kembali"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {isEditMode ? 'Edit Omset Harian' : 'Tambah Omset Harian'}
-              </h1>
-              <p className="text-gray-600">
-                {isEditMode ? 'Perbarui data omset harian' : 'Tambah data omset harian baru'}
-              </p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT OMSET HARIAN' : 'TAMBAH OMSET HARIAN'}</h1>
+              <p className="text-sm text-red-100">{isEditMode ? 'Perbarui data omset harian' : 'Tambah data omset harian baru'}</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              form="omset-form"
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+            >
+              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span>{isEditMode ? 'Update' : 'Simpan'}</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <form onSubmit={handleSubmit}>
+      <div className="bg-white rounded-none shadow-sm border-y">
+        <form id="omset-form" onSubmit={handleSubmit}>
           {/* Tanggal Omset */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
@@ -905,6 +913,7 @@ return (
               <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
             </button>
           </div>
+          
         </form>
       </div>
     </div>

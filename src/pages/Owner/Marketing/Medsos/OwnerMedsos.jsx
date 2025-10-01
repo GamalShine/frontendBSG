@@ -167,65 +167,83 @@ const OwnerMedsos = () => {
       <div className="w-full px-0 md:px-0 mt-4">
         {/* Grid Years */}
         {view === 'years' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {loading.years && (
-              <div className="col-span-full text-sm text-gray-600">Memuat daftar tahun...</div>
-            )}
-            {error.years && (
-              <div className="col-span-full text-sm text-red-600">{error.years}</div>
-            )}
-            {!loading.years && !error.years && years.map((y) => (
-              <div
-                key={y}
-                className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
-                onClick={() => openYear(y)}
-              >
-                <div className="flex items-center space-x-2">
-                  <FolderIcon />
-                  <div>
-                    <div className="font-semibold text-gray-800 group-hover:text-red-700">{y}</div>
-                    <div className="text-xs text-gray-500">Folder Tahun</div>
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Pilih Tahun</h2>
+            </div>
+            <div className="p-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {loading.years && (
+                  <div className="col-span-full text-sm text-gray-600">Memuat daftar tahun...</div>
+                )}
+                {error.years && (
+                  <div className="col-span-full text-sm text-red-600">{error.years}</div>
+                )}
+                {!loading.years && !error.years && years.map((y) => (
+                  <div
+                    key={y}
+                    className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
+                    onClick={() => openYear(y)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                        <FolderIcon />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-gray-800 group-hover:text-red-700">{y}</div>
+                        <div className="text-xs text-gray-500">Folder Tahun</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         )}
 
         {/* Grid Months */}
         {view === 'months' && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {loading.months && (
-              <div className="col-span-full text-sm text-gray-600">Memuat daftar bulan...</div>
-            )}
-            {error.months && (
-              <div className="col-span-full text-sm text-red-600">{error.months}</div>
-            )}
-            {!loading.months && !error.months && months.map((mNum) => {
-              const idx = mNum - 1; // convert to 0-based index for display
-              const m = monthNames[idx] || `Bulan ${mNum}`;
-              return (
-              <div
-                key={`${selectedYear}-${mNum}`}
-                className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
-                onClick={() => openMonth(idx)}
-              >
-                <div className="flex items-center space-x-2">
-                  <FolderIcon />
-                  <div>
-                    <div className="font-semibold text-gray-800 group-hover:text-red-700">{m}</div>
-                    <div className="text-xs text-gray-500">{selectedYear}</div>
-                  </div>
-                </div>
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Pilih Bulan {selectedYear}</h2>
+            </div>
+            <div className="p-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                {loading.months && (
+                  <div className="col-span-full text-sm text-gray-600">Memuat daftar bulan...</div>
+                )}
+                {error.months && (
+                  <div className="col-span-full text-sm text-red-600">{error.months}</div>
+                )}
+                {!loading.months && !error.months && months.map((mNum) => {
+                  const idx = mNum - 1; // convert to 0-based index for display
+                  const m = monthNames[idx] || `Bulan ${mNum}`;
+                  return (
+                    <div
+                      key={`${selectedYear}-${mNum}`}
+                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
+                      onClick={() => openMonth(idx)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                          <FolderIcon />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-800 group-hover:text-red-700">{m}</div>
+                          <div className="text-xs text-gray-500">{selectedYear}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              );
-            })}
+            </div>
           </div>
         )}
 
         {/* Month Content */}
         {view === 'monthContent' && (
-          <div className="bg-white shadow-sm border">
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
             <div className="bg-red-800 text-white px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -233,18 +251,27 @@ const OwnerMedsos = () => {
                   <p className="text-xs opacity-90">Daftar Laporan Harian</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={goToCreatePage} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">Tambah</button>
-                  <button onClick={goBackToMonths} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">Kembali</button>
+                  <button onClick={goToCreatePage} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Tambah</button>
+                  <button onClick={goBackToMonths} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Kembali</button>
                 </div>
+              </div>
+            </div>
+            {/* Summary bar */}
+            <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
+              <div>
+                Total Ditampilkan: <span className="font-semibold">{(monthContent?.length || 0).toLocaleString('id-ID')}</span>
+              </div>
+              <div>
+                Bulan: <span className="font-semibold">{monthNames[selectedMonthIndex]} {selectedYear}</span>
               </div>
             </div>
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-gray-50">
+                <TableHeader className="sticky top-0 bg-red-700 z-10 shadow">
                   <TableRow>
-                    <TableHead className="w-12">No</TableHead>
-                    <TableHead className="w-3/12">Tanggal</TableHead>
-                    <TableHead>Keterangan</TableHead>
+                    <TableHead className="w-12 text-white uppercase tracking-wider text-xs font-extrabold">No</TableHead>
+                    <TableHead className="w-3/12 text-white uppercase tracking-wider text-xs font-extrabold">Tanggal</TableHead>
+                    <TableHead className="text-white uppercase tracking-wider text-xs font-extrabold">Keterangan</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

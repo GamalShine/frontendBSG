@@ -25,8 +25,9 @@ const RequireMenuKey = ({ requiredKey, children }) => {
   }
 
   // Bypass dihapus: akses hanya lewat allowedMenuKeys
-
-  const allowed = Array.isArray(allowedMenuKeys) && allowedMenuKeys.includes(requiredKey)
+  // Support requiredKey sebagai string atau array of string (kompatibilitas multi-key)
+  const requiredKeys = Array.isArray(requiredKey) ? requiredKey : [requiredKey]
+  const allowed = Array.isArray(allowedMenuKeys) && requiredKeys.some((k) => allowedMenuKeys.includes(k))
   if (!allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

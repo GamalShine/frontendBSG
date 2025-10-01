@@ -230,23 +230,27 @@ const OwnerTargetHarianList = () => {
           {error && (
             <div className="text-sm text-red-700 bg-red-50 border border-red-200 px-3 py-2 mb-3">{error}</div>
           )}
-          <div className="bg-white shadow-sm border">
-            <div className="p-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Tahun</h2>
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200">
+              <h2 className="text-lg font-semibold text-gray-900">Pilih Tahun</h2>
+            </div>
+            <div className="p-3">
               {loading && <div className="text-sm text-gray-600">Memuat daftar tahun...</div>}
               {!loading && years.length === 0 && (
                 <div className="text-sm text-gray-600">Belum ada data</div>
               )}
               {!loading && years.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {years.map(({ year: y }) => (
                     <div
                       key={y}
-                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
                       onClick={() => openYear(y)}
                     >
-                      <div className="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500"><path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z"/></svg>
+                      <div className="flex items-center gap-3">
+                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500"><path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z"/></svg>
+                        </div>
                         <div>
                           <div className="font-semibold text-gray-800 group-hover:text-red-700">{y}</div>
                           <div className="text-xs text-gray-500">Folder Tahun</div>
@@ -318,7 +322,7 @@ const OwnerTargetHarianList = () => {
           )}
 
           {/* Panel Tahun + Tabel */}
-          <div className="bg-white shadow-sm border mx-4">
+          <div className="bg-white shadow-sm border rounded-lg overflow-hidden mx-4">
             <div className="bg-red-800 text-white px-4 py-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -326,18 +330,27 @@ const OwnerTargetHarianList = () => {
                   <p className="text-xs opacity-90">Daftar Data Target</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Link to="/owner/marketing/data-target/new" className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">Tambah</Link>
-                  <button onClick={backToYears} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">Kembali</button>
+                  <Link to="/owner/marketing/data-target/new" className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Tambah</Link>
+                  <button onClick={backToYears} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Kembali</button>
                 </div>
               </div>
             </div>
+            {/* Summary bar */}
+            <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
+              <div>
+                Total Tahun {year}: <span className="font-semibold">{(pagination.totalItems || 0).toLocaleString('id-ID')}</span>
+              </div>
+              <div>
+                Ditampilkan: <span className="font-semibold">{(items?.length || 0).toLocaleString('id-ID')}</span>
+              </div>
+            </div>
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="sticky top-0 bg-red-700 z-10 shadow">
                 <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase">No</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase">Tanggal</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase">Keterangan</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500 uppercase">Aksi</th>
+                  <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">No</th>
+                  <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                  <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Keterangan</th>
+                  <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

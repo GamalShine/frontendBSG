@@ -46,6 +46,20 @@ const AdminDataInvestorForm = ({ isOpen, onClose, onSuccess, editData = null, in
   const [uploading, setUploading] = useState(false);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
 
+  // Inject utility to hide scrollbar while keeping scroll behavior
+  useEffect(() => {
+    const styleId = 'no-scrollbar-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = `
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   // Normalisasi persentase: '30' atau '30%' => '30%'
   const formatPercent = (val) => {
     if (!val) return '';
@@ -387,14 +401,11 @@ const title = editData ? 'Edit Biodata Investor' : 'Tambah Biodata Investor';
 const buttonText = 'SIMPAN BIODATA';
 
 return (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 md:p-6">
+    <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[90vh] overflow-y-auto no-scrollbar">
       {/* Header */}
-      <div className="bg-red-800 text-white p-4 flex items-center justify-between">
+      <div className="bg-red-800 text-white p-4 md:p-5 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center space-x-3">
-          <button onClick={onClose} className="p-2 hover:bg-red-700 rounded-lg transition-colors">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
           <div>
             <h2 className="text-xl font-semibold">{title}</h2>
             <p className="text-sm text-red-100">{MENU_CODES.operasional.dataInvestor}</p>
@@ -406,8 +417,8 @@ return (
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6">
-        <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="p-6 md:p-8 pb-8">
+        <div className="space-y-6 md:space-y-7">
           {/* NAMA OUTLET */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">NAMA OUTLET <span className="text-red-500">*</span></label>
@@ -416,7 +427,7 @@ return (
               name="outlet"
               value={formData.outlet}
               onChange={handleInputChange}
-              className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg ${errors.outlet ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 h-11 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg ${errors.outlet ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Pilih atau ketik nama outlet"
             />
             <datalist id="outletOptions">
@@ -433,7 +444,7 @@ return (
               name="nama_investor"
               value={formData.nama_investor}
               onChange={handleInputChange}
-              className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg ${errors.nama_investor ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 h-11 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg ${errors.nama_investor ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Masukkan nama investor"
             />
             {errors.nama_investor && (<p className="text-red-500 text-sm mt-1">{errors.nama_investor}</p>)}
@@ -442,43 +453,43 @@ return (
           {/* TTL INVESTOR */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">TTL INVESTOR</label>
-            <input type="text" name="ttl_investor" value={formData.ttl_investor} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Contoh: Jakarta, 01 Januari 1990" />
+            <input type="text" name="ttl_investor" value={formData.ttl_investor} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: Jakarta, 01 Januari 1990" />
           </div>
 
           {/* NO. HP */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">NO. HP</label>
-            <input type="text" name="no_hp" value={formData.no_hp} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Contoh: 081234567890" />
+            <input type="text" name="no_hp" value={formData.no_hp} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: 081234567890" />
           </div>
 
           {/* ALAMAT */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">ALAMAT</label>
-            <textarea name="alamat" value={formData.alamat} onChange={handleInputChange} rows={3} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Masukkan alamat lengkap" />
+            <textarea name="alamat" value={formData.alamat} onChange={handleInputChange} rows={3} className="w-full px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg min-h-[96px]" placeholder="Masukkan alamat lengkap" />
           </div>
 
           {/* TANGGAL JOIN */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">TANGGAL JOIN</label>
-            <input type="date" name="tanggal_join" value={formData.tanggal_join} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" />
+            <input type="date" name="tanggal_join" value={formData.tanggal_join} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" />
           </div>
 
           {/* KONTAK DARURAT */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">KONTAK DARURAT</label>
-            <input type="text" name="kontak_darurat" value={formData.kontak_darurat} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Contoh: 081234567890" />
+            <input type="text" name="kontak_darurat" value={formData.kontak_darurat} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: 081234567890" />
           </div>
 
           {/* NAMA PASANGAN */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">NAMA PASANGAN</label>
-            <input type="text" name="nama_pasangan" value={formData.nama_pasangan} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Masukkan nama pasangan" />
+            <input type="text" name="nama_pasangan" value={formData.nama_pasangan} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Masukkan nama pasangan" />
           </div>
 
           {/* NAMA ANAK */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">NAMA ANAK</label>
-            <input type="text" name="nama_anak" value={formData.nama_anak} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Masukkan nama anak (pisahkan dengan koma)" />
+            <input type="text" name="nama_anak" value={formData.nama_anak} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Masukkan nama anak (pisahkan dengan koma)" />
           </div>
 
           {/* AHLI WARIS */}
@@ -489,7 +500,7 @@ return (
               name="ahli_waris"
               value={formData.ahli_waris}
               onChange={handleInputChange}
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg"
+              className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg"
               placeholder="Masukkan nama ahli waris"
               maxLength={150}
             />
@@ -585,7 +596,7 @@ return (
           {/* INVESTASI DI OUTLET */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">INVESTASI DI OUTLET</label>
-            <input type="number" name="investasi_di_outlet" value={formData.investasi_di_outlet} onChange={handleInputChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg" placeholder="Contoh: 10000000" step="1000" />
+            <input type="number" name="investasi_di_outlet" value={formData.investasi_di_outlet} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: 10000000" step="1000" />
           </div>
 
           {/* PERSENTASE BAGI HASIL (single legacy) - disembunyikan sesuai permintaan */}
@@ -593,14 +604,14 @@ return (
           {/* Dua kolom: Bosgil% dan Investor% */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">PERSENTASE (Bosgil — Investor)</label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Bosgil (%)</label>
-                <input type="number" name="bosgil_percent" min="0" max="100" value={formData.bosgil_percent} onChange={handleBosgilPercentChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 70" />
+                <input type="number" name="bosgil_percent" min="0" max="100" value={formData.bosgil_percent} onChange={handleBosgilPercentChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 70" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Investor (%)</label>
-                <input type="number" name="investor_percent" min="0" max="100" value={formData.investor_percent} onChange={handleInvestorPercentChange} className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 30" />
+                <input type="number" name="investor_percent" min="0" max="100" value={formData.investor_percent} onChange={handleInvestorPercentChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 30" />
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">Total harus 100%. Mengisi salah satu akan otomatis menyesuaikan yang lain.</p>
@@ -608,8 +619,8 @@ return (
         </div>
 
         {/* Action Button */}
-        <div className="pt-6 mt-6">
-          <button type="submit" disabled={loading} className="w-full bg-red-800 text-white py-4 px-6 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-lg font-bold uppercase">
+        <div className="pt-6 mt-6 sticky bottom-0 bg-white border-t border-gray-200 px-6 md:px-8 pb-4">
+          <button type="submit" disabled={loading} className="w-full bg-red-800 text-white py-4 px-6 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base md:text-lg font-bold uppercase shadow mb-4">
             {loading ? (
               <div className="flex items-center justify-center space-x-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

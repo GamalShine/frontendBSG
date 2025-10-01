@@ -309,80 +309,69 @@ const AdminKomplainList = () => {
         </Card>
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-gray-900">Daftar Komplain</h2>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Judul</TableHead>
-                <TableHead>Pelapor</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Prioritas</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Target Selesai</TableHead>
-                <TableHead>Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {komplain.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.judul_komplain}</TableCell>
-                  <TableCell>
+      {/* List as Cards */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="px-4 py-3 border-b">
+          <h2 className="text-2xl font-bold text-gray-900">Daftar Komplain</h2>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {komplain.map((item) => (
+              <div key={item.id} className="relative border rounded-lg p-4 hover:shadow-md transition-shadow">
+                {/* Actions */}
+                <div className="absolute top-2 right-2 flex items-center gap-1">
+                  <button
+                    type="button"
+                    title="Lihat"
+                    onClick={() => handleViewDetail(item)}
+                    className="p-2 rounded hover:bg-gray-100 text-gray-700"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Edit"
+                    onClick={() => handleEdit(item.id)}
+                    className="p-2 rounded hover:bg-gray-100 text-amber-600"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Hapus"
+                    onClick={() => handleDelete(item.id)}
+                    className="p-2 rounded hover:bg-gray-100 text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="pr-16">
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">{item.judul_komplain}</h3>
+                  <div className="flex flex-wrap gap-2 text-xs mb-2">
+                    {getKategoriBadge(item.kategori)}
+                    {getPrioritasBadge(item.prioritas)}
+                    {getStatusBadge(item.status)}
+                  </div>
+                  <div className="text-sm text-gray-700 space-y-1">
                     <div>
-                      <p className="font-medium">{item.pelapor.nama}</p>
-                      <p className="text-sm text-gray-500">{item.pelapor.email}</p>
+                      <span className="text-gray-500">Pelapor:</span>{' '}
+                      <span className="font-medium">{item.pelapor.nama}</span>
+                      <span className="text-gray-500"> • {item.pelapor.email}</span>
                     </div>
-                  </TableCell>
-                  <TableCell>{getKategoriBadge(item.kategori)}</TableCell>
-                  <TableCell>{getPrioritasBadge(item.prioritas)}</TableCell>
-                  <TableCell>{getStatusBadge(item.status)}</TableCell>
-                  <TableCell>
-                    {format(new Date(item.tanggal_pelaporan), 'dd MMM yyyy', { locale: id })}
-                  </TableCell>
-                  <TableCell>
-                    {item.target_selesai ? 
-                      format(new Date(item.target_selesai), 'dd MMM yyyy', { locale: id }) : 
-                      '-'
-                    }
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetail(item)}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(item.id)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div className="text-gray-500">
+                      Tgl Lapor: {format(new Date(item.tanggal_pelaporan), 'dd MMM yyyy', { locale: id })}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardBody>
-      </Card>
+                    <div className="text-gray-500">
+                      Target Selesai: {item.target_selesai ? format(new Date(item.target_selesai), 'dd MMM yyyy', { locale: id }) : '-'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (

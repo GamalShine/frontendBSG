@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
   Home,
@@ -83,6 +83,17 @@ const Sidebar = () => {
   const location = useLocation()
   const [expandedMenus, setExpandedMenus] = useState(new Set())
 
+  // Restore expanded state on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_expanded')
+      if (saved) {
+        const arr = JSON.parse(saved)
+        if (Array.isArray(arr)) setExpandedMenus(new Set(arr))
+      }
+    } catch {}
+  }, [])
+
   const toggleMenu = (menuId) => {
     setExpandedMenus(prev => {
       const newSet = new Set(prev)
@@ -95,6 +106,13 @@ const Sidebar = () => {
     })
   }
 
+  // Persist expanded state
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebar_expanded', JSON.stringify(Array.from(expandedMenus)))
+    } catch {}
+  }, [expandedMenus])
+
   const isMenuActive = (menuPath) => {
     if (!menuPath) return false
     return location.pathname === menuPath || location.pathname.startsWith(menuPath + '/')
@@ -105,10 +123,33 @@ const Sidebar = () => {
     return children.some(child => isMenuActive(child.path))
   }
 
+  // Auto-expand parent menus that contain the active route, to avoid auto-closing after navigation
+  useEffect(() => {
+    setExpandedMenus(prev => {
+      const next = new Set(prev)
+      try {
+        menus.forEach(menu => {
+          const hasChildren = menu.children && menu.children.length > 0
+          if (!hasChildren) return
+          // filter visible children using same rules as renderer
+          const visibleChildren = menu.children.filter(child => {
+            const permOk = checkPermission(child.permissions)
+            const picOk = hasPicAccess(child)
+            return permOk && picOk
+          })
+          if (visibleChildren.some(child => isMenuActive(child.path))) {
+            next.add(menu.id)
+          }
+        })
+      } catch {}
+      return next
+    })
+  }, [location.pathname, menus, allowedMenuKeys, user])
+
   const hasPicAccess = (menu) => {
     const picKey = menu?.picKey
     // Item default yang selalu boleh untuk role admin/divisi/tim tanpa picKey
-    const defaultWhitelistIds = new Set(['dashboard', 'chat', 'daftar-tugas', 'profile'])
+    const defaultWhitelistIds = new Set(['dashboard', 'daftar-tugas', 'profile', 'settings'])
     const whitelistRoles = new Set(['admin', 'divisi', 'tim'])
 
     // Jika role termasuk whitelistRoles dan menu termasuk default whitelist, izinkan

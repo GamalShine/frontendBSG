@@ -117,6 +117,7 @@ export const timService = {
   // Get tim merah for owner (using correct endpoint)
   async getTimMerahForOwner(params = {}) {
     try {
+      // Owner read list
       const response = await api.get('/owner/tim-merah-biru/merah', { params })
       return response.data
     } catch (error) {
@@ -128,6 +129,7 @@ export const timService = {
   // Get tim biru for owner (using correct endpoint)
   async getTimBiruForOwner(params = {}) {
     try {
+      // Owner read list
       const response = await api.get('/owner/tim-merah-biru/biru', { params })
       return response.data
     } catch (error) {
@@ -136,10 +138,76 @@ export const timService = {
     }
   },
 
-  // Delete tim merah for owner
+  // Get detail tim merah for owner (delegate to common endpoint, backend allows owner)
+  async getTimMerahByIdForOwner(id) {
+    try {
+      const response = await api.get(`/tim-merah-biru/merah/${id}`)
+      return response.data
+    } catch (error) {
+      console.error('Error in getTimMerahByIdForOwner:', error)
+      throw error
+    }
+  },
+
+  // Get detail tim biru for owner (delegate to common endpoint, backend allows owner)
+  async getTimBiruByIdForOwner(id) {
+    try {
+      const response = await api.get(`/tim-merah-biru/biru/${id}`)
+      return response.data
+    } catch (error) {
+      console.error('Error in getTimBiruByIdForOwner:', error)
+      throw error
+    }
+  },
+
+  // Create tim merah for owner (delegate to common endpoint)
+  async createTimMerahForOwner(payload) {
+    try {
+      const response = await api.post('/tim-merah-biru/merah', payload)
+      return response.data
+    } catch (error) {
+      console.error('Error in createTimMerahForOwner:', error)
+      throw error
+    }
+  },
+
+  // Create tim biru for owner (delegate to common endpoint)
+  async createTimBiruForOwner(payload) {
+    try {
+      const response = await api.post('/tim-merah-biru/biru', payload)
+      return response.data
+    } catch (error) {
+      console.error('Error in createTimBiruForOwner:', error)
+      throw error
+    }
+  },
+
+  // Update tim merah for owner (delegate to common endpoint)
+  async updateTimMerahForOwner(id, payload) {
+    try {
+      const response = await api.put(`/tim-merah-biru/merah/${id}`, payload)
+      return response.data
+    } catch (error) {
+      console.error('Error in updateTimMerahForOwner:', error)
+      throw error
+    }
+  },
+
+  // Update tim biru for owner (delegate to common endpoint)
+  async updateTimBiruForOwner(id, payload) {
+    try {
+      const response = await api.put(`/tim-merah-biru/biru/${id}`, payload)
+      return response.data
+    } catch (error) {
+      console.error('Error in updateTimBiruForOwner:', error)
+      throw error
+    }
+  },
+
+  // Delete tim merah for owner (delegate to common endpoint)
   async deleteTimMerahForOwner(id) {
     try {
-      const response = await api.delete(`/owner/tim-merah-biru/merah/${id}`)
+      const response = await api.delete(`/tim-merah-biru/merah/${id}`)
       return response.data
     } catch (error) {
       console.error('Error in deleteTimMerahForOwner:', error)
@@ -147,13 +215,24 @@ export const timService = {
     }
   },
 
-  // Delete tim biru for owner
+  // Delete tim biru for owner (delegate to common endpoint)
   async deleteTimBiruForOwner(id) {
     try {
-      const response = await api.delete(`/owner/tim-merah-biru/biru/${id}`)
+      const response = await api.delete(`/tim-merah-biru/biru/${id}`)
       return response.data
     } catch (error) {
       console.error('Error in deleteTimBiruForOwner:', error)
+      throw error
+    }
+  },
+
+  // Snapshot helper: get nama/divisi/posisi from SDM by user_id
+  async getSnapshot(userId) {
+    try {
+      const response = await api.get('/tim-merah-biru/snapshot', { params: { user_id: userId } })
+      return response.data
+    } catch (error) {
+      console.error('Error in getSnapshot:', error)
       throw error
     }
   }

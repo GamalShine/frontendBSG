@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { 
   Plus, 
@@ -16,8 +16,6 @@ import { userService } from '../../../services/userService';
 // Daftar key menu yang tersedia untuk di-assign oleh Owner (diseragamkan sesuai foto)
 const MENU_KEYS = [
   // Global / Umum (opsional)
-  { key: 'AdminDashboard', label: 'Dashboard' },
-  { key: 'AdminChatPrivate', label: 'Chat Private' },
 
   // Keuangan (Admin)
   { key: 'AdminKeuanganPoskas', label: 'Keuangan • POSKAS' },
@@ -28,7 +26,8 @@ const MENU_KEYS = [
   { key: 'AdminAnekaSurat', label: 'Keuangan • Aneka Surat' },
 
   // SDM (Admin)
-  { key: 'AdminSdmStrukturSop', label: 'SDM • Struktur & SOP' },
+  { key: 'AdminSdmStrukturJobdesk', label: 'SDM • Struktur & Jobdesk' },
+  { key: 'AdminSopAturan', label: 'SDM • S.O.P dan Aturan' },
   { key: 'AdminSdmDataTim', label: 'SDM • Data Tim' },
   { key: 'AdminSdmKpi', label: 'SDM • KPI' },
   { key: 'AdminTimMerahBiru', label: 'SDM • Tim Merah/Biru' },
@@ -49,11 +48,8 @@ const MENU_KEYS = [
   { key: 'AdminMarketingMedsos', label: 'Marketing • Media Sosial' },
 
   // Settings (Admin)
-  { key: 'AdminSettings', label: 'Settings' },
-
-  // Legacy keys (dipertahankan bila masih ada data lama)
-  { key: 'AdminPengumuman', label: 'LEGACY • Pengumuman' },
-  { key: 'AdminTugas', label: 'LEGACY • Daftar Tugas' }
+  
+  
 ];
 
 const PicMenuManagement = () => {
@@ -220,6 +216,30 @@ const PicMenuManagement = () => {
      getAdminById(menu.id_user)?.nama.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  // Kelompokkan per kategori berdasarkan label sebelum simbol " • "
+  const categorizedMenus = useMemo(() => {
+    const bucket = {};
+    filteredMenus.forEach((menu) => {
+      const label = getMenuLabel(menu.link);
+      const category = label && label.includes(' • ')
+        ? label.split(' • ')[0]
+        : 'Umum';
+      if (!bucket[category]) bucket[category] = [];
+      bucket[category].push(menu);
+    });
+    return bucket;
+  }, [filteredMenus]);
+
+  const categoryOrder = ['Umum', 'Keuangan', 'SDM', 'Operasional', 'Marketing', 'Settings', 'LEGACY'];
+  const orderedCategories = Object.keys(categorizedMenus).sort((a, b) => {
+    const ia = categoryOrder.indexOf(a);
+    const ib = categoryOrder.indexOf(b);
+    const va = ia === -1 ? Number.MAX_SAFE_INTEGER : ia;
+    const vb = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
+    if (va !== vb) return va - vb;
+    return a.localeCompare(b);
+  });
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -227,7 +247,7 @@ const PicMenuManagement = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">PIC Menu</h1>
+              <h1 className="text-3xl font-bold">PIC MENU</h1>
               <p className="text-red-100 mt-1">Kelola menu dan person in charge</p>
             </div>
             <button
@@ -277,64 +297,74 @@ const PicMenuManagement = () => {
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {filteredMenus.map((menu) => {
-              const admin = getAdminById(menu.id_user);
-              return (
-                <div key={menu.ui_id || menu.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                  <div className="p-4 border-b border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{menu.nama}</h3>
-                        <p className="text-sm text-gray-600">{getMenuLabel(menu.link)}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (!(menu.id > 0)) {
-                            toast.error('Data belum memiliki ID valid dari server. Silakan refresh atau hubungi admin.');
-                            return;
-                          }
-                          handleEditMenu(menu);
-                        }}
-                        className={`p-2 ${menu.id > 0 ? 'text-red-600 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'}`}
-                        disabled={!(menu.id > 0)}
-                      >
-                        <Edit3 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-pink-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                          <User className="h-5 w-5 text-red-600" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{admin?.nama || 'Unknown'}</p>
-                          <p className="text-sm text-gray-600">{admin?.email || 'No email'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-red-800">PIC</span>
-                        <button
-                          onClick={() => {
-                            if (!(menu.id > 0)) {
-                              toast.error('Tidak bisa menghapus: ID belum valid dari server.');
-                              return;
-                            }
-                            handleDeleteMenu(menu.id);
-                          }}
-                          className={`p-1 ${menu.id > 0 ? 'text-red-600 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'}`}
-                          disabled={!(menu.id > 0)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+          <div className="space-y-8">
+            {orderedCategories.map((category) => (
+              <div key={category}>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl font-bold text-gray-900">{category}</h2>
+                  <span className="text-sm text-gray-500">{categorizedMenus[category].length} menu</span>
                 </div>
-              );
-            })}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categorizedMenus[category].map((menu) => {
+                    const admin = getAdminById(menu.id_user);
+                    return (
+                      <div key={menu.ui_id || menu.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div className="p-4 border-b border-gray-100">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-lg font-semibold text-gray-900">{menu.nama}</h3>
+                              <p className="text-sm text-gray-600">{getMenuLabel(menu.link)}</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (!(menu.id > 0)) {
+                                  toast.error('Data belum memiliki ID valid dari server. Silakan refresh atau hubungi admin.');
+                                  return;
+                                }
+                                handleEditMenu(menu);
+                              }}
+                              className={`p-2 ${menu.id > 0 ? 'text-red-600 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'}`}
+                              disabled={!(menu.id > 0)}
+                            >
+                              <Edit3 className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="p-4 bg-pink-50">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <User className="h-5 w-5 text-red-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{admin?.nama || 'Unknown'}</p>
+                                <p className="text-sm text-gray-600">{admin?.email || 'No email'}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-red-800">PIC</span>
+                              <button
+                                onClick={() => {
+                                  if (!(menu.id > 0)) {
+                                    toast.error('Tidak bisa menghapus: ID belum valid dari server.');
+                                    return;
+                                  }
+                                  handleDeleteMenu(menu.id);
+                                }}
+                                className={`p-1 ${menu.id > 0 ? 'text-red-600 hover:text-red-700' : 'text-gray-300 cursor-not-allowed'}`}
+                                disabled={!(menu.id > 0)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

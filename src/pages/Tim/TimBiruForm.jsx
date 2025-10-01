@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import api from '../../services/api'
 import { timService } from '../../services/timService'
 import { 
   ArrowLeft, 
@@ -26,33 +27,12 @@ const TimBiruForm = () => {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
-    nama: '',
-    divisi: '',
-    posisi: '',
+    user_id: '',
     prestasi: '',
     keterangan: ''
   })
   const [errors, setErrors] = useState({})
-
-  // Dropdown options based on database data
-  const divisiOptions = [
-    { value: 'BSG PUSAT', label: 'BSG PUSAT' },
-    { value: 'BSG BSD', label: 'BSG BSD' },
-    { value: 'SOGIL', label: 'SOGIL' },
-    { value: 'BSG SIDOARJO', label: 'BSG SIDOARJO' },
-    { value: 'BSG BUAH BATU', label: 'BSG BUAH BATU' },
-    { value: 'BSG KARAWACI', label: 'BSG KARAWACI' }
-  ]
-
-  const posisiOptions = [
-    { value: 'KOKI', label: 'KOKI' },
-    { value: 'MANAGER', label: 'MANAGER' },
-    { value: 'BARISTA', label: 'BARISTA' },
-    { value: 'WAITRESS', label: 'WAITRESS' },
-    { value: 'SUPERVISOR', label: 'SUPERVISOR' },
-    { value: 'PR', label: 'PR' },
-    { value: 'KASIR', label: 'KASIR' }
-  ]
+  const [users, setUsers] = useState([])
 
   const isEditMode = !!id
 
@@ -62,18 +42,30 @@ const TimBiruForm = () => {
     }
   }, [id])
 
+  useEffect(() => {
+    // Load daftar user untuk dipilih
+    (async () => {
+      try {
+        const resp = await api.get('/users')
+        const list = Array.isArray(resp?.data?.data) ? resp.data.data : (Array.isArray(resp?.data) ? resp.data : [])
+        setUsers(list.map(u => ({ id: u.id, nama: u.nama || u.username || `User ${u.id}` })))
+      } catch (e) {
+        setUsers([])
+      }
+    })()
+  }, [])
+
   const loadMember = async () => {
     try {
       setLoading(true)
       const response = await timService.getTimBiruDetail(id)
+
       console.log('🔍 Tim Biru detail response:', response)
       
       if (response.success) {
         const data = response.data
         setFormData({
-          nama: data.nama || '',
-          divisi: data.divisi || '',
-          posisi: data.posisi || '',
+          user_id: data.user_id ? String(data.user_id) : '',
           prestasi: data.prestasi || '',
           keterangan: data.keterangan || ''
         })
@@ -81,6 +73,7 @@ const TimBiruForm = () => {
         toast.error('Gagal memuat data anggota')
         navigate('/tim/biru')
       }
+
     } catch (error) {
       toast.error('Gagal memuat data anggota')
       console.error('Error loading member:', error)
@@ -107,18 +100,6 @@ const TimBiruForm = () => {
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.nama.trim()) {
-      newErrors.nama = 'Nama wajib diisi'
-    }
-
-    if (!formData.divisi.trim()) {
-      newErrors.divisi = 'Divisi wajib diisi'
-    }
-
-    if (!formData.posisi.trim()) {
-      newErrors.posisi = 'Posisi wajib diisi'
-    }
-
     if (!formData.prestasi.trim()) {
       newErrors.prestasi = 'Prestasi wajib diisi'
     }
@@ -138,9 +119,9 @@ const TimBiruForm = () => {
     try {
       setSaving(true)
       
-      // Ensure keterangan is sent as empty string if not filled
       const submitData = {
-        ...formData,
+        user_id: formData.user_id ? Number(formData.user_id) : null,
+        prestasi: formData.prestasi,
         keterangan: formData.keterangan || ''
       }
       
@@ -218,58 +199,19 @@ const TimBiruForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nama Lengkap *
-                </label>
-                <input
-                  name="nama"
-                  value={formData.nama}
-                  onChange={handleChange}
-                  placeholder="Masukkan nama lengkap..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {errors.nama && <p className="text-red-500 text-sm mt-1">{errors.nama}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Divisi *
+                  Pilih Karyawan (user)
                 </label>
                 <select
-                  name="divisi"
-                  value={formData.divisi}
+                  name="user_id"
+                  value={formData.user_id}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Pilih Divisi</option>
-                  {divisiOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
+                  <option value="">Pilih User</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.nama}</option>
                   ))}
                 </select>
-                {errors.divisi && <p className="text-red-500 text-sm mt-1">{errors.divisi}</p>}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Posisi/Jabatan *
-                </label>
-                <select
-                  name="posisi"
-                  value={formData.posisi}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Pilih Posisi</option>
-                  {posisiOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.posisi && <p className="text-red-500 text-sm mt-1">{errors.posisi}</p>}
               </div>
 
               <div>

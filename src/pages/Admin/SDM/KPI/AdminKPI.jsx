@@ -3,6 +3,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { kpiService } from '../../../../services/kpiService';
 import { API_CONFIG } from '../../../../config/constants';
+import api from '../../../../services/api';
 import {
   Award,
   BarChart3,
@@ -30,12 +31,18 @@ const AdminKPI = () => {
   // CRUD modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' | 'edit'
-  const [formData, setFormData] = useState({ id: null, name: '', category: 'divisi', photo_url: '' });
+  const [formData, setFormData] = useState({ id: null, name: '', category: 'divisi', id_user: '', photo_url: '' });
   const [deletingId, setDeletingId] = useState(null);
   const [photoFile, setPhotoFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  // Users dropdown state
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  // Divisions dropdown state
+  const [divisions, setDivisions] = useState([]);
+  const [loadingDivisions, setLoadingDivisions] = useState(false);
 
   // Fetch KPI data from API (reusable)
   const fetchKPIData = useCallback(async () => {
@@ -88,6 +95,44 @@ const AdminKPI = () => {
       setPreviewUrl('');
     }
   }, [photoFile]);
+
+  // Fetch users for dropdown (id_user)
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoadingUsers(true);
+      const res = await api.get('/users');
+      const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+      setUsers(arr);
+    } catch (e) {
+      console.error('Gagal memuat daftar user:', e);
+      setUsers([]);
+    } finally {
+      setLoadingUsers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // Fetch divisions for dropdown (divisi_id)
+  const fetchDivisions = useCallback(async () => {
+    try {
+      setLoadingDivisions(true);
+      const res = await api.get('/sop/divisions');
+      const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+      setDivisions(arr);
+    } catch (e) {
+      console.error('Gagal memuat daftar divisi:', e);
+      setDivisions([]);
+    } finally {
+      setLoadingDivisions(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDivisions();
+  }, [fetchDivisions]);
 
   const handleItemClick = (itemName) => {
     // Set selected item untuk menampilkan foto
@@ -142,7 +187,7 @@ const AdminKPI = () => {
   // Modal functions
   const openCreateModal = () => {
     setModalMode('create');
-    setFormData({ id: null, name: '', category: activeTab, photo_url: '' });
+    setFormData({ id: null, name: '', category: activeTab, id_user: '', divisi_id: '', photo_url: '' });
     setPhotoFile(null);
     setPreviewUrl('');
     setIsModalOpen(true);
@@ -154,6 +199,8 @@ const AdminKPI = () => {
       id: item.id,
       name: item.name || item,
       category: item.category || activeTab,
+      id_user: item.id_user || '',
+      divisi_id: item.divisi_id || '',
       photo_url: item.photo_url || ''
     });
     setPhotoFile(null);
@@ -163,13 +210,31 @@ const AdminKPI = () => {
 
   const closeModal = () => {
     setIsModalOpen(false);
-    setFormData({ id: null, name: '', category: 'divisi', photo_url: '' });
+    setFormData({ id: null, name: '', category: 'divisi', id_user: '', divisi_id: '', photo_url: '' });
     setPhotoFile(null);
     setPreviewUrl('');
   };
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
+    // Helper untuk dapatkan role user dari list users
+    const getUserRole = (u) => {
+      if (!u) return ''
+      const r = u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || ''
+      return typeof r === 'string' ? r.toLowerCase() : String(r).toLowerCase()
+    }
+    if (name === 'id_user') {
+      const selected = users.find(u => String(u.id) === String(value))
+      const role = getUserRole(selected)
+      // Aturan: jika mengandung kata 'leader', set kategori 'leader', selain itu 'individu'
+      const autoCategory = role.includes('leader') ? 'leader' : (value ? 'individu' : formData.category)
+      setFormData(prev => ({
+        ...prev,
+        id_user: value,
+        category: autoCategory
+      }))
+      return
+    }
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -181,10 +246,49 @@ const AdminKPI = () => {
     setIsSaving(true);
     
     try {
+      // Validasi: jika kategori leader/individu maka id_user wajib
+      const mustHaveUser = ['leader', 'individu'].includes(String(formData.category || '').toLowerCase())
+      if (mustHaveUser && !formData.id_user) {
+        toast.error('Pilih user untuk kategori Leader/Individu');
+        setIsSaving(false);
+        return;
+      }
+      const mustHaveDivision = String(formData.category || '').toLowerCase() === 'divisi'
+      if (mustHaveDivision && !formData.divisi_id) {
+        toast.error('Pilih divisi untuk kategori Divisi');
+        setIsSaving(false);
+        return;
+      }
+
+      // Sanitasi payload: konversi tipe dan buang field kosong
+      const sanitized = {
+        name: formData.name?.trim(),
+        category: String(formData.category || 'divisi').toLowerCase(),
+        photo_url: formData.photo_url || ''
+      }
+      if (formData.id_user) {
+        const numId = Number(formData.id_user)
+        if (!Number.isNaN(numId)) sanitized.id_user = numId
+      }
+      if (formData.divisi_id) {
+        const numDiv = Number(formData.divisi_id)
+        if (!Number.isNaN(numDiv)) sanitized.divisi_id = numDiv
+      }
+
       let response;
       
       if (modalMode === 'create') {
-        response = await kpiService.createKPI(formData, photoFile);
+        // Workaround: tentukan id manual = max(id) + 1 (sesuai permintaan)
+        try {
+          const all = await kpiService.getAllKPIs();
+          const arr = Array.isArray(all?.data) ? all.data : (Array.isArray(all) ? all : []);
+          const maxId = arr.reduce((m, it) => Math.max(m, Number(it.id) || 0), 0);
+          sanitized.id = maxId + 1;
+        } catch (e) {
+          console.warn('Gagal mengambil daftar KPI untuk menentukan id, fallback id=1');
+          sanitized.id = 1;
+        }
+        response = await kpiService.createKPI(sanitized, photoFile);
         if (response.success) {
           toast.success('KPI berhasil dibuat!');
           fetchKPIData(); // Refresh data
@@ -193,7 +297,7 @@ const AdminKPI = () => {
           toast.error(response.message || 'Gagal membuat KPI');
         }
       } else {
-        response = await kpiService.updateKPI(formData.id, formData, photoFile);
+        response = await kpiService.updateKPI(formData.id, sanitized, photoFile);
         if (response.success) {
           toast.success('KPI berhasil diupdate!');
           fetchKPIData(); // Refresh data
@@ -204,7 +308,8 @@ const AdminKPI = () => {
       }
     } catch (error) {
       console.error('Error saving KPI:', error);
-      toast.error('Terjadi kesalahan saat menyimpan KPI');
+      const msg = error?.response?.data?.message || error?.message || 'Terjadi kesalahan saat menyimpan KPI';
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }
@@ -451,6 +556,29 @@ const AdminKPI = () => {
                 />
               </div>
               <div>
+                <label className="block text-sm mb-1 text-gray-700">Untuk User</label>
+                <select
+                  name="id_user"
+                  value={formData.id_user}
+                  onChange={handleFormChange}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  disabled={loadingUsers}
+                >
+                  <option value="">— Pilih User (opsional) —</option>
+                  {users.map(u => {
+                    const role = (u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
+                    const roleStr = role ? ` - ${String(role)}` : ''
+                    const label = `${u.nama || u.username || `User #${u.id}`}${roleStr}`
+                    return (
+                      <option key={u.id} value={u.id}>
+                        {label}
+                      </option>
+                    )
+                  })}
+                </select>
+                <p className="mt-1 text-xs text-gray-500">Isi jika KPI ini ditujukan untuk user tertentu (Leader/Individu).</p>
+              </div>
+              <div>
                 <label className="block text-sm mb-1 text-gray-700">Kategori</label>
                 <select
                   name="category"
@@ -464,6 +592,24 @@ const AdminKPI = () => {
                   <option value="individu">Individu</option>
                 </select>
               </div>
+              {String(formData.category || '').toLowerCase() === 'divisi' && (
+                <div>
+                  <label className="block text-sm mb-1 text-gray-700">Divisi</label>
+                  <select
+                    name="divisi_id"
+                    value={formData.divisi_id || ''}
+                    onChange={handleFormChange}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    disabled={loadingDivisions}
+                    required
+                  >
+                    <option value="">— Pilih Divisi —</option>
+                    {divisions.map(d => (
+                      <option key={d.id} value={d.id}>{d.nama_divisi || d.name || `Divisi #${d.id}`}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm mb-1 text-gray-700">Upload Foto KPI</label>
                 <input

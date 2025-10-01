@@ -398,176 +398,173 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            {formData.kategori === 'PROPERTI' && <Building2 className="w-6 h-6 text-red-600" />}
-            {['KENDARAAN_PRIBADI', 'KENDARAAN_OPERASIONAL', 'KENDARAAN_DISTRIBUSI'].includes(formData.kategori) && <Car className="w-6 h-6 text-red-600" />}
-            {formData.kategori === 'ELEKTRONIK' && <Monitor className="w-6 h-6 text-red-600" />}
-            <h2 className="text-xl font-semibold text-gray-800">
-              {editData ? 'Edit Data Aset' : 'Tambah Data Aset Baru'}
-            </h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            {formData.kategori === 'PROPERTI' && <Building2 className="w-6 h-6 text-white" />}
+            {['KENDARAAN_PRIBADI', 'KENDARAAN_OPERASIONAL', 'KENDARAAN_DISTRIBUSI'].includes(formData.kategori) && <Car className="w-6 h-6 text-white" />}
+            {formData.kategori === 'ELEKTRONIK' && <Monitor className="w-6 h-6 text-white" />}
+            <div>
+              <h2 className="text-xl font-bold leading-tight">{editData ? 'Edit Data Aset' : 'Tambah Data Aset Baru'}</h2>
+              <p className="text-xs text-red-100">Isi data aset dengan lengkap untuk memudahkan pengelolaan</p>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="w-6 h-6" />
+          <button onClick={onClose} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {/* Kategori */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Kategori <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="kategori"
-                value={formData.kategori}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                  errors.kategori ? 'border-red-500' : 'border-gray-300'
-                }`}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          {/* Scrollable body */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+            {/* Kategori - segmented control */}
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-gray-600 mb-2">Jenis Aset</label>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { v: 'PROPERTI', label: 'Properti' },
+                  { v: 'KENDARAAN_PRIBADI', label: 'Kendaraan Pribadi' },
+                  { v: 'KENDARAAN_OPERASIONAL', label: 'Kendaraan Operasional' },
+                  { v: 'KENDARAAN_DISTRIBUSI', label: 'Kendaraan Distribusi' },
+                  { v: 'ELEKTRONIK', label: 'Elektronik' },
+                ].map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => handleInputChange({ target: { name: 'kategori', value: opt.v } })}
+                    className={`${formData.kategori === opt.v ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-full text-sm font-medium transition-colors`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {errors.kategori && <p className="text-red-600 text-xs mt-2 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.kategori}</p>}
+            </div>
+
+            {/* Grid wrapper */}
+            <div className="grid grid-cols-12 gap-4">
+              {/* Kategori-specific card */}
+              <div className="col-span-12">
+                <div className="rounded-xl border bg-white">
+                  <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                    <div className="text-sm font-semibold text-gray-700">Detail {formData.kategori.replace('_', ' ').replace('_', ' ')}</div>
+                  </div>
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {renderKategoriFields()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Common fields card */}
+              <div className="col-span-12">
+                <div className="rounded-xl border bg-white">
+                  <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl flex items-center justify-between">
+                    <div className="text-sm font-semibold text-gray-700">Informasi Umum</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Status</span>
+                      <select
+                        name="status"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      >
+                        <option value="AKTIF">AKTIF</option>
+                        <option value="NONAKTIF">NONAKTIF</option>
+                        <option value="DIJAMINKAN">DIJAMINKAN</option>
+                        <option value="DIMILIKI SENDIRI">DIMILIKI SENDIRI</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        name="lokasi"
+                        value={formData.lokasi}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.lokasi ? 'border-red-500' : 'border-gray-300'}`}
+                        placeholder="Contoh: JL KAV. PERKEBUNAN NO. 1 BENCONGAN"
+                      />
+                      {errors.lokasi && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.lokasi}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Atas Nama <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        name="atas_nama"
+                        value={formData.atas_nama}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.atas_nama ? 'border-red-500' : 'border-gray-300'}`}
+                        placeholder="Contoh: N.A. RAMADHAN"
+                      />
+                      {errors.atas_nama && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" />{errors.atas_nama}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data Pembelian</label>
+                      <input
+                        type="text"
+                        name="data_pembelian"
+                        value={formData.data_pembelian}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        placeholder="Contoh: 2010"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Penanggung Jawab</label>
+                      <input
+                        type="text"
+                        name="penanggung_jawab"
+                        value={formData.penanggung_jawab}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        placeholder="Contoh: John Doe"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Lampiran</label>
+                      <textarea
+                        name="lampiran"
+                        value={formData.lampiran}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                        placeholder="FOTO, FILE, VIDEO atau keterangan lainnya"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer (non-scrollable) */}
+          <div className="p-0 border-t bg-white">
+            <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
               >
-                <option value="PROPERTI">PROPERTI</option>
-                <option value="KENDARAAN_PRIBADI">KENDARAAN PRIBADI</option>
-                <option value="KENDARAAN_OPERASIONAL">KENDARAAN OPERASIONAL</option>
-                <option value="KENDARAAN_DISTRIBUSI">KENDARAAN DISTRIBUSI</option>
-                <option value="ELEKTRONIK">ELEKTRONIK</option>
-              </select>
-              {errors.kategori && (
-                <p className="text-red-500 text-sm mt-1">{errors.kategori}</p>
-              )}
-            </div>
-
-            {/* Kategori-specific fields */}
-            {renderKategoriFields()}
-
-            {/* Common fields */}
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Lokasi <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="lokasi"
-                value={formData.lokasi}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                  errors.lokasi ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Contoh: JL KAV. PERKEBUNAN NO. 1 BENCONGAN"
-              />
-              {errors.lokasi && (
-                <p className="text-red-500 text-sm mt-1">{errors.lokasi}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Atas Nama <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="atas_nama"
-                value={formData.atas_nama}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${
-                  errors.atas_nama ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Contoh: N.A. RAMADHAN"
-              />
-              {errors.atas_nama && (
-                <p className="text-red-500 text-sm mt-1">{errors.atas_nama}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Data Pembelian
-              </label>
-              <input
-                type="text"
-                name="data_pembelian"
-                value={formData.data_pembelian}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Contoh: 2010"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
               >
-                <option value="AKTIF">AKTIF</option>
-                <option value="NONAKTIF">NONAKTIF</option>
-                <option value="DIJAMINKAN">DIJAMINKAN</option>
-                <option value="DIMILIKI SENDIRI">DIMILIKI SENDIRI</option>
-              </select>
+                {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
+                <span>{loading ? 'Menyimpan...' : (editData ? 'Update' : 'Simpan')}</span>
+              </button>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Penanggung Jawab
-              </label>
-              <input
-                type="text"
-                name="penanggung_jawab"
-                value={formData.penanggung_jawab}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Contoh: John Doe"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Lampiran
-              </label>
-              <textarea
-                name="lampiran"
-                value={formData.lampiran}
-                onChange={handleInputChange}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="FOTO, FILE, VIDEO atau keterangan lainnya"
-              />
-        </div>
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-            >
-              {loading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              <span>{loading ? 'Menyimpan...' : (editData ? 'Update' : 'Simpan')}</span>
-            </button>
           </div>
         </form>
       </div>

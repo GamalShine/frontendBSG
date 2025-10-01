@@ -554,20 +554,22 @@ const OwnerAnekaSuratList = () => {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Tambah Aneka Surat</h2>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden border shadow-2xl flex flex-col">
+            {/* Header merah */}
+            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Tambah Aneka Surat</h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-2 rounded-lg hover:bg-white/10"
+                aria-label="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Body scrollable */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <form onSubmit={handleSubmit} className="space-y-4 p-6 border-y">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Jenis Dokumen *
@@ -658,20 +660,22 @@ const OwnerAnekaSuratList = () => {
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Edit Aneka Surat</h2>
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <form onSubmit={handleEdit} className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden border shadow-2xl flex flex-col">
+            {/* Header merah */}
+            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Edit Aneka Surat</h2>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-2 rounded-lg hover:bg-white/10"
+                aria-label="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Body scrollable */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <form onSubmit={handleEdit} className="space-y-4 p-6 border-y">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Jenis Dokumen *

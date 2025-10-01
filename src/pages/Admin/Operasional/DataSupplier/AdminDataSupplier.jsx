@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
 import Input from '@/components/UI/Input';
@@ -35,6 +35,7 @@ import { id } from 'date-fns/locale';
 import { dataSupplierService } from '@/services/dataSupplierService';
 
 const AdminDataSupplier = () => {
+  const location = useLocation();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -208,7 +209,10 @@ const AdminDataSupplier = () => {
             >
               RESET FILTER
             </button>
-            <Link to="/admin/operasional/data-supplier/form">
+            <Link
+              to="/admin/operasional/data-supplier/form"
+              state={{ backgroundLocation: location }}
+            >
               <button className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
                 <Plus className="h-4 w-4" />
                 <span className="font-semibold">Tambah</span>

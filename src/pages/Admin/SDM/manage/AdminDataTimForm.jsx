@@ -4,7 +4,7 @@ import { adminSdmService } from '@/services/adminSdmService';
 import { toast } from 'react-hot-toast';
 
 const SectionTitle = ({ children }) => (
-  <div className="px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700">{children}</div>
+  <div className="px-4 py-3 bg-gray-200 text-sm font-semibold text-gray-800">{children}</div>
 );
 
 const Input = ({ label, type = 'text', ...props }) => (
@@ -156,8 +156,8 @@ const AdminDataTimForm = () => {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto mt-6 mb-12 px-6">
-        <form id="form-data-tim" onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border p-6 space-y-6">
+      <div className="mt-0 mb-0 px-0">
+        <form id="form-data-tim" onSubmit={handleSubmit} className="bg-white rounded-none shadow-sm border-y p-6 space-y-6">
           {/* Personal */}
           <SectionTitle>Informasi Personal</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -7,24 +7,24 @@ import {
   Edit, 
   Trash2,
   AlertTriangle,
-  User,
-  Building
+  User
 } from 'lucide-react'
+
 import toast from 'react-hot-toast'
 
 const TimMerahList = () => {
   const [timMerah, setTimMerah] = useState([])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [divisiFilter, setDivisiFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
 
   useEffect(() => {
     loadTimMerah()
-  }, [currentPage, divisiFilter, statusFilter])
+  }, [currentPage, statusFilter])
 
   const loadTimMerah = async () => {
     try {
@@ -33,7 +33,6 @@ const TimMerahList = () => {
         page: currentPage,
         limit: 10,
         search: searchTerm,
-        divisi: divisiFilter !== 'all' ? divisiFilter : undefined,
         status: statusFilter !== 'all' ? statusFilter : undefined
       }
 
@@ -134,23 +133,6 @@ const TimMerahList = () => {
             </div>
           </div>
 
-          {/* Divisi Filter */}
-          <div className="lg:w-48">
-            <select
-              value={divisiFilter}
-              onChange={(e) => setDivisiFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">Semua Divisi</option>
-              <option value="BSG PUSAT">BSG PUSAT</option>
-              <option value="BSG BSD">BSG BSD</option>
-              <option value="SOGIL">SOGIL</option>
-              <option value="BSG SIDOARJO">BSG SIDOARJO</option>
-              <option value="BSG BUAH BATU">BSG BUAH BATU</option>
-              <option value="BSG KARAWACI">BSG KARAWACI</option>
-            </select>
-          </div>
-
           {/* Status Filter */}
           <div className="lg:w-48">
             <select
@@ -197,12 +179,6 @@ const TimMerahList = () => {
                     Karyawan
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Divisi
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Posisi
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -222,18 +198,9 @@ const TimMerahList = () => {
                           <User className="h-5 w-5 text-red-600" />
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{item.nama}</div>
+                          <div className="text-sm font-medium text-gray-900">{item.employee?.nama || item.employee?.name || '-'}</div>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Building className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">{item.divisi}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.posisi}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>

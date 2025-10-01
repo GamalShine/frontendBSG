@@ -40,6 +40,7 @@ const OwnerLaporanKeuangan = () => {
   const [monthsView, setMonthsView] = useState('months'); // 'months' | 'monthContent'
   const [availableMonths, setAvailableMonths] = useState([]); // [{year, month}]
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+  const [derivedCounts, setDerivedCounts] = useState({ thisMonth: 0, thisYear: 0 });
 
   useEffect(() => {
     if (user) {
@@ -51,6 +52,52 @@ const OwnerLaporanKeuangan = () => {
       loadStats();
     }
   }, [user, monthsView, currentPage, monthFilter]);
+
+  // Hitung jumlah bulan ini dan tahun ini secara client-side agar akurat
+  useEffect(() => {
+    const calcDerived = async () => {
+      try {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const monthKey = `${y}-${m}`;
+
+        // Count for this month
+        let thisMonth = 0;
+        try {
+          const resM = await laporanKeuanganService.getAllLaporanKeuangan(1, 1, '', '', monthKey);
+          thisMonth = resM?.pagination?.totalItems || 0;
+        } catch (_) {}
+
+        // Count for this year (sum each available month of this year)
+        let thisYear = 0;
+        const monthsOfYear = (availableMonths || []).filter(mm => Number(mm.year) === y);
+        if (monthsOfYear.length > 0) {
+          for (const mm of monthsOfYear) {
+            const key = `${mm.year}-${String(mm.month).padStart(2, '0')}`;
+            try {
+              const res = await laporanKeuanganService.getAllLaporanKeuangan(1, 1, '', '', key);
+              thisYear += res?.pagination?.totalItems || 0;
+            } catch (_) {}
+          }
+        } else {
+          // Fallback: try each month 1..12 quickly (safe but more calls)
+          for (let i = 1; i <= 12; i++) {
+            const key = `${y}-${String(i).padStart(2, '0')}`;
+            try {
+              const res = await laporanKeuanganService.getAllLaporanKeuangan(1, 1, '', '', key);
+              thisYear += res?.pagination?.totalItems || 0;
+            } catch (_) {}
+          }
+        }
+
+        setDerivedCounts({ thisMonth, thisYear });
+      } catch (_) {
+        setDerivedCounts({ thisMonth: 0, thisYear: 0 });
+      }
+    };
+    calcDerived();
+  }, [availableMonths]);
 
   // ===== Bulk actions (selectedItems) - scope komponen =====
   const getSelectedEntries = () => {
@@ -337,65 +384,103 @@ const OwnerLaporanKeuangan = () => {
     <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
     {/* Stats Cards */}
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-      <div className="bg-white shadow-sm border p-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100">
+    {monthsView === 'monthContent' ? (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
               <Calendar className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Total Laporan</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_records || 0}</p>
+              <p className="text-sm font-medium text-gray-500">Total Bulan {monthFilterLabel()}</p>
+              <p className="text-2xl font-bold text-gray-900">{(totalItems || 0).toLocaleString('id-ID')}</p>
             </div>
           </div>
         </div>
-
-        <div className="bg-white shadow-sm border p-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100">
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_this_month || 0}</p>
+              <p className="text-sm font-medium text-gray-500">Ditampilkan (Halaman ini)</p>
+              <p className="text-2xl font-bold text-gray-900">{(laporanKeuangan?.length || 0).toLocaleString('id-ID')}</p>
             </div>
           </div>
         </div>
-
-        <div className="bg-white shadow-sm border p-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100">
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
               <Calendar className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500">Tahun Ini</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total_this_year || 0}</p>
+              <p className="text-sm font-medium text-gray-500">Total Semua Waktu</p>
+              <p className="text-2xl font-bold text-gray-900">{(stats.total_records || 0).toLocaleString('id-ID')}</p>
             </div>
           </div>
         </div>
       </div>
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Calendar className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Total Laporan</p>
+              <p className="text-2xl font-bold text-gray-900">{(stats.total_records || 0).toLocaleString('id-ID')}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Bulan Ini</p>
+              <p className="text-2xl font-bold text-gray-900">{(derivedCounts.thisMonth || 0).toLocaleString('id-ID')}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Calendar className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Tahun Ini</p>
+              <p className="text-2xl font-bold text-gray-900">{(derivedCounts.thisYear || 0).toLocaleString('id-ID')}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
       {/* Months Folder Grid */}
       {monthsView === 'months' && (
-        <div className="bg-white shadow-sm border mb-4">
-          <div className="p-3 border-b border-gray-200">
+        <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4">
+          <div className="px-4 py-3 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Bulan</h2>
             {loading && <div className="text-sm text-gray-600">Memuat daftar bulan...</div>}
             {!loading && availableMonths.length === 0 && (
               <div className="text-sm text-gray-600">Belum ada data bulan tersedia</div>
             )}
             {!loading && availableMonths.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-1">
                 {availableMonths.map(({ year, month }) => {
                   const label = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
                   return (
                     <div
                       key={`${year}-${month}`}
-                      className="group p-4 bg-white cursor-pointer ring-1 ring-gray-200 hover:ring-red-300 hover:shadow transition-all"
+                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
                       onClick={() => openMonthFolder(year, month)}
                     >
-                      <div className="flex items-center space-x-2">
-                        <FolderIcon />
+                      <div className="flex items-center gap-3">
+                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
+                          <FolderIcon />
+                        </div>
                         <div>
                           <div className="font-semibold text-gray-800 group-hover:text-red-700">{label}</div>
                           <div className="text-xs text-gray-500">Folder Bulan</div>
@@ -412,7 +497,7 @@ const OwnerLaporanKeuangan = () => {
 
       {/* Month Content Table */}
       {monthsView === 'monthContent' && (
-        <div className="bg-white shadow-sm border">
+        <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
           <div className="bg-red-800 text-white px-4 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -431,7 +516,7 @@ const OwnerLaporanKeuangan = () => {
               <div className="flex items-center gap-2">
                 <Link
                   to="/owner/keuangan/laporan/new"
-                  className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
+                  className="bg-white border border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg"
                 >
                   <Plus className="h-4 w-4" /> Tambah
                 </Link>
@@ -458,6 +543,15 @@ const OwnerLaporanKeuangan = () => {
               </div>
             </div>
           </div>
+          {/* Summary inside folder */}
+          <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
+            <div>
+              Total {monthFilterLabel()}: <span className="font-semibold">{(totalItems || 0).toLocaleString('id-ID')}</span>
+            </div>
+            <div>
+              Ditampilkan: <span className="font-semibold">{(laporanKeuangan?.length || 0).toLocaleString('id-ID')}</span>
+            </div>
+          </div>
 
           {loading ? (
             <LoadingSpinner />
@@ -468,7 +562,7 @@ const OwnerLaporanKeuangan = () => {
               <p className="text-gray-500 mb-4">Belum ada data laporan keuangan yang tersedia</p>
               <Link
                 to="/owner/keuangan/laporan/new"
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white hover:bg-green-600 transition-colors"
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-600 text-white hover:bg-green-700 transition-colors rounded-lg"
               >
                 <Plus className="h-4 w-4" />
                 <span>Tambah Laporan Pertama</span>
@@ -476,9 +570,9 @@ const OwnerLaporanKeuangan = () => {
             </div>
           ) : (
             <>
-              <div className="table-responsive mt-6">
+              <div className="table-responsive mt-2 overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="sticky top-0 bg-red-700 z-10">
+                  <thead className="sticky top-0 bg-red-700 z-10 shadow">
                     <tr>
                       <th className="pl-4 sm:pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
                         <input
@@ -489,10 +583,10 @@ const OwnerLaporanKeuangan = () => {
                           aria-label="Pilih semua"
                         />
                       </th>
-                      <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                      <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Judul</th>
-                      <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
-                      <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
+                      <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                      <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Judul</th>
+                      <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
+                      <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
@@ -509,10 +603,10 @@ const OwnerLaporanKeuangan = () => {
                           {items.map((laporan) => (
                             <tr
                               key={laporan.id}
-                              className="hover:bg-gray-50/80 cursor-pointer"
+                              className="hover:bg-gray-50 cursor-pointer"
                               onClick={() => navigate(`/owner/keuangan/laporan/${laporan.id}`)}
                             >
-                              <td className="pl-4 sm:pl-6 pr-0 py-2 whitespace-nowrap text-sm text-gray-900">
+                              <td className="pl-4 sm:pl-6 pr-0 py-3 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="checkbox"
                                   checked={selectedItems.includes(laporan.id)}
@@ -522,36 +616,36 @@ const OwnerLaporanKeuangan = () => {
                                   aria-label={`Pilih baris ${laporan.id}`}
                                 />
                               </td>
-                              <td className="pl-0 pr-12 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-4 md:px-6 py-3 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                                 {formatDate(laporan.tanggal_laporan)}
                               </td>
-                              <td className="px-12 py-2 text-sm text-gray-900">
-                                <div className="max-w-[14rem] md:max-w-xs break-anywhere md:truncate">
+                              <td className="px-4 md:px-6 py-3 text-sm text-gray-900">
+                                <div className="max-w-[14rem] md:max-w-md break-anywhere md:truncate">
                                   {truncateText(laporan.judul_laporan, 150)}
                                 </div>
                               </td>
-                              <td className="px-12 py-2 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
+                              <td className="px-4 md:px-6 py-3 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
                                 {laporan.user_nama || 'Admin'}
                               </td>
-                              <td className="px-12 py-2 whitespace-nowrap text-sm font-medium">
-                                <div className="flex items-center gap-3">
+                              <td className="px-4 md:px-6 py-3 whitespace-nowrap text-sm font-medium">
+                                <div className="flex items-center gap-2">
                                   <Link
                                     to={`/owner/keuangan/laporan/${laporan.id}`}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="text-blue-600 hover:text-blue-900"
+                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md text-blue-600 hover:bg-blue-50"
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Link>
                                   <Link
                                     to={`/owner/keuangan/laporan/${laporan.id}/edit`}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="text-green-600 hover:text-green-900"
+                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md text-green-600 hover:bg-green-50"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Link>
                                   <button
                                     onClick={(e) => { e.stopPropagation(); handleDelete(laporan.id) }}
-                                    className="text-red-600 hover:text-red-900"
+                                    className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-600 hover:bg-red-50"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </button>
@@ -568,7 +662,7 @@ const OwnerLaporanKeuangan = () => {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="px-3 py-2 border-t border-gray-200">
+                <div className="px-3 py-2 border-t border-gray-200 bg-white">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-700">
                       Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
@@ -577,7 +671,7 @@ const OwnerLaporanKeuangan = () => {
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                         disabled={currentPage === 1}
-                        className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Sebelumnya
                       </button>
@@ -587,7 +681,7 @@ const OwnerLaporanKeuangan = () => {
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                         disabled={currentPage === totalPages}
-                        className="px-3 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Selanjutnya
                       </button>

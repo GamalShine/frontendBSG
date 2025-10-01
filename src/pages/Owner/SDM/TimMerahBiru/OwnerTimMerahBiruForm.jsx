@@ -5,33 +5,25 @@ import {
   ArrowLeft,
   Save,
   User,
-  Building,
   Award,
   AlertTriangle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { getNextIdTimOwner } from '../../../../services/nextId'
 
 const OwnerTimMerahBiruForm = () => {
   const navigate = useNavigate()
   const { type } = useParams() // 'merah' or 'biru'
   const [loading, setLoading] = useState(false)
+  const [users, setUsers] = useState([])
+  const [selectedUserId, setSelectedUserId] = useState('')
   const [formData, setFormData] = useState({
-    nama: '',
-    divisi: '',
-    posisi: '',
     status: 'SP1', // Only for tim merah
     prestasi: '', // Only for tim biru
     keterangan: ''
   })
 
-  const divisiOptions = [
-    'BSG PUSAT',
-    'BSG BSD',
-    'SOGIL',
-    'BSG SIDOARJO',
-    'BSG BUAH BATU',
-    'BSG KARAWACI'
-  ]
+  // Divisi/posisi tidak lagi dikelola di form ini; gunakan relasi user_id
 
   const statusOptions = [
     { value: 'SP1', label: 'Surat Peringatan 1' },
@@ -47,11 +39,31 @@ const OwnerTimMerahBiruForm = () => {
     }))
   }
 
+  // Load users for selection (simple list)
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const res = await timService.api?.get?.('/users') || await import('../../../../services/api').then(m=>m.default.get('/users'))
+        const data = res?.data?.data || res?.data || []
+        setUsers(Array.isArray(data) ? data : [])
+      } catch (e) {
+        // fallback silently
+        setUsers([])
+      }
+    }
+    loadUsers()
+  }, [])
+
+  const handleSelectUser = (e) => {
+    const val = e.target.value
+    setSelectedUserId(val)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.nama || !formData.divisi || !formData.posisi) {
-      toast.error('Mohon lengkapi data yang wajib diisi')
+    if (!selectedUserId) {
+      toast.error('Mohon pilih karyawan (user)')
       return
     }
 
@@ -69,10 +81,18 @@ const OwnerTimMerahBiruForm = () => {
       setLoading(true)
       let response
 
+      // Susun payload: gunakan user_id jika dipilih, fallback legacy fields
+      // Dapatkan next ID = max(id) + 1 dari data eksisting (owner endpoints)
+      const nextId = await getNextIdTimOwner(timService, type)
+
+      const payload = type === 'merah'
+        ? { id: nextId, user_id: Number(selectedUserId), status: formData.status, keterangan: formData.keterangan }
+        : { id: nextId, user_id: Number(selectedUserId), prestasi: formData.prestasi, keterangan: formData.keterangan }
+
       if (type === 'merah') {
-        response = await timService.createTimMerahForOwner(formData)
+        response = await timService.createTimMerahForOwner(payload)
       } else {
-        response = await timService.createTimBiruForOwner(formData)
+        response = await timService.createTimBiruForOwner(payload)
       }
 
       if (response.success) {
@@ -116,61 +136,27 @@ const OwnerTimMerahBiruForm = () => {
       {/* Form */}
       <div className="bg-white rounded-lg shadow p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Nama */}
+          {/* Pilih Karyawan (User) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <User className="inline h-4 w-4 mr-2" />
-              Nama Karyawan *
-            </label>
-            <input
-              type="text"
-              name="nama"
-              value={formData.nama}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Masukkan nama karyawan"
-              required
-            />
-          </div>
-
-          {/* Divisi */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <Building className="inline h-4 w-4 mr-2" />
-              Divisi *
+              Pilih Karyawan (Opsional, disarankan)
             </label>
             <select
-              name="divisi"
-              value={formData.divisi}
-              onChange={handleInputChange}
+              name="user_id"
+              value={selectedUserId}
+              onChange={handleSelectUser}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
             >
-              <option value="">Pilih Divisi</option>
-              {divisiOptions.map((divisi) => (
-                <option key={divisi} value={divisi}>
-                  {divisi}
-                </option>
+              <option value="">-- Pilih karyawan --</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.nama || u.username || `User ${u.id}`}</option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1">Jika memilih karyawan, Nama/Divisi/Posisi akan terisi otomatis dari SDM.</p>
           </div>
 
-          {/* Posisi */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <User className="inline h-4 w-4 mr-2" />
-              Posisi *
-            </label>
-            <input
-              type="text"
-              name="posisi"
-              value={formData.posisi}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Masukkan posisi/jabatan"
-              required
-            />
-          </div>
+          {/* Field legacy nama/divisi/posisi dihapus mengikuti skema baru */}
 
           {/* Status (Tim Merah) or Prestasi (Tim Biru) */}
           {isTimMerah ? (

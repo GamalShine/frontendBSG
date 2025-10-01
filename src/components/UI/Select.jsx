@@ -17,6 +17,7 @@ export const Select = ({
   const [selectedValue, setSelectedValue] = useState(value || '');
   const selectRef = useRef(null);
   const [openUpwards, setOpenUpwards] = useState(false);
+  const [menuRect, setMenuRect] = useState(null);
 
   useEffect(() => {
     setSelectedValue(value || '');
@@ -48,11 +49,21 @@ export const Select = ({
         const spaceBelow = window.innerHeight - rect.bottom;
         const estimatedMenuHeight = Math.min(240, Math.max(180, options.length * 36)); // px
         setOpenUpwards(spaceBelow < estimatedMenuHeight + 16);
+        setMenuRect({
+          top: rect.top,
+          bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+          height: rect.height,
+        });
       } else {
         setOpenUpwards(false);
+        setMenuRect(null);
       }
     } catch {
       setOpenUpwards(false);
+      setMenuRect(null);
     }
   };
 
@@ -102,7 +113,14 @@ export const Select = ({
       </button>
 
       {isOpen && (
-        <div className={`absolute z-[60] w-full ${openUpwards ? 'bottom-full mb-1' : 'top-full mt-1'} bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto`}
+        <div
+          className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto"
+          style={{
+            top: menuRect ? (openUpwards ? undefined : menuRect.bottom + 4) : undefined,
+            bottom: menuRect && openUpwards ? (window.innerHeight - menuRect.top + 4) : undefined,
+            left: menuRect ? menuRect.left : undefined,
+            width: menuRect ? menuRect.width : undefined,
+          }}
         >
           {options.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">Tidak ada opsi tersedia</div>

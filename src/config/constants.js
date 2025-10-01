@@ -220,6 +220,26 @@ export const API_ENDPOINTS = {
             STRUCTURE: '/sop/structure',
             DIVISIONS: '/sop/divisions',
             CATEGORIES_BY_DIVISION: (divisiId) => `/sop/divisions/${divisiId}/categories`,
+        },
+        ATURAN: {
+            LIST: '/aturan',
+            BY_ID: (id) => `/aturan/${id}`,
+            ADMIN: {
+                LIST: '/admin/aturan',
+                BY_ID: (id) => `/admin/aturan/${id}`,
+            },
+            OWNER: {
+                LIST: '/owner/aturan',
+                BY_ID: (id) => `/owner/aturan/${id}`,
+            },
+            DIVISI: {
+                LIST: '/divisi/aturan',
+                BY_ID: (id) => `/divisi/aturan/${id}`,
+            },
+            TIM: {
+                LIST: '/tim/aturan',
+                BY_ID: (id) => `/tim/aturan/${id}`,
+            },
         }
     },
 }
