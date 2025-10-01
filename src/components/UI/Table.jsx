@@ -12,7 +12,7 @@ const Table = ({ children, className = '', ...props }) => {
 
 const TableHeader = ({ children, className = '', ...props }) => {
   return (
-    <thead className="bg-gray-50" {...props}>
+    <thead className={`bg-gray-50 ${className}`} {...props}>
       {children}
     </thead>
   )
@@ -20,7 +20,7 @@ const TableHeader = ({ children, className = '', ...props }) => {
 
 const TableBody = ({ children, className = '', ...props }) => {
   return (
-    <tbody className="bg-white divide-y divide-gray-200" {...props}>
+    <tbody className={`bg-white divide-y divide-gray-200 ${className}`} {...props}>
       {children}
     </tbody>
   )
@@ -28,7 +28,7 @@ const TableBody = ({ children, className = '', ...props }) => {
 
 const TableRow = ({ children, className = '', ...props }) => {
   return (
-    <tr className="hover:bg-gray-50 transition-colors duration-150" {...props}>
+    <tr className={`hover:bg-gray-50 transition-colors duration-150 ${className}`} {...props}>
       {children}
     </tr>
   )
@@ -56,5 +56,5 @@ const TableCell = ({ children, className = '', ...props }) => {
   )
 }
 
-export { TableHeader, TableBody, TableRow, TableHead, TableCell }
+export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell }
 export default Table 

@@ -141,12 +141,12 @@ export const defaultMenus = {
         {
             id: 4,
             name: 'Komplain',
-            path: '/admin/komplain',
+            path: '/admin/operasional/komplain',
             icon: 'AlertTriangle',
             order: 4,
             permissions: ['read', 'update'],
             children: [
-                { id: 41, name: 'Daftar Komplain', path: '/admin/komplain', permissions: ['read'] }
+                { id: 41, name: 'Daftar Komplain', path: '/admin/operasional/komplain', permissions: ['read'] }
             ]
         },
         {

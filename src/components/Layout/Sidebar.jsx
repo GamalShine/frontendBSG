@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
   Home,
@@ -78,9 +78,21 @@ const iconMap = {
 
 const Sidebar = () => {
   const { menus, checkPermission } = useMenu()
-  const { user } = useAuth()
+  const { user, allowedMenuKeys } = useAuth()
+
   const location = useLocation()
   const [expandedMenus, setExpandedMenus] = useState(new Set())
+
+  // Restore expanded state on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('sidebar_expanded')
+      if (saved) {
+        const arr = JSON.parse(saved)
+        if (Array.isArray(arr)) setExpandedMenus(new Set(arr))
+      }
+    } catch {}
+  }, [])
 
   const toggleMenu = (menuId) => {
     setExpandedMenus(prev => {
@@ -94,6 +106,13 @@ const Sidebar = () => {
     })
   }
 
+  // Persist expanded state
+  useEffect(() => {
+    try {
+      localStorage.setItem('sidebar_expanded', JSON.stringify(Array.from(expandedMenus)))
+    } catch {}
+  }, [expandedMenus])
+
   const isMenuActive = (menuPath) => {
     if (!menuPath) return false
     return location.pathname === menuPath || location.pathname.startsWith(menuPath + '/')
@@ -104,6 +123,49 @@ const Sidebar = () => {
     return children.some(child => isMenuActive(child.path))
   }
 
+  // Auto-expand parent menus that contain the active route, to avoid auto-closing after navigation
+  useEffect(() => {
+    setExpandedMenus(prev => {
+      const next = new Set(prev)
+      try {
+        menus.forEach(menu => {
+          const hasChildren = menu.children && menu.children.length > 0
+          if (!hasChildren) return
+          // filter visible children using same rules as renderer
+          const visibleChildren = menu.children.filter(child => {
+            const permOk = checkPermission(child.permissions)
+            const picOk = hasPicAccess(child)
+            return permOk && picOk
+          })
+          if (visibleChildren.some(child => isMenuActive(child.path))) {
+            next.add(menu.id)
+          }
+        })
+      } catch {}
+      return next
+    })
+  }, [location.pathname, menus, allowedMenuKeys, user])
+
+  const hasPicAccess = (menu) => {
+    const picKey = menu?.picKey
+    // Item default yang selalu boleh untuk role admin/divisi/tim tanpa picKey
+    const defaultWhitelistIds = new Set(['dashboard', 'daftar-tugas', 'profile', 'settings'])
+    const whitelistRoles = new Set(['admin', 'divisi', 'tim'])
+
+    // Jika role termasuk whitelistRoles dan menu termasuk default whitelist, izinkan
+    if (whitelistRoles.has(user?.role) && defaultWhitelistIds.has(menu?.id)) {
+      return true
+    }
+
+    if (user?.role === 'admin') {
+      // Selain whitelist, admin wajib memiliki picKey yang diizinkan
+      if (!picKey) return false
+      return Array.isArray(allowedMenuKeys) && allowedMenuKeys.includes(picKey)
+    }
+    // Role selain admin tidak dibatasi PIC (bisa diubah nanti jika diperlukan)
+    return true
+  }
+
   const renderMenuItem = (menu) => {
     const IconComponent = iconMap[menu.icon] || Home
     const isActive = menu.path ? isMenuActive(menu.path) : false
@@ -111,9 +173,22 @@ const Sidebar = () => {
     const isExpanded = expandedMenus.has(menu.id)
     const isChildMenuActive = hasChildren && isChildActive(menu.children)
 
-    // Check if user has permission to view this menu
-    if (!checkPermission(menu.permissions)) {
-      return null
+    // Check base permission
+    if (!checkPermission(menu.permissions)) return null
+
+    // Jika tidak punya anak: cek akses PIC langsung pada menu
+    if (!hasChildren && !hasPicAccess(menu)) return null
+
+    // Jika punya anak: hitung anak yang visible berdasarkan permission dan PIC
+    let visibleChildren = menu.children
+    if (hasChildren) {
+      visibleChildren = menu.children.filter(child => {
+        const permOk = checkPermission(child.permissions)
+        const picOk = hasPicAccess(child)
+        return permOk && picOk
+      })
+      // Jika semua anak tersembunyi, sembunyikan parent section
+      if (visibleChildren.length === 0) return null
     }
 
     return (
@@ -124,7 +199,7 @@ const Sidebar = () => {
             e.preventDefault()
             toggleMenu(menu.id)
           } : undefined}
-          className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
+          className={`flex items-center justify-between px-4 py-3 text-sm font-medium rounded-lg transition-colors min-h-[44px] ${
             isActive || isChildMenuActive
               ? 'bg-red-700 text-white border-r-2 border-red-300'
               : 'text-white hover:bg-red-600 hover:text-white'
@@ -147,12 +222,10 @@ const Sidebar = () => {
 
         {/* Render children */}
         {hasChildren && isExpanded && (
-          <div className="ml-6 mt-1 space-y-1 mb-2">
-            {menu.children.map(child => {
+          <div className="ml-6 mt-1 space-y-1.5 mb-2">
+            {visibleChildren.map(child => {
               // Check if user has permission to view this child menu
-              if (!checkPermission(child.permissions)) {
-                return null
-              }
+              // Permission & PIC telah difilter ke visibleChildren
 
               const isChildActive = child.path ? isMenuActive(child.path) : false
               
@@ -160,7 +233,7 @@ const Sidebar = () => {
                 <Link
                   key={child.id}
                   to={child.path || '#'}
-                  className={`block px-4 py-2 text-sm rounded-lg transition-colors ${
+                  className={`block px-4 py-2.5 text-sm rounded-lg transition-colors min-h-[40px] ${
                     isChildActive
                       ? 'bg-red-600 text-white border-l-2 border-red-300'
                       : 'text-white hover:bg-red-600 hover:text-white'
@@ -177,9 +250,9 @@ const Sidebar = () => {
   }
 
   return (
-    <div className="w-64 bg-red-800 border-r border-red-700 h-full flex flex-col">
+    <div className="w-full lg:w-64 bg-red-800 border-r border-red-700 h-full flex flex-col">
       {/* User Info */}
-      <div className="p-4 border-b border-red-700 flex-shrink-0">
+      <div className="p-4 border-b border-red-700 flex-shrink-0 sticky top-0 z-10 bg-red-800">
         <div className="flex items-center">
           <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
             <User className="h-6 w-6 text-white" />
@@ -196,14 +269,14 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation Menu - Scrollable */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="flex-1 overflow-y-auto scrollbar-hide pt-2 pb-24">
         <nav className="p-4">
           {menus.map(renderMenuItem)}
         </nav>
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-red-700 flex-shrink-0">
+      <div className="p-4 border-t border-red-700 flex-shrink-0 sticky bottom-0 z-10 bg-red-800">
         <div className="text-center">
           <p className="text-xs text-white">
             Bosgil Group © 2024

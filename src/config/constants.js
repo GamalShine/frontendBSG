@@ -1,9 +1,18 @@
 // Single source of truth untuk semua URL dan konfigurasi
+// Resolve BASE_URL dengan fallback bila env tidak diset
+const ENV_BASE = import.meta.env.VITE_API_BASE_URL;
+// Gunakan origin backend dev default bila env kosong
+const DEFAULT_BASE = 'http://localhost:3000/api';
+const RESOLVED_BASE = ENV_BASE || DEFAULT_BASE;
+
 export const API_CONFIG = {
-    // Base URLs dari environment variables
-    BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://192.168.30.124:3000/api',
-    WS_URL: import.meta.env.VITE_WS_URL || 'ws://192.168.30.124:3000',
-    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL || 'http://192.168.30.124:5173',
+    // Base URLs dari environment variables (dengan fallback)
+    BASE_URL: RESOLVED_BASE, // contoh: http://localhost:3000/api
+    WS_URL: import.meta.env.VITE_WS_URL,         // wajib di-set via env jika digunakan
+    FRONTEND_URL: import.meta.env.VITE_FRONTEND_URL, // optional, via env
+
+    // Derived
+    BASE_HOST: (RESOLVED_BASE || '').replace(/\/?api\/?$/, ''),
 
     // Helper functions
     getUrl: (endpoint) => `${API_CONFIG.BASE_URL}${endpoint}`,
@@ -50,6 +59,31 @@ export const API_ENDPOINTS = {
         UPDATE: (id) => `/keuangan-poskas/${id}`,
         UPDATE_UPLOAD: (id) => `/keuangan-poskas/${id}/upload`,
         DELETE: (id) => `/keuangan-poskas/${id}`,
+        MONTH: (year, month) => `/keuangan-poskas/month/${year}/${month}`,
+        SEARCH: (term) => `/keuangan-poskas/search/${encodeURIComponent(term)}`,
+
+        // Admin Poskas
+        ADMIN: {
+            LIST: '/admin/keuangan-poskas',
+            BY_ID: (id) => `/admin/keuangan-poskas/${id}`,
+            STATS: '/admin/keuangan-poskas/stats',
+        },
+
+        // Tim Poskas
+        TIM: {
+            LIST: '/tim/keuangan-poskas',
+            BY_ID: (id) => `/tim/keuangan-poskas/${id}`,
+            STATS: '/tim/keuangan-poskas/stats',
+        },
+
+        // Divisi Poskas
+        DIVISI: {
+            LIST: '/divisi/keuangan-poskas',
+            BY_ID: (id) => `/divisi/keuangan-poskas/${id}`,
+            STATS: '/divisi/keuangan-poskas/stats',
+            CATEGORIES: '/divisi/keuangan-poskas/categories',
+            SEARCH: '/divisi/keuangan-poskas/search',
+        },
     },
 
     // Tasks
@@ -62,6 +96,13 @@ export const API_ENDPOINTS = {
     COMPLAINTS: {
         LIST: '/daftar-komplain',
         BY_ID: (id) => `/daftar-komplain/${id}`,
+
+        // Tim Komplain
+        TIM: {
+            LIST: '/tim/komplain',
+            BY_ID: (id) => `/tim/komplain/${id}`,
+            STATS: '/tim/komplain/stats',
+        },
     },
 
     // Announcements
@@ -109,6 +150,22 @@ export const API_ENDPOINTS = {
         DETAIL: '/aneka-grafik',
         BY_ID: (id) => `/aneka-grafik/${id}`,
         STATS: '/aneka-grafik/stats/overview',
+        
+        // Admin Aneka Grafik
+        ADMIN: {
+            LIST: '/admin/aneka-grafik',
+            DETAIL: '/admin/aneka-grafik',
+            BY_ID: (id) => `/admin/aneka-grafik/${id}`,
+            STATS: '/admin/aneka-grafik/stats/overview',
+        },
+        
+        // Owner Aneka Grafik
+        OWNER: {
+            LIST: '/owner/aneka-grafik',
+            DETAIL: '/owner/aneka-grafik',
+            BY_ID: (id) => `/owner/aneka-grafik/${id}`,
+            STATS: '/owner/aneka-grafik/stats/overview',
+        },
     },
 
     // Laporan Keuangan
@@ -149,6 +206,42 @@ export const API_ENDPOINTS = {
 
     // Health Check
     HEALTH: '/health',
+
+    // SDM - Struktur, Jobdesk, SOP
+    SDM: {
+        STRUKTUR_ORGANISASI: '/struktur-organisasi',
+        JOBDESK: {
+            STRUCTURE: '/jobdesk/structure',
+            DIVISIONS: '/jobdesk/divisions',
+            DEPARTMENTS_BY_DIVISION: (divisiId) => `/jobdesk/divisions/${divisiId}/departments`,
+            POSITIONS_BY_DEPARTMENT: (departmentId) => `/jobdesk/departments/${departmentId}/positions`,
+        },
+        SOP: {
+            STRUCTURE: '/sop/structure',
+            DIVISIONS: '/sop/divisions',
+            CATEGORIES_BY_DIVISION: (divisiId) => `/sop/divisions/${divisiId}/categories`,
+        },
+        ATURAN: {
+            LIST: '/aturan',
+            BY_ID: (id) => `/aturan/${id}`,
+            ADMIN: {
+                LIST: '/admin/aturan',
+                BY_ID: (id) => `/admin/aturan/${id}`,
+            },
+            OWNER: {
+                LIST: '/owner/aturan',
+                BY_ID: (id) => `/owner/aturan/${id}`,
+            },
+            DIVISI: {
+                LIST: '/divisi/aturan',
+                BY_ID: (id) => `/divisi/aturan/${id}`,
+            },
+            TIM: {
+                LIST: '/tim/aturan',
+                BY_ID: (id) => `/tim/aturan/${id}`,
+            },
+        }
+    },
 }
 
 // Helper function untuk mendapatkan full URL dengan endpoint

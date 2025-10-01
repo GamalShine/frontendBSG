@@ -5,6 +5,7 @@ import { poskasService } from '../../services/poskasService';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, User, Clock, FileText, Eye, RefreshCw, Edit, Trash2, Info } from 'lucide-react';
 import { getEnvironmentConfig } from '../../config/environment';
+import { parseImagesString, getImageDisplayUrl, getImageFallbackUrl } from '../../utils';
 
 const PoskasDetail = () => {
   const { id } = useParams();
@@ -32,10 +33,23 @@ const PoskasDetail = () => {
       console.log('🔍 Images data type:', typeof poskasData.images);
       console.log('🔍 Images data length:', poskasData.images?.length);
       console.log('🔍 Images data constructor:', poskasData.images?.constructor?.name);
+      console.log('🔍 Environment config:', envConfig);
+      console.log('🔍 BASE_URL:', envConfig.BASE_URL);
       
       const processedImages = processImages(poskasData.images);
       console.log('🔍 Final processed images:', processedImages);
       console.log('🔍 Processed images count:', processedImages.length);
+      
+      // Log each processed image for debugging
+      processedImages.forEach((img, index) => {
+        console.log(`🔍 Image ${index + 1}:`, {
+          id: img.id,
+          name: img.name,
+          url: img.url,
+          uri: img.uri,
+          serverPath: img.serverPath
+        });
+      });
       
       const parts = renderContentWithImages(
         poskasData.isi_poskas,
@@ -107,99 +121,11 @@ const PoskasDetail = () => {
     console.log('🔍 processImages called with:', images);
     console.log('🔍 images type:', typeof images);
     console.log('🔍 images isArray:', Array.isArray(images));
+    console.log('🔍 Environment config:', envConfig);
+    console.log('🔍 BASE_URL:', envConfig.BASE_URL);
     
-    if (!images) return [];
-    
-    let imagesArray = [];
-    
-    // If images is already an array, use it directly
-    if (Array.isArray(images)) {
-      imagesArray = images;
-      console.log('✅ Images is already an array, using directly');
-    } else if (typeof images === 'string') {
-      try {
-        // Clean the string first - remove extra quotes if they exist
-        let cleanImages = images.trim();
-        
-        // Remove extra quotes if the string is wrapped in quotes
-        if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
-          cleanImages = cleanImages.slice(1, -1);
-        }
-        
-        // Unescape the string
-        cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-        
-        console.log('🔍 Original images string:', images);
-        console.log('🔍 Cleaned images string:', cleanImages);
-        
-        // Parse JSON
-        const parsed = JSON.parse(cleanImages);
-        console.log('🔍 Parsed result:', parsed);
-        console.log('🔍 Parsed type:', typeof parsed);
-        console.log('🔍 Parsed isArray:', Array.isArray(parsed));
-        
-        if (parsed && typeof parsed === 'object' && parsed !== null) {
-          if (Array.isArray(parsed)) {
-            imagesArray = parsed;
-            console.log('✅ Using parsed array directly');
-          } else {
-            // Single object, wrap in array
-            imagesArray = [parsed];
-            console.log('✅ Single object wrapped in array');
-          }
-        } else {
-          console.log('ℹ️ Parsed result is not an object, skipping:', parsed);
-          return [];
-        }
-      } catch (error) {
-        console.error('❌ Error parsing JSON:', error);
-        return [];
-      }
-    } else if (images && typeof images === 'object' && images !== null) {
-      // Single object, wrap in array
-      imagesArray = [images];
-      console.log('✅ Single object wrapped in array');
-    } else {
-      console.log('ℹ️ Invalid images format:', typeof images);
-      return [];
-    }
-    
-    // Ensure imagesArray is actually an array
-    if (!Array.isArray(imagesArray)) {
-      console.error('❌ imagesArray is not an array:', imagesArray);
-      return [];
-    }
-    
-    console.log('🔍 Final images array:', imagesArray);
-    
-    // Fix old IP addresses in image URLs
-    return imagesArray.map(image => {
-      if (image && image.url) {
-        let fixedUrl = image.url;
-        
-        // Fix double http:// issue
-        if (fixedUrl.startsWith('http://http://')) {
-          fixedUrl = fixedUrl.replace('http://http://', 'http://');
-          console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${fixedUrl}`);
-        }
-        
-        // Fix old IP addresses
-        if (fixedUrl.includes('192.168.30.124:3000')) {
-          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-          console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
-        } else if (fixedUrl.includes('192.168.30.124:3000')) {
-          const baseUrl = envConfig.BASE_URL.replace('/api', '');
-          fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-          console.log(`🔍 Fixed old IP in processImages: ${image.url} -> ${baseUrl}`);
-        }
-        
-        const processedImg = { ...image, url: fixedUrl };
-        console.log('🔍 Processed image object:', processedImg);
-        return processedImg;
-      }
-      return image;
-    });
+    // Use the utility function
+    return parseImagesString(images, envConfig.BASE_URL);
   };
 
   const parseFormattedText = (text) => {
@@ -215,78 +141,17 @@ const PoskasDetail = () => {
     console.log('🔍 renderContentWithImages called with:');
     console.log('🔍 content:', content);
     console.log('🔍 images:', images);
-    console.log('🔍 images type:', typeof images);
-    console.log('🔍 images isArray:', Array.isArray(images));
     
-    if (!content) return null;
+    if (!content) return [{ type: 'text', content: '' }];
 
-    // Ensure images is an array and process if it's a string
-    let imagesArray = [];
-    
-    // If images is already an array, use it directly
-    if (Array.isArray(images)) {
-      imagesArray = images;
-      console.log('🔍 Images is already an array in renderContentWithImages');
-    } else if (typeof images === 'string') {
-      try {
-        // Clean the string first - remove extra quotes if they exist
-        let cleanImages = images.trim();
-        
-        // Remove extra quotes if the string is wrapped in quotes
-        if (cleanImages.startsWith('"') && cleanImages.endsWith('"')) {
-          cleanImages = cleanImages.slice(1, -1);
-        }
-        
-        // Unescape the string
-        cleanImages = cleanImages.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
-        
-        console.log('🔍 Original images string in renderContentWithImages:', images);
-        console.log('🔍 Cleaned images string in renderContentWithImages:', cleanImages);
-        
-        // Parse JSON
-        const parsed = JSON.parse(cleanImages);
-        console.log('🔍 Parsed result in renderContentWithImages:', parsed);
-        console.log('🔍 Parsed type in renderContentWithImages:', typeof parsed);
-        console.log('🔍 Parsed isArray in renderContentWithImages:', Array.isArray(parsed));
-        
-        if (parsed && typeof parsed === 'object' && parsed !== null) {
-          if (Array.isArray(parsed)) {
-            imagesArray = parsed;
-            console.log('✅ Using parsed array directly in renderContentWithImages');
-          } else {
-            // Single object, wrap in array
-            imagesArray = [parsed];
-            console.log('✅ Single object wrapped in array in renderContentWithImages');
-          }
-        } else {
-          console.log('ℹ️ Parsed result is not an object in renderContentWithImages:', parsed);
-          imagesArray = [];
-        }
-      } catch (error) {
-        console.error('❌ Error parsing JSON in renderContentWithImages:', error);
-        imagesArray = [];
-      }
-    } else if (images && typeof images === 'object' && images !== null) {
-      // Single object, wrap in array
-      imagesArray = [images];
-      console.log('✅ Converted object to array in renderContentWithImages');
-    } else {
-      console.log('ℹ️ Invalid images format in renderContentWithImages:', typeof images);
-      imagesArray = [];
-    }
-    
-    // Ensure imagesArray is actually an array
-    if (!Array.isArray(imagesArray)) {
-      console.error('❌ imagesArray is not an array in renderContentWithImages:', imagesArray);
-      imagesArray = [];
-    }
-    
-    console.log('🔍 Final imagesArray:', imagesArray);
+    // Use the already processed images from processImages
+    const processedImages = Array.isArray(images) ? images : [];
+    console.log('🔍 Using processed images:', processedImages);
 
     const parts = [];
     let lastIndex = 0;
 
-    // Find all image tags
+    // Find all image placeholders [IMG:id]
     const imageRegex = /\[IMG:(\d+(?:\.\d+)?)\]/g;
     let match;
 
@@ -294,10 +159,9 @@ const PoskasDetail = () => {
       const imageId = match[1];
       console.log(`🔍 Found image tag: [IMG:${imageId}]`);
       
-      // Try to find image by ID (handle both integer and float IDs)
-      const image = imagesArray.find((img) => {
+      // Find image by ID
+      const image = processedImages.find((img) => {
         if (!img || !img.id) return false;
-        // Convert both to strings for comparison to handle float IDs
         return String(img.id) === String(imageId);
       });
       
@@ -314,86 +178,11 @@ const PoskasDetail = () => {
           });
         }
 
-        // Add image with server URL if available
-        const displayUri = (() => {
-          if (image.url) {
-            let imageUrl = image.url;
-            
-            // Fix double http:// issue
-            if (imageUrl.startsWith('http://http://')) {
-              imageUrl = imageUrl.replace('http://http://', 'http://');
-              console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${imageUrl}`);
-            }
-            
-            // Fix old IP addresses
-            if (imageUrl.includes('192.168.30.124:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-              console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-            } else if (imageUrl.includes('192.168.30.124:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-              console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-            }
-            
-            if (imageUrl.startsWith('http')) {
-              // Already absolute URL, but check if it has /api in wrong place
-              if (imageUrl.includes('/api/uploads/')) {
-                // Remove /api from upload URLs
-                imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-                console.log(`🔍 Fixed /api in upload URL: ${image.url} -> ${imageUrl}`);
-              }
-              console.log(`🔍 Using absolute URL: ${imageUrl}`);
-              return imageUrl;
-            } else {
-              // Relative URL, add base URL without /api
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              const fullUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-              console.log(`🔍 Using relative URL with base: ${fullUrl}`);
-              return fullUrl;
-            }
-          }
-          console.log(`🔍 No URL found, using URI: ${image.uri || 'none'}`);
-          return image.uri || '';
-        })();
-
-        const fallbackUri = (() => {
-          if (image.uri) {
-            console.log(`🔍 Using URI as fallback: ${image.uri}`);
-            return image.uri;
-          }
-          if (image.url) {
-            let imageUrl = image.url;
-            
-            // Fix double http:// issue for fallback too
-            if (imageUrl.startsWith('http://http://')) {
-              imageUrl = imageUrl.replace('http://http://', 'http://');
-            }
-            
-            // Fix old IP addresses for fallback too
-            if (imageUrl.includes('192.168.30.124:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-            } else if (imageUrl.includes('192.168.30.124:3000')) {
-              const baseUrl = envConfig.BASE_URL.replace('/api', '');
-              imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-            }
-            
-            // Check if it has /api in wrong place
-            if (imageUrl.includes('/api/uploads/')) {
-              // Remove /api from upload URLs
-              imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-              console.log(`🔍 Fixed /api in fallback upload URL: ${image.url} -> ${imageUrl}`);
-            }
-            
-            console.log(`🔍 Using URL as fallback: ${imageUrl}`);
-            return imageUrl;
-          }
-          console.log(`🔍 No fallback URI available`);
-          return '';
-        })();
-
-        console.log(`🔍 Final image data for ID ${imageId}:`, {
+        // Add image with proper URL
+        const displayUri = getImageDisplayUrl(image);
+        const fallbackUri = getImageFallbackUrl(image);
+        
+        console.log(`🔍 Image URLs for ID ${imageId}:`, {
           displayUri,
           fallbackUri,
           originalImage: image
@@ -412,9 +201,9 @@ const PoskasDetail = () => {
       } else {
         // Image not found for ID
         console.log(`❌ Image not found for ID: ${imageId}`);
-        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id })));
+        console.log(`📁 Available images:`, processedImages.map(img => ({ id: img?.id, url: img?.url, uri: img?.uri })));
         
-        // Still add the placeholder as text so it's visible
+        // Add text before placeholder
         if (match.index > lastIndex) {
           parts.push({
             type: 'text',
@@ -422,6 +211,7 @@ const PoskasDetail = () => {
           });
         }
         
+        // Add placeholder as text so it's visible
         parts.push({
           type: 'text',
           content: `[Gambar tidak ditemukan: ${imageId}]`,
@@ -436,6 +226,14 @@ const PoskasDetail = () => {
       parts.push({
         type: 'text',
         content: parseFormattedText(content.slice(lastIndex)),
+      });
+    }
+
+    // If no parts were created, return the content as text
+    if (parts.length === 0) {
+      parts.push({
+        type: 'text',
+        content: parseFormattedText(content),
       });
     }
 

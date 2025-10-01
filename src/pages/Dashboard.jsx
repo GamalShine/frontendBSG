@@ -17,7 +17,6 @@ import {
   CheckSquare,
   User,
   Bell,
-  MessageCircle,
   Shield
 } from 'lucide-react';
 import LoadingSpinner from '../components/UI/LoadingSpinner';
@@ -30,8 +29,9 @@ import { komplainService } from '../services/komplainService'
 import { tugasService } from '../services/tugasService'
 import { poskasService } from '../services/poskasService'
 import { userService } from '../services/userService'
-import { chatService } from '../services/chatService'
+ 
 import { timService } from '../services/timService'
+import { videoManageService } from '../services/videoManageService'
 
 const Dashboard = () => {
   const { user } = useAuth()
@@ -42,11 +42,15 @@ const Dashboard = () => {
     totalPoskas: 0,
     totalUsers: 0,
     totalTimBiru: 0,
-    totalTimMerah: 0,
-    unreadMessages: 0
+    totalTimMerah: 0
   })
   const [recentKomplains, setRecentKomplains] = useState([])
   const [recentTugas, setRecentTugas] = useState([])
+  // Video section state (per role)
+  const [videoUrl, setVideoUrl] = useState('')
+  const [videoInput, setVideoInput] = useState('')
+  const [selectedVideoFile, setSelectedVideoFile] = useState(null)
+  const [videoSaving, setVideoSaving] = useState(false)
 
   // Debug logging
   console.log('🔍 Dashboard rendered')
@@ -97,6 +101,92 @@ const Dashboard = () => {
       fetchDashboardData()
     }
   }, [user])
+
+  // Helper: convert common video URLs to embeddable URL
+  const toEmbedUrl = (url) => {
+    try {
+      if (!url) return ''
+      const u = new URL(url)
+      // YouTube patterns
+      if (u.hostname.includes('youtube.com')) {
+        const v = u.searchParams.get('v')
+        if (v) return `https://www.youtube.com/embed/${v}`
+        // If already /embed/
+        if (u.pathname.includes('/embed/')) return url
+      }
+      if (u.hostname.includes('youtu.be')) {
+        const id = u.pathname.split('/')[1]
+        if (id) return `https://www.youtube.com/embed/${id}`
+      }
+      // Vimeo
+      if (u.hostname.includes('vimeo.com')) {
+        const id = u.pathname.split('/').filter(Boolean)[0]
+        if (id) return `https://player.vimeo.com/video/${id}`
+      }
+      // Default return original (assume already embeddable)
+      return url
+    } catch (e) {
+      return url
+    }
+  }
+
+  // Load video dari backend
+  // - Admin: pakai video Admin
+  // - Leader: tampilkan video yang sama dengan Admin (bukan per-role terpisah)
+  // - Role lain: fallback localStorage seperti sebelumnya
+  useEffect(() => {
+    const load = async () => {
+      if (!user?.role) return
+      if (user.role === 'admin' || user.role === 'leader') {
+        try {
+          // Untuk Leader kita ambil video Admin agar tampil sama seperti di Admin
+          const sourceRole = user.role === 'leader' ? 'admin' : 'admin'
+          const res = await videoManageService.getCurrent(sourceRole)
+          setVideoUrl(res?.data?.url || '')
+        } catch (e) {
+          console.error('Gagal memuat video dashboard:', e)
+          setVideoUrl('')
+        }
+      } else {
+        const key = `dashboard_video_${user.role}`
+        const saved = localStorage.getItem(key)
+        if (saved) {
+          setVideoUrl(saved)
+          setVideoInput(saved)
+        } else {
+          setVideoUrl('')
+          setVideoInput('')
+        }
+      }
+    }
+    load()
+  }, [user?.role])
+
+  const handleUploadVideo = async () => {
+    if (!selectedVideoFile) return toast.error('Pilih file video terlebih dahulu')
+    if (!(user?.role === 'admin' || user?.role === 'leader')) return
+    try {
+      setVideoSaving(true)
+      const res = await videoManageService.upload(user.role, selectedVideoFile)
+      setVideoUrl(res?.data?.url || '')
+      setSelectedVideoFile(null)
+      toast.success('Video berhasil diunggah')
+    } catch (e) {
+      console.error(e)
+      toast.error(e?.message || 'Gagal mengunggah video')
+    } finally {
+      setVideoSaving(false)
+    }
+  }
+
+  const handleSaveVideo = () => {
+    const key = user?.role ? `dashboard_video_${user.role}` : null
+    if (!key) return
+    const embed = toEmbedUrl(videoInput.trim())
+    setVideoUrl(embed)
+    localStorage.setItem(key, embed)
+    toast.success('Video disimpan untuk dashboard ini')
+  }
 
   // Fetch functions for admin/owner
   const fetchKomplainData = async () => {
@@ -236,7 +326,7 @@ const Dashboard = () => {
       <div className="space-y-6">
       {/* Page Header */}
         <div className="flex items-center justify-between mb-6">
-        <div>
+          <div>
             <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
             <p className="text-gray-600 mt-2">
               Selamat datang, {user?.nama || user?.username}! Kelola seluruh sistem
@@ -247,6 +337,46 @@ const Dashboard = () => {
             <Badge variant="success">Administrator</Badge>
           </div>
         </div>
+
+        {user?.role === 'admin' && (
+          <>
+            {/* Video Section (Admin only) */}
+            <Card>
+              <CardHeader>
+                <h3 className="text-lg font-semibold text-gray-900">Video Pembuka</h3>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="lg:col-span-2">
+                    {videoUrl ? (
+                      <div className="aspect-video w-full bg-black/5 rounded-lg overflow-hidden">
+                        <video className="w-full h-full" src={videoUrl} controls />
+                      </div>
+                    ) : (
+                      <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                        Tidak ada video. Unggah file video.
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">Unggah Video (mp4, webm, dll.)</label>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => setSelectedVideoFile(e.target.files?.[0] || null)}
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={handleUploadVideo} disabled={videoSaving}>{videoSaving ? 'Menyimpan...' : 'Simpan'}</Button>
+                      <Button variant="ghost" onClick={() => setSelectedVideoFile(null)}>Reset</Button>
+                    </div>
+                    <p className="text-xs text-gray-500">File akan disimpan ke backend dan ditampilkan otomatis.</p>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </>
+        )}
         
         {/* Pengumuman Section */}
         <Card>
@@ -302,20 +432,6 @@ const Dashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Tugas</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <MessageCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Chat</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
                 </div>
               </div>
             </CardBody>
@@ -459,6 +575,44 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Video Section (Leader) */}
+        <Card>
+          <CardHeader>
+            <h3 className="text-lg font-semibold text-gray-900">Video Pembuka</h3>
+          </CardHeader>
+          <CardBody>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2">
+                {videoUrl ? (
+                  <div className="aspect-video w-full bg-black/5 rounded-lg overflow-hidden">
+                    <video className="w-full h-full" src={videoUrl} controls />
+                  </div>
+                ) : (
+                  <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                    Tidak ada video. Unggah file video.
+                  </div>
+                )}
+              </div>
+              {(user?.role === 'admin' || user?.role === 'owner') && (
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700">Unggah Video (mp4, webm, dll.)</label>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={(e) => setSelectedVideoFile(e.target.files?.[0] || null)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={handleUploadVideo} disabled={videoSaving}>{videoSaving ? 'Menyimpan...' : 'Simpan'}</Button>
+                    <Button variant="ghost" onClick={() => setSelectedVideoFile(null)}>Reset</Button>
+                  </div>
+                  <p className="text-xs text-gray-500">File akan disimpan ke backend dan ditampilkan otomatis.</p>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+
         {/* Pengumuman Section */}
         <Card>
           <CardHeader>
@@ -513,20 +667,6 @@ const Dashboard = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Total Tugas</p>
                   <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <MessageCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Chat</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
                 </div>
               </div>
             </CardBody>

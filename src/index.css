@@ -4,7 +4,7 @@
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Poppins', 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   }
 
   body {
@@ -253,4 +253,182 @@
   .prose u {
     @apply underline;
   }
+}
+
+/* Utilitas Responsif Global */
+@layer utilities {
+  /* Container responsif default */
+  .container-default {
+    @apply max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Wrapper tabel responsif agar bisa di-scroll horizontal di mobile */
+  .table-responsive {
+    @apply w-full overflow-x-auto;
+  }
+
+  /* Sel tabel: pecahkan kata panjang di layar kecil agar tidak overflow */
+  .td-break {
+    @apply break-words align-top;
+  }
+
+  /* Gambar fluid */
+  .img-fluid {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Video/Iframe embed responsive 16:9 */
+  .embed-responsive {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 */
+    height: 0;
+    overflow: hidden;
+  }
+  .embed-responsive iframe,
+  .embed-responsive video,
+  .embed-responsive object,
+  .embed-responsive embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Grid kartu responsif umum */
+  .cards-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  /* Clamp 2 baris (selain yang 3 baris di atas) */
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Tabel kompak di mobile */
+  .table-compact th,
+  .table-compact td {
+    @apply px-2 py-2 text-sm;
+  }
+
+  /* Utility untuk memaksa wrap teks panjang */
+  .break-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+/* ============================
+   Mobile-Only UI Optimizations
+   (tanpa mengubah desktop)
+   ============================ */
+@media (max-width: 768px) {
+  /* — Font & Teks — */
+  html {
+    /* Sedikit kecil namun tetap terbaca */
+    font-size: 15px;
+  }
+  body {
+    line-height: 1.5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1 { font-size: clamp(1.25rem, 5vw, 1.75rem); }
+  h2 { font-size: clamp(1.125rem, 4.5vw, 1.5rem); }
+  h3 { font-size: clamp(1rem, 4vw, 1.25rem); }
+
+  /* — Ikon — */
+  /* Lucide icons default class */
+  .lucide {
+    width: 1.125rem;  /* ~18px */
+    height: 1.125rem;
+    vertical-align: middle;
+  }
+  /* Ikon di dalam tombol/link sejajarkan dengan teks */
+  button .lucide,
+  a .lucide {
+    margin-top: -0.0625rem;
+  }
+
+  /* — Tombol — */
+  button,
+  .btn,
+  [role="button"],
+  .btn-primary,
+  .btn-secondary,
+  .btn-success,
+  .btn-warning,
+  .btn-danger {
+    min-height: 44px; /* target sentuh minimal Apple */
+    min-width: 44px;
+    padding: 0.625rem 0.875rem; /* 10px 14px */
+    border-radius: 0.5rem;
+  }
+  /* Jarak antar tombol tidak terlalu rapat */
+  .btn + .btn,
+  button + button {
+    margin-left: 0.5rem;
+  }
+
+  /* — Layout & Spacing — */
+  main {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .container-default {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* — Card — */
+  .card {
+    border-radius: 0.75rem;
+    margin-left: 0.75rem;
+    margin-right: 0.75rem;
+  }
+  .card-header,
+  .card-body {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  /* Grid kartu: paksa 1 kolom di mobile */
+  .cards-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* — List & Kolom / Tabel — */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table {
+    font-size: 0.9375rem; /* ~15px */
+  }
+  .table th,
+  .table td {
+    white-space: normal; /* bungkus teks agar tidak overflow */
+    vertical-align: top;
+  }
+  /* Hindari elemen terpotong dalam tabel dengan konten panjang */
+  .table .break-anywhere {
+    overflow-wrap: anywhere;
+  }
+
+  /* — Form Input — */
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 1rem; /* cegah zoom otomatis di iOS */
+  }
+
+  /* — Breadcrumb, header, dan toolbar padat — */
+  .prose p { margin-bottom: 0.75rem; }
 }

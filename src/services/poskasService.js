@@ -12,6 +12,28 @@ export const poskasService = {
         }
     },
 
+    // Search poskas by term
+    async searchPoskas(searchTerm) {
+        try {
+            const url = API_ENDPOINTS.POSKAS.SEARCH(searchTerm)
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get poskas by month (year, month as numbers)
+    async getPoskasByMonth(year, month) {
+        try {
+            const url = API_ENDPOINTS.POSKAS.MONTH(year, month)
+            const response = await api.get(url)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
     // Get poskas by ID
     async getPoskasById(id) {
         try {
@@ -93,7 +115,7 @@ export const poskasService = {
     // Owner specific endpoints
     async getOwnerPoskas(params = {}) {
         try {
-            const response = await api.get('/owner/keuangan-poskas', { params })
+            const response = await api.get(API_ENDPOINTS.POSKAS.OWNER.LIST, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -102,7 +124,7 @@ export const poskasService = {
 
     async getOwnerPoskasStats(params = {}) {
         try {
-            const response = await api.get('/owner/keuangan-poskas/stats', { params })
+            const response = await api.get(API_ENDPOINTS.POSKAS.OWNER.STATS, { params })
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
@@ -111,7 +133,7 @@ export const poskasService = {
 
     async getOwnerPoskasByDateRange(startDate, endDate, params = {}) {
         try {
-            const response = await api.get('/owner/keuangan-poskas/date-range', {
+            const response = await api.get(API_ENDPOINTS.POSKAS.OWNER.DATE_RANGE, {
                 params: {
                     startDate,
                     endDate,
@@ -126,7 +148,82 @@ export const poskasService = {
 
     async getOwnerPoskasById(id) {
         try {
-            const response = await api.get(`/owner/keuangan-poskas/${id}`)
+            const response = await api.get(API_ENDPOINTS.POSKAS.OWNER.BY_ID(id))
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    async createOwnerPoskas(poskasData) {
+        try {
+            const response = await api.post(API_ENDPOINTS.POSKAS.OWNER.LIST, poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    async updateOwnerPoskas(id, poskasData) {
+        try {
+            const response = await api.put(API_ENDPOINTS.POSKAS.OWNER.BY_ID(id), poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    async deleteOwnerPoskas(id) {
+        try {
+            const response = await api.delete(API_ENDPOINTS.POSKAS.OWNER.BY_ID(id))
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Admin specific endpoints
+    async getAdminPoskas(params = {}) {
+        try {
+            const response = await api.get(API_ENDPOINTS.POSKAS.ADMIN.LIST, { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    async getAdminPoskasStats(params = {}) {
+        try {
+            const response = await api.get(API_ENDPOINTS.POSKAS.ADMIN.STATS, { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    async getAdminPoskasById(id) {
+        try {
+            const response = await api.get(API_ENDPOINTS.POSKAS.ADMIN.BY_ID(id))
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Create owner poskas
+    async createOwnerPoskas(poskasData) {
+        try {
+            const response = await api.post(API_ENDPOINTS.POSKAS.OWNER.LIST, poskasData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Update owner poskas
+    async updateOwnerPoskas(id, poskasData) {
+        try {
+            const response = await api.put(API_ENDPOINTS.POSKAS.OWNER.BY_ID(id), poskasData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

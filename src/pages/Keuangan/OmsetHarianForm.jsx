@@ -218,17 +218,6 @@ const OmsetHarianForm = () => {
                     fixedUrl = fixedUrl.replace('http://http://', 'http://');
                     console.log(`🔍 Fixed double http:// in existing URL: ${img.url} -> ${fixedUrl}`);
                   }
-                  
-                  // Fix old IP addresses
-                  if (fixedUrl.includes('192.168.30.124:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  } else if (fixedUrl.includes('192.168.30.124:3000')) {
-                    const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                    fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-                    console.log(`🔍 Fixed old IP in existing URL: ${img.url} -> ${fixedUrl}`);
-                  }
                 }
                 
                 const processedImg = {
@@ -273,25 +262,13 @@ const OmsetHarianForm = () => {
                 console.log(`🔍 Fixed double http:// URL: ${image.url} -> ${cleanUrl}`);
               }
               
-              // Fix old IP addresses
-              if (cleanUrl.includes('192.168.30.124:3000')) {
+              // If relative URL, add base URL
+              if (!cleanUrl.startsWith('http') && !cleanUrl.startsWith('data:')) {
                 const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.124:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
-              } else if (cleanUrl.includes('192.168.30.124:3000')) {
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                cleanUrl = cleanUrl.replace('http://192.168.30.124:3000', baseUrl);
-                console.log(`🔍 Fixed old IP URL: ${image.url} -> ${baseUrl}`);
+                cleanUrl = `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
               }
               
-              if (cleanUrl.startsWith('http') || cleanUrl.startsWith('data:')) {
-                // Already absolute URL or data URL
-                imageUrl = cleanUrl;
-              } else {
-                // Relative URL, add base URL
-                const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                imageUrl = `${baseUrl}${cleanUrl.startsWith('/') ? '' : '/'}${cleanUrl}`;
-              }
+              imageUrl = cleanUrl;
             } else if (image.uri && image.uri.startsWith('file://temp/')) {
               // Handle temp file URIs
               imageUrl = image.uri;
@@ -547,7 +524,10 @@ const OmsetHarianForm = () => {
                 uri: `file://temp/${img.id}.jpg`,
                 id: img.id,
                 name: `omset_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
+                // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
+                url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
+                  ? uploadedFile.url
+                  : `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
                 serverPath: uploadedFile.url
               };
             } else {
@@ -600,17 +580,6 @@ const OmsetHarianForm = () => {
           if (fixedUrl.startsWith('http://http://')) {
             fixedUrl = fixedUrl.replace('http://http://', 'http://');
             console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-          
-          // Fix old IP addresses
-          if (fixedUrl.includes('192.168.30.124:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
-          } else if (fixedUrl.includes('192.168.30.124:3000')) {
-            const baseUrl = envConfig.BASE_URL.replace('/api', '');
-            fixedUrl = fixedUrl.replace('http://192.168.30.124:3000', baseUrl);
-            console.log(`🔍 Fixed old IP in submit: ${img.url} -> ${fixedUrl}`);
           }
           
           return { ...img, url: fixedUrl };
@@ -948,15 +917,6 @@ const OmsetHarianForm = () => {
                       // Fix double http:// issue
                       if (imageUrl.startsWith('http://http://')) {
                         imageUrl = imageUrl.replace('http://http://', 'http://');
-                      }
-                      
-                      // Fix old IP addresses
-                      if (imageUrl.includes('192.168.30.124:3000')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-                      } else if (imageUrl.includes('192.168.30.124:3000')) {
-                        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-                        imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
                       }
                       
                       // If relative URL, add base URL

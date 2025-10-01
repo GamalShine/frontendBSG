@@ -1,426 +1,442 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import { adminKomplainService } from '../../../services/komplainService'
-import { userService } from '../../../services/userService'
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import Card, { CardHeader, CardBody } from '@/components/UI/Card';
+import Button from '@/components/UI/Button';
+import Badge from '@/components/UI/Badge';
+import Separator from '@/components/UI/Separator';
 import { 
   ArrowLeft, 
   Edit, 
   Trash2, 
+  Download, 
+  MessageSquare, 
+  Clock, 
   User, 
-  Calendar, 
+  Tag, 
   AlertTriangle,
   CheckCircle,
-  Clock,
-  XCircle,
-  MessageSquare,
-  FileText
-} from 'lucide-react'
-import toast from 'react-hot-toast'
+  XCircle
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 const AdminKomplainDetail = () => {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const [komplain, setKomplain] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [users, setUsers] = useState([])
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const [selectedResponsible, setSelectedResponsible] = useState('')
-  const [adminNote, setAdminNote] = useState('')
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [komplain, setKomplain] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Mock data untuk demo
+  const mockKomplain = {
+    id: 1,
+    judul_komplain: 'Sistem Login Bermasalah',
+    deskripsi_komplain: 'Tidak bisa login ke sistem dengan kredensial yang benar. Sudah mencoba reset password tapi masih tidak bisa. Error message yang muncul: "Invalid credentials".',
+    kategori: 'sistem',
+    prioritas: 'mendesak',
+    status: 'menunggu',
+    pelapor: { 
+      id: 1,
+      nama: 'John Doe', 
+      email: 'john@example.com',
+      role: 'divisi',
+      divisi: 'IT'
+    },
+    penerima_komplain: { 
+      id: 2,
+      nama: 'Admin System', 
+      email: 'admin@example.com',
+      role: 'admin'
+    },
+    pihak_terkait: [
+      { id: 3, nama: 'Tech Support', email: 'support@example.com' },
+      { id: 4, nama: 'Network Admin', email: 'network@example.com' }
+    ],
+    lampiran: [
+      'screenshot-error-001.png',
+      'error-log-2024-01-15.txt'
+    ],
+    tanggal_pelaporan: '2024-01-15T10:30:00.000Z',
+    target_selesai: '2024-01-20T17:00:00.000Z',
+    tanggal_selesai: null,
+    catatan_admin: 'Komplain diterima dan sedang dalam proses investigasi.',
+    rating_kepuasan: null,
+    komentar_kepuasan: null,
+    created_at: '2024-01-15T10:30:00.000Z',
+    updated_at: '2024-01-15T14:20:00.000Z'
+  };
 
   useEffect(() => {
-    if (id) {
-      loadKomplainDetail()
-      loadUsers()
-    }
-  }, [id])
+    // Simulate API call
+    setTimeout(() => {
+      setKomplain(mockKomplain);
+      setLoading(false);
+    }, 1000);
+  }, [id]);
 
-  const loadKomplainDetail = async () => {
-    try {
-      setLoading(true)
-      const response = await adminKomplainService.getAdminKomplainById(id)
-      if (response.success) {
-        setKomplain(response.data)
-        setSelectedStatus(response.data.status)
-        setSelectedResponsible(response.data.penerima_komplain_id || '')
-        setAdminNote(response.data.catatan_admin || '')
-      }
-    } catch (error) {
-      toast.error('Gagal memuat detail komplain')
-      console.error('Error loading komplain detail:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const handleEdit = () => {
+    navigate(`/admin/operasional/komplain/${id}/edit`);
+  };
 
-  const loadUsers = async () => {
-    try {
-      const response = await userService.getUsers({ role: 'admin,leader' })
-      if (response.success) {
-        setUsers(response.data)
-      }
-    } catch (error) {
-      console.error('Error loading users:', error)
-    }
-  }
-
-  const handleStatusUpdate = async () => {
-    try {
-      const response = await adminKomplainService.updateKomplainStatus(id, {
-        status: selectedStatus,
-        catatan_admin: adminNote
-      })
-      if (response.success) {
-        toast.success('Status komplain berhasil diperbarui')
-        loadKomplainDetail()
-      }
-    } catch (error) {
-      toast.error('Gagal memperbarui status komplain')
-      console.error('Error updating status:', error)
-    }
-  }
-
-  const handleAssign = async () => {
-    try {
-      const response = await adminKomplainService.assignKomplain(id, selectedResponsible)
-      if (response.success) {
-        toast.success('Komplain berhasil ditugaskan')
-        loadKomplainDetail()
-      }
-    } catch (error) {
-      toast.error('Gagal menugaskan komplain')
-      console.error('Error assigning komplain:', error)
-    }
-  }
-
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (window.confirm('Apakah Anda yakin ingin menghapus komplain ini?')) {
-      try {
-        const response = await adminKomplainService.deleteKomplain(id)
-        if (response.success) {
-          toast.success('Komplain berhasil dihapus')
-          navigate('/admin/komplain')
-        }
-      } catch (error) {
-        toast.error('Gagal menghapus komplain')
-        console.error('Error deleting komplain:', error)
-      }
+      console.log('Delete komplain:', id);
+      navigate('/admin/operasional/komplain');
     }
-  }
+  };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'pending':
-        return <Clock className="h-5 w-5 text-yellow-500" />
-      case 'in_progress':
-        return <AlertTriangle className="h-5 w-5 text-blue-500" />
-      case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />
-      case 'rejected':
-        return <XCircle className="h-5 w-5 text-red-500" />
-      default:
-        return <Clock className="h-5 w-5 text-gray-500" />
-    }
-  }
+  const handleStatusChange = (newStatus) => {
+    // Update status logic
+    console.log('Update status to:', newStatus);
+  };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-800'
-      case 'completed':
-        return 'bg-green-100 text-green-800'
-      case 'rejected':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
+  const handleAssignTo = (userId) => {
+    // Assign komplain logic
+    console.log('Assign to user:', userId);
+  };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-800'
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'low':
-        return 'bg-green-100 text-green-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      menunggu: { variant: 'secondary', text: 'Menunggu', icon: Clock },
+      diproses: { variant: 'default', text: 'Diproses', icon: MessageSquare },
+      selesai: { variant: 'default', text: 'Selesai', icon: CheckCircle },
+      ditolak: { variant: 'destructive', text: 'Ditolak', icon: XCircle }
+    };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+    const config = statusConfig[status] || statusConfig.menunggu;
+    const Icon = config.icon;
+    
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-2">
+        <Icon className="w-4 h-4" />
+        {config.text}
+      </Badge>
+    );
+  };
+
+  const getPrioritasBadge = (prioritas) => {
+    const prioritasConfig = {
+      mendesak: { variant: 'destructive', text: 'Mendesak', icon: AlertTriangle },
+      penting: { variant: 'default', text: 'Penting', icon: AlertTriangle },
+      berproses: { variant: 'secondary', text: 'Berproses', icon: Clock }
+    };
+
+    const config = prioritasConfig[prioritas] || prioritasConfig.berproses;
+    const Icon = config.icon;
+    
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-2">
+        <Icon className="w-4 h-4" />
+        {config.text}
+      </Badge>
+    );
+  };
+
+  const getKategoriBadge = (kategori) => {
+    const kategoriConfig = {
+      sistem: { variant: 'outline', text: 'Sistem', icon: Tag },
+      layanan: { variant: 'outline', text: 'Layanan', icon: Tag },
+      produk: { variant: 'outline', text: 'Produk', icon: Tag },
+      lainnya: { variant: 'outline', text: 'Lainnya', icon: Tag }
+    };
+
+    const config = kategoriConfig[kategori] || kategoriConfig.lainnya;
+    const Icon = config.icon;
+    
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-2">
+        <Icon className="w-4 h-4" />
+        {config.text}
+      </Badge>
+    );
+  };
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat detail komplain...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-lg">Loading komplain...</p>
         </div>
       </div>
-    )
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-red-600">
+          <p className="text-lg">Error: {error}</p>
+        </div>
+      </div>
+    );
   }
 
   if (!komplain) {
     return (
-      <div className="p-6">
-        <div className="text-center">
-          <p className="text-gray-600">Komplain tidak ditemukan</p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-red-600">
+          <p className="text-lg">Komplain tidak ditemukan</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Link
-              to="/admin/komplain"
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Detail Komplain</h1>
-              <p className="text-gray-600">ID: #{komplain.id}</p>
-            </div>
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/admin/operasional/komplain')}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Kembali
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Detail Komplain</h1>
+            <p className="text-gray-600">ID: #{komplain.id}</p>
           </div>
-          <div className="flex items-center space-x-2">
-            <Link
-              to={`/admin/komplain/${id}/edit`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Edit className="h-4 w-4 inline mr-2" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <Trash2 className="h-4 w-4 inline mr-2" />
-              Hapus
-            </button>
-          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={handleEdit} className="bg-blue-600 hover:bg-blue-700">
+            <Edit className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+          <Button variant="destructive" onClick={handleDelete}>
+            <Trash2 className="w-4 h-4 mr-2" />
+            Hapus
+          </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Komplain Details */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Informasi Komplain</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Judul Komplain</label>
-                <p className="text-gray-900 font-medium">{komplain.judul_komplain}</p>
-              </div>
+          {/* Komplain Info */}
+          <Card>
+            <CardHeader>
+              <h3 className="text-xl font-semibold mb-2">{komplain.judul_komplain}</h3>
+              <p className="text-gray-600 whitespace-pre-wrap">{komplain.deskripsi_komplain}</p>
+            </CardHeader>
+            <CardBody className="space-y-4">
+              <Separator />
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                <p className="text-gray-900 whitespace-pre-wrap">{komplain.deskripsi_komplain}</p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
-                  <p className="text-gray-900">{komplain.kategori_komplain}</p>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Kategori</p>
+                  {getKategoriBadge(komplain.kategori)}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Prioritas</label>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(komplain.prioritas)}`}>
-                    {komplain.prioritas === 'high' && 'Tinggi'}
-                    {komplain.prioritas === 'medium' && 'Sedang'}
-                    {komplain.prioritas === 'low' && 'Rendah'}
-                  </span>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Prioritas</p>
+                  {getPrioritasBadge(komplain.prioritas)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Status</p>
+                  {getStatusBadge(komplain.status)}
                 </div>
               </div>
-              
-              {komplain.lampiran && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lampiran</label>
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    <a
-                      href={komplain.lampiran}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      Lihat Lampiran
-                    </a>
+            </CardBody>
+          </Card>
+
+          {/* Timeline & Notes */}
+          <Card>
+            <CardHeader>
+              <h3>Timeline & Catatan</h3>
+            </CardHeader>
+            <CardBody className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+                  <div>
+                    <p className="font-medium">Komplain Dibuat</p>
+                    <p className="text-sm text-gray-500">
+                      {format(new Date(komplain.tanggal_pelaporan), 'dd MMM yyyy HH:mm', { locale: id })}
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
+                
+                {komplain.catatan_admin && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-yellow-600 rounded-full mt-2"></div>
+                    <div>
+                      <p className="font-medium">Catatan Admin</p>
+                      <p className="text-sm text-gray-500">{komplain.catatan_admin}</p>
+                    </div>
+                  </div>
+                )}
+                
+                {komplain.tanggal_selesai && (
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-green-600 rounded-full mt-2"></div>
+                    <div>
+                      <p className="font-medium">Selesai</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(komplain.tanggal_selesai), 'dd MMM yyyy HH:mm', { locale: id })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardBody>
+          </Card>
 
-          {/* Status Updates */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Update Status</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status Baru</label>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_progress">Dalam Proses</option>
-                  <option value="completed">Selesai</option>
-                  <option value="rejected">Ditolak</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Catatan Admin</label>
-                <textarea
-                  value={adminNote}
-                  onChange={(e) => setAdminNote(e.target.value)}
-                  rows="3"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Tambahkan catatan untuk komplain ini..."
-                />
-              </div>
-              
-              <button
-                onClick={handleStatusUpdate}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Update Status
-              </button>
-            </div>
-          </div>
+          {/* Attachments */}
+          {komplain.lampiran && komplain.lampiran.length > 0 && (
+            <Card>
+              <CardHeader>
+                <h3>Lampiran</h3>
+              </CardHeader>
+              <CardBody>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {komplain.lampiran.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm font-medium">{file}</span>
+                      <Button variant="outline" size="sm">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardBody>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Current Status */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Status Saat Ini</h3>
-            
-            <div className="flex items-center space-x-3 mb-4">
-              {getStatusIcon(komplain.status)}
-              <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(komplain.status)}`}>
-                {komplain.status === 'pending' && 'Pending'}
-                {komplain.status === 'in_progress' && 'Dalam Proses'}
-                {komplain.status === 'completed' && 'Selesai'}
-                {komplain.status === 'rejected' && 'Ditolak'}
-              </span>
-            </div>
-            
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-600">Dibuat: {formatDate(komplain.created_at)}</span>
-              </div>
-              {komplain.updated_at && (
-                <div className="flex items-center space-x-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  <span className="text-gray-600">Diupdate: {formatDate(komplain.updated_at)}</span>
+          {/* Status Actions */}
+          <Card>
+            <CardHeader>
+              <h3>Status & Aksi</h3>
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Update Status:</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusChange('diproses')}
+                    disabled={komplain.status === 'diproses'}
+                  >
+                    Diproses
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusChange('selesai')}
+                    disabled={komplain.status === 'selesai'}
+                  >
+                    Selesai
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleStatusChange('ditolak')}
+                    disabled={komplain.status === 'ditolak'}
+                  >
+                    Ditolak
+                  </Button>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Pelapor Info */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informasi Pelapor</h3>
-            
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-blue-600" />
               </div>
-              <div>
-                <p className="font-medium text-gray-900">{komplain.pelapor?.nama}</p>
-                <p className="text-sm text-gray-500">{komplain.pelapor?.username}</p>
-              </div>
-            </div>
-            
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="text-gray-600">Divisi:</span>
-                <span className="ml-2 text-gray-900">{komplain.pelapor?.divisi}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Jabatan:</span>
-                <span className="ml-2 text-gray-900">{komplain.pelapor?.jabatan}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Email:</span>
-                <span className="ml-2 text-gray-900">{komplain.pelapor?.email}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Assignment */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Penugasan</h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Pilih Penanggung Jawab</label>
-                <select
-                  value={selectedResponsible}
-                  onChange={(e) => setSelectedResponsible(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Pilih penanggung jawab...</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.nama} - {user.divisi}
-                    </option>
+              
+              <Separator />
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Assign To:</p>
+                <div className="space-y-2">
+                  {komplain.pihak_terkait.map((user) => (
+                    <Button
+                      key={user.id}
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start"
+                      onClick={() => handleAssignTo(user.id)}
+                    >
+                      <User className="w-4 h-4 mr-2" />
+                      {user.nama}
+                    </Button>
                   ))}
-                </select>
+                </div>
               </div>
-              
-              {komplain.penerima_komplain && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600 mb-1">Penanggung Jawab Saat Ini:</p>
-                  <p className="font-medium text-gray-900">{komplain.penerima_komplain.nama}</p>
-                  <p className="text-sm text-gray-500">{komplain.penerima_komplain.divisi}</p>
+            </CardBody>
+          </Card>
+
+          {/* Reporter Info */}
+          <Card>
+            <CardHeader>
+              <h3>Informasi Pelapor</h3>
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Nama</p>
+                <p className="font-medium">{komplain.pelapor.nama}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Email</p>
+                <p className="text-sm">{komplain.pelapor.email}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500">Role</p>
+                <Badge variant="outline">{komplain.pelapor.role}</Badge>
+              </div>
+              {komplain.pelapor.divisi && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Divisi</p>
+                  <p className="text-sm">{komplain.pelapor.divisi}</p>
                 </div>
               )}
-              
-              <button
-                onClick={handleAssign}
-                disabled={!selectedResponsible}
-                className="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Tugaskan
-              </button>
-            </div>
-          </div>
+            </CardBody>
+          </Card>
 
-          {/* Rating */}
+          {/* Dates */}
+          <Card>
+            <CardHeader>
+              <h3>Informasi Tanggal</h3>
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Tanggal Pelaporan</p>
+                <p className="text-sm">
+                  {format(new Date(komplain.tanggal_pelaporan), 'dd MMM yyyy HH:mm', { locale: id })}
+                </p>
+              </div>
+              {komplain.target_selesai && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Target Selesai</p>
+                  <p className="text-sm">
+                    {format(new Date(komplain.target_selesai), 'dd MMM yyyy HH:mm', { locale: id })}
+                  </p>
+                </div>
+              )}
+              {komplain.tanggal_selesai && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Tanggal Selesai</p>
+                  <p className="text-sm">
+                    {format(new Date(komplain.tanggal_selesai), 'dd MMM yyyy HH:mm', { locale: id })}
+                  </p>
+                </div>
+              )}
+            </CardBody>
+          </Card>
+
+          {/* Satisfaction Rating */}
           {komplain.rating_kepuasan && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Rating Kepuasan</h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-600">Rating:</span>
-                  <div className="flex space-x-1">
+            <Card>
+              <CardHeader>
+                <h3>Rating Kepuasan</h3>
+              </CardHeader>
+              <CardBody className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <span
                         key={star}
-                        className={`text-lg ${
+                        className={`text-2xl ${
                           star <= komplain.rating_kepuasan
                             ? 'text-yellow-400'
                             : 'text-gray-300'
@@ -430,22 +446,24 @@ const AdminKomplainDetail = () => {
                       </span>
                     ))}
                   </div>
-                  <span className="text-sm text-gray-900">({komplain.rating_kepuasan}/5)</span>
+                  <span className="text-sm text-gray-600">
+                    ({komplain.rating_kepuasan}/5)
+                  </span>
                 </div>
-                
                 {komplain.komentar_kepuasan && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Komentar:</p>
-                    <p className="text-sm text-gray-900">{komplain.komentar_kepuasan}</p>
+                    <p className="text-sm font-medium text-gray-500">Komentar</p>
+                    <p className="text-sm">{komplain.komentar_kepuasan}</p>
                   </div>
                 )}
-              </div>
-            </div>
+              </CardBody>
+            </Card>
           )}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AdminKomplainDetail 
+export default AdminKomplainDetail;
+

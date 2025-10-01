@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../config/constants';
 
 export const laporanKeuanganService = {
     // Get all laporan keuangan with pagination and filters
-    async getAllLaporanKeuangan(page = 1, limit = 10, search = '', date = '') {
+    async getAllLaporanKeuangan(page = 1, limit = 10, search = '', date = '', month = '') {
         try {
             const params = new URLSearchParams({
                 page: page.toString(),
@@ -12,11 +12,23 @@ export const laporanKeuanganService = {
 
             if (search) params.append('search', search);
             if (date) params.append('date', date);
+            if (month) params.append('month', month);
 
             const response = await api.get(`${API_ENDPOINTS.LAPORAN_KEUANGAN.LIST}?${params}`);
             return response.data;
         } catch (error) {
             console.error('Error fetching laporan keuangan:', error);
+            throw error;
+        }
+    },
+
+    // Get available months (folder view)
+    async getAvailableMonths() {
+        try {
+            const response = await api.get(`${API_ENDPOINTS.LAPORAN_KEUANGAN.LIST}/months`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching available months:', error);
             throw error;
         }
     },

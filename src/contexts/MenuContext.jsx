@@ -28,279 +28,571 @@ export const MenuProvider = ({ children }) => {
   }, [isAuthenticated, user])
 
   const getMenusByRole = (role) => {
-    const baseMenus = [
-      {
-        id: 'dashboard',
-        title: 'Dashboard',
-        path: '/dashboard',
-        icon: 'Home',
-        permissions: ['read']
-      },
-      {
-        id: 'keuangan',
-        title: 'KEUANGAN',
-        icon: 'DollarSign',
-        permissions: ['read'],
-        children: [
-          {
-            id: 'poskas',
-            title: 'POSKAS',
-            path: '/poskas',
-            permissions: ['read', 'create']
-          },
-          {
-            id: 'omset-harian',
-            title: 'OMSET HARIAN',
-            path: '/keuangan/omset-harian',
-            permissions: ['read', 'create', 'update', 'delete']
-          },
-          {
-            id: 'lap-keu',
-            title: 'LAP. KEU',
-            path: '/keuangan/laporan',
-            permissions: ['read']
-          },
-          {
-            id: 'aneka-grafik',
-            title: 'ANEKA GRAFIK',
-            path: '/keuangan/aneka-grafik',
-            permissions: ['read']
-          },
-          {
-            id: 'daftar-gaji',
-            title: 'DAFTAR GAJI',
-            path: '/keuangan/gaji',
-            permissions: ['read']
-          },
-          {
-            id: 'aneka-surat',
-            title: 'ANEKA SURAT',
-            path: '/keuangan/surat',
-            permissions: ['read']
-          }
-        ]
-      },
-      {
-        id: 'sdm',
-        title: 'SDM',
-        icon: 'Users2',
-        permissions: ['read'],
-        children: [
-          {
-            id: 'struktur-jobdesk-sop',
-            title: 'STRUKTUR, JOBDESK & S.O.P.',
-            path: '/sdm/struktur',
-            permissions: ['read']
-          },
-          {
-            id: 'data-tim',
-            title: 'DATA TIM',
-            path: '/sdm/tim',
-            permissions: ['read']
-          }
-        ]
-      },
-      {
-        id: 'daftar-tugas',
-        title: 'DAFTAR TUGAS',
-        icon: 'ClipboardList',
-        permissions: ['read'],
-        children: [
-          {
-            id: 'kpi',
-            title: 'KPI',
-            path: '/tugas/kpi',
-            permissions: ['read']
-          },
-          {
-            id: 'tim-merah-biru',
-            title: 'TIM MERAH/BIRU',
-            path: '/tugas/tim',
-            permissions: ['read']
-          }
-        ]
-      },
-      {
-        id: 'operasional',
-        title: 'OPERASIONAL',
-        icon: 'Building2',
-        permissions: ['read'],
-        children: [
-          {
-            id: 'data-aset',
-            title: 'DATA ASET',
-            path: '/operasional/aset',
-            permissions: ['read']
-          },
-          {
-            id: 'data-supplier',
-            title: 'DATA SUPPLIER',
-            path: '/operasional/supplier',
-            permissions: ['read']
-          },
-          {
-            id: 'data-sewa',
-            title: 'DATA SEWA',
-            path: '/operasional/sewa',
-            permissions: ['read']
-          },
-          {
-            id: 'data-investor',
-            title: 'DATA INVESTOR',
-            path: '/operasional/investor',
-            permissions: ['read']
-          },
-          {
-            id: 'daftar-saran',
-            title: 'DAFTAR SARAN',
-            path: '/operasional/saran',
-            permissions: ['read']
-          },
-          {
-            id: 'daftar-komplain',
-            title: 'DAFTAR KOMPLAIN',
-            path: '/komplain',
-            permissions: ['read']
-          },
-          {
-            id: 'data-bina-lingkungan',
-            title: 'DATA BINA LINGKUNGAN',
-            path: '/operasional/bina-lingkungan',
-            permissions: ['read']
-          }
-        ]
-      },
-      {
-        id: 'marketing',
-        title: 'MARKETING',
-        icon: 'Target',
-        permissions: ['read'],
-        children: [
-          {
-            id: 'data-target',
-            title: 'DATA TARGET',
-            path: '/marketing/target',
-            permissions: ['read']
-          },
-          {
-            id: 'medsos',
-            title: 'MEDSOS',
-            path: '/marketing/medsos',
-            permissions: ['read']
-          }
-        ]
-      },
-      {
-        id: 'chat',
-        title: 'CHAT',
-        icon: 'MessageCircle',
-        permissions: ['read'],
-        children: [
-          {
-            id: 'chat-private',
-            title: 'Chat Private',
-            path: '/chat/private',
-            permissions: ['read']
-          },
-          {
-            id: 'chat-groups',
-            title: 'Chat Groups',
-            path: '/chat/groups',
-            permissions: ['read']
-          }
-        ]
-      }
-    ]
+    // Definisikan menu dasar yang akan difilter berdasarkan role
+    let baseMenus = [];
+    
+    // Menu Dashboard dengan path khusus per role
+    const dashboardPath = role === 'owner' ? '/owner/dashboard'
+      : role === 'admin' ? '/admin/dashboard'
+      : role === 'leader' ? '/leader/dashboard'
+      : '/dashboard'
+    baseMenus.push({
+      id: 'dashboard',
+      title: 'Dashboard',
+      path: dashboardPath,
+      icon: 'Home',
+      permissions: ['read']
+    });
+    
+    // Menu Chat dihilangkan untuk semua role
+    switch(role) {
+      case 'admin':
+        // Menu Daftar Tugas untuk Admin
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/admin/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
+        });
+        break;
+      case 'owner':
+        // Menu Daftar Tugas untuk Owner
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          icon: 'CheckSquare',
+          path: '/owner/tugas',
+          permissions: ['read', 'create', 'update', 'delete']
+        });
+        break;
+      case 'divisi':
+        // Tidak ada menu Chat
+        break;
+      case 'tim':
+        // Tidak ada menu Chat
+        break;
+      default:
+        // Tidak ada menu Chat
+        break;
+    }
 
-    // Admin specific menus
-    if (role === 'admin') {
-      baseMenus.push(
-        {
-          id: 'admin',
-          title: 'Admin Panel',
-          icon: 'Settings',
+    // Menu berdasarkan role
+    switch(role) {
+      case 'owner':
+        // Menu Keuangan untuk Owner
+        baseMenus.push({
+          id: 'keuangan',
+          title: 'KEUANGAN',
+          icon: 'DollarSign',
           permissions: ['read'],
           children: [
             {
-              id: 'admin-komplain',
-              title: 'Kelola Komplain',
-              path: '/admin/komplain',
+              id: 'poskas',
+              title: 'POSKAS',
+              path: '/owner/keuangan/poskas',
               permissions: ['read']
             },
             {
-              id: 'admin-tugas',
-              title: 'Kelola Tugas',
-              path: '/admin/tugas',
+              id: 'omset-harian',
+              title: 'OMSET HARIAN',
+              path: '/owner/keuangan/omset-harian',
+              permissions: ['read', 'create', 'update', 'delete']
+            },
+            {
+              id: 'lap-keu',
+              title: 'LAP. KEU',
+              path: '/owner/keuangan/laporan',
               permissions: ['read']
             },
             {
-              id: 'admin-pengumuman',
-              title: 'Kelola Pengumuman',
-              path: '/admin/pengumuman',
+              id: 'aneka-grafik',
+              title: 'ANEKA GRAFIK',
+              path: '/owner/keuangan/aneka-grafik',
               permissions: ['read']
             },
             {
-              id: 'admin-training',
-              title: 'Kelola Training',
-              path: '/admin/training',
+              id: 'daftar-gaji',
+              title: 'DAFTAR GAJI',
+              path: '/owner/keuangan/gaji',
               permissions: ['read']
             },
             {
-              id: 'admin-users',
-              title: 'Kelola Users',
-              path: '/users',
-              permissions: ['read']
-            },
-            {
-              id: 'admin-profile',
-              title: 'Admin Profile',
-              path: '/admin/profile',
+              id: 'aneka-surat',
+              title: 'ANEKA SURAT',
+              path: '/owner/keuangan/surat',
               permissions: ['read']
             }
           ]
-        },
-        {
+        });
+        
+        // Menu SDM untuk Owner
+        baseMenus.push({
+          id: 'sdm',
+          title: 'SDM',
+          icon: 'Users2',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'struktur-jobdesk',
+              title: 'STRUKTUR & JOBDESK',
+              path: '/owner/sdm/struktur-jobdesk',
+              permissions: ['read']
+            },
+            {
+              id: 'sop-aturan',
+              title: 'S.O.P dan Aturan',
+              path: '/owner/sdm/sop-aturan',
+              permissions: ['read']
+            },
+            {
+              id: 'data-tim',
+              title: 'DATA TIM',
+              path: '/owner/sdm/tim',
+              permissions: ['read']
+            },
+            {
+              id: 'kpi',
+              title: 'KPI',
+              path: '/owner/sdm/kpi',
+              permissions: ['read']
+            },
+            {
+              id: 'data-training',
+              title: 'DATA TRAINING',
+              path: '/owner/training',
+              permissions: ['read']
+            },
+            {
+              id: 'tim-merah-biru',
+              title: 'TIM MERAH/BIRU',
+              path: '/owner/sdm/tim-merah-biru',
+              permissions: ['read']
+            }
+          ]
+        });
+        
+        // Menu Operasional untuk Owner
+        baseMenus.push({
+          id: 'operasional',
+          title: 'OPERASIONAL',
+          icon: 'Building2',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'daftar-pengajuan',
+              title: 'DAFTAR PENGAJUAN',
+              path: '/owner/pengajuan',
+              permissions: ['read']
+            },
+            {
+              id: 'data-aset',
+              title: 'DATA ASET',
+              path: '/owner/operasional/aset',
+              permissions: ['read']
+            },
+            {
+              id: 'data-supplier',
+              title: 'DATA SUPPLIER',
+              path: '/owner/operasional/data-supplier',
+              permissions: ['read']
+            },
+            {
+              id: 'data-sewa',
+              title: 'DATA SEWA',
+              path: '/owner/operasional/sewa',
+              permissions: ['read']
+            },
+            {
+              id: 'data-investor',
+              title: 'DATA INVESTOR',
+              path: '/owner/operasional/investor',
+              permissions: ['read']
+            },
+            {
+              id: 'daftar-saran',
+              title: 'DAFTAR SARAN',
+              path: '/owner/operasional/saran',
+              permissions: ['read']
+            },
+            {
+              id: 'daftar-komplain',
+              title: 'DAFTAR KOMPLAIN',
+              path: '/owner/operasional/komplain',
+              permissions: ['read']
+            },
+            {
+              id: 'data-bina-lingkungan',
+              title: 'DATA BINA LINGKUNGAN',
+              path: '/owner/operasional/bina-lingkungan',
+              permissions: ['read']
+            },
+            {
+              id: 'jadwal-pembayaran',
+              title: 'JADWAL PEMBAYARAN/PERAWATAN',
+              path: '/owner/operasional/jadwal-pembayaran',
+              permissions: ['read']
+            }
+          ]
+        });
+        
+        // Menu Marketing untuk Owner
+        baseMenus.push({
+          id: 'marketing',
+          title: 'MARKETING',
+          icon: 'Target',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'data-target',
+              title: 'DATA TARGET',
+              path: '/owner/marketing/data-target',
+              permissions: ['read']
+            },
+            {
+              id: 'medsos',
+              title: 'MEDSOS',
+              path: '/owner/marketing/medsos',
+              permissions: ['read']
+            }
+          ]
+        });
+        
+
+        
+        // Menu Settings untuk Owner (dengan submenu)
+        baseMenus.push({
           id: 'settings',
           title: 'Settings',
           path: '/settings',
           icon: 'Settings',
-          permissions: ['read']
-        }
-      )
-    }
-
-    // Owner specific menus
-    if (role === 'owner') {
-      baseMenus.push(
-        {
-          id: 'owner',
-          title: 'Owner Panel',
-          icon: 'Crown',
           permissions: ['read'],
           children: [
             {
-              id: 'owner-poskas',
-              title: 'Kelola Pos Kas',
-              path: '/owner/poskas',
-              permissions: ['read']
-            },
-            {
-              id: 'owner-tim',
-              title: 'Kelola Tim',
-              path: '/owner/tim',
-              permissions: ['read']
-            },
-            {
-              id: 'owner-training',
-              title: 'Kelola Training',
-              path: '/owner/training',
+              id: 'kelola-akun',
+              title: 'Kelola Akun',
+              path: '/owner/settings/kelola-akun',
               permissions: ['read']
             }
           ]
-        }
-      )
-    }
+        });
 
+                    // Menu PIC MENU untuk Owner
+            baseMenus.push({
+              id: 'pic-menu',
+              title: 'PIC MENU',
+              path: '/owner/pic-menu',
+              icon: 'Users',
+              permissions: ['read']
+            });
+        
+        // Video Library (owner dapat mengelola seperti admin)
+        baseMenus.push({
+          id: 'video-library',
+          title: 'VIDEO LIBRARY',
+          path: '/admin/video-library',
+          icon: 'Video',
+          permissions: ['read']
+        });
+        break;
+        
+      case 'admin':
+        // Menu Keuangan untuk Admin
+        baseMenus.push({
+          id: 'keuangan',
+          title: 'KEUANGAN',
+          icon: 'DollarSign',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'poskas',
+              title: 'POSKAS',
+              path: '/admin/keuangan/poskas',
+              permissions: ['read', 'create', 'update', 'delete'],
+              picKey: 'AdminKeuanganPoskas'
+            },
+            {
+              id: 'omset-harian',
+              title: 'OMSET HARIAN',
+              path: '/admin/keuangan/omset-harian',
+              permissions: ['read', 'create', 'update', 'delete'],
+              picKey: 'AdminKeuanganOmsetHarian'
+            },
+            {
+              id: 'lap-keu',
+              title: 'LAPORAN KEUANGAN',
+              path: '/admin/keuangan/laporan',
+              permissions: ['read'],
+              picKey: 'AdminLaporanKeuangan'
+            },
+            {
+              id: 'aneka-grafik',
+              title: 'ANEKA GRAFIK',
+              path: '/admin/keuangan/aneka-grafik',
+              permissions: ['read'],
+              picKey: 'AdminAnekaGrafik'
+            },
+            {
+              id: 'daftar-gaji',
+              title: 'DAFTAR GAJI',
+              path: '/admin/keuangan/gaji',
+              permissions: ['read'],
+              picKey: 'AdminDaftarGaji'
+            },
+            {
+              id: 'aneka-surat',
+              title: 'ANEKA SURAT',
+              path: '/admin/keuangan/surat',
+              permissions: ['read'],
+              picKey: 'AdminAnekaSurat'
+            }
+          ]
+        });
+        
+        // Menu SDM untuk Admin
+        baseMenus.push({
+          id: 'sdm',
+          title: 'SDM',
+          icon: 'Users2',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'struktur-jobdesk',
+              title: 'STRUKTUR & JOBDESK',
+              path: '/admin/sdm/struktur-jobdesk',
+              permissions: ['read'],
+              picKey: 'AdminSdmStrukturJobdesk'
+            },
+            {
+              id: 'sop-aturan',
+              title: 'S.O.P dan Aturan',
+              path: '/admin/sdm/sop-aturan',
+              permissions: ['read'],
+              picKey: 'AdminSopAturan'
+            },
+            {
+              id: 'data-tim',
+              title: 'DATA TIM',
+              path: '/admin/sdm/tim',
+              permissions: ['read'],
+              picKey: 'AdminSdmDataTim'
+            },
+            {
+              id: 'kpi',
+              title: 'KPI',
+              path: '/admin/sdm/kpi',
+              permissions: ['read'],
+              picKey: 'AdminSdmKpi'
+            },
+            {
+              id: 'tim-merah-biru',
+              title: 'TIM MERAH/BIRU',
+              path: '/admin/sdm/tim-merah-biru',
+              permissions: ['read'],
+              picKey: 'AdminTimMerahBiru'
+            },
+            {
+              id: 'data-training',
+              title: 'DATA TRAINING',
+              path: '/admin/training',
+              permissions: ['read'],
+              picKey: 'AdminDataTraining'
+            }
+          ]
+        });
+
+        // Menu Operasional untuk Admin
+        baseMenus.push({
+          id: 'operasional',
+          title: 'OPERASIONAL',
+          icon: 'Settings',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'data-aset',
+              title: 'DATA ASET',
+              path: '/admin/operasional/aset',
+              permissions: ['read'],
+              picKey: 'AdminDataAset'
+            },
+            {
+              id: 'data-supplier',
+              title: 'DATA SUPPLIER',
+              path: '/admin/operasional/data-supplier',
+              permissions: ['read'],
+              picKey: 'AdminDataSupplier'
+            },
+            {
+              id: 'data-sewa',
+              title: 'DATA SEWA',
+              path: '/admin/operasional/sewa',
+              permissions: ['read'],
+              picKey: 'AdminDataSewa'
+            },
+            {
+              id: 'jadwal-pembayaran',
+              title: 'JADWAL PEMBAYARAN/PERAWATAN',
+              path: '/admin/operasional/jadwal-pembayaran',
+              permissions: ['read'],
+              picKey: 'AdminJadwalPembayaran'
+            },
+            {
+              id: 'data-investor',
+              title: 'DATA INVESTOR',
+              path: '/admin/operasional/investor',
+              permissions: ['read'],
+              picKey: 'AdminDataInvestor'
+            },
+            {
+              id: 'daftar-saran',
+              title: 'DAFTAR SARAN',
+              path: '/admin/operasional/saran',
+              permissions: ['read'],
+              picKey: 'AdminDaftarSaran'
+            },
+            {
+              id: 'daftar-komplain',
+              title: 'DAFTAR KOMPLAIN',
+              path: '/admin/operasional/komplain',
+              permissions: ['read'],
+              picKey: 'AdminDaftarKomplain'
+            },
+            {
+              id: 'data-bina-lingkungan',
+              title: 'DATA BINA LINGKUNGAN',
+              path: '/admin/operasional/bina-lingkungan',
+              permissions: ['read'],
+              picKey: 'AdminDataBinaLingkungan'
+            }
+          ]
+        });
+        
+        // Menu Marketing untuk Admin
+        baseMenus.push({
+          id: 'marketing',
+          title: 'MARKETING',
+          icon: 'Target',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'data-target',
+              title: 'DATA TARGET',
+              path: '/admin/marketing/data-target',
+              permissions: ['read'],
+              picKey: 'AdminDataTarget'
+            },
+            {
+              id: 'medsos',
+              title: 'MEDIA SOSIAL',
+              path: '/admin/marketing/medsos',
+              permissions: ['read'],
+              picKey: 'AdminMarketingMedsos'
+            }
+          ]
+        });
+        
+        // Menu Admin Panel dihapus karena duplikasi dengan menu utama
+        
+        // Menu Settings untuk Admin
+        baseMenus.push({
+          id: 'settings',
+          title: 'Settings',
+          path: '/settings',
+          icon: 'Settings',
+          permissions: ['read'],
+          picKey: 'AdminSettings'
+        });
+
+        // Video Library untuk Admin
+        baseMenus.push({
+          id: 'video-library',
+          title: 'VIDEO LIBRARY',
+          path: '/admin/video-library',
+          icon: 'Video',
+          permissions: ['read']
+        });
+        break;
+        
+      case 'leader':
+        // Flatten menu Leader: setiap item jadi top-level, judul UPPERCASE
+        baseMenus.push(
+          { id: 'leader-struktur-jobdesk', title: 'STRUKTUR DAN JOBDESK', path: '/leader/sdm/struktur-jobdesk', icon: 'Users2', permissions: ['read'] },
+          { id: 'leader-sop-aturan', title: 'SOP DAN ATURAN', path: '/leader/sdm/sop-aturan', icon: 'FileText', permissions: ['read'] },
+          { id: 'leader-jobdesk-saya', title: 'JOBDESK SAYA APA?', path: '/leader/sdm/jobdesk-saya', icon: 'ClipboardList', permissions: ['read'] },
+          { id: 'leader-tugas-saya', title: 'TUGAS SAYA APA?', path: '/leader/tugas-saya', icon: 'CheckSquare', permissions: ['read'] },
+          { id: 'leader-kpi-saya', title: 'KPI SAYA', path: '/leader/sdm/kpi-saya', icon: 'TrendingUp', permissions: ['read'] },
+          { id: 'leader-kpi-tim', title: 'KPI TIM SAYA', path: '/leader/sdm/kpi-tim', icon: 'BarChart2', permissions: ['read'] },
+          { id: 'leader-tim-merah-biru', title: 'TIM MERAH DAN BIRU', path: '/leader/tugas/tim', icon: 'Users', permissions: ['read'] },
+          { id: 'leader-daftar-pengajuan', title: 'DAFTAR PENGAJUAN', path: '/leader/pengajuan', icon: 'Inbox', permissions: ['read'] },
+          { id: 'leader-slip-gaji', title: 'SLIP GAJI SAYA', path: '/leader/slip-gaji-saya', icon: 'FileText', permissions: ['read'] },
+          { id: 'leader-data-saya', title: 'DATA SAYA', path: '/leader/profile', icon: 'User', permissions: ['read'] }
+        );
+        break;
+        
+      case 'divisi':
+        // Menu Keuangan untuk Divisi
+        baseMenus.push({
+          id: 'keuangan',
+          title: 'KEUANGAN',
+          icon: 'DollarSign',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'poskas',
+              title: 'POSKAS',
+              path: '/divisi/keuangan/poskas',
+              permissions: ['read', 'create']
+            },
+            {
+              id: 'omset-harian',
+              title: 'OMSET HARIAN',
+              path: '/divisi/keuangan/omset-harian',
+              permissions: ['read', 'create', 'update', 'delete']
+            }
+          ]
+        });
+        // Menu SDM untuk Divisi
+        baseMenus.push({
+          id: 'sdm',
+          title: 'SDM',
+          icon: 'Users2',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'struktur-jobdesk',
+              title: 'STRUKTUR & JOBDESK',
+              path: '/divisi/sdm/struktur-jobdesk',
+              permissions: ['read']
+            },
+            {
+              id: 'sop-aturan',
+              title: 'S.O.P dan Aturan',
+              path: '/divisi/sdm/sop-aturan',
+              permissions: ['read']
+            }
+          ]
+        });
+        break;
+        
+      default:
+        // Menu default untuk role yang tidak dikenali
+        baseMenus.push({
+          id: 'keuangan',
+          title: 'KEUANGAN',
+          icon: 'DollarSign',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'poskas',
+              title: 'POSKAS',
+              path: '/poskas',
+              permissions: ['read', 'create']
+            }
+          ]
+        });
+        break;
+    }
+    
     // Profile menu for all users
     baseMenus.push({
       id: 'profile',
@@ -318,7 +610,9 @@ export const MenuProvider = ({ children }) => {
       setLoading(true)
       
       // Get menus based on user role
-      const userMenus = getMenusByRole(user.role)
+      let userMenus = getMenusByRole(user.role)
+
+      // Bypass dihapus: menu hanya mengikuti role user
       
       // Extract all permissions from menus
       const allPermissions = []
@@ -415,4 +709,4 @@ export const MenuProvider = ({ children }) => {
       {children}
     </MenuContext.Provider>
   )
-} 
+}

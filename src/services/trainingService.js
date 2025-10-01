@@ -12,31 +12,45 @@ export const trainingService = {
         }
     },
 
-    // Get training by ID
+    // Get user training detail by user ID (admin)
     async getTrainingById(id) {
         try {
-            const response = await api.get(API_ENDPOINTS.TRAINING.BY_ID(id))
+            // Backend route: GET /api/admin/training/users/:id
+            const response = await api.get(`/admin/training/users/${id}`)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Create new training
+    // Update training status for a user (admin)
+    async updateUserTrainingStatus(userId, trainingData) {
+        try {
+            // Backend route: PUT /api/admin/training/users/:id/training
+            const response = await api.put(`/admin/training/users/${userId}/training`, trainingData)
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Backward compatibility wrappers
     async createTraining(trainingData) {
         try {
-            const response = await api.post(API_ENDPOINTS.TRAINING.LIST, trainingData)
-            return response.data
+            const userId = trainingData?.user_id || trainingData?.id
+            if (!userId) throw new Error('user_id diperlukan')
+            return await trainingService.updateUserTrainingStatus(userId, trainingData)
         } catch (error) {
             throw error.response?.data || error.message
         }
     },
 
-    // Update training
+    // Update training (treat id as user id)
     async updateTraining(id, trainingData) {
         try {
-            const response = await api.put(API_ENDPOINTS.TRAINING.BY_ID(id), trainingData)
-            return response.data
+            const userId = id || trainingData?.user_id
+            if (!userId) throw new Error('user_id diperlukan')
+            return await trainingService.updateUserTrainingStatus(userId, trainingData)
         } catch (error) {
             throw error.response?.data || error.message
         }
@@ -70,6 +84,27 @@ export const trainingService = {
         } catch (error) {
             throw error.response?.data || error.message
         }
+    },
+
+    // Admin: list trainings for admin (alias for AdminTrainingList.jsx)
+    async getAdminTrainings(params = {}) {
+        try {
+            // Backend expects /admin/training/users for list
+            const response = await api.get('/admin/training/users', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Admin: stats for admin (alias for AdminTrainingList.jsx)
+    async getAdminStats(params = {}) {
+        try {
+            const response = await api.get(API_ENDPOINTS.TRAINING.STATS, { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     }
 }
 
@@ -84,11 +119,44 @@ export const ownerTrainingService = {
         }
     },
 
+    // Get all trainings for owner (alias for compatibility)
+    async getOwnerTrainings(params = {}) {
+        try {
+            const response = await api.get('/owner/training/users', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
     // Get training statistics for owner
     async getOwnerTrainingStats(params = {}) {
         try {
             const response = await api.get(API_ENDPOINTS.TRAINING.OWNER_STATS, { params })
             return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Get owner stats (alias for compatibility)
+    async getOwnerStats(params = {}) {
+        try {
+            const response = await api.get('/owner/training/stats', { params })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Export owner trainings as CSV
+    async exportOwnerTrainings(params = {}) {
+        try {
+            const response = await api.get('/owner/training/export', {
+                params,
+                responseType: 'blob'
+            })
+            return { success: true, data: response.data }
         } catch (error) {
             throw error.response?.data || error.message
         }
@@ -115,4 +183,4 @@ export const ownerTrainingService = {
             throw error.response?.data || error.message
         }
     }
-} 
+}

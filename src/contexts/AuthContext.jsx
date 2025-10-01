@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { authService } from '../services/authService'
+import { picMenuService } from '../services/picMenuService'
 
 const AuthContext = createContext()
 
@@ -14,6 +15,26 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [allowedMenuKeys, setAllowedMenuKeys] = useState([])
+
+  const loadAllowedMenuKeys = async (userId) => {
+    if (!userId) {
+      setAllowedMenuKeys([])
+      return
+    }
+    try {
+      const res = await picMenuService.getUserPicMenus(userId)
+      const list = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])
+      const keys = list
+        .filter(item => !item.status_deleted)
+        .map(item => item.link)
+        .filter(Boolean)
+      setAllowedMenuKeys(Array.from(new Set(keys)))
+    } catch (e) {
+      console.warn('Gagal memuat allowedMenuKeys, fallback ke kosong', e)
+      setAllowedMenuKeys([])
+    }
+  }
 
   useEffect(() => {
     const initAuth = async () => {
@@ -32,6 +53,7 @@ export const AuthProvider = ({ children }) => {
               const isValid = await authService.isTokenValid()
               if (isValid) {
                 setUser(storedUser)
+                await loadAllowedMenuKeys(storedUser.id)
                 console.log('✅ Token is valid, user session restored')
               } else {
                 console.log('❌ Token expired, clearing session')
@@ -51,6 +73,7 @@ export const AuthProvider = ({ children }) => {
               console.log('👤 Fetched current user:', currentUser)
               setUser(currentUser)
               localStorage.setItem('user', JSON.stringify(currentUser))
+              await loadAllowedMenuKeys(currentUser?.id)
             } catch (error) {
               console.warn('❌ Failed to get current user, clearing stored data:', error)
               await authService.logout()
@@ -108,6 +131,7 @@ export const AuthProvider = ({ children }) => {
       
       console.log('👤 Processed user data:', loggedInUser)
       setUser(loggedInUser)
+      try { await loadAllowedMenuKeys(loggedInUser?.id) } catch {}
       return loggedInUser
     } catch (error) {
       console.error('Login error in AuthContext:', error)
@@ -132,6 +156,7 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (updatedUser) => {
     setUser(updatedUser)
     localStorage.setItem('user', JSON.stringify(updatedUser))
+    loadAllowedMenuKeys(updatedUser?.id)
   }
 
   const value = {
@@ -141,6 +166,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     isAuthenticated: !!user,
+    allowedMenuKeys,
   }
 
   return (

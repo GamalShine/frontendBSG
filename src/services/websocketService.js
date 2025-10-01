@@ -1,6 +1,9 @@
 import { toast } from 'react-hot-toast'
 import { API_CONFIG } from '../config/constants'
 
+// Control flag: set to false to silence realtime connection toasts
+const SHOW_WS_TOASTS = false
+
 class WebSocketService {
     constructor() {
         this.ws = null
@@ -35,7 +38,7 @@ class WebSocketService {
                     data: { userId: parseInt(userId) }
                 })
 
-                toast.success('Terhubung ke server real-time!')
+                if (SHOW_WS_TOASTS) toast.success('Terhubung ke server real-time!')
             }
 
             this.ws.onmessage = (event) => {
@@ -55,20 +58,20 @@ class WebSocketService {
                     this.attemptReconnect()
                 }
 
-                toast.error('Terputus dari server real-time')
+                if (SHOW_WS_TOASTS) toast.error('Terputus dari server real-time')
             }
 
             this.ws.onerror = (error) => {
                 console.error('🔌 WebSocket error:', error)
                 // Don't show error toast on initial connection failure
                 // Only show if we were previously connected
-                if (this.isConnected) {
+                if (this.isConnected && SHOW_WS_TOASTS) {
                     toast.error('Kesalahan koneksi WebSocket')
                 }
             }
         } catch (error) {
             console.error('Error creating WebSocket connection:', error)
-            toast.error('Gagal membuat koneksi WebSocket')
+            if (SHOW_WS_TOASTS) toast.error('Gagal membuat koneksi WebSocket')
         }
     }
 
@@ -84,7 +87,7 @@ class WebSocketService {
     attemptReconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.log('Max reconnection attempts reached')
-            toast.error('Gagal terhubung ulang ke server')
+            if (SHOW_WS_TOASTS) toast.error('Gagal terhubung ulang ke server')
             return
         }
 

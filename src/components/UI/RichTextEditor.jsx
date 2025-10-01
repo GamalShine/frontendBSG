@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
-import { Image, Bold, Italic, Underline, List, ListOrdered, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
+import { Image, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
 
 const RichTextEditor = ({ 
   value, 
@@ -199,8 +199,6 @@ const RichTextEditor = ({
     { icon: Bold, command: 'bold', title: 'Bold' },
     { icon: Italic, command: 'italic', title: 'Italic' },
     { icon: Underline, command: 'underline', title: 'Underline' },
-    { icon: List, command: 'insertUnorderedList', title: 'Bullet List' },
-    { icon: ListOrdered, command: 'insertOrderedList', title: 'Numbered List' },
     { icon: AlignLeft, command: 'justifyLeft', title: 'Align Left' },
     { icon: AlignCenter, command: 'justifyCenter', title: 'Align Center' },
     { icon: AlignRight, command: 'justifyRight', title: 'Align Right' },

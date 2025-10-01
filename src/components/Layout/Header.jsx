@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { 
@@ -7,23 +7,29 @@ import {
   User, 
   Settings, 
   LogOut,
-  MessageCircle
+  
 } from 'lucide-react'
 import { getInitials } from '../../utils/helpers'
+import Breadcrumb from './Breadcrumb'
 
 const Header = ({ onMenuClick, unreadCount }) => {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  
+
+  // Chat summary dihapus
+
+  useEffect(() => {}, [])
 
   const handleLogout = async () => {
     try {
       setLoggingOut(true)
       setUserMenuOpen(false) // Close dropdown
-      console.log('🔐 Header: Logout button clicked')
+      console.log(' Header: Logout button clicked')
       await logout()
-      console.log('✅ Header: Logout successful, redirecting to login...')
+      console.log(' Header: Logout successful, redirecting to login...')
       navigate('/login')
     } catch (error) {
       console.error('Header: Logout error:', error)
@@ -35,8 +41,9 @@ const Header = ({ onMenuClick, unreadCount }) => {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+    <>
+    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30 lg:static">
+      <div className="relative flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         {/* Left side - Hidden on desktop to make room for sidebar */}
         <div className="flex items-center lg:hidden">
           <button
@@ -47,23 +54,14 @@ const Header = ({ onMenuClick, unreadCount }) => {
           </button>
         </div>
 
-        {/* Center - Empty on desktop to make room for sidebar */}
-        <div className="hidden lg:block lg:w-64"></div>
+        {/* Breadcrumb on desktop - absolute at bottom-left, independent from flex */}
+        <div className="hidden lg:block absolute left-4 bottom-2 z-10">
+          <Breadcrumb />
+        </div>
 
         {/* Right side */}
-        <div className="flex items-center space-x-4">
-          {/* Notifications */}
-          <Link
-            to="/chat"
-            className="relative p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-md"
-          >
-            <MessageCircle className="h-6 w-6" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
-            )}
-          </Link>
+        <div className="flex items-center space-x-4 ml-auto">
+          
 
           {/* Logout Loading Indicator */}
           {loggingOut && (
@@ -114,6 +112,11 @@ const Header = ({ onMenuClick, unreadCount }) => {
         </div>
       </div>
 
+      {/* Mobile breadcrumb - below header */}
+      <div className="lg:hidden px-4 py-2 bg-gray-50 border-b border-gray-200">
+        <Breadcrumb />
+      </div>
+
       {/* Click outside to close user menu */}
       {userMenuOpen && !loggingOut && (
         <div
@@ -122,7 +125,11 @@ const Header = ({ onMenuClick, unreadCount }) => {
         />
       )}
     </header>
+    
+    </>
   )
 }
 
-export default Header 
+// Komponen ChatModal dihapus
+
+export default Header

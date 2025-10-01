@@ -26,8 +26,9 @@ const AnekaGrafikDetail = () => {
   const [anekaGrafikData, setAnekaGrafikData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fullScreenImage, setFullScreenImage] = useState(null);
-  const [showFullScreenModal, setShowFullScreenModal] = useState(false);
+  const [showFullScreenModal] = useState(false);
   const [processedImages, setProcessedImages] = useState([]);
+  const [contentParts, setContentParts] = useState([]);
   const [formData, setFormData] = useState({
     tanggal_grafik: '',
     isi_grafik: '',
@@ -49,81 +50,20 @@ const AnekaGrafikDetail = () => {
       console.log('🔍 🔍 🔍 Environment config:', envConfig);
       console.log('🔍 🔍 🔍 BASE_URL:', envConfig.BASE_URL);
       
-      // Process existing images to match form format
-      let processedImages = [];
-      if (anekaGrafikData.images) {
-        try {
-          // Use the same cleanup function as form
-          processedImages = cleanupCorruptedImages(anekaGrafikData.images);
-          console.log('🔍 Cleaned images from AnekaGrafikDetail:', processedImages);
-          
-          if (Array.isArray(processedImages)) {
-            processedImages = processedImages.map(img => {
-              console.log('🔍 Processing image object:', img);
-              
-              const processedImg = {
-                uri: img.uri || `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: img.name || `aneka_grafik_${img.id}.jpg`,
-                url: img.url || `${envConfig.API_BASE_URL.replace('/api', '')}/uploads/aneka-grafik/temp_${img.id}.jpg`,
-                serverPath: img.serverPath || `uploads/aneka-grafik/temp_${img.id}.jpg`
-              };
-              
-              console.log('🔍 Processed image object:', processedImg);
-              return processedImg;
-            });
-          }
-        } catch (error) {
-          console.error('Error parsing existing images:', error);
-          processedImages = [];
-        }
-      }
+      const processedImages = processImages(anekaGrafikData.images);
+      console.log('🔍 🔍 🔍 Final processed images:', processedImages);
       
+      const parts = renderContentWithImages(
+        anekaGrafikData.isi_grafik,
+        processedImages
+      );
+      
+      setContentParts(parts);
       setProcessedImages(processedImages);
-      
-      // Convert [IMG:id] placeholders to HTML for display (same as form)
-      let displayContent = anekaGrafikData.isi_grafik || '';
-      if (Array.isArray(processedImages) && processedImages.length > 0) {
-        processedImages.forEach((image, index) => {
-          console.log(`🔍 Processing image ${index + 1}:`, image);
-          
-          // Use the cleaned URL directly
-          let imageUrl = image.url || '';
-          
-          console.log(`🔍 Image ${index + 1}:`, {
-            originalUrl: image.url,
-            finalUrl: imageUrl,
-            id: image.id
-          });
-          
-          const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
-          const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
-          
-          // Check if this placeholder exists in content
-          const matches = displayContent.match(placeholderRegex);
-          console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
-          
-          if (matches) {
-            displayContent = displayContent.replace(placeholderRegex, imageHtmlTag);
-            console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
-          } else {
-            console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
-            // If no placeholder found, append image at the end
-            displayContent += imageHtmlTag;
-            console.log(`➕ Appended image ${image.id} to content since no placeholder found`);
-          }
-        });
-      } else {
-        console.log('⚠️ No processed images to render in display');
-      }
-      
-      // Convert line breaks to <br> tags for display
-      displayContent = displayContent.replace(/\n/g, '<br>');
-      console.log('🔍 Final display content:', displayContent);
       
       setFormData({
         tanggal_grafik: anekaGrafikData.tanggal_grafik || '',
-        isi_grafik: displayContent,
+        isi_grafik: anekaGrafikData.isi_grafik || '',
         images: processedImages
       });
     }
@@ -198,74 +138,11 @@ const AnekaGrafikDetail = () => {
     setShowFullScreenModal(true);
   };
 
-  // Helper function to construct proper image URLs (same as form)
-  const constructImageUrl = (imageUrl) => {
-    if (!imageUrl) return '';
-    
-    // Fix double http:// issue
-    if (imageUrl.startsWith('http://http://')) {
-      imageUrl = imageUrl.replace('http://http://', 'http://');
-    }
-    
-    // Fix old IP addresses
-    if (imageUrl.includes('192.168.30.124:3000')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = imageUrl.replace('http://192.168.30.124:3000', baseUrl);
-    }
-    
-    // Fix /api/uploads/ path
-    if (imageUrl.includes('/api/uploads/')) {
-      imageUrl = imageUrl.replace('/api/uploads/', '/uploads/');
-    }
-    
-    // Ensure URL is absolute
-    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
-      const baseUrl = envConfig.API_BASE_URL.replace('/api', '');
-      imageUrl = `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-    }
-    
-    return imageUrl;
-  };
-
-  // Clean up corrupted images automatically (same as form)
-  const cleanupCorruptedImages = (images) => {
-    if (!images) return [];
-
-    let processedImages;
-    try {
-      if (typeof images === 'string') {
-        processedImages = JSON.parse(images);
-      } else {
-        processedImages = images;
-      }
-    } catch (error) {
-      return [];
-    }
-
-    if (!Array.isArray(processedImages)) {
-      return [];
-    }
-
-    return processedImages.map((img) => {
-      if (img && img.url) {
-        // Fix duplicated URLs
-        if (img.url.includes('http://192.168.30.124:3000http://192.168.30.124:3000')) {
-          const match = img.url.match(/http:\/\/192\.168\.30\.124:3000http:\/\/192\.168\.30\.124:3000(\/uploads\/.+)/);
-          if (match && match[1]) {
-            img.url = 'http://192.168.30.124:3000' + match[1];
-          }
-        }
-        
-        // Apply final URL construction
-        img.url = constructImageUrl(img.url);
-      }
-      return img;
-    });
-  };
-
-  // Helper function to safely process images (same as form)
+  // Helper function to safely process images
   const processImages = (images) => {
     console.log('🔍 🔍 🔍 processImages called with:', images);
+    console.log('🔍 🔍 🔍 Images type:', typeof images);
+    console.log('🔍 🔍 🔍 Images is null/undefined:', images === null || images === undefined);
     
     if (!images) {
       console.log('🔍 🔍 🔍 No images data, returning empty array');
@@ -275,17 +152,31 @@ const AnekaGrafikDetail = () => {
     let processedImages = [];
     
     if (typeof images === 'string') {
+      console.log('🔍 🔍 🔍 Images is string, attempting to parse JSON');
       try {
         processedImages = JSON.parse(images);
+        console.log('🔍 🔍 🔍 Successfully parsed images string:', processedImages);
       } catch (error) {
-        console.error('❌ Error parsing images JSON:', error);
+        console.error('❌ ❌ ❌ Error parsing images JSON:', error);
+        console.error('❌ ❌ ❌ Raw string content:', images);
+        // If JSON parsing fails, try to treat it as a single image URL
+        if (images.trim()) {
+          processedImages = [{ url: images, name: images.split('/').pop() || 'image' }];
+          console.log('🔍 🔍 🔍 Treated string as single image URL:', processedImages);
+        } else {
+          console.log('🔍 🔍 🔍 Empty string, returning empty array');
         return [];
+        }
       }
     } else if (Array.isArray(images)) {
+      console.log('🔍 🔍 🔍 Images is already an array');
       processedImages = images;
     } else if (typeof images === 'object' && images !== null) {
+      // If it's a single object, wrap it in an array
+      console.log('🔍 🔍 🔍 Images is single object, wrapping in array');
       processedImages = [images];
     } else {
+      console.warn('⚠️ ⚠️ ⚠️ Unknown images format:', typeof images);
       return [];
     }
     
@@ -293,38 +184,196 @@ const AnekaGrafikDetail = () => {
     if (!Array.isArray(processedImages)) {
       if (processedImages && typeof processedImages === 'object' && processedImages !== null) {
         processedImages = [processedImages];
+        console.log('🔍 🔍 🔍 Converted single object to array');
       } else {
+        console.warn('⚠️ ⚠️ ⚠️ Invalid images data, returning empty array');
         return [];
       }
     }
     
-    // Clean up corrupted URLs using the same function as form
-    processedImages = cleanupCorruptedImages(processedImages);
-    
     console.log('🔍 🔍 🔍 Final processed images array:', processedImages);
+    console.log('🔍 🔍 🔍 Array length:', processedImages.length);
+    
+    // Log each image details
+    processedImages.forEach((img, index) => {
+      console.log(`🔍 🔍 🔍 Image ${index + 1}:`, {
+        id: img?.id,
+        url: img?.url,
+        uri: img?.uri,
+        name: img?.name,
+        filename: img?.filename,
+        serverPath: img?.serverPath
+      });
+    });
+    
     return processedImages;
   };
 
+  // Helper function to render content with images (same as form)
+  const renderContentWithImages = (content, images = []) => {
+    console.log('🔍 🔍 🔍 renderContentWithImages called with:');
+    console.log('🔍 🔍 🔍 content:', content);
+    console.log('🔍 🔍 🔍 content type:', typeof content);
+    console.log('🔍 🔍 🔍 content length:', content ? content.length : 0);
+    console.log('🔍 🔍 🔍 images:', images);
+    console.log('🔍 🔍 🔍 images type:', typeof images);
+    console.log('🔍 🔍 🔍 images length:', Array.isArray(images) ? images.length : 'not array');
+    
+    if (!content) {
+      console.log('🔍 🔍 🔍 No content, returning empty array');
+      return [];
+    }
 
+    // Ensure images is an array and process if it's a string
+    let imagesArray = [];
+    if (typeof images === 'string') {
+      console.log('🔍 🔍 🔍 Images is string in renderContentWithImages, attempting to parse');
+      try {
+        imagesArray = JSON.parse(images);
+        console.log('🔍 🔍 🔍 Successfully parsed images string in renderContentWithImages:', imagesArray);
+      } catch (error) {
+        console.error('❌ ❌ ❌ Error parsing images in renderContentWithImages:', error);
+        // If JSON parsing fails, try to treat it as a single image URL
+        if (images.trim()) {
+          imagesArray = [{ url: images, name: images.split('/').pop() || 'image' }];
+          console.log('🔍 🔍 🔍 Treated string as single image URL in renderContentWithImages:', imagesArray);
+        } else {
+          imagesArray = [];
+        }
+      }
+    } else if (Array.isArray(images)) {
+      imagesArray = images;
+      console.log('🔍 🔍 🔍 Images is already an array in renderContentWithImages');
+    } else if (typeof images === 'object' && images !== null) {
+      // If it's a single object, wrap it in an array
+      imagesArray = [images];
+      console.log('🔍 🔍 🔍 Single object wrapped in array in renderContentWithImages');
+    } else {
+      console.warn('⚠️ ⚠️ ⚠️ Unknown images format in renderContentWithImages:', typeof images);
+      imagesArray = [];
+    }
+    console.log('🔍 🔍 🔍 Final imagesArray:', imagesArray);
+    console.log('🔍 🔍 🔍 imagesArray length:', imagesArray.length);
+
+    const parts = [];
+    let lastIndex = 0;
+
+    // First, try to find [IMG:id] placeholders (for backward compatibility)
+    const imagePlaceholderRegex = /\[IMG:(\d+)\]/g;
+    let placeholderMatch;
+    let hasPlaceholders = false;
+
+    while ((placeholderMatch = imagePlaceholderRegex.exec(content)) !== null) {
+      hasPlaceholders = true;
+      const imageId = parseInt(placeholderMatch[1]);
+      console.log(`🔍 Found image placeholder: [IMG:${imageId}]`);
+      
+      const image = imagesArray.find((img) => img && img.id === imageId);
+      console.log(`🔍 Looking for image with ID ${imageId}:`, image);
+
+      if (image) {
+        console.log(`✅ Image found for ID ${imageId}`);
+        
+        // Add text before image
+        if (placeholderMatch.index > lastIndex) {
+          parts.push({
+            type: 'text',
+            text: content.slice(lastIndex, placeholderMatch.index),
+          });
+        }
+
+        // Add image
+        parts.push({
+          type: 'image',
+          image: image,
+        });
+
+        lastIndex = placeholderMatch.index + placeholderMatch[0].length;
+      } else {
+        console.log(`❌ Image not found for ID: ${imageId}`);
+        console.log(`📁 Available images:`, imagesArray.map(img => ({ id: img?.id })));
+      }
+    }
+
+    // If no placeholders found, try to find HTML img tags
+    if (!hasPlaceholders) {
+      console.log('🔍 🔍 🔍 No [IMG:id] placeholders found, looking for HTML img tags');
+      
+      // Create a temporary div to parse HTML content
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = content;
+      
+      const imgTags = tempDiv.querySelectorAll('img');
+      console.log(`🔍 🔍 🔍 Found ${imgTags.length} HTML img tags`);
+      
+      imgTags.forEach((imgTag, index) => {
+        const imgSrc = imgTag.getAttribute('src');
+        const imgAlt = imgTag.getAttribute('alt') || `Gambar ${index + 1}`;
+        const dataImageId = imgTag.getAttribute('data-image-id');
+        
+        console.log(`🔍 🔍 🔍 HTML img tag ${index + 1}:`, { 
+          src: imgSrc, 
+          alt: imgAlt, 
+          dataImageId,
+          outerHTML: imgTag.outerHTML 
+        });
+        
+        if (imgSrc) {
+          // Add text before image if any
+          const imgIndex = content.indexOf(imgTag.outerHTML);
+          console.log(`🔍 🔍 🔍 Image ${index + 1} found at index:`, imgIndex);
+          
+          if (imgIndex > lastIndex) {
+            parts.push({
+              type: 'text',
+              text: content.slice(lastIndex, imgIndex),
+            });
+          }
+          
+          // Add image
+          parts.push({
+            type: 'image',
+            image: {
+              id: dataImageId || index,
+              name: imgAlt,
+              url: imgSrc,
+            },
+          });
+          
+          lastIndex = imgIndex + imgTag.outerHTML.length;
+          console.log(`🔍 🔍 🔍 Updated lastIndex to:`, lastIndex);
+        }
+      });
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      const remainingText = content.slice(lastIndex);
+      console.log('🔍 🔍 🔍 Adding remaining text:', remainingText);
+      parts.push({
+        type: 'text',
+        text: remainingText,
+      });
+    }
+
+    console.log('🔍 🔍 🔍 Final parts array:', parts);
+    console.log('🔍 🔍 🔍 Parts count:', parts.length);
+    parts.forEach((part, index) => {
+      console.log(`🔍 🔍 🔍 Part ${index + 1}:`, {
+        type: part.type,
+        contentLength: part.type === 'text' ? part.text.length : 'N/A',
+        imageData: part.type === 'image' ? {
+          id: part.image.id,
+          url: part.image.url,
+        } : 'N/A'
+      });
+    });
+    
+    return parts;
+  };
 
   const openFullScreenImage = (image) => {
-    // Handle both relative and absolute URLs
-    let imageUrl = '';
-    if (image.url) {
-      if (image.url.startsWith('http')) {
-        // Already absolute URL
-      imageUrl = image.url;
-      } else {
-        // Relative URL, add base URL
-        const baseUrl = envConfig.BASE_URL.replace('/api', '');
-        imageUrl = `${baseUrl}${image.url.startsWith('/') ? '' : '/'}${image.url}`;
-      }
-    } else {
-      imageUrl = image.displayUri || image.fallbackUri;
-    }
-    
-    console.log('🔍 Opening full screen image with URL:', imageUrl);
-    setFullScreenImage(imageUrl);
+    setFullScreenImage(image.url);
     setShowFullScreenModal(true);
   };
 
@@ -449,10 +498,63 @@ const AnekaGrafikDetail = () => {
           </div>
         </div>
         <div className="p-6">
-          <div 
-            className="prose max-w-none editor-content"
-            dangerouslySetInnerHTML={{ __html: formData.isi_grafik || '' }}
-          />
+          {contentParts && contentParts.length > 0 ? (
+            contentParts.map((part, index) => (
+              <React.Fragment key={index}>
+                {part.type === 'text' && part.text && (
+                  <div 
+                    className="prose max-w-none"
+                    dangerouslySetInnerHTML={{ 
+                      __html: part.text.replace(/\n/g, '<br>') 
+                    }}
+                  />
+                )}
+                {part.type === 'image' && part.image && (
+                  <div className="my-4">
+                    <button
+                      onClick={() => openFullScreenImage(part.image)}
+                      className="block w-full text-left"
+                    >
+                      <img
+                        src={part.image.url}
+                        alt={part.image.filename || part.image.name || 'Aneka grafik image'}
+                        className="max-w-full h-auto max-h-96 object-contain rounded-lg shadow-sm border"
+                        style={{ maxHeight: '500px' }}
+                        onError={(e) => {
+                          console.error('❌ Image failed to load:', part.image.url);
+                          console.error('❌ Image data:', part.image);
+                          // Show error placeholder
+                          e.target.style.display = 'none';
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'p-8 text-center bg-red-50 border-2 border-red-200 rounded-lg';
+                          errorDiv.innerHTML = `
+                            <div class="text-red-600 mb-2">
+                              <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                              </svg>
+                            </div>
+                            <p class="text-red-800 font-medium">Gambar gagal dimuat</p>
+                            <p class="text-red-600 text-sm">URL: ${part.image.url}</p>
+                          `;
+                          e.target.parentNode.appendChild(errorDiv);
+                        }}
+                        onLoad={() => {
+                          console.log('✅ Image loaded successfully:', part.image.url);
+                        }}
+                      />
+                    </button>
+                  </div>
+                )}
+              </React.Fragment>
+            ))
+          ) : (
+            <div 
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ 
+                __html: (formData.isi_grafik || '').replace(/\n/g, '<br>') 
+              }}
+            />
+          )}
         </div>
 
         {/* CSS for editor content - same as form */}
