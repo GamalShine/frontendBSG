@@ -15,8 +15,9 @@ export default defineConfig({
     'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_BASE_URL),
   },
   server: {
-    host: true,
+    host: '0.0.0.0',
     port: 5173,
+    allowedHosts: ['dash.bosgilserver.cloud'],
     proxy: {
       '/api': {
         // Gunakan origin backend (tanpa /api). Jika VITE_API_BASE_URL tidak diset, fallback ke http://localhost:3000
