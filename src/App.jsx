@@ -12,6 +12,7 @@ import AdminDashboard from './pages/Admin/Dashboard/AdminDashboard'
 import AdminVideoLibrary from './pages/Admin/Dashboard/AdminVideoLibrary'
 import OwnerDashboard from './pages/Owner/Dashboard/OwnerDashboard'
 import NotFound from './pages/NotFound'
+import KebijakanPrivasi from './pages/KebijakanPrivasi'
 
 // Chat pages dihapus untuk seluruh role
 
@@ -357,6 +358,9 @@ const ModalSwitch = () => {
           <Routes location={backgroundLocation || location}>
               {/* Public Routes */}
               <Route path="/login" element={<LoginWrapper />} />
+              <Route path="/k&p" element={<KebijakanPrivasi />} />
+              <Route path="/K&P" element={<KebijakanPrivasi />} />
+              <Route path="/kebijakan-privasi" element={<KebijakanPrivasi />} />
               
               {/* Protected Routes */}
               <Route path="/" element={
