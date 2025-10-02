@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { normalizeImageUrl } from '../utils/url';
+ 
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -59,7 +59,7 @@ const Login = () => {
         <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/90 ring-1 ring-white/70 shadow-lg flex items-center justify-center">
           <div className="w-[82%] h-[82%] rounded-2xl bg-white flex items-center justify-center overflow-hidden">
             <img
-              src={normalizeImageUrl('/uploads/Logo.png')}
+              src="/Logo.png"
               alt="Bosgil Group Logo"
               className="w-full h-full object-contain"
             />
