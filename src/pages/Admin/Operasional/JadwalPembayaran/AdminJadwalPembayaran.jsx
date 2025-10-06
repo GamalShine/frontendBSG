@@ -259,13 +259,31 @@ const AdminJadwalPembayaran = () => {
 
       {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <h3 className="font-semibold">{editingId ? 'Edit' : 'Tambah'} Jadwal Pembayaran</h3>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+          {/* Backdrop click to close */}
+          <button
+            type="button"
+            aria-hidden="true"
+            onClick={() => setShowForm(false)}
+            className="absolute inset-0"
+            tabIndex={-1}
+          />
+
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-xl font-bold leading-tight">{editingId ? 'Edit' : 'Tambah'} Jadwal Pembayaran</h3>
+                <p className="text-xs text-red-100">Lengkapi data dengan benar untuk memudahkan pengelolaan</p>
+              </div>
+              <button onClick={() => setShowForm(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                ✕
+              </button>
             </div>
-            <form onSubmit={onSubmit} className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+              <form id="jadwalForm" onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm mb-1">Nama Item</label>
                 <input value={formData.nama_item} onChange={(e)=>setFormData(v=>({...v,nama_item:e.target.value}))} className="w-full border rounded px-3 py-2" required />
@@ -315,13 +333,30 @@ const AdminJadwalPembayaran = () => {
                 <input type="number" value={formData.tahun} onChange={(e)=>setFormData(v=>({...v,tahun:e.target.value}))} className="w-full border rounded px-3 py-2" />
               </div>
 
-              <div className="md:col-span-2 flex items-center justify-end gap-2 mt-2">
-                <button type="button" onClick={()=>setShowForm(false)} className="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Batal</button>
-                <button type="submit" disabled={submitting} className="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-60">
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="p-0 border-t bg-white">
+              <div className="grid grid-cols-2 gap-2 px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  form="jadwalForm"
+                  disabled={submitting}
+                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
+                  onClick={(e)=>{ /* allow form submit through default form */ }}
+                >
                   {submitting ? 'Menyimpan...' : 'Simpan'}
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}

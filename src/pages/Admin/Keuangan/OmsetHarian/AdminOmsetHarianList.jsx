@@ -41,6 +41,7 @@ const AdminOmsetHarianList = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+  const PAGE_SIZE = 35;
 
   useEffect(() => {
     if (user) {
@@ -54,7 +55,7 @@ const AdminOmsetHarianList = () => {
       setLoading(true);
       const response = await omsetHarianService.getAllOmsetHarian(
         currentPage,
-        10,
+        PAGE_SIZE,
         searchTerm,
         dateFilter
       );
@@ -399,25 +400,27 @@ const AdminOmsetHarianList = () => {
                 </button>
               </>
             )}
-            <div className="relative">
-              <button
-                onClick={() => setShowBulkMenu(v => !v)}
-                aria-label="Aksi massal"
-                className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-              {showBulkMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
-                  <div className="py-1">
-                    <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
-                    <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
-                    <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
-                    <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+            {false && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowBulkMenu(v => !v)}
+                  aria-label="Aksi massal"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+                {showBulkMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
+                    <div className="py-1">
+                      <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                      <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                      <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                      <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -442,7 +445,7 @@ const AdminOmsetHarianList = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="sticky top-0 bg-red-700 z-10">
                   <tr>
-                    <th className="pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
+                    <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
                       <input
                         type="checkbox"
                         checked={selectedItems.length === omsetHarian.length && omsetHarian.length > 0}
@@ -451,22 +454,22 @@ const AdminOmsetHarianList = () => {
                         aria-label="Pilih semua"
                       />
                     </th>
-                    <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
+                    <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
+                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
+                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {omsetHarian.map((omset, idx) => {
-                    const displayIndex = (currentPage - 1) * 10 + (idx + 1);
+                    const displayIndex = (currentPage - 1) * PAGE_SIZE + (idx + 1);
                     return (
                       <tr
                         key={omset.id}
                         className="hover:bg-gray-50/80 cursor-pointer"
                         onClick={() => navigate(`/admin/keuangan/omset-harian/${omset.id}`)}
                       >
-                        <td className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">
                           <input
                             type="checkbox"
                             checked={selectedItems.includes(omset.id)}
@@ -476,8 +479,8 @@ const AdminOmsetHarianList = () => {
                             aria-label={`Pilih baris ${displayIndex}`}
                           />
                         </td>
-                        <td className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{displayIndex}</td>
-                        <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{displayIndex}</td>
+                        <td className="px-4 sm:px-8 md:px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{formatDate(omset.tanggal_omset).toUpperCase()}</span>
                             {isToday(omset.tanggal_omset) && (
@@ -485,21 +488,23 @@ const AdminOmsetHarianList = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-12 py-4 text-sm text-gray-900">
+                        <td className="px-4 sm:px-8 md:px-12 py-4 text-sm text-gray-900">
                           <div
                             className="md:truncate max-w-[14rem] md:max-w-md"
                             dangerouslySetInnerHTML={{ __html: formatPreviewHtml(omset.isi_omset) }}
                           />
                         </td>
-                        <td className="px-12 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-4 sm:px-8 md:px-12 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           <div className="flex items-center gap-3">
-                            <Link
-                              to={`/admin/keuangan/omset-harian/${omset.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-blue-600 hover:text-blue-900"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Link>
+                            {false && (
+                              <Link
+                                to={`/admin/keuangan/omset-harian/${omset.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-blue-600 hover:text-blue-900"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            )}
                             <Link
                               to={`/admin/keuangan/omset-harian/${omset.id}/edit`}
                               onClick={(e) => e.stopPropagation()}
@@ -529,7 +534,7 @@ const AdminOmsetHarianList = () => {
               <div className="px-6 py-3 border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700">
-                    Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
+                    Menampilkan {((currentPage - 1) * PAGE_SIZE) + 1} sampai {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} data
                   </div>
                   <div className="flex items-center space-x-2">
                     <button

@@ -36,6 +36,7 @@ const AdminPoskasList = () => {
     totalThisMonth: 0,
     totalThisYear: 0
   })
+  const PAGE_SIZE = 35
 
   useEffect(() => {
     loadPoskas()
@@ -206,7 +207,7 @@ const AdminPoskasList = () => {
       // 3) Fetch all only when no filters provided
       const hasAnyFilter = (dateFilter && dateFilter.length > 0) || (searchTerm && searchTerm.trim().length > 0)
       if (!hasAnyFilter) {
-        const params = { page: currentPage, limit: 10 }
+        const params = { page: currentPage, limit: PAGE_SIZE }
         console.log('📦 Fetching all with params:', params)
         const response = await poskasService.getPoskas(params)
         let data = response
@@ -217,7 +218,7 @@ const AdminPoskasList = () => {
       }
 
       const totalItems = Array.isArray(poskasData) ? poskasData.length : 0
-      const totalPages = Math.max(1, Math.ceil(totalItems / 10))
+      const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE))
 
       // Sort newest first: created_at desc -> tanggal_poskas desc -> id desc
       const sortedPoskas = [...(Array.isArray(poskasData) ? poskasData : [])].sort((a, b) => {
@@ -544,25 +545,27 @@ const AdminPoskasList = () => {
                   </button>
                 </>
               )}
-              <div className="relative">
-                <button
-                  onClick={() => setShowBulkMenu(v => !v)}
-                  aria-label="Aksi massal"
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-                {showBulkMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
-                    <div className="py-1">
-                      <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
-                      <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
-                      <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
-                      <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+              {false && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowBulkMenu(v => !v)}
+                    aria-label="Aksi massal"
+                    className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                  {showBulkMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
+                      <div className="py-1">
+                        <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
+                        <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
+                        <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
+                        <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -591,7 +594,7 @@ const AdminPoskasList = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="sticky top-0 bg-red-700 z-10">
                   <tr>
-                    <th className="pl-6 pr-0 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">
+                    <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">
                       <input
                         type="checkbox"
                         checked={selectedItems.length === poskas.length && poskas.length > 0}
@@ -600,10 +603,10 @@ const AdminPoskasList = () => {
                         aria-label="Pilih semua"
                       />
                     </th>
-                    <th className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
-                    <th className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
+                    <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
+                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
+                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -613,18 +616,18 @@ const AdminPoskasList = () => {
                       className="hover:bg-gray-50/80 cursor-pointer"
                       onClick={() => navigate(`/admin/keuangan/poskas/${poskasItem.id}`)}
                     >
-                      <td className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">
                         <input
                           type="checkbox"
                           checked={selectedItems.includes(poskasItem.id)}
                           onClick={(e) => e.stopPropagation()}
                           onChange={() => handleCheckboxChange(poskasItem.id)}
                           className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                          aria-label={`Pilih baris ${idx + 1}`}
+                          aria-label={`Pilih baris ${((currentPage - 1) * PAGE_SIZE) + (idx + 1)}`}
                         />
                       </td>
-                      <td className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</td>
-                      <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{(currentPage - 1) * PAGE_SIZE + (idx + 1)}</td>
+                      <td className="px-4 sm:px-8 md:px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{formatDate(poskasItem.tanggal_poskas).toUpperCase()}</span>
                           {(() => {
@@ -637,10 +640,10 @@ const AdminPoskasList = () => {
                           })()}
                         </div>
                       </td>
-                      <td className="px-12 py-4 text-sm text-gray-900">
+                      <td className="px-4 sm:px-8 md:px-12 py-4 text-sm text-gray-900">
                         {poskasItem.isi_poskas ? (
                           <div
-                            className="truncate max-w-md"
+                            className="md:truncate max-w-[14rem] md:max-w-md"
                             dangerouslySetInnerHTML={{
                               __html: poskasItem.isi_poskas.length > 150
                                 ? poskasItem.isi_poskas.substring(0, 150) + '...'
@@ -649,15 +652,17 @@ const AdminPoskasList = () => {
                           />
                         ) : '-'}
                       </td>
-                      <td className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-4 sm:px-8 md:px-12 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-3">
-                          <Link
-                            to={`/admin/keuangan/poskas/${poskasItem.id}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
+                          {false && (
+                            <Link
+                              to={`/admin/keuangan/poskas/${poskasItem.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          )}
                           <Link
                             to={`/admin/keuangan/poskas/${poskasItem.id}/edit`}
                             onClick={(e) => e.stopPropagation()}
@@ -684,7 +689,7 @@ const AdminPoskasList = () => {
               <div className="px-6 py-3 border-t border-gray-100">
                 <div className="flex items-center justify-between">
                   <div className="text-sm text-gray-700">
-                    Menampilkan {((currentPage - 1) * 10) + 1} sampai {Math.min(currentPage * 10, totalItems)} dari {totalItems} data
+                    Menampilkan {((currentPage - 1) * PAGE_SIZE) + 1} sampai {Math.min(currentPage * PAGE_SIZE, totalItems)} dari {totalItems} data
                   </div>
                   <div className="flex items-center gap-2">
                     <button

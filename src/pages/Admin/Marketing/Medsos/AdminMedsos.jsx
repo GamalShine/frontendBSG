@@ -20,6 +20,7 @@ const AdminMedsos = () => {
   const [error, setError] = useState({ years: null, months: null, content: null });
   const navigate = useNavigate();
 
+
   useEffect(() => { loadYears(); }, []);
 
   const loadYears = async () => {
@@ -108,6 +109,11 @@ const AdminMedsos = () => {
               <h1 className="text-2xl font-bold">MEDSOS</h1>
               <p className="text-sm opacity-90">Marketing - Medsos (Admin)</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={goToCreatePage} className="bg-white text-red-700 hover:bg-red-50 px-3 py-2 rounded-lg shadow-sm">
+              Buat Data Medsos
+            </button>
           </div>
         </div>
       </div>
@@ -201,7 +207,7 @@ const AdminMedsos = () => {
                   <p className="text-xs opacity-90">Daftar Laporan Harian</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={goToCreatePage} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Tambah</button>
+                  <button onClick={goToCreatePage} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Buat Data Medsos</button>
                   <button onClick={goBackToMonths} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Kembali</button>
                 </div>
               </div>
@@ -256,6 +262,8 @@ const AdminMedsos = () => {
           </div>
         )}
       </div>
+
+      {/* Form dibuat di halaman terpisah: /admin/marketing/medsos/form */}
     </div>
   );
 };

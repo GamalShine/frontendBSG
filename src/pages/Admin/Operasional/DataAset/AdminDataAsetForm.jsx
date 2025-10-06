@@ -399,7 +399,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
           <div className="flex items-center gap-3">
@@ -419,7 +419,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           {/* Scrollable body */}
-          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
             {/* Kategori - segmented control */}
             <div className="mb-5">
               <label className="block text-xs font-semibold text-gray-600 mb-2">Jenis Aset</label>
