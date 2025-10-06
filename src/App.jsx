@@ -210,6 +210,9 @@ import OwnerDaftarKomplainForm from './pages/Owner/Operasional/DaftarKomplain/Ow
 
 // Admin Data Target
 import AdminDataTarget from './pages/Admin/Marketing/DataTarget/AdminDataTarget'
+import AdminDataTargetForm from './pages/Admin/Marketing/DataTarget/AdminDataTargetForm'
+import AdminDataTargetDetail from './pages/Admin/Marketing/DataTarget/AdminDataTargetDetail'
+import AdminDataTargetEdit from './pages/Admin/Marketing/DataTarget/AdminDataTargetEdit'
 import AdminTargetHarianList from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianList'
 import AdminTargetHarianDetail from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianDetail'
 import AdminTargetHarianForm from './pages/Admin/Marketing/TargetHarian/AdminTargetHarianForm'
@@ -583,6 +586,24 @@ const ModalSwitch = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Admin Keuangan - Daftar Gaji */}
+              <Route path="/admin/keuangan/daftar-gaji" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <AdminDaftarGaji />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/keuangan/daftar-gaji/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminDaftarGajiForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              {/* Alias */}
+              <Route path="/admin/keuangan/gaji" element={<Navigate to="/admin/keuangan/daftar-gaji" replace />} />
+
               {/* Admin Marketing - Data Target */}
               <Route path="/admin/marketing/data-target" element={
                 <ProtectedRoute requiredPermissions={['read']}>
@@ -596,27 +617,30 @@ const ModalSwitch = () => {
               <Route path="/admin/marketing/data-target/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <Layout>
-                    <AdminTargetHarianForm />
+                    <AdminDataTargetForm />
                   </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/admin/marketing/data-target/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <AdminTargetHarianDetail />
+                    <AdminDataTargetDetail />
                   </Layout>
                 </ProtectedRoute>
               } />
               <Route path="/admin/marketing/data-target/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
-                    <AdminTargetHarianEdit />
+                    <AdminDataTargetEdit />
                   </Layout>
                 </ProtectedRoute>
               } />
 
               {/* Backward compatibility redirects */}
               <Route path="/admin/marketing/target" element={<Navigate to="/admin/marketing/data-target" replace />} />
+              <Route path="/admin/marketing/target/new" element={<Navigate to="/admin/marketing/data-target/new" replace />} />
+              <Route path="/admin/marketing/target/:id" element={<Navigate to="/admin/marketing/data-target/:id" replace />} />
+              <Route path="/admin/marketing/target/:id/edit" element={<Navigate to="/admin/marketing/data-target/:id/edit" replace />} />
               <Route path="/admin/marketing/target-harian" element={<Navigate to="/admin/marketing/data-target" replace />} />
               <Route path="/admin/marketing/target-harian/new" element={<Navigate to="/admin/marketing/data-target/new" replace />} />
               <Route path="/admin/marketing/target-harian/:id" element={<Navigate to="/admin/marketing/data-target/:id" replace />} />

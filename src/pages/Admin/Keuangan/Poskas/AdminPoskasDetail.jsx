@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { poskasService } from '../../../../services/poskasService';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Calendar, User, Clock, FileText, Eye, RefreshCw, Edit, Trash2, Info } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Clock, FileText, RefreshCw, Edit, Trash2, Info, MoreVertical } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 import { getEnvironmentConfig } from '../../../../config/environment';
 
 const AdminPoskasDetail = () => {
@@ -17,6 +18,7 @@ const AdminPoskasDetail = () => {
   const [fullScreenImage, setFullScreenImage] = useState(null);
   const [showFullScreenModal, setShowFullScreenModal] = useState(false);
   const [contentParts, setContentParts] = useState([]);
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -465,33 +467,32 @@ const AdminPoskasDetail = () => {
   };
 
   if (loading) {
-  return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-12">
-          <div className="flex justify-center items-center">
-            <div className="text-center">
-              <RefreshCw className="h-12 w-12 animate-spin text-red-600 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg font-medium">Memuat detail POSKAS...</p>
-            </div>
+    return (
+      <div className="p-0 bg-gray-50 min-h-screen">
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-8 text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-green-500 mx-auto mb-4" />
+            <p className="text-gray-600">Memuat data...</p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
   }
 
   if (!poskasData) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-12">
-          <div className="text-center">
-            <div className="text-8xl text-gray-300 mb-6">📄</div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">Data Tidak Ditemukan</h1>
-            <p className="text-gray-600 text-lg mb-8">Detail POSKAS tidak dapat dimuat</p>
+      <div className="p-0 bg-gray-50 min-h-screen">
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-8 text-center">
+            <div className="text-6xl text-gray-300 mb-4">📄</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Data tidak ditemukan</h3>
+            <p className="text-gray-500 mb-4">Detail POSKAS yang Anda cari tidak ditemukan</p>
             <button
               onClick={() => navigate('/admin/keuangan/poskas')}
-              className="px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
             >
-              ← Kembali ke Daftar
+              <ArrowLeft className="h-4 w-4" />
+              <span>Kembali ke Daftar</span>
             </button>
           </div>
         </div>
@@ -500,100 +501,113 @@ const AdminPoskasDetail = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <button
-                onClick={() => navigate('/admin/keuangan/poskas')}
-                className="p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Detail Pos Kas</h1>
-                <p className="text-gray-600">Posisi Kas Outlet - Informasi Lengkap</p>
-              </div>
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match list style */}
+      <div className="bg-red-800 text-white px-6 py-4 mb-4 relative">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.poskas}</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
+              <p className="text-sm text-red-100">Detail isi Pos Kas</p>
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="px-6 py-3 bg-red-500 text-white rounded-full text-sm font-bold">
-                💰 POSKAS
-              </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin/keuangan/poskas')}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              KEMBALI
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowActionMenu(v => !v)}
+                aria-label="Aksi"
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white/90 hover:bg-white/10"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showActionMenu && (
+                <div className="absolute right-0 mt-2 w-44 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-20">
+                  <div className="py-1">
+                    <button
+                      onClick={() => { setShowActionMenu(false); navigate(`/admin/keuangan/poskas/${id}/edit`); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowActionMenu(false); handleDelete(); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Information Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <Calendar className="h-5 w-5 text-red-600" />
+            <div className="p-1 bg-red-100 rounded-lg">
+              <Calendar className="h-4 w-4 text-red-600" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Tanggal Pos Kas</p>
-              <p className="text-xl font-bold text-gray-900">{formatDate(poskasData.tanggal_poskas)}</p>
+              <p className="text-lg font-semibold text-gray-900">{formatDate(poskasData.tanggal_poskas)}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <User className="h-5 w-5 text-blue-600" />
+            <div className="p-1 bg-blue-100 rounded-lg">
+              <User className="h-4 w-4 text-blue-600" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Dibuat Oleh</p>
-              <p className="text-xl font-bold text-gray-900">{poskasData.user_nama || poskasData.admin_nama || poskasData.created_by || 'Admin'}</p>
+              <p className="text-lg font-semibold text-gray-900">{poskasData.user_nama || poskasData.admin_nama || poskasData.created_by || 'Admin'}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Clock className="h-5 w-5 text-purple-600" />
+            <div className="p-1 bg-purple-100 rounded-lg">
+              <Clock className="h-4 w-4 text-purple-600" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-500">Waktu Input</p>
-              <p className="text-xl font-bold text-gray-900">{formatDateTime(poskasData.created_at)}</p>
+              <p className="text-lg font-semibold text-gray-900">{formatDateTime(poskasData.created_at)}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Content Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <FileText className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Isi Pos Kas</h2>
-              <p className="text-gray-600">Detail lengkap posisi kas outlet</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="p-6">
+      <div className="bg-white rounded-lg shadow-sm border mb-4">
+        <div className="p-3">
           {contentParts && contentParts.length > 0 ? (
-            <div className="bg-white p-6 shadow-sm">
+            <div className="bg-white p-0">
               <div className="prose max-w-none">
                 {contentParts.map((part, index) => (
                   <div key={index}>
                     {part.type === 'text' ? (
-                      <div className="mb-4">
+                      <div className="mb-3">
                         <div
-                          className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap"
+                          className="text-gray-700 text-base leading-relaxed whitespace-pre-wrap"
                           dangerouslySetInnerHTML={{ __html: part.content }}
                         />
                       </div>
                     ) : part.type === 'image' ? (
-                      <div className="mb-6">
+                      <div className="my-2">
                         <div className="flex justify-start">
                           <button
                             onClick={() => openFullScreenImage(part.image)}
@@ -602,9 +616,9 @@ const AdminPoskasDetail = () => {
                             <img
                               src={part.image.displayUri || part.image.fallbackUri}
                               alt="Gambar POSKAS"
-                              className="h-auto max-w-full rounded"
+                              className="h-auto max-w-full rounded-lg border"
                               style={{ 
-                                maxHeight: '400px',
+                                maxHeight: '500px',
                                 objectFit: 'contain'
                               }}
                               onLoad={() => {
@@ -656,55 +670,27 @@ const AdminPoskasDetail = () => {
 
       {/* Additional Notes */}
       {poskasData.catatan && (
-        <div className="bg-white rounded-lg shadow-sm border mb-6">
-          <div className="p-6 border-b border-gray-200">
+        <div className="bg-white rounded-lg shadow-sm border mb-4">
+          <div className="p-3 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Info className="h-5 w-5 text-blue-600" />
+              <div className="p-1 bg-blue-100 rounded-lg">
+                <Info className="h-4 w-4 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Catatan Tambahan</h3>
-                <p className="text-gray-600">Informasi tambahan terkait posisi kas</p>
+                <h3 className="text-lg font-semibold text-gray-900">Catatan Tambahan</h3>
+                <p className="text-gray-500">Informasi tambahan terkait posisi kas</p>
               </div>
             </div>
           </div>
-          <div className="p-6">
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <div className="p-3">
+            <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
               <p className="text-blue-900 leading-relaxed">{poskasData.catatan}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex space-x-4">
-            <button
-              onClick={() => navigate('/admin/keuangan/poskas')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-            >
-              ← Kembali ke Daftar
-            </button>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={() => navigate(`/admin/keuangan/poskas/${id}/edit`)}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
-            >
-              <Edit className="h-4 w-4" />
-              <span>Edit Pos Kas</span>
-            </button>
-            <button
-              onClick={handleDelete}
-              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Hapus</span>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Action Buttons moved into header kebab menu */}
 
       {/* Full Screen Image Modal */}
       {showFullScreenModal && (

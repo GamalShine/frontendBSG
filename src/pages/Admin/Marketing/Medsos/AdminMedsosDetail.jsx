@@ -12,7 +12,7 @@ const AdminMedsosDetail = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [parts, setParts] = useState([]);
+  const [renderedHtml, setRenderedHtml] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -32,34 +32,50 @@ const AdminMedsosDetail = () => {
 
   useEffect(() => {
     if (!data) return;
+    // Parse images
     let imgs = [];
     try {
       if (Array.isArray(data.images)) imgs = data.images;
       else if (typeof data.images === 'string' && data.images.trim()) imgs = JSON.parse(data.images);
     } catch {}
     imgs = Array.isArray(imgs) ? imgs : [];
-
-    const buildUrl = (u) => {
+    // Normalize URL using API_BASE_URL (strip /api)
+    const base = (env.API_BASE_URL || '').replace(/\/?$/, '');
+    const baseNoApi = base.replace(/\/api\/?$/, '');
+    const normUrl = (u) => {
       if (!u) return '';
-      if (u.startsWith('http')) return u;
-      const base = (env.BASE_URL || '').replace(/\/api$/, '');
-      return `${base}${u.startsWith('/') ? '' : '/'}${u}`;
+      let x = u;
+      if (x.startsWith('http://http://')) x = x.replace('http://http://','http://');
+      if (x.startsWith('https://https://')) x = x.replace('https://https://','https://');
+      if (x.includes('/api/uploads/')) x = x.replace('/api/uploads/','/uploads/');
+      if (!/^https?:|^data:|^blob:/i.test(x)) {
+        if (!x.startsWith('/')) x = '/' + x;
+        x = baseNoApi + x;
+      }
+      return x;
     };
-
-    const content = data.isi_laporan || '';
-    const regex = /\[IMG:(\d+)\]/g;
-    const out = [];
-    let last = 0;
-    let m;
-    while ((m = regex.exec(content)) !== null) {
-      if (m.index > last) out.push({ type: 'text', content: content.substring(last, m.index) });
-      const pid = m[1];
-      const found = imgs.find(im => String(im.id) === String(pid));
-      if (found) out.push({ type: 'image', src: buildUrl(found.url || found.uri || found.displayUri || found.fallbackUri), alt: found.filename || 'image' });
-      last = m.index + m[0].length;
-    }
-    if (last < content.length) out.push({ type: 'text', content: content.substring(last) });
-    setParts(out);
+    const imgMap = new Map();
+    imgs.forEach(im => {
+      const key = String(im.id ?? im.image_id ?? '');
+      if (!key) return;
+      const src = normUrl(im.url || im.path || im.uri || im.displayUri || im.fallbackUri);
+      imgMap.set(key, src);
+    });
+    // Build HTML from isi_laporan (already sanitized to allowed tags in form/edit)
+    let html = String(data.isi_laporan || '');
+    // Convert newlines to <br> if any
+    html = html.replace(/\r?\n/g, '<br>');
+    // Replace placeholders with <img>
+    html = html.replace(/\[IMG:(\d+)\]/g, (_m, id) => {
+      const src = imgMap.get(String(id));
+      if (!src) return '';
+      return `<img src="${src}" data-image-id="${id}" style="max-width:100%;height:auto;margin:8px 0;border-radius:6px;" />`;
+    });
+    // Light cleanup: remove dir and dangerous scripts (should already be sanitized)
+    html = html
+      .replace(/\sdir="[^"]*"/gi, '')
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+    setRenderedHtml(html);
   }, [data]);
 
   const fmtDate = (s) => {
@@ -137,15 +153,7 @@ const AdminMedsosDetail = () => {
             ) : error ? (
               <div className="text-sm text-red-600">{error}</div>
             ) : (
-              <div className="prose max-w-none">
-                {parts.map((p, idx) => p.type === 'text' ? (
-                  <pre key={idx} className="whitespace-pre-wrap text-gray-700 leading-relaxed font-sans text-sm">{p.content}</pre>
-                ) : (
-                  <div key={idx} className="my-3">
-                    <img src={p.src} alt={p.alt} className="max-w-full h-auto border shadow-sm" style={{ maxHeight: '480px', objectFit: 'contain' }} />
-                  </div>
-                ))}
-              </div>
+              <div className="prose max-w-none text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: renderedHtml }} />
             )}
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Card, { CardHeader, CardBody, CardTitle, CardContent } from '@/components/UI/Card'
 import Button from '@/components/UI/Button'
 import LoadingSpinner from '@/components/UI/LoadingSpinner'
@@ -9,6 +10,7 @@ import { Clock, ChevronDown, ChevronUp } from 'lucide-react'
 const currency = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
 
 const AdminDaftarGaji = () => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
@@ -145,6 +147,7 @@ const AdminDaftarGaji = () => {
   if (!data) return null
 
   const lastUpdatedText = new Date(data.lastUpdated).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+  const designUpdatedText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
   const breakdown = selectedDept ? data.payrollByDepartment[selectedDept] : null
   const earningTotalComputed = breakdown ? Object.values(breakdown.earning).reduce((a, b) => a + (b || 0), 0) : 0
   const deductionTotalComputed = breakdown ? Object.values(breakdown.deduction).reduce((a, b) => a + (b || 0), 0) : 0
@@ -184,16 +187,19 @@ const AdminDaftarGaji = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.daftarGaji}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR GAJI - ADMIN</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR GAJI</h1>
               <p className="text-sm text-red-100">Ringkasan gaji per cabang dan divisi</p>
             </div>
+          </div>
+          <div>
+            <Button onClick={() => navigate('/admin/keuangan/daftar-gaji/new')} className="bg-white text-red-700 hover:bg-red-50 font-semibold rounded-full px-4 py-2">Tambah</Button>
           </div>
         </div>
       </div>
 
       <div className="bg-gray-200 px-6 py-2 text-xs text-gray-700 flex items-center gap-2">
         <Clock className="h-4 w-4 text-gray-600" />
-        <span>Terakhir diupdate: {lastUpdatedText}</span>
+        <span>Desain terakhir diupdate: {designUpdatedText}</span>
       </div>
 
       <Card>
@@ -205,8 +211,8 @@ const AdminDaftarGaji = () => {
             <div className="hidden md:block text-xs font-medium text-blue-700 uppercase tracking-wider"></div>
           </div>
           <div className="mt-2 text-gray-700">
-            <p className="text-sm">PIC {data.pic}</p>
-            <p className="text-sm">diupdate kapan terakhir : {lastUpdatedText}</p>
+            <p className="text-sm">PIC: {data.pic}</p>
+            <p className="text-sm">Terakhir diperbarui: {lastUpdatedText}</p>
           </div>
           <div className="mt-4 flex gap-3">
             <Button variant="outline" className="rounded-full px-5">PENCARIAN</Button>

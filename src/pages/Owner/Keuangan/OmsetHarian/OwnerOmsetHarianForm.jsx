@@ -37,6 +37,78 @@ const OwnerOmsetHarianForm = () => {
   const didPlaceCaretRef = useRef(false);
   const hasInitializedContentRef = useRef(false);
 
+  // Helper: keluarkan <img> dari <b>/<strong>
+  const ensureImageNotBold = (imgEl) => {
+    if (!imgEl) return;
+    let current = imgEl.parentElement;
+    while (current && current !== editorRef.current) {
+      const tag = current.tagName?.toLowerCase();
+      if (tag === 'b' || tag === 'strong') {
+        const parent = current.parentNode;
+        if (parent) {
+          parent.insertBefore(imgEl, current.nextSibling);
+          if (current.textContent === '' && current.childNodes.length === 0) {
+            parent.removeChild(current);
+          }
+        }
+        break;
+      }
+      current = current.parentElement;
+    }
+  };
+
+  // Helper: sanitasi penggunaan <b>/<strong> di editor
+  const sanitizeEditorBold = () => {
+    const root = editorRef.current;
+    if (!root) return;
+    // 1) Keluarkan semua img dari bold
+    const imgsInBold = root.querySelectorAll('b img, strong img');
+    imgsInBold.forEach((img) => ensureImageNotBold(img));
+    // 2) Unwrap bold kosong / hanya elemen non-teks
+    const bolds = root.querySelectorAll('b, strong');
+    bolds.forEach((b) => {
+      const hasText = Array.from(b.childNodes).some(
+        (n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== ''
+      );
+      if (!hasText) {
+        const parent = b.parentNode;
+        if (parent) {
+          while (b.firstChild) parent.insertBefore(b.firstChild, b);
+          parent.removeChild(b);
+        }
+      }
+    });
+    // 3) Hilangkan bold bersarang
+    const nestedBolds = root.querySelectorAll('b b, strong strong, b strong, strong b');
+    nestedBolds.forEach((inner) => {
+      const parent = inner.parentNode;
+      if (parent) {
+        while (inner.firstChild) parent.insertBefore(inner.firstChild, inner);
+        parent.removeChild(inner);
+      }
+    });
+    // 4) Gabungkan bold bersebelahan
+    const mergeAdjacent = (tagName) => {
+      const nodes = Array.from(root.querySelectorAll(tagName));
+      nodes.forEach((node) => {
+        let next = node.nextSibling;
+        while (next && next.nodeType === Node.TEXT_NODE && next.textContent === '') {
+          next = next.nextSibling;
+        }
+        if (
+          next &&
+          next.nodeType === Node.ELEMENT_NODE &&
+          (next.tagName.toLowerCase() === 'b' || next.tagName.toLowerCase() === 'strong')
+        ) {
+          while (next.firstChild) node.appendChild(next.firstChild);
+          next.parentNode.removeChild(next);
+        }
+      });
+    };
+    mergeAdjacent('b');
+    mergeAdjacent('strong');
+  };
+
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
@@ -62,6 +134,8 @@ const OwnerOmsetHarianForm = () => {
       // Small delay to ensure CSS is applied
       setTimeout(() => {
         editorRef.current.innerHTML = formData.isi_omset;
+        // Rapikan bold pada konten awal
+        sanitizeEditorBold();
         hasInitializedContentRef.current = true;
         
         // Check if images are present in the editor
@@ -127,7 +201,8 @@ const OwnerOmsetHarianForm = () => {
           }
         }
         
-        // Update usedInEditor state after setting content
+        // Update usedInEditor state setelah konten & rapikan bold
+        sanitizeEditorBold();
         updateUsedInEditor();
 
         // Place caret at end once after content is set (robust)
@@ -221,6 +296,13 @@ const OwnerOmsetHarianForm = () => {
   const handleEditorInteraction = () => {
     saveSelection();
     updateFormatState();
+  };
+
+  const handleEditorBlur = () => {
+    const content = editorRef.current ? editorRef.current.innerHTML : '';
+    // Sanitasi terakhir saat blur agar tidak ada <b> ngaco
+    sanitizeEditorBold();
+    setFormData(prev => ({ ...prev, isi_omset: content }));
   };
   const saveSelection = () => {
     const sel = window.getSelection();
@@ -467,6 +549,8 @@ const OwnerOmsetHarianForm = () => {
     
     // Update usedInEditor state
     updateUsedInEditor();
+    // Rapikan bold saat mengetik
+    sanitizeEditorBold();
   };
 
   // Update usedInEditor state by scanning editor content
@@ -524,6 +608,9 @@ const OwnerOmsetHarianForm = () => {
               range.deleteContents();
               range.insertNode(img);
               range.collapse(false);
+              // Pastikan gambar tidak ikut bold dan rapikan bold
+              ensureImageNotBold(img);
+              sanitizeEditorBold();
               
               const br = document.createElement('br');
               range.insertNode(br);
@@ -808,6 +895,8 @@ const OwnerOmsetHarianForm = () => {
     const placeholder = `[IMG:${imageId}]`;
     const newContent = editorRef.current.innerHTML.replace(placeholder, `<img src="${imageUrl}" alt="Gambar ${imageId}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${imageId}" />`);
     editorRef.current.innerHTML = newContent;
+    // Rapikan bold setelah replace gambar
+    sanitizeEditorBold();
     
     // Update formData
     setFormData(prev => ({
@@ -948,6 +1037,7 @@ const OwnerOmsetHarianForm = () => {
                 contentEditable
                 data-placeholder="Masukkan isi omset harian... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
                 onInput={handleEditorChange}
+                onBlur={handleEditorBlur}
                 onPaste={handleEditorPaste}
                 onKeyUp={handleEditorInteraction}
                 onMouseUp={handleEditorInteraction}
@@ -955,6 +1045,7 @@ const OwnerOmsetHarianForm = () => {
                 dir="ltr"
                 className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                 style={{ whiteSpace: 'pre-wrap' }}
+                dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_omset } : undefined}
               />
               
               <p className="text-sm text-gray-500">

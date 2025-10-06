@@ -48,6 +48,79 @@ const LaporanKeuanganForm = () => {
     } catch (_) {}
   };
 
+  // Escape HTML for safe plain text insertion
+  const escapeHtml = (text) => {
+    if (text == null) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  // Normalize/sanitize bold tags in HTML so there are no empty <b></b> and use <b> instead of <strong>
+  const normalizeBoldHtml = (html) => {
+    if (!html) return html;
+    let out = html;
+    // Normalize strong -> b
+    out = out.replace(/<\s*strong\s*>/gi, '<b>')
+             .replace(/<\s*\/\s*strong\s*>/gi, '</b>');
+    // Remove <b><br></b> -> <br>
+    out = out.replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>');
+    // Remove empty bolds: <b>   </b>
+    out = out.replace(/<b>\s*<\/b>/gi, '');
+    // Collapse nested bolds: <b><b>text</b></b> -> <b>text</b>
+    out = out.replace(/<b>\s*<b>/gi, '<b>')
+             .replace(/<\/b>\s*<\/b>/gi, '</b>');
+    // Repeat collapse until stable to handle triple+ nesting
+    try {
+      let prevCollapse;
+      do {
+        prevCollapse = out;
+        out = out.replace(/<b>\s*<b>/gi, '<b>')
+                 .replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (out !== prevCollapse);
+    } catch (_) {}
+
+    // Unwrap placeholder-only bold: <b>[IMG:123]</b> -> [IMG:123]
+    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+
+    // Split bold across placeholders so image breaks bold scope
+    try {
+      let prevSplitImg;
+      do {
+        prevSplitImg = out;
+        out = out.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<b>${left}</b>` : '';
+          const r = right.trim() ? `<b>${right}</b>` : '';
+          return `${l}${img}${r}`;
+        });
+      } while (out !== prevSplitImg);
+    } catch (_) {}
+
+    // Split bold across <br>: <b>a<br>b</b> => <b>a</b><br><b>b</b>
+    try {
+      let prev;
+      do {
+        prev = out;
+        out = out.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
+          const left = a.trim() ? `<b>${a}</b>` : '';
+          const right = b.trim() ? `<b>${b}</b>` : '';
+          return `${left}<br>${right}`;
+        });
+      } while (out !== prev);
+    } catch (_) {}
+    return out;
+  };
+
+  const sanitizeEditorHtml = () => {
+    if (!editorRef.current) return;
+    const before = editorRef.current.innerHTML;
+    const cleaned = normalizeBoldHtml(before);
+    if (cleaned !== before) editorRef.current.innerHTML = cleaned;
+  };
+
   const placeCaretAtEnd = (el) => {
     if (!el) return;
     const range = document.createRange();
@@ -80,6 +153,7 @@ const LaporanKeuanganForm = () => {
       // Small delay to ensure CSS is applied
       setTimeout(() => {
         editorRef.current.innerHTML = formData.isi_laporan;
+        sanitizeEditorHtml();
         try {
           const range = document.createRange();
           range.selectNodeContents(editorRef.current);
@@ -357,6 +431,7 @@ const LaporanKeuanganForm = () => {
 
   const handleEditorChange = (e) => {
     const content = e.target.innerHTML;
+    // Hindari sanitasi agresif saat mengetik; simpan raw lalu dibersihkan saat blur/submit
     setFormData(prev => ({
       ...prev,
       isi_laporan: content
@@ -366,11 +441,13 @@ const LaporanKeuanganForm = () => {
   const handleEditorPaste = async (e) => {
     const items = e.clipboardData.items;
 
+    let handled = false;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
       if (item.type.indexOf('image') !== -1) {
         e.preventDefault();
+        handled = true;
 
         const file = item.getAsFile();
         if (file) {
@@ -420,6 +497,27 @@ const LaporanKeuanganForm = () => {
         }
       }
     }
+    if (!handled) {
+      const text = e.clipboardData.getData('text/plain');
+      if (text) {
+        e.preventDefault();
+        const html = escapeHtml(text).replace(/\r?\n/g, '<br>');
+        document.execCommand('insertHTML', false, html);
+        sanitizeEditorHtml();
+      }
+    }
+  };
+
+  const handleEditorKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Sisipkan line break sederhana tanpa manipulasi <b> dan tanpa ZWSP
+      try {
+        document.execCommand('insertLineBreak');
+      } catch (_) {
+        document.execCommand('insertHTML', false, '<br>');
+      }
+    }
   };
 
   const getEditorContent = () => {
@@ -432,45 +530,115 @@ const LaporanKeuanganForm = () => {
 
     let processedContent = content;
 
-    // First, replace existing image tags with data-image-id back to [IMG:id] placeholders
+    // Hapus karakter zero-width yang bisa menyusup saat editing (ZWSP, ZWNJ, ZWJ, BOM)
+    processedContent = processedContent
+      .replace(/\u200B/g, '')
+      .replace(/\u200C/g, '')
+      .replace(/\u200D/g, '')
+      .replace(/\uFEFF/g, '');
+
+    // Replace existing image tags with data-image-id back to [IMG:id] placeholders
     const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
     processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
       console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
       return `[IMG:${imageId}]`;
     });
 
-    // Then, replace base64 images with [IMG:id] placeholders
+    // Replace base64 images with [IMG:id] placeholders
     const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
     let imgMatch;
     let imgIndex = 0;
-
     while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-      // Generate new ID for base64 images
       const timestamp = Date.now();
       const imgId = timestamp + Math.floor(Math.random() * 1000);
       console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
-
       const placeholder = `[IMG:${imgId}]`;
       processedContent = processedContent.replace(imgMatch[0], placeholder);
-      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
       imgIndex++;
     }
 
-    // Remove any remaining HTML tags but keep line breaks
+    // Normalize block separators by turning divs/p into line breaks (we'll reconvert to <br> later)
     processedContent = processedContent
-      .replace(/<br\s*\/?>/gi, '\n') // Convert <br> to line breaks
-      .replace(/<div[^>]*>/gi, '\n') // Convert <div> to line breaks
-      .replace(/<\/div>/gi, '') // Remove closing div tags
-      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
-      .replace(/&nbsp;/g, ' ') // Convert &nbsp; to spaces
-      .replace(/&amp;/g, '&') // Convert &amp; to &
-      .replace(/&lt;/g, '<') // Convert &lt; to <
-      .replace(/&gt;/g, '>') // Convert &gt; to >
-      .replace(/&quot;/g, '"') // Convert &quot; to "
-      .replace(/&#39;/g, "'") // Convert &#39; to '
-      .trim();
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p[^>]*>/gi, '\n')
+      .replace(/<\/p>/gi, '');
 
-    console.log('🔍 Debug: Processed content:', processedContent);
+    // Keep only allowed tags and sanitize anchors
+    processedContent = processedContent
+      .replace(/<br[^>]*>/gi, '<br>')
+      .replace(/<a([^>]*)>/gi, (m, attrs) => {
+        const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
+        let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
+        if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
+        return href ? `<a href="${href}">` : '<a>';
+      })
+      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
+
+    // Normalize bold variants and prevent wrapping <br> or [IMG:id]
+    processedContent = processedContent
+      .replace(/<\s*strong\s*>/gi, '<b>')
+      .replace(/<\s*\/\s*strong\s*>/gi, '</b>')
+      .replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>')
+      .replace(/<b>\s*<\/b>/gi, '')
+      .replace(/<b>\s*<b>/gi, '<b>')
+      .replace(/<\/b>\s*<\/b>/gi, '</b>')
+      // unwrap placeholder-only bold
+      .replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+
+    // Split bold across placeholders in processed content
+    try {
+      let prevSplitImg2;
+      do {
+        prevSplitImg2 = processedContent;
+        processedContent = processedContent.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<b>${left}</b>` : '';
+          const r = right.trim() ? `<b>${right}</b>` : '';
+          return `${l}${img}${r}`;
+        });
+      } while (processedContent !== prevSplitImg2);
+    } catch (_) {}
+
+    // Collapse nested <b> to stable
+    try {
+      let prevCollapse2;
+      do {
+        prevCollapse2 = processedContent;
+        processedContent = processedContent
+          .replace(/<b>\s*<b>/gi, '<b>')
+          .replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (processedContent !== prevCollapse2);
+    } catch (_) {}
+
+    // Split bold across <br>: <b>a<br>b</b> => <b>a</b><br><b>b</b>
+    try {
+      let prev2;
+      do {
+        prev2 = processedContent;
+        processedContent = processedContent.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
+          const left = a.trim() ? `<b>${a}</b>` : '';
+          const right = b.trim() ? `<b>${b}</b>` : '';
+          return `${left}<br>${right}`;
+        });
+      } while (processedContent !== prev2);
+    } catch (_) {}
+
+    // Decode minimal entities (tidak decode lt/gt agar teks "<b>" tidak jadi tag)
+    processedContent = processedContent
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&');
+
+    // Pastikan newline jadi <br>
+    processedContent = processedContent.replace(/\n/g, '<br>');
+
+    // Final cleanup unmatched bold at edges
+    processedContent = processedContent.replace(/^(\s*<\/b>)+/i, '');
+    processedContent = processedContent.replace(/(<b>\s*)+$/i, '');
+
+    // Normalisasi akhir untuk stabil
+    processedContent = normalizeBoldHtml(processedContent);
+
+    console.log('🔍 Debug: Processed content (kept basic formatting):', processedContent);
     return processedContent;
   };
 

@@ -214,10 +214,12 @@ const LaporanKeuanganDetail = () => {
           });
         }
       } else {
-        parts.push({
-          type: 'text',
-          data: line
-        });
+        if (line === '') {
+          // Explicit empty line: render a BR so double enters are visible
+          parts.push({ type: 'br' });
+        } else {
+          parts.push({ type: 'text', data: line });
+        }
       }
     }
     
@@ -352,6 +354,8 @@ const LaporanKeuanganDetail = () => {
                       }}
                     />
                   </div>
+                ) : part.type === 'br' ? (
+                  <div className="leading-relaxed"><br /></div>
                 ) : (
                   <div className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
                     {part.data}

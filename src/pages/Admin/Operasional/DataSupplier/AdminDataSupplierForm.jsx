@@ -51,45 +51,49 @@ const AdminDataSupplierForm = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-[1000]">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-[1px]"
-        onClick={() => navigate('/admin/operasional/data-supplier')}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+      {/* Backdrop click to close (kept behavior) */}
+      <button
+        type="button"
         aria-hidden="true"
+        onClick={() => navigate('/admin/operasional/data-supplier')}
+        className="absolute inset-0"
+        tabIndex={-1}
       />
 
       {/* Modal Panel */}
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl bg-white rounded-xl shadow-2xl ring-1 ring-black/5">
-          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b bg-red-800 text-white">
-            <div className="flex items-center gap-3">
-              <div>
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">Tambah Supplier Baru</h1>
-                <p className="text-red-100 text-sm">Lengkapi data supplier dengan benar, pastikan nomor dan alamat valid</p>
-              </div>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+          <div className="flex items-center gap-3">
+            <Building className="w-6 h-6 text-white" />
+            <div>
+              <h1 className="text-xl font-bold leading-tight">Tambah Supplier Baru</h1>
+              <p className="text-xs text-red-100">Lengkapi data supplier dengan benar untuk memudahkan pengelolaan</p>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/admin/operasional/data-supplier')}
-              className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg"
-              aria-label="Tutup"
-            >
-              <X className="h-5 w-5" />
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/operasional/data-supplier')}
+            className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            aria-label="Tutup"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          <div className="max-h-[70vh] overflow-auto px-6 py-4">
-            <Card>
-              <CardHeader>
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Building className="h-5 w-5 text-blue-600" />
-                  Informasi Supplier
-                </h2>
-              </CardHeader>
-              <CardBody>
-                <form id="supplierForm" onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Scrollable body */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+          <Card>
+            <CardHeader>
+              <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Building className="h-5 w-5 text-blue-600" />
+                Informasi Supplier
+              </h2>
+            </CardHeader>
+            <CardBody>
+              <form id="supplierForm" onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Kategori Supplier <span className="text-red-500">*</span>
@@ -208,32 +212,33 @@ const AdminDataSupplierForm = () => {
                     />
                   </div>
                 </form>
-              </CardBody>
-            </Card>
-          </div>
+            </CardBody>
+          </Card>
+        </div>
 
-          {/* Modal Footer - sticky */}
-          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-3 px-6 py-4 border-t bg-white/95 supports-[backdrop-filter]:bg-white/75 backdrop-blur rounded-b-xl">
-            <Button
+        {/* Footer (non-scrollable) */}
+        <div className="p-0 border-t bg-white">
+          <div className="grid grid-cols-2 gap-2 px-2 py-2">
+            <button
               type="button"
-              variant="outline"
               onClick={() => navigate('/admin/operasional/data-supplier')}
+              className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
             >
               Batal
-            </Button>
-            <Button type="submit" form="supplierForm" disabled={saving}>
+            </button>
+            <button
+              type="submit"
+              form="supplierForm"
+              disabled={saving}
+              className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+            >
               {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Menyimpan...
-                </>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Simpan Supplier
-                </>
+                <Save className="w-4 h-4" />
               )}
-            </Button>
+              <span>{saving ? 'Menyimpan...' : 'Simpan Supplier'}</span>
+            </button>
           </div>
         </div>
       </div>

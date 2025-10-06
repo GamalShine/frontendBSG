@@ -302,13 +302,15 @@ const AdminLaporanKeuangan = () => {
               <p className="text-sm opacity-90">Admin - Keuangan</p>
             </div>
           </div>
-          <button
-            onClick={() => navigate('/admin/keuangan/laporan/new')}
-            className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Tambah</span>
-          </button>
+          {monthsView === 'months' && (
+            <button
+              onClick={() => navigate('/admin/keuangan/laporan/new')}
+              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Tambah</span>
+            </button>
+          )}
         </div>
       </div>
       <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">

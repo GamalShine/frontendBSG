@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { poskasService } from '../../../../services/poskasService';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Calendar, FileText, RefreshCw, Save } from 'lucide-react';
+import { ArrowLeft, Calendar, FileText, RefreshCw, Save, X } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 import { getEnvironmentConfig } from '../../../../config/environment';
 
 const AdminPoskasForm = () => {
@@ -113,6 +114,68 @@ const AdminPoskasForm = () => {
       setIsItalicActive(document.queryCommandState('italic'));
       setIsUnderlineActive(document.queryCommandState('underline'));
     } catch (_) {}
+  };
+
+  // Escape plain text to safe HTML
+  const escapeHtml = (text) => {
+    if (text == null) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  // Normalize/sanitize bold tags in HTML and keep structure stable
+  const normalizeBoldHtml = (html) => {
+    if (!html) return html;
+    let out = html;
+    // Normalize strong -> b
+    out = out.replace(/<\s*strong\s*>/gi, '<b>')
+             .replace(/<\s*\/\s*strong\s*>/gi, '</b>');
+    // Remove <b><br></b> -> <br>
+    out = out.replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>');
+    // Remove empty bolds
+    out = out.replace(/<b>\s*<\/b>/gi, '');
+    // Collapse nested bolds
+    out = out.replace(/<b>\s*<b>/gi, '<b>')
+             .replace(/<\/b>\s*<\/b>/gi, '</b>');
+    try {
+      let prevCollapse;
+      do {
+        prevCollapse = out;
+        out = out.replace(/<b>\s*<b>/gi, '<b>')
+                 .replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (out !== prevCollapse);
+    } catch (_) {}
+    // Unwrap placeholder-only bold
+    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+    // Split bold across placeholders
+    try {
+      let prevSplitImg;
+      do {
+        prevSplitImg = out;
+        out = out.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<b>${left}</b>` : '';
+          const r = right.trim() ? `<b>${right}</b>` : '';
+          return `${l}${img}${r}`;
+        });
+      } while (out !== prevSplitImg);
+    } catch (_) {}
+    // Split bold across <br>
+    try {
+      let prev;
+      do {
+        prev = out;
+        out = out.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
+          const left = a.trim() ? `<b>${a}</b>` : '';
+          const right = b.trim() ? `<b>${b}</b>` : '';
+          return `${left}<br>${right}`;
+        });
+      } while (out !== prev);
+    } catch (_) {}
+    return out;
   };
 
   const placeCaretAtEnd = (el) => {
@@ -245,7 +308,7 @@ const AdminPoskasForm = () => {
     const content = e.target.innerHTML;
     lastContentRef.current = content;
     // Avoid frequent setState to prevent caret reset; commit on blur/submit
-    // Microtask sanitize to remove any accidental RTL attributes/styles from new nodes
+    // Microtask sanitize to remove any accidental RTL attributes/styles from new nodes (layout only)
     if (editorRef.current) {
       requestAnimationFrame(() => {
         try {
@@ -297,13 +360,27 @@ const AdminPoskasForm = () => {
 
   const handleEditorBlur = () => {
     const content = editorRef.current ? editorRef.current.innerHTML : '';
-    const clean = sanitizeToLTR(content);
+    // First layout sanitize (LTR), then structural bold normalize
+    let clean = sanitizeToLTR(content);
+    clean = normalizeBoldHtml(clean);
     if (editorRef.current) editorRef.current.innerHTML = clean;
     lastContentRef.current = clean;
     setFormData(prev => ({
       ...prev,
       isi_poskas: clean
     }));
+  };
+
+  // Ensure Enter creates a clean line break without ZWSP or bold manipulation
+  const handleEditorKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      try {
+        document.execCommand('insertLineBreak');
+      } catch (_) {
+        document.execCommand('insertHTML', false, '<br>');
+      }
+    }
   };
 
   // Focus editor helper
@@ -416,6 +493,13 @@ const AdminPoskasForm = () => {
         }
       }
     }
+    // Handle plain text paste
+    const text = e.clipboardData.getData('text/plain');
+    if (text) {
+      e.preventDefault();
+      const html = escapeHtml(text).replace(/\r?\n/g, '<br>');
+      document.execCommand('insertHTML', false, html);
+    }
   };
 
   // Get editor content with [IMG:id] placeholders and preserve safe formatting
@@ -433,8 +517,14 @@ const AdminPoskasForm = () => {
       return '';
     }
     
-    // Convert HTML content but keep allowed tags and replace pasted images with placeholders
+    // Convert HTML content but keep allowed tags and replace images with placeholders
     let processedContent = content;
+    // Remove zero-width characters
+    processedContent = processedContent
+      .replace(/\u200B/g, '')
+      .replace(/\u200C/g, '')
+      .replace(/\u200D/g, '')
+      .replace(/\uFEFF/g, '');
     
     // Replace base64 images dengan [IMG:id] placeholders
     const imgRegex = /<img[^>]*data-image-id="([^"]*)"[^>]*>/g;
@@ -456,7 +546,7 @@ const AdminPoskasForm = () => {
       .replace(/<p[^>]*>/gi, '\n')
       .replace(/<\/p>/gi, '');
 
-    // Simplify allowed tags and sanitize anchors
+    // Keep only allowed tags and sanitize anchors
     processedContent = processedContent
       .replace(/<br[^>]*>/gi, '<br>')
       .replace(/<a([^>]*)>/gi, (m, attrs) => {
@@ -467,26 +557,68 @@ const AdminPoskasForm = () => {
       })
       .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
 
-    // Remove all other tags except the allowed set and their closing tags
-    processedContent = processedContent.replace(/<(?!\/?(b|strong|i|em|u|a|ul|ol|li|br)\b)[^>]*>/gi, '');
-
-    // Strip direction-related attributes that could flip RTL
+    // Normalize bold variants and prevent wrapping <br> or [IMG:id]
     processedContent = processedContent
-      .replace(/\sdir=\"[^\"]*\"/gi, '')
-      .replace(/\sstyle=\"[^\"]*(direction\s*:\s*(rtl|ltr)|text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, '');
+      .replace(/<\s*strong\s*>/gi, '<b>')
+      .replace(/<\s*\/\s*strong\s*>/gi, '</b>')
+      .replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>')
+      .replace(/<b>\s*<\/b>/gi, '')
+      .replace(/<b>\s*<b>/gi, '<b>')
+      .replace(/<\/b>\s*<\/b>/gi, '</b>')
+      // unwrap placeholder-only bold
+      .replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
 
-    // Remove Unicode BiDi control characters
-    processedContent = processedContent.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
+    // Split bold across placeholders
+    try {
+      let prevSplitImg2;
+      do {
+        prevSplitImg2 = processedContent;
+        processedContent = processedContent.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<b>${left}</b>` : '';
+          const r = right.trim() ? `<b>${right}</b>` : '';
+          return `${l}${img}${r}`;
+        });
+      } while (processedContent !== prevSplitImg2);
+    } catch (_) {}
 
-    // Decode common HTML entities
+    // Collapse nested <b> to stable
+    try {
+      let prevCollapse2;
+      do {
+        prevCollapse2 = processedContent;
+        processedContent = processedContent
+          .replace(/<b>\s*<b>/gi, '<b>')
+          .replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (processedContent !== prevCollapse2);
+    } catch (_) {}
+
+    // Split bold across <br>
+    try {
+      let prev2;
+      do {
+        prev2 = processedContent;
+        processedContent = processedContent.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
+          const left = a.trim() ? `<b>${a}</b>` : '';
+          const right = b.trim() ? `<b>${b}</b>` : '';
+          return `${left}<br>${right}`;
+        });
+      } while (processedContent !== prev2);
+    } catch (_) {}
+
+    // Minimal decode (do not decode lt/gt so literal "<b>" won't become tags)
     processedContent = processedContent
       .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .trim();
+      .replace(/&amp;/g, '&');
+
+    // Ensure any newline characters are persisted visually as <br>
+    processedContent = processedContent.replace(/\n/g, '<br>');
+
+    // Final cleanup: remove unmatched leading </b> and trailing <b>
+    processedContent = processedContent.replace(/^(\s*<\/b>)+/i, '');
+    processedContent = processedContent.replace(/(<b>\s*)+$/i, '');
+
+    // Final normalization pass
+    processedContent = normalizeBoldHtml(processedContent);
 
     console.log('🔍 Debug: Final processed content:', processedContent);
     console.log('🔍 Debug: Content length:', processedContent.length);
@@ -793,15 +925,11 @@ const AdminPoskasForm = () => {
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
-        <div className="bg-white rounded-lg shadow-sm border p-12">
-          <div className="flex justify-center items-center">
-            <div className="text-center">
-              <RefreshCw className="h-12 w-12 animate-spin text-red-600 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg font-medium">
-                {isEditMode ? 'Memuat data untuk diedit...' : 'Memuat form...'}
-              </p>
-            </div>
+      <div className="p-0 bg-gray-50 min-h-screen">
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="p-8 text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-green-500 mx-auto mb-4" />
+            <p className="text-gray-600">{isEditMode ? 'Memuat data...' : 'Memuat form...'}</p>
           </div>
         </div>
       </div>
@@ -809,32 +937,43 @@ const AdminPoskasForm = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/admin/keuangan/poskas')}
-              className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match Omset style */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.poskas}</span>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {isEditMode ? 'Edit Pos Kas' : 'Tambah Pos Kas'}
-              </h1>
-              <p className="text-gray-600">
-                {isEditMode ? 'Perbarui data posisi kas' : 'Tambah data posisi kas baru'}
-              </p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT POSKAS' : 'TAMBAH POSKAS'}</h1>
+              <p className="text-sm text-red-100">{isEditMode ? 'Perbarui data posisi kas' : 'Tambah data posisi kas baru'}</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/keuangan/poskas')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              title="Batal"
+            >
+              <X className="h-4 w-4" />
+              <span>Batal</span>
+            </button>
+            <button
+              form="poskas-form"
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+            >
+              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <form onSubmit={handleSubmit}>
+      <div className="bg-white rounded-none shadow-sm border-y">
+        <form id="poskas-form" onSubmit={handleSubmit}>
           {/* Tanggal Pos Kas */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
@@ -920,28 +1059,30 @@ const AdminPoskasForm = () => {
                 </div>
               </div>
 
-          {/* Submit Buttons */}
-          <div className="flex space-x-4 p-6">
-            <button
+          {/* Submit Buttons hidden (moved to header) */}
+          {false && (
+            <div className="flex space-x-4 p-6">
+              <button
                 type="button"
-              onClick={() => navigate('/admin/keuangan/poskas')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                onClick={() => navigate('/admin/keuangan/poskas')}
+                className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Batal
-            </button>
-            <button
+              </button>
+              <button
                 type="submit"
-              disabled={isSubmitting}
-              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
-            </button>
+                disabled={isSubmitting}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
+              </button>
             </div>
+          )}
           </form>
       </div>
     </div>

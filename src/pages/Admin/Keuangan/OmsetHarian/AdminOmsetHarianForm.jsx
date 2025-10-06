@@ -36,9 +36,11 @@ const AdminOmsetHarianForm = () => {
   const [usedInEditor, setUsedInEditor] = useState(new Set()); // Track which images are used in editor
   const editorRef = useRef(null);
   const lastContentRef = useRef('');
+  const selectionRef = useRef(null); // keep last selection range inside editor
   const [isBoldActive, setIsBoldActive] = useState(false);
   const [isItalicActive, setIsItalicActive] = useState(false);
   const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+  const SHOW_IMAGE_UI = false; // sembunyikan UI gambar di halaman edit
 
   const updateFormatState = () => {
     try {
@@ -46,6 +48,140 @@ const AdminOmsetHarianForm = () => {
       setIsItalicActive(document.queryCommandState('italic'));
       setIsUnderlineActive(document.queryCommandState('underline'));
     } catch (_) {}
+  };
+
+  // Escape HTML to prevent unintended tags when inserting plain text
+  const escapeHtml = (text) => {
+    if (text == null) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  // Selection helpers so toolbar can apply formatting in one click
+  const saveSelection = () => {
+    try {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+          selectionRef.current = range.cloneRange();
+        }
+      }
+    } catch (_) {}
+  };
+
+  const restoreSelection = () => {
+    try {
+      const sel = window.getSelection();
+      if (selectionRef.current && sel) {
+        sel.removeAllRanges();
+        sel.addRange(selectionRef.current);
+      }
+    } catch (_) {}
+  };
+
+  // Helpers: preserve line breaks during toolbar formatting
+  const selectionHasBr = () => {
+    try {
+      if (!selectionRef.current) return false;
+      const frag = selectionRef.current.cloneContents();
+      if (!frag) return false;
+      return !!frag.querySelector?.('br');
+    } catch (_) { return false; }
+  };
+
+  const ensureBrAtCursor = () => {
+    try {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+      const range = sel.getRangeAt(0);
+      // If nextSibling is not a BR and we're at the end of a line, insert BR
+      const container = range.endContainer;
+      let node = container.nodeType === Node.TEXT_NODE ? container.parentNode : container;
+      if (!node) return;
+      // Check if there's a BR right at caret position by looking at following nodes
+      let after = range.endContainer;
+      if (after.nodeType === Node.TEXT_NODE) {
+        // split not needed, just inspect nextSibling of parent when at end of text
+        if (range.endOffset < after.textContent.length) return; // caret in middle of text
+        after = after.parentNode?.nextSibling;
+      } else {
+        after = after.childNodes[range.endOffset] || after.nextSibling;
+      }
+      const isBrThere = after && after.nodeType === Node.ELEMENT_NODE && after.tagName === 'BR';
+      if (!isBrThere) {
+        document.execCommand('insertHTML', false, '<br>');
+      }
+    } catch (_) {}
+  };
+
+  // Normalize/sanitize bold tags in HTML so there are no empty <b></b> and use <b> instead of <strong>
+  const normalizeBoldHtml = (html) => {
+    if (!html) return html;
+    let out = html;
+    // Normalize strong -> b
+    out = out.replace(/<\s*strong\s*>/gi, '<b>')
+             .replace(/<\s*\/\s*strong\s*>/gi, '</b>');
+    // Remove <b><br></b> -> <br>
+    out = out.replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>');
+    // Remove empty bolds: <b>   </b>
+    out = out.replace(/<b>\s*<\/b>/gi, '');
+    // Collapse nested bolds: <b><b>text</b></b> -> <b>text</b>
+    out = out.replace(/<b>\s*<b>/gi, '<b>')
+             .replace(/<\/b>\s*<\/b>/gi, '</b>');
+    // Repeat collapse until stable to handle triple+ nesting
+    try {
+      let prevCollapse;
+      do {
+        prevCollapse = out;
+        out = out.replace(/<b>\s*<b>/gi, '<b>')
+                 .replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (out !== prevCollapse);
+    } catch (_) {}
+
+    // Unwrap placeholder-only bold: <b>[IMG:123]</b> -> [IMG:123]
+    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+
+    // Split bold across placeholders so image breaks bold scope
+    try {
+      let prevSplitImg;
+      do {
+        prevSplitImg = out;
+        out = out.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<b>${left}</b>` : '';
+          const r = right.trim() ? `<b>${right}</b>` : '';
+          return `${l}${img}${r}`;
+        });
+      } while (out !== prevSplitImg);
+    } catch (_) {}
+
+    // Split bold across <br>: <b>a<br>b</b> => <b>a</b><br><b>b</b>
+    try {
+      let prev;
+      do {
+        prev = out;
+        out = out.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
+          const left = a.trim() ? `<b>${a}</b>` : '';
+          const right = b.trim() ? `<b>${b}</b>` : '';
+          return `${left}<br>${right}`;
+        });
+      } while (out !== prev);
+    } catch (_) {}
+    return out;
+  };
+
+  // Sanitize the current editor DOM HTML in-place
+  const sanitizeEditorHtml = () => {
+    if (!editorRef.current) return;
+    const before = editorRef.current.innerHTML;
+    const cleaned = normalizeBoldHtml(before);
+    if (cleaned !== before) {
+      editorRef.current.innerHTML = cleaned;
+    }
   };
 
   // Helper: place caret at the end of editor content (match Poskas UX)
@@ -82,6 +218,8 @@ const AdminOmsetHarianForm = () => {
       // Small delay to ensure CSS is applied
       setTimeout(() => {
         editorRef.current.innerHTML = formData.isi_omset;
+        // Sanitize once after load so existing content is normalized (including bold tags)
+        sanitizeEditorHtml();
         
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -387,13 +525,47 @@ const AdminOmsetHarianForm = () => {
     updateUsedInEditor();
     // Update active formatting state while typing
     updateFormatState();
+    // Save latest selection inside editor so toolbar can use it
+    saveSelection();
+    // Catatan: jangan sanitasi di onInput karena bisa mengacaukan selection dan menggandakan tag
   };
 
   const handleEditorBlur = () => {
     const content = editorRef.current ? editorRef.current.innerHTML : '';
-    lastContentRef.current = content;
-    setFormData(prev => ({ ...prev, isi_omset: content }));
+    const cleaned = normalizeBoldHtml(content);
+    if (editorRef.current && cleaned !== content) {
+      editorRef.current.innerHTML = cleaned;
+    }
+    lastContentRef.current = cleaned;
+    setFormData(prev => ({ ...prev, isi_omset: cleaned }));
   };
+
+  // Ensure Enter creates a clean line break
+  const handleEditorKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // Sisipkan line break sederhana tanpa manipulasi <b>
+      try {
+        document.execCommand('insertLineBreak');
+      } catch (_) {
+        document.execCommand('insertHTML', false, '<br>');
+      }
+      // Clean and keep UI state updated
+      saveSelection();
+      updateFormatState();
+    }
+  };
+
+// Track selection changes to make toolbar apply immediately
+const handleEditorKeyUp = () => {
+  saveSelection();
+  updateFormatState();
+};
+
+const handleEditorMouseUp = () => {
+  saveSelection();
+  updateFormatState();
+};
 
   // Update usedInEditor state by scanning editor content
   const updateUsedInEditor = () => {
@@ -410,262 +582,321 @@ const AdminOmsetHarianForm = () => {
 
   const handleEditorPaste = async (e) => {
     const items = e.clipboardData.items;
-    
+    let handled = false;
+
+    // 1) Handle image paste
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      
       if (item.type.indexOf('image') !== -1) {
         e.preventDefault();
-        
+        handled = true;
         const file = item.getAsFile();
         if (file) {
           if (file.size > 10 * 1024 * 1024) {
             toast.error('Gambar terlalu besar. Maksimal 10MB');
             return;
           }
-          
           if (selectedImages.length >= 5) {
             toast.error('Maksimal 5 gambar per laporan');
             return;
           }
-          
           const imageId = Date.now() + Math.floor(Math.random() * 1000);
           const imageWithId = { file, id: imageId };
           setSelectedImages(prev => [...prev, imageWithId]);
-          
           const reader = new FileReader();
-          reader.onload = (e) => {
-            const imageUrl = e.target.result;
+          reader.onload = (ev) => {
+            const imageUrl = ev.target.result;
             setImagePreviewUrls(prev => [...prev, imageUrl]);
-            
             const img = document.createElement('img');
             img.src = imageUrl;
             img.alt = 'Pasted image';
             img.className = 'pasted-image';
             img.setAttribute('data-image-id', imageId);
-            
             const selection = window.getSelection();
             if (selection.rangeCount > 0) {
               const range = selection.getRangeAt(0);
               range.deleteContents();
               range.insertNode(img);
               range.collapse(false);
-              
               const br = document.createElement('br');
               range.insertNode(br);
               range.collapse(false);
-              
               const event = new Event('input', { bubbles: true });
               editorRef.current.dispatchEvent(event);
             }
-            
             toast.success('Gambar berhasil ditambahkan');
           };
           reader.readAsDataURL(file);
         }
       }
     }
+
+    // 2) Handle plain text paste to behave like Word (preserve line breaks, remove unwanted HTML)
+    if (!handled) {
+      const text = e.clipboardData.getData('text/plain');
+      if (text) {
+        e.preventDefault();
+        const html = escapeHtml(text).replace(/\r?\n/g, '<br>');
+        document.execCommand('insertHTML', false, html);
+        // After inserting, sanitize to keep our rules
+        sanitizeEditorHtml();
+        saveSelection();
+      }
+    }
   };
 
   const getEditorContent = () => {
-  if (!editorRef.current) return '';
-  
-  const content = editorRef.current.innerHTML;
-  if (!content || content.trim() === '') return '';
-  
-  console.log('🔍 Debug: Getting editor content:', content);
-  
-  let processedContent = content;
-  
-  // Replace existing image tags that have data-image-id back to [IMG:id] placeholders
-  const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
-  processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
-    console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
-    return `[IMG:${imageId}]`;
-  });
-  
-  // Replace base64 images with [IMG:id] placeholders
-  const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
-  let imgMatch;
-  let imgIndex = 0;
-  
-  while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
-    const timestamp = Date.now();
-    const imgId = timestamp + Math.floor(Math.random() * 1000);
-    console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
+    if (!editorRef.current) return '';
     
-    const placeholder = `[IMG:${imgId}]`;
-    processedContent = processedContent.replace(imgMatch[0], placeholder);
-    console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
-    imgIndex++;
-  }
-  
-  // Normalize block separators by turning divs/p into line breaks
-  processedContent = processedContent
-    .replace(/<div[^>]*>/gi, '\n')
-    .replace(/<\/div>/gi, '')
-    .replace(/<p[^>]*>/gi, '\n')
-    .replace(/<\/p>/gi, '');
-  
-  // Keep only allowed tags and sanitize anchors
-  processedContent = processedContent
-    .replace(/<br[^>]*>/gi, '<br>')
-    .replace(/<a([^>]*)>/gi, (m, attrs) => {
-      const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
-      let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
-      if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
-      return href ? `<a href="${href}">` : '<a>';
-    })
-    .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
-  
-  // Remove all other tags except the allowed set and their closing tags
-  processedContent = processedContent.replace(/<(?!\/?(b|strong|i|em|u|a|ul|ol|li|br)\b)[^>]*>/gi, '');
-  
-  // Decode common HTML entities
-  processedContent = processedContent
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
-  
-  console.log('🔍 Debug: Processed content (kept basic formatting):', processedContent);
-  return processedContent;
-};
-
-// Handlers referenced in JSX
-const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  setFormData(prev => ({ ...prev, [name]: value }));
-};
-
-const handleImageUpload = (e) => {
-  const files = Array.from(e.target.files || []);
-  if (files.length === 0) return;
-  const max = 5 - selectedImages.length;
-  const toAdd = files.slice(0, Math.max(0, max));
-  const newItems = toAdd.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
-  setSelectedImages(prev => [...prev, ...newItems]);
-  newItems.forEach((item) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => setImagePreviewUrls(prev => [...prev, ev.target.result]);
-    reader.readAsDataURL(item.file);
-  });
-};
-
-const insertImage = (imageUrl, imageId) => {
-  if (!editorRef.current) return;
-  const img = document.createElement('img');
-  img.src = imageUrl;
-  img.alt = 'Inserted image';
-  img.className = 'pasted-image';
-  img.setAttribute('data-image-id', imageId);
-  const sel = window.getSelection();
-  if (sel && sel.rangeCount > 0) {
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(img);
-    range.collapse(false);
-    const br = document.createElement('br');
-    range.insertNode(br);
-  } else {
-    editorRef.current.appendChild(img);
-  }
-  const event = new Event('input', { bubbles: true });
-  editorRef.current.dispatchEvent(event);
-};
-
-const removeImage = (index) => {
-  setSelectedImages(prev => prev.filter((_, i) => i !== index));
-  setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
-};
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-  try {
-    // 1) Pastikan gambar baru diupload ke server terlebih dahulu
-    const uploadNewImages = async () => {
-      if (!selectedImages || selectedImages.length === 0) return [];
-      const fd = new FormData();
-      selectedImages.forEach((item) => {
-        if (item?.file) fd.append('images', item.file);
-      });
-
-      try {
-        const res = await api.post('/upload/omset-harian', fd, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-        if (res?.data?.success && Array.isArray(res.data.data)) {
-          const uploaded = res.data.data; // array sejajar dengan selectedImages
-          // Petakan kembali dengan id lokal agar cocok dengan [IMG:id]
-          return uploaded.map((f, idx) => ({
-            id: selectedImages[idx]?.id,
-            name: f.originalName || selectedImages[idx]?.file?.name || `omset_${Date.now()}_${idx}.jpg`,
-            url: f.url,
-            serverPath: f.path
-          })).filter(img => img.id);
-        }
-        toast.error('Upload gambar gagal');
-        return [];
-      } catch (err) {
-        console.error('❌ Upload OMSET HARIAN gagal:', err);
-        toast.error('Gagal mengupload gambar');
-        return [];
-      }
-    };
-
-    const newImages = await uploadNewImages();
-
-    // 2) Kumpulkan seluruh images: existing + yang baru diupload
-    const allImages = [
-      ...((formData.images && Array.isArray(formData.images)) ? formData.images : []),
-      ...newImages
-    ];
-
-    // 3) Ambil konten editor (placeholder [IMG:id] sudah konsisten dengan id lokal)
-    const isiContent = getEditorContent();
-
-    // 4) Hanya simpan gambar yang benar-benar dipakai di editor
-    const usedIdMatches = [...isiContent.matchAll(/\[IMG:(\d+)\]/g)];
-    const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
-    const filteredImages = allImages.filter((img) => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
-
-    const payload = {
-      tanggal_omset: formData.tanggal_omset,
-      isi_omset: isiContent,
-      images: filteredImages
-    };
-    if (isEditMode) {
-      await omsetHarianService.updateOmsetHarian(id, payload);
-    } else {
-      await omsetHarianService.createOmsetHarian(payload);
+    const content = editorRef.current.innerHTML;
+    if (!content || content.trim() === '') return '';
+    
+    console.log('🔍 Debug: Getting editor content:', content);
+    
+    let processedContent = content;
+    // Hapus karakter zero-width yang bisa menyusup saat editing (ZWSP, ZWNJ, ZWJ, BOM)
+    processedContent = processedContent
+      .replace(/\u200B/g, '')   // ZWSP
+      .replace(/\u200C/g, '')   // ZWNJ
+      .replace(/\u200D/g, '')   // ZWJ
+      .replace(/\uFEFF/g, '');  // BOM
+    
+    // Replace existing image tags that have data-image-id back to [IMG:id] placeholders
+    const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
+    processedContent = processedContent.replace(existingImgRegex, (match, imageId) => {
+      console.log(`🔍 Converting existing image tag back to placeholder: [IMG:${imageId}]`);
+      return `[IMG:${imageId}]`;
+    });
+    
+    // Replace base64 images with [IMG:id] placeholders
+    const base64ImgRegex = /<img[^>]*src="data:image[^"]*"[^>]*>/g;
+    let imgMatch;
+    let imgIndex = 0;
+    
+    while ((imgMatch = base64ImgRegex.exec(processedContent)) !== null) {
+      const timestamp = Date.now();
+      const imgId = timestamp + Math.floor(Math.random() * 1000);
+      console.log(`🔍 Generated new ID for base64 image ${imgIndex + 1}: ${imgId}`);
+      
+      const placeholder = `[IMG:${imgId}]`;
+      processedContent = processedContent.replace(imgMatch[0], placeholder);
+      console.log(`🔍 Converting base64 image ${imgIndex + 1} to placeholder: ${placeholder}`);
+      imgIndex++;
     }
-    toast.success('Berhasil menyimpan omset harian');
-    navigate('/admin/keuangan/omset-harian');
-  } catch (error) {
-    console.error('Gagal menyimpan omset harian', error);
-    toast.error('Gagal menyimpan omset harian');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    
+    // Normalize block separators by turning divs/p into line breaks
+    processedContent = processedContent
+      .replace(/<div[^>]*>/gi, '\n')
+      .replace(/<\/div>/gi, '')
+      .replace(/<p[^>]*>/gi, '\n')
+      .replace(/<\/p>/gi, '');
+    
+    // Keep only allowed tags and sanitize anchors
+    processedContent = processedContent
+      .replace(/<br[^>]*>/gi, '<br>')
+      .replace(/<a([^>]*)>/gi, (m, attrs) => {
+        const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
+        let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
+        if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
+        return href ? `<a href="${href}">` : '<a>';
+      })
+      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
 
-return (
+    // Normalize bold variants and prevent wrapping <br> or [IMG:id]
+    processedContent = processedContent
+      .replace(/<\s*strong\s*>/gi, '<b>')
+      .replace(/<\s*\/\s*strong\s*>/gi, '</b>')
+      .replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>')
+      .replace(/<b>\s*<\/b>/gi, '')
+      .replace(/<b>\s*<b>/gi, '<b>')
+      .replace(/<\/b>\s*<\/b>/gi, '</b>')
+      // unwrap placeholder-only bold
+      .replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+
+    // Split bold across placeholders in processed content
+    try {
+      let prevSplitImg2;
+      do {
+        prevSplitImg2 = processedContent;
+        processedContent = processedContent.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<b>${left}</b>` : '';
+          const r = right.trim() ? `<b>${right}</b>` : '';
+          return `${l}${img}${r}`;
+        });
+      } while (processedContent !== prevSplitImg2);
+    } catch (_) {}
+
+    // Ulangi collapse nested <b> sampai stabil
+    try {
+      let prevCollapse2;
+      do {
+        prevCollapse2 = processedContent;
+        processedContent = processedContent
+          .replace(/<b>\s*<b>/gi, '<b>')
+          .replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (processedContent !== prevCollapse2);
+    } catch (_) {}
+
+    // Split bold across <br>: <b>a<br>b</b> => <b>a</b><br><b>b</b>
+    try {
+      let prev2;
+      do {
+        prev2 = processedContent;
+        processedContent = processedContent.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
+          const left = a.trim() ? `<b>${a}</b>` : '';
+          const right = b.trim() ? `<b>${b}</b>` : '';
+          return `${left}<br>${right}`;
+        });
+      } while (processedContent !== prev2);
+    } catch (_) {}
+
+    // Decode common HTML entities
+    // IMPORTANT: Jangan decode &lt; atau &gt; agar teks seperti "<b>" tidak berubah jadi tag HTML asli
+    processedContent = processedContent
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&');
+
+    // Ensure any newline characters are persisted visually as <br>
+    processedContent = processedContent.replace(/\n/g, '<br>');
+
+    // Final cleanup: hapus tag <b> yang tidak berpasangan di awal/akhir konten
+    // - leading </b> tanpa pembuka
+    processedContent = processedContent.replace(/^(\s*<\/b>)+/i, '');
+    // - trailing <b> tanpa penutup
+    processedContent = processedContent.replace(/(<b>\s*)+$/i, '');
+
+    // Jalankan normalisasi bold terakhir kali untuk memastikan konsistensi akhir
+    processedContent = normalizeBoldHtml(processedContent);
+
+    console.log('🔍 Debug: Processed content (kept basic formatting):', processedContent);
+    return processedContent;
+  };
+
+  // Handlers referenced in JSX
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    const max = 5 - selectedImages.length;
+    const toAdd = files.slice(0, Math.max(0, max));
+    const newItems = toAdd.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
+    setSelectedImages(prev => [...prev, ...newItems]);
+    newItems.forEach((item) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => setImagePreviewUrls(prev => [...prev, ev.target.result]);
+      reader.readAsDataURL(item.file);
+    });
+  };
+
+  const insertImage = (imageUrl, imageId) => {
+    if (!editorRef.current) return;
+    const img = document.createElement('img');
+    img.src = imageUrl;
+    img.alt = 'Inserted image';
+    img.className = 'pasted-image';
+    img.setAttribute('data-image-id', imageId);
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(img);
+      range.collapse(false);
+      const br = document.createElement('br');
+      range.insertNode(br);
+    } else {
+      editorRef.current.appendChild(img);
+    }
+    const event = new Event('input', { bubbles: true });
+    editorRef.current.dispatchEvent(event);
+  };
+
+  const removeImage = (index) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
+    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      // 1) Pastikan gambar baru diupload ke server terlebih dahulu
+      const uploadNewImages = async () => {
+        if (!selectedImages || selectedImages.length === 0) return [];
+        const fd = new FormData();
+        selectedImages.forEach((item) => {
+          if (item?.file) fd.append('images', item.file);
+        });
+
+        try {
+          const res = await api.post('/upload/omset-harian', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          if (res?.data?.success && Array.isArray(res.data.data)) {
+            const uploaded = res.data.data; // array sejajar dengan selectedImages
+            // Petakan kembali dengan id lokal agar cocok dengan [IMG:id]
+            return uploaded.map((f, idx) => ({
+              id: selectedImages[idx]?.id,
+              name: f.originalName || selectedImages[idx]?.file?.name || `omset_${Date.now()}_${idx}.jpg`,
+              url: f.url,
+              serverPath: f.path
+            })).filter(img => img.id);
+          }
+          toast.error('Upload gambar gagal');
+          return [];
+        } catch (err) {
+          console.error('❌ Upload OMSET HARIAN gagal:', err);
+          toast.error('Gagal mengupload gambar');
+          return [];
+        }
+      };
+
+      const newImages = await uploadNewImages();
+
+      // 2) Kumpulkan seluruh images: existing + yang baru diupload
+      const allImages = [
+        ...((formData.images && Array.isArray(formData.images)) ? formData.images : []),
+        ...newImages
+      ];
+
+      // 3) Ambil konten editor (placeholder [IMG:id] sudah konsisten dengan id lokal)
+      const isiContent = getEditorContent();
+
+      // 4) Hanya simpan gambar yang benar-benar dipakai di editor
+      const usedIdMatches = [...isiContent.matchAll(/\[IMG:(\d+)\]/g)];
+      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
+      const filteredImages = allImages.filter((img) => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
+
+      const payload = {
+        tanggal_omset: formData.tanggal_omset,
+        isi_omset: isiContent,
+        images: filteredImages
+      };
+      if (isEditMode) {
+        await omsetHarianService.updateOmsetHarian(id, payload);
+      } else {
+        await omsetHarianService.createOmsetHarian(payload);
+      }
+      toast.success('Berhasil menyimpan omset harian');
+      navigate('/admin/keuangan/omset-harian');
+    } catch (error) {
+      console.error('Gagal menyimpan omset harian', error);
+      toast.error('Gagal menyimpan omset harian');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header merah full-width */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/admin/keuangan/omset-harian')}
-              className="px-3 py-2 rounded-lg border border-white/60 hover:bg-white/10"
-              title="Kembali"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">H01-K6</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT OMSET HARIAN' : 'TAMBAH OMSET HARIAN'}</h1>
               <p className="text-sm text-red-100">{isEditMode ? 'Perbarui data omset harian' : 'Tambah data omset harian baru'}</p>
@@ -673,13 +904,22 @@ return (
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => navigate('/admin/keuangan/omset-harian')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              title="Batal"
+            >
+              <X className="h-4 w-4" />
+              <span>Batal</span>
+            </button>
+            <button
               form="omset-form"
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
             >
               {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              <span>{isEditMode ? 'Update' : 'Simpan'}</span>
+              <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
             </button>
           </div>
         </div>
@@ -734,7 +974,17 @@ return (
               <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
                 <button
                   type="button"
-                  onClick={() => { document.execCommand('bold'); updateFormatState(); }}
+                  onMouseDown={(e) => {
+                    // prevent button from stealing focus/selection
+                    e.preventDefault();
+                    if (editorRef.current) editorRef.current.focus();
+                    restoreSelection();
+                    const hadBr = selectionHasBr();
+                    document.execCommand('bold');
+                    if (hadBr) ensureBrAtCursor();
+                    updateFormatState();
+                    saveSelection();
+                  }}
                   className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
                   aria-pressed={isBoldActive}
                   title="Bold"
@@ -743,7 +993,16 @@ return (
                 </button>
                 <button
                   type="button"
-                  onClick={() => { document.execCommand('italic'); updateFormatState(); }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    if (editorRef.current) editorRef.current.focus();
+                    restoreSelection();
+                    const hadBr = selectionHasBr();
+                    document.execCommand('italic');
+                    if (hadBr) ensureBrAtCursor();
+                    updateFormatState();
+                    saveSelection();
+                  }}
                   className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
                   aria-pressed={isItalicActive}
                   title="Italic"
@@ -752,7 +1011,16 @@ return (
                 </button>
                 <button
                   type="button"
-                  onClick={() => { document.execCommand('underline'); updateFormatState(); }}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    if (editorRef.current) editorRef.current.focus();
+                    restoreSelection();
+                    const hadBr = selectionHasBr();
+                    document.execCommand('underline');
+                    if (hadBr) ensureBrAtCursor();
+                    updateFormatState();
+                    saveSelection();
+                  }}
                   className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
                   aria-pressed={isUnderlineActive}
                   title="Underline"
@@ -767,8 +1035,9 @@ return (
                 onInput={handleEditorChange}
                 onBlur={handleEditorBlur}
                 onPaste={handleEditorPaste}
-                onKeyUp={updateFormatState}
-                onMouseUp={updateFormatState}
+                onKeyUp={handleEditorKeyUp}
+                onMouseUp={handleEditorMouseUp}
+                onKeyDown={handleEditorKeyDown}
                 dir="ltr"
                 className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-left"
                 style={{ whiteSpace: 'pre-wrap' }}
@@ -781,8 +1050,8 @@ return (
             </div>
           </div>
 
-          {/* Image Management Section - Only show in edit mode */}
-          {isEditMode && (
+          {/* Image Management Section - Only show in edit mode (disembunyikan sementara) */}
+          {isEditMode && SHOW_IMAGE_UI && (
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -848,8 +1117,8 @@ return (
             </div>
           )}
 
-            {/* Existing Images */}
-            {formData.images && formData.images.length > 0 && (
+            {/* Existing Images (disembunyikan sementara) */}
+            {SHOW_IMAGE_UI && formData.images && formData.images.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Gambar yang Ada</h3>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
@@ -891,28 +1160,30 @@ return (
               </div>
             )}
 
-          {/* Submit Buttons */}
-          <div className="flex space-x-4 p-6">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/keuangan/omset-harian')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
-            </button>
-          </div>
+          {/* Submit Buttons (disembunyikan, aksi dipindah ke header) */}
+          {false && (
+            <div className="flex space-x-4 p-6">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/keuangan/omset-harian')}
+                className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
+              </button>
+            </div>
+          )}
           
         </form>
       </div>

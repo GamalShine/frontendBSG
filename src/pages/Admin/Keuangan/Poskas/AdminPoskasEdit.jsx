@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
+import { MENU_CODES } from '@/config/menuCodes';
 import { API_CONFIG } from '../../../../config/constants';
 import { normalizeImageUrl } from '../../../../utils/url';
 
@@ -1038,10 +1039,10 @@ const AdminPoskasEdit = () => {
 
   if (loading) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="p-0 bg-gray-50 min-h-screen">
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-8 text-center">
-            <LoadingSpinner className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <LoadingSpinner className="h-8 w-8 animate-spin text-red-600 mx-auto mb-4" />
             <p className="text-gray-600">Memuat data...</p>
           </div>
         </div>
@@ -1051,7 +1052,7 @@ const AdminPoskasEdit = () => {
 
   if (error) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="p-0 bg-gray-50 min-h-screen">
         <div className="bg-white rounded-lg shadow-sm border">
           <div className="p-8 text-center">
             <div className="bg-red-50 border border-red-200 rounded-lg p-6">
@@ -1079,32 +1080,42 @@ const AdminPoskasEdit = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/admin/keuangan/poskas')}
-              className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match Omset style */}
+      <div className="bg-red-800 text-white px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.poskas}</span>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Edit Laporan Pos Kas
-              </h1>
-              <p className="text-gray-600">
-                Perbarui data laporan pos kas
-              </p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">EDIT POSKAS</h1>
+              <p className="text-sm text-red-100">Perbarui data posisi kas</p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate('/admin/keuangan/poskas')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              title="Batal"
+            >
+              <X className="h-4 w-4" />
+              <span>Batal</span>
+            </button>
+            <button
+              form="poskas-edit-form"
+              type="submit"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm"
+            >
+              <Save className="h-4 w-4" />
+              <span>Perbarui</span>
+            </button>
           </div>
         </div>
       </div>
 
       {/* Form Section */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <form onSubmit={handleSubmit}>
+      <div className="bg-white rounded-none shadow-sm border-y">
+        <form id="poskas-edit-form" onSubmit={handleSubmit}>
           {/* Tanggal */}
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
@@ -1127,7 +1138,8 @@ const AdminPoskasEdit = () => {
             </p>
           </div>
 
-          {/* Existing Images Section */}
+          {/* Existing Images Section (hidden) */}
+          {false && (
           <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -1257,8 +1269,7 @@ const AdminPoskasEdit = () => {
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="text-4xl text-gray-300 mb-2">📷</div>
-                <p className="text-gray-500">Tidak ada gambar yang tersedia</p>
+                <p className="text-gray-500">Tidak ada gambar tersimpan</p>
               </div>
             )}
             
@@ -1268,6 +1279,7 @@ const AdminPoskasEdit = () => {
               </p>
             )}
           </div>
+          )}
 
           {/* Content Editor */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
