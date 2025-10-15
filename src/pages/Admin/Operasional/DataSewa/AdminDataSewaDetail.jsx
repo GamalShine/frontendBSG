@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { dataSewaService } from '@/services/dataSewaService'
+import { API_CONFIG } from '@/config/constants'
 
 const Row = ({ label, children }) => (
   <div className="grid grid-cols-1 md:grid-cols-3 border-t">
@@ -73,7 +74,7 @@ const AdminDataSewaDetail = () => {
               <Row label="Keterangan">{data.keterangan}</Row>
               <Row label="Foto Aset">
                 {data.foto_aset ? (
-                  <img src={`/uploads/data-sewa/${data.foto_aset}`} alt="Foto aset" className="h-40 w-auto object-cover border rounded" />
+                  <img src={`${API_CONFIG.BASE_HOST}/uploads/data-sewa/${data.foto_aset}`} alt="Foto aset" className="h-40 w-auto object-cover border rounded" />
                 ) : (
                   '-'
                 )}

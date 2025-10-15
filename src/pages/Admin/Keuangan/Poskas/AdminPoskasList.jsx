@@ -347,6 +347,25 @@ const AdminPoskasList = () => {
     })
   }
 
+  // Format konten untuk preview list: hilangkan tag HTML & placeholder gambar, konversi marker markdown ke HTML (<strong>/<em>/<u>)
+  const formatPreviewHtml = (content) => {
+    if (!content) return ''
+    let t = String(content)
+    // Hilangkan tag HTML yang mungkin tersisa
+    t = t.replace(/<[^>]*>/g, '')
+    // Hilangkan placeholder gambar [IMG:123]
+    t = t.replace(/\[IMG:\d+\]/g, '')
+    // Konversi markdown-like -> HTML
+    t = t.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // **bold**
+    t = t.replace(/(^|[^*])\*(?!\s)([^*]+?)\*(?!\*)/g, (m, p1, p2) => `${p1}<em>${p2}</em>`) // *italic*
+    t = t.replace(/__(.+?)__/g, '<u>$1</u>') // __underline__
+    // Hilangkan heading markdown (#, ##, ###) di awal baris
+    t = t.replace(/^\s*#{1,6}\s*/gm, '')
+    // Normalisasi whitespace & baris baru -> satu spasi, agar benar-benar 1 baris
+    t = t.replace(/\s+/g, ' ').trim()
+    return t
+  }
+
   const handleDelete = async (id) => {
     if (window.confirm('Apakah Anda yakin ingin menghapus laporan pos kas ini?')) {
       try {
@@ -529,7 +548,7 @@ const AdminPoskasList = () => {
 
       {/* Data Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
-        <div className="px-6 py-4 border-b border-gray-100">
+        <div className="px-6 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-900">Daftar Pos Kas</h2>
             <div className="flex items-center gap-3">
@@ -643,12 +662,8 @@ const AdminPoskasList = () => {
                       <td className="px-4 sm:px-8 md:px-12 py-4 text-sm text-gray-900">
                         {poskasItem.isi_poskas ? (
                           <div
-                            className="md:truncate max-w-[14rem] md:max-w-md"
-                            dangerouslySetInnerHTML={{
-                              __html: poskasItem.isi_poskas.length > 150
-                                ? poskasItem.isi_poskas.substring(0, 150) + '...'
-                                : poskasItem.isi_poskas
-                            }}
+                            className="truncate max-w-[14rem] md:max-w-md"
+                            dangerouslySetInnerHTML={{ __html: formatPreviewHtml(poskasItem.isi_poskas) }}
                           />
                         ) : '-'}
                       </td>

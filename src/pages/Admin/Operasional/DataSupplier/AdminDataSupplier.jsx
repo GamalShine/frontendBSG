@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
@@ -113,54 +113,72 @@ const AdminDataSupplier = () => {
   };
 
   const renderSupplierCard = (supplier) => (
-    <div key={supplier.id} className="bg-gray-50 rounded-lg p-4 border hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-3">
+    <div key={supplier.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs">
+      <div className="flex justify-between items-start mb-2">
         <div className="flex-1">
-          <h4 className="font-semibold text-gray-900">{supplier.nama_supplier}</h4>
+          <h4 className="text-sm font-medium text-gray-900">{supplier.nama_supplier}</h4>
           {supplier.npwp && (
-            <p className="text-sm text-gray-500">NPWP: {supplier.npwp}</p>
+            <p className="text-xs text-gray-500">NPWP: {supplier.npwp}</p>
           )}
         </div>
-        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getDivisiColor(supplier.divisi)}`}>
+        <span className={`inline-flex px-2 py-1 text-[10px] font-semibold rounded-full ${getDivisiColor(supplier.divisi)}`}>
           {supplier.divisi}
         </span>
       </div>
-      
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+
+      <div className="space-y-1 mb-3">
+        <div className="flex items-center gap-2 text-xs text-gray-600">
           <Phone className="h-4 w-4" />
           <span>{supplier.no_hp_supplier}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-xs text-gray-600">
           <Calendar className="h-4 w-4" />
-          <span>{format(new Date(supplier.tanggal_kerjasama), 'dd MMM yyyy', { locale: id })}</span>
+          <span>{supplier.tanggal_kerjasama ? format(new Date(supplier.tanggal_kerjasama), 'dd MMM yyyy', { locale: id }) : '-'}</span>
         </div>
-        <div className="flex items-start gap-2 text-sm text-gray-600">
+        <div className="flex items-start gap-2 text-xs text-gray-600">
           <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
           <span className="line-clamp-2">{supplier.alamat}</span>
         </div>
       </div>
-      
+
       <div className="flex items-center gap-2">
         <Link to={`/admin/operasional/data-supplier/detail/${supplier.id}`}>
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
+          <button className="p-1 text-gray-500 hover:text-gray-700 border border-gray-300 rounded hover:bg-gray-50">
             <Eye className="h-4 w-4" />
           </button>
         </Link>
         <Link to={`/admin/operasional/data-supplier/edit/${supplier.id}`}>
-          <button className="p-1.5 text-gray-400 hover:text-gray-600 border border-gray-300 rounded hover:bg-gray-50">
+          <button className="p-1 text-gray-500 hover:text-gray-700 border border-gray-300 rounded hover:bg-gray-50">
             <Edit className="h-4 w-4" />
           </button>
         </Link>
-        <button 
+        <button
           onClick={() => handleDelete(supplier.id)}
-          className="p-1.5 text-red-400 hover:text-red-600 border border-gray-300 rounded hover:bg-red-50"
+          className="p-1 text-red-500 hover:text-red-600 border border-gray-300 rounded hover:bg-red-50"
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </div>
   );
+
+  // Hitung teks "Terakhir diupdate" dari created_at terbaru; fallback ke tanggal_kerjasama; jika tidak ada, '-'
+  const lastUpdatedText = useMemo(() => {
+    if (!Array.isArray(suppliers) || suppliers.length === 0) return '-';
+    const latest = [...suppliers]
+      .sort((a, b) => {
+        const aDate = a?.created_at || a?.tanggal_kerjasama;
+        const bDate = b?.created_at || b?.tanggal_kerjasama;
+        return new Date(bDate || 0) - new Date(aDate || 0);
+      })[0];
+    const dt = latest?.created_at || latest?.tanggal_kerjasama;
+    if (!dt) return '-';
+    try {
+      return format(new Date(dt), "d MMMM yyyy 'pukul' HH.mm", { locale: id });
+    } catch {
+      return '-';
+    }
+  }, [suppliers]);
 
   if (loading) {
     return (
@@ -224,116 +242,118 @@ const AdminDataSupplier = () => {
       
       {/* Info Bar */}
       <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
-        Data supplier terbaru berada di paling atas
+        Terakhir diupdate: {lastUpdatedText}
       </div>
 
-      <div className="px-6 py-6">
+      <div className="px-0 py-4">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Building className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Supplier</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.total_suppliers || 0}</p>
+                <p className="text-xs font-medium text-gray-500">Total Supplier</p>
+                <p className="text-lg font-bold text-gray-900">{stats.total_suppliers || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <span className="text-green-600 font-bold text-sm">O</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Supplier Outlet</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.outlet_count || 0}</p>
+                <p className="text-xs font-medium text-gray-500">Supplier Outlet</p>
+                <p className="text-lg font-bold text-gray-900">{stats.outlet_count || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <span className="text-purple-600 font-bold text-sm">P</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Supplier Produksi</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.produksi_count || 0}</p>
+                <p className="text-xs font-medium text-gray-500">Supplier Produksi</p>
+                <p className="text-lg font-bold text-gray-900">{stats.produksi_count || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-orange-100 rounded-lg">
                 <span className="text-orange-600 font-bold text-sm">M</span>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Supplier Marketing</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.marketing_divisi_count || 0}</p>
+                <p className="text-xs font-medium text-gray-500">Supplier Marketing</p>
+                <p className="text-lg font-bold text-gray-900">{stats.marketing_divisi_count || 0}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters and Actions */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cari Supplier</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Masukkan nama supplier..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                />
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-6">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cari Supplier</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Masukkan nama supplier..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  />
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Kategori Supplier</label>
-              <select 
-                value={kategoriFilter} 
-                onChange={(e) => setKategoriFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                <option value="all">Semua Kategori</option>
-                <option value="SUPPLIER OUTLET">Supplier Outlet</option>
-                <option value="SUPPLIER TOKO TEPUNG & BB">Supplier Toko Tepung & BB</option>
-                <option value="SUPPLIER PRODUKSI">Supplier Produksi</option>
-                <option value="SUPPLIER KAMBING">Supplier Kambing</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Divisi</label>
-              <select 
-                value={divisiFilter} 
-                onChange={(e) => setDivisiFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              >
-                <option value="all">Semua Divisi</option>
-                <option value="PRODUKSI">Produksi</option>
-                <option value="MARKETING">Marketing</option>
-                <option value="OPERASIONAL">Operasional</option>
-              </select>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Kategori Supplier</label>
+                <select
+                  value={kategoriFilter} 
+                  onChange={(e) => setKategoriFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="all">Semua Kategori</option>
+                  <option value="SUPPLIER OUTLET">Supplier Outlet</option>
+                  <option value="SUPPLIER TOKO TEPUNG & BB">Supplier Toko Tepung & BB</option>
+                  <option value="SUPPLIER PRODUKSI">Supplier Produksi</option>
+                  <option value="SUPPLIER KAMBING">Supplier Kambing</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Divisi</label>
+                <select
+                  value={divisiFilter} 
+                  onChange={(e) => setDivisiFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                >
+                  <option value="all">Semua Divisi</option>
+                  <option value="PRODUKSI">Produksi</option>
+                  <option value="MARKETING">Marketing</option>
+                  <option value="OPERASIONAL">Operasional</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Data Sections by Category */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Supplier Outlet Section */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
             <button
               onClick={() => setActiveSection(activeSection === 'outlet' ? '' : 'outlet')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
                 <Store className="w-6 h-6" />
@@ -350,9 +370,9 @@ const AdminDataSupplier = () => {
             </button>
             
             {activeSection === 'outlet' && (
-              <div className="p-6">
+              <div className="p-4">
                 {groupedSuppliers['SUPPLIER OUTLET'].length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                     {groupedSuppliers['SUPPLIER OUTLET'].map(renderSupplierCard)}
                   </div>
                 ) : (
@@ -365,10 +385,10 @@ const AdminDataSupplier = () => {
           </div>
 
           {/* Supplier Toko Tepung & BB Section */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
             <button
               onClick={() => setActiveSection(activeSection === 'tepung' ? '' : 'tepung')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
                 <Building className="w-6 h-6" />
@@ -385,9 +405,9 @@ const AdminDataSupplier = () => {
             </button>
             
             {activeSection === 'tepung' && (
-              <div className="p-6">
+              <div className="p-4">
                 {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                     {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].map(renderSupplierCard)}
                   </div>
                 ) : (
@@ -400,10 +420,10 @@ const AdminDataSupplier = () => {
           </div>
 
           {/* Supplier Produksi Section */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
             <button
               onClick={() => setActiveSection(activeSection === 'produksi' ? '' : 'produksi')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
                 <Factory className="w-6 h-6" />
@@ -420,9 +440,9 @@ const AdminDataSupplier = () => {
             </button>
             
             {activeSection === 'produksi' && (
-              <div className="p-6">
+              <div className="p-4">
                 {groupedSuppliers['SUPPLIER PRODUKSI'].length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                     {groupedSuppliers['SUPPLIER PRODUKSI'].map(renderSupplierCard)}
                   </div>
                 ) : (
@@ -435,10 +455,10 @@ const AdminDataSupplier = () => {
           </div>
 
           {/* Supplier Kambing Section */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
             <button
               onClick={() => setActiveSection(activeSection === 'kambing' ? '' : 'kambing')}
-              className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+              className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
                 <Truck className="w-6 h-6" />
@@ -455,9 +475,9 @@ const AdminDataSupplier = () => {
             </button>
             
             {activeSection === 'kambing' && (
-              <div className="p-6">
+              <div className="p-4">
                 {groupedSuppliers['SUPPLIER KAMBING'].length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                     {groupedSuppliers['SUPPLIER KAMBING'].map(renderSupplierCard)}
                   </div>
                 ) : (
@@ -472,7 +492,7 @@ const AdminDataSupplier = () => {
 
         {/* Last Updated Info */}
         <div className="bg-gray-200 px-4 py-2 text-sm text-gray-600 mt-6 rounded-lg">
-          Data terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
+          Terakhir diupdate: {lastUpdatedText}
         </div>
       </div>
     </div>

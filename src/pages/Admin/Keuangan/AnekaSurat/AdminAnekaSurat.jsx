@@ -55,6 +55,8 @@ const AdminAnekaSurat = () => {
     judul_dokumen: '',
     files: []
   });
+  const [existingAttachments, setExistingAttachments] = useState([]); // untuk modal edit
+  const [removedAttachments, setRemovedAttachments] = useState([]);   // daftar file_path yang dihapus saat edit
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState({});
   const [showBulkMenu, setShowBulkMenu] = useState(false);
@@ -172,24 +174,19 @@ const AdminAnekaSurat = () => {
     setShowBulkMenu(false)
   }
 
-  // Format tanggal untuk info bar "Terakhir diupdate"
-  const formatDateTime = (dateString) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleString('id-ID', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
+  // Info Bar: Terakhir diupdate (format Indonesia panjang)
   const lastUpdatedText = React.useMemo(() => {
-    if (!anekaSurat || anekaSurat.length === 0) return '-';
-    const latest = anekaSurat[0];
-    const dt = latest?.created_at;
-    return formatDateTime(dt);
+    if (!Array.isArray(anekaSurat) || anekaSurat.length === 0) return '-';
+    const timestamps = anekaSurat
+      .map(d => d.updated_at || d.created_at)
+      .filter(Boolean)
+      .map(d => new Date(d).getTime());
+    if (!timestamps.length) return '-';
+    const max = Math.max(...timestamps);
+    if (!isFinite(max)) return '-';
+    try {
+      return format(new Date(max), "d MMMM yyyy 'pukul' HH.mm", { locale: id });
+    } catch { return '-'; }
   }, [anekaSurat]);
 
   // Helpers lampiran
@@ -279,6 +276,10 @@ const AdminAnekaSurat = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('jenis_dokumen', formData.jenis_dokumen);
       formDataToSend.append('judul_dokumen', formData.judul_dokumen);
+      // Sertakan daftar file yang ingin dihapus (berdasarkan file_path)
+      if (removedAttachments.length > 0) {
+        formDataToSend.append('remove_files', JSON.stringify(removedAttachments));
+      }
       
       formData.files.forEach(file => {
         formDataToSend.append('files', file);
@@ -329,6 +330,8 @@ const AdminAnekaSurat = () => {
         toast.success('Aneka surat berhasil diperbarui');
         setShowEditModal(false);
         resetForm();
+        setExistingAttachments([]);
+        setRemovedAttachments([]);
         loadAnekaSurat();
         loadStats();
       } else {
@@ -376,6 +379,14 @@ const AdminAnekaSurat = () => {
       judul_dokumen: surat.judul_dokumen,
       files: []
     });
+    // Normalisasi lampiran existing
+    let lampiran = surat.lampiran;
+    if (typeof lampiran === 'string') {
+      try { lampiran = JSON.parse(lampiran); } catch { lampiran = []; }
+    }
+    if (!Array.isArray(lampiran)) lampiran = [];
+    setExistingAttachments(lampiran);
+    setRemovedAttachments([]);
     setShowEditModal(true);
   };
 
@@ -502,7 +513,7 @@ const AdminAnekaSurat = () => {
           <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
             {/* Tombol Reset Filter & Refresh disembunyikan sesuai permintaan */}
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => { resetForm(); setShowAddModal(true); }}
               aria-label="Tambah Aneka Surat"
               className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
@@ -534,38 +545,54 @@ const AdminAnekaSurat = () => {
 
       {/* Info Bar Abu-abu */}
       <div className="bg-gray-100 px-4 sm:px-6 py-2">
-        <p className="text-gray-700 text-sm">Daftar aneka surat terbaru berada di paling atas • Terakhir diupdate: {lastUpdatedText}</p>
+        <p className="text-gray-700 text-sm">Terakhir diupdate: {lastUpdatedText}</p>
       </div>
 
-      {/* Search and Filter - identik Owner */}
-      <div className="px-4 py-4 bg-white border-b">
-        <div className="flex flex-col space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Cari dokumen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            />
+      {/* Pencarian & Filter - gaya Data Sewa */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-2">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Dokumen</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cari judul atau jenis dokumen..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Jenis Dokumen</label>
+              <select
+                value={jenisFilter}
+                onChange={(e) => setJenisFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="all">Semua Jenis Dokumen</option>
+                {documentTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => { setSearchTerm(''); setJenisFilter('all'); setDateFilter(''); setStatusFilter(''); }}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
           </div>
-          <select
-            value={jenisFilter}
-            onChange={(e) => setJenisFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          >
-            <option value="all">Semua Jenis Dokumen</option>
-            {documentTypes.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
         </div>
       </div>
 
       {/* Content */}
-      <div className="px-4 py-4">
-        <div className="bg-white rounded-lg shadow-sm border">
+      <div className="px-0 pt-2 pb-4">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100">
           {Object.keys(groupedData).length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -574,10 +601,10 @@ const AdminAnekaSurat = () => {
           ) : (
             <div className="space-y-4">
               {Object.entries(groupedData).map(([jenis, documents]) => (
-                <div key={jenis} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div key={jenis} className="bg-white rounded-none md:rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                   <button
                     onClick={() => toggleCategory(jenis)}
-                    className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+                    className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
                   >
                     <div className="flex items-center space-x-3">
                       <FileText className="w-6 h-6" />
@@ -594,22 +621,22 @@ const AdminAnekaSurat = () => {
                   </button>
 
                   {expandedCategories.has(jenis) && (
-                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="p-0 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-2">
                       {documents.map((doc) => (
-                        <div key={doc.id} className="border border-gray-200 rounded-lg p-4 h-full flex flex-col">
+                        <div key={doc.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 pt-3 pb-0 px-3 h-full flex flex-col text-xs m-3 overflow-hidden">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
-                              <h3 className="font-bold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
-                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                              <h3 className="text-sm font-semibold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
+                              <div className="flex items-center text-xs text-gray-500 mb-2">
                                 <Calendar className="w-4 h-4 mr-1" />
                                 {format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}
                               </div>
-                              <div className="flex items-center text-sm text-gray-500 mb-2">
+                              <div className="flex items-center text-xs text-gray-500 mb-2">
                                 <User className="w-4 h-4 mr-1" />
                                 {doc.user_nama || 'Admin'}
                               </div>
                             </div>
-                            <div className="flex space-x-2">
+                            <div className="flex space-x-2 flex-shrink-0">
                               <button
                                 onClick={() => openEditModal(doc)}
                                 className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
@@ -633,14 +660,14 @@ const AdminAnekaSurat = () => {
                               </div>
                               <div className="space-y-2">
                                 {Array.isArray(doc.lampiran) ? doc.lampiran.map((file, index) => (
-                                  <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                                    <div className="flex items-center space-x-3">
+                                  <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg gap-3">
+                                    <div className="flex items-center space-x-3 flex-1 min-w-0">
                                       <FileText className="w-6 h-6 text-gray-600" />
                                       <div>
-                                        <div className="text-sm font-medium text-gray-900 break-anywhere md:truncate max-w-[14rem]">
+                                        <div className="text-xs font-medium text-gray-900 truncate whitespace-nowrap max-w-full">
                                           {file.file_name || file.name}
                                         </div>
-                                        <div className="text-xs text-gray-500">Dokumen</div>
+                                        <div className="text-[10px] text-gray-500">Dokumen</div>
                                       </div>
                                     </div>
                                     <button
@@ -649,7 +676,7 @@ const AdminAnekaSurat = () => {
                                         const name = file.file_name || file.name || (url.split('/').pop() || 'file');
                                         downloadFile(url, name);
                                       }}
-                                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg"
+                                      className="inline-flex items-center justify-center h-8 w-8 p-0 text-blue-600 hover:bg-blue-100 rounded-lg flex-shrink-0"
                                     >
                                       <Download className="w-4 h-4" />
                                     </button>
@@ -771,12 +798,12 @@ const AdminAnekaSurat = () => {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl ring-1 ring-black/5">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">Edit Aneka Surat</h2>
                 <button
-                  onClick={() => setShowEditModal(false)}
+                  onClick={() => { setShowEditModal(false); resetForm(); }}
                   className="p-2 hover:bg-gray-100 rounded-lg"
                 >
                   <X className="w-5 h-5" />
@@ -788,21 +815,16 @@ const AdminAnekaSurat = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Jenis Dokumen *
                   </label>
-                  <div className="space-y-2">
+                  <select
+                    value={formData.jenis_dokumen}
+                    onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="">Pilih jenis dokumen</option>
                     {documentTypes.map((type) => (
-                      <label key={type} className="flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input
-                          type="radio"
-                          name="jenis_dokumen"
-                          value={type}
-                          checked={formData.jenis_dokumen === type}
-                          onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
-                          className="text-red-600 focus:ring-red-500"
-                        />
-                        <span className="text-sm font-medium">{type}</span>
-                      </label>
+                      <option key={type} value={type}>{type}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 <div>
@@ -812,8 +834,8 @@ const AdminAnekaSurat = () => {
                   <input
                     type="text"
                     placeholder="Masukkan judul dokumen"
-                    value={formData.jenis_dokumen}
-                    onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
+                    value={formData.judul_dokumen}
+                    onChange={(e) => setFormData(prev => ({ ...prev, judul_dokumen: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
@@ -858,6 +880,46 @@ const AdminAnekaSurat = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Daftar Lampiran Saat Ini */}
+                {existingAttachments && existingAttachments.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lampiran Saat Ini</label>
+                    <div className="space-y-2">
+                      {existingAttachments.map((file, idx) => {
+                        const url = getAttachmentUrl(file.file_path || file.url);
+                        const name = file.file_name || file.name || (url.split('/').pop() || `file-${idx}`);
+                        const removed = removedAttachments.includes(file.file_path || file.url);
+                        return (
+                          <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${removed ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
+                            <div className="flex items-center space-x-3">
+                              <FileText className={`w-5 h-5 ${removed ? 'text-red-500' : 'text-gray-600'}`} />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 break-all">{name}</div>
+                                <div className="text-xs text-gray-500">{removed ? 'Akan dihapus saat disimpan' : 'Tersimpan'}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {!removed && (
+                                <a href={url} target="_blank" rel="noreferrer" className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg">Lihat</a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const key = file.file_path || file.url;
+                                  setRemovedAttachments(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+                                }}
+                                className={`p-2 rounded-lg ${removed ? 'text-gray-700 bg-gray-100 hover:bg-gray-200' : 'text-red-600 hover:bg-red-100'}`}
+                              >
+                                {removed ? 'Urungkan' : 'Hapus'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"

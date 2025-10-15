@@ -2,16 +2,55 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import { X, Save } from 'lucide-react';
+import { adminDataBinaLingkunganService as service } from '@/services/dataBinaLingkunganService';
 
 const AdminDataBinaLingkunganForm = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    lokasi: '',
+    jabatan: '',
+    nama: '',
+    no_hp: '',
+    alamat: '',
+    nominal: ''
+  });
+  const [files, setFiles] = useState([]);
+
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const onSelectFiles = (e) => {
+    const selected = Array.from(e.target.files || []);
+    // Validasi ringan di frontend: max 10 file, max 10MB per file, tipe image/pdf
+    const valid = [];
+    for (const f of selected) {
+      const isAllowed = f.type.startsWith('image/') || f.type === 'application/pdf';
+      const withinSize = f.size <= 10 * 1024 * 1024;
+      if (isAllowed && withinSize) valid.push(f);
+    }
+    setFiles(valid.slice(0, 10));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setSaving(true);
-      // TODO: implement create bina lingkungan
+      // 1) Create data bina lingkungan (tanpa lampiran)
+      const payload = { ...form };
+      const { data } = await service.create(payload);
+      const newId = data?.data?.id || data?.data?.insertId || data?.data?.ID || data?.data?.Id || data?.data?.id_bina_lingkungan;
+
+      // 2) Jika ada file terpilih, upload lampiran
+      if (newId && files.length > 0) {
+        const fd = new FormData();
+        files.forEach((f) => fd.append('files', f));
+        await service.uploadLampiran(newId, fd);
+      }
+
+      // 3) Kembali ke list
       navigate('/admin/operasional/bina-lingkungan');
     } finally {
       setSaving(false);
@@ -55,7 +94,40 @@ const AdminDataBinaLingkunganForm = () => {
             </CardHeader>
             <CardBody>
               <form id="binaLingkunganForm" onSubmit={handleSubmit} className="space-y-6">
-                <div className="text-gray-600">Konten form akan disiapkan. Desain modal sudah seragam.</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi</label>
+                    <input name="lokasi" value={form.lokasi} onChange={onChange} className="w-full border rounded px-3 py-2" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                    <input name="jabatan" value={form.jabatan} onChange={onChange} className="w-full border rounded px-3 py-2" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
+                    <input name="nama" value={form.nama} onChange={onChange} className="w-full border rounded px-3 py-2" required />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">No HP</label>
+                    <input name="no_hp" value={form.no_hp} onChange={onChange} className="w-full border rounded px-3 py-2" required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Alamat</label>
+                    <textarea name="alamat" value={form.alamat} onChange={onChange} className="w-full border rounded px-3 py-2" required />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nominal</label>
+                    <input name="nominal" value={form.nominal} onChange={onChange} className="w-full border rounded px-3 py-2" required />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">Lampiran (opsional)</label>
+                  <input type="file" multiple accept="image/*,application/pdf" onChange={onSelectFiles} />
+                  {files.length > 0 && (
+                    <div className="text-xs text-gray-600">{files.length} file siap diunggah (maks 10 file, 10MB/file).</div>
+                  )}
+                </div>
               </form>
             </CardBody>
           </Card>

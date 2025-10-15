@@ -29,6 +29,7 @@ const AdminDaftarKomplain = () => {
   const pageSize = 10;
   const [selectedItems, setSelectedItems] = useState([]);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+  
 
   useEffect(() => {
     loadData();
@@ -37,9 +38,9 @@ const AdminDaftarKomplain = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const res = await adminKomplainService.getAdminKomplain();
-      // Adapt to possible response shapes
-      const data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      // Gunakan backend scope baru: assigned_or_related
+      let res = await adminKomplainService.getAdminKomplain({ scope: 'assigned_or_related' });
+      let data = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
 
       // Sort newest first by created_at or tanggal_pelaporan
       const sorted = [...data].sort((a, b) => {
@@ -244,10 +245,14 @@ const AdminDaftarKomplain = () => {
 
       {/* Info bar */}
       <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
-        {(() => {
-          const lu = getLastUpdated();
-          return lu ? `Terakhir diupdate: ${lu}` : 'Terakhir diupdate: -';
-        })()}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+          <div>
+            {(() => {
+              const lu = getLastUpdated();
+              return lu ? `Terakhir diupdate: ${lu}` : 'Terakhir diupdate: -';
+            })()}
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards - match Omset Harian (3 cols) */}
@@ -287,55 +292,50 @@ const AdminDaftarKomplain = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
-          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari komplain..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Semua</option>
-                <option value="menunggu">Menunggu</option>
-                <option value="diproses">Diproses</option>
-                <option value="selesai">Selesai</option>
-                <option value="ditolak">Ditolak</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStatusFilter('');
-                }}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span className="font-semibold">Reset</span>
-              </button>
+      {/* Form Pencarian - gaya Data Sewa */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-3">
+        <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Cari komplain..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            >
+              <option value="">Semua</option>
+              <option value="menunggu">Menunggu</option>
+              <option value="diproses">Diproses</option>
+              <option value="selesai">Selesai</option>
+              <option value="ditolak">Ditolak</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={() => { setSearchTerm(''); setStatusFilter(''); }}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="font-semibold">Reset</span>
+            </button>
+          </div>
         </div>
-      )}
+      </div>
 
       {/* Daftar Komplain - Grid Cards */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-3">
         <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Daftar Komplain</h2>
         </div>
@@ -357,12 +357,12 @@ const AdminDaftarKomplain = () => {
           </div>
         ) : (
           <>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                 {paginatedItems.map((row, idx) => {
                   const pelapor = row?.Pelapor || row?.pelapor || {};
                   return (
-                    <div key={row.id} className="relative border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div key={row.id} className="relative bg-white border border-gray-100 rounded-md p-3 hover:shadow-md transition-shadow text-xs">
                       {/* Actions */}
                       <div className="absolute top-2 right-2 flex items-center gap-1">
                         <button title="Lihat" onClick={() => navigate(`/admin/operasional/komplain/${row.id}`)} className="p-2 rounded hover:bg-gray-100 text-gray-700"><Eye className="h-4 w-4"/></button>
@@ -371,10 +371,10 @@ const AdminDaftarKomplain = () => {
                         <button title="Copy deskripsi" onClick={() => navigator.clipboard.writeText((row?.deskripsi_komplain||'').toString())} className="p-2 rounded hover:bg-gray-100 text-gray-700"><CopyIcon className="h-4 w-4"/></button>
                       </div>
                       <div className="pr-16">
-                        <div className="text-xs text-gray-500">{formatDate(row?.created_at || row?.tanggal_pelaporan)}</div>
-                        <h3 className="text-base font-semibold text-gray-900 mt-0.5">{row?.judul_komplain || '-'}</h3>
-                        <p className="text-sm text-gray-700 mt-1 line-clamp-2">{truncateText(row?.deskripsi_komplain, 140)}</p>
-                        <div className="mt-2 text-sm text-gray-700 space-y-1">
+                        <div className="text-[10px] text-gray-500">{formatDate(row?.created_at || row?.tanggal_pelaporan)}</div>
+                        <h3 className="text-sm font-semibold text-gray-900 mt-0.5">{row?.judul_komplain || '-'}</h3>
+                        <p className="text-xs text-gray-700 mt-1 line-clamp-2">{truncateText(row?.deskripsi_komplain, 140)}</p>
+                        <div className="mt-2 text-xs text-gray-700 space-y-1">
                           <div><span className="text-gray-500">Pelapor:</span> <span className="font-medium">{pelapor?.username || pelapor?.nama || '-'}</span></div>
                           <div className="capitalize"><span className="text-gray-500">Status:</span> {row?.status || '-'}</div>
                         </div>

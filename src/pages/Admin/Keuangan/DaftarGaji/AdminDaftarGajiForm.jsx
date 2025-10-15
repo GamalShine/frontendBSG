@@ -1,15 +1,22 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Button from '@/components/UI/Button';
 import Input from '@/components/UI/Input';
+import { API_CONFIG } from '@/config/constants';
 
 const AdminDaftarGajiForm = () => {
   const designUpdatedText = useMemo(() => new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }), []);
 
+  const navigate = useNavigate();
+
+  // Options untuk select divisi & jabatan
+  const [divisions, setDivisions] = useState([]); // [{id, name, children:[{id,name}]}]
+  const [selectedDivisiId, setSelectedDivisiId] = useState('');
+
   const [form, setForm] = useState({
-    karyawan: '',
-    divisi: '',
-    posisi: '',
+    nama: '',
+    jabatan_id: '',
     gaji_pokok: '',
     tunjangan_kinerja: '',
     tunjangan_posisi: '',
@@ -23,7 +30,7 @@ const AdminDaftarGajiForm = () => {
     sp_1_2: '',
     pinjaman_karyawan: '',
     pph21: '',
-    catatan: '',
+    user_id: '',
   });
 
   const onChange = (e) => {
@@ -38,11 +45,92 @@ const AdminDaftarGajiForm = () => {
     inputMode: 'numeric',
   };
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    // Ambil hierarchy untuk isi pilihan divisi & jabatan
+    const loadHierarchy = async () => {
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+        const res = await fetch(`${API_CONFIG.BASE_URL}/admin/sdm/hierarchy`, {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        const data = await res.json();
+        if (res.ok && data?.success && Array.isArray(data.data)) {
+          setDivisions(data.data);
+        } else {
+          setDivisions([]);
+        }
+      } catch (err) {
+        console.error('Gagal memuat hierarchy SDM:', err);
+        setDivisions([]);
+      }
+    };
+    loadHierarchy();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: sambungkan ke service API jika sudah tersedia
-    console.log('Submit Daftar Gaji:', form);
-    alert('Data gaji & bonus berhasil disiapkan (simulasi).');
+    // Validasi minimal
+    if (!form.nama || !String(form.nama).trim()) {
+      alert('Nama karyawan wajib diisi');
+      return;
+    }
+    if (!form.jabatan_id) {
+      alert('Silakan pilih jabatan');
+      return;
+    }
+
+    const toNumber = (v) => {
+      if (v === '' || v === null || v === undefined) return 0;
+      const n = Number(v);
+      return isNaN(n) ? 0 : n;
+    };
+
+    const payload = {
+      nama: form.nama,
+      jabatan_id: Number(form.jabatan_id),
+      // Komponen penghasilan
+      gaji_pokok: toNumber(form.gaji_pokok),
+      tunjangan_kinerja: toNumber(form.tunjangan_kinerja),
+      tunjangan_posisi: toNumber(form.tunjangan_posisi),
+      uang_makan: toNumber(form.uang_makan),
+      lembur: toNumber(form.lembur),
+      bonus: toNumber(form.bonus),
+      // Komponen potongan
+      potongan: toNumber(form.potongan),
+      bpjstk: toNumber(form.bpjstk),
+      bpjs_kesehatan: toNumber(form.bpjs_kesehatan),
+      bpjs_kes_penambahan: toNumber(form.bpjs_kes_penambahan),
+      sp_1_2: toNumber(form.sp_1_2),
+      pinjaman_karyawan: toNumber(form.pinjaman_karyawan),
+      pph21: toNumber(form.pph21),
+      // Optional keterkaitan user
+      user_id: form.user_id ? Number(form.user_id) : null,
+    };
+
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+      const res = await fetch(`${API_CONFIG.BASE_URL}/admin/sdm/employees`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok && data?.success) {
+        alert('Data gaji karyawan berhasil dibuat');
+        navigate('/admin/keuangan/daftar-gaji');
+      } else {
+        alert(data?.message || 'Gagal menyimpan data gaji');
+      }
+    } catch (err) {
+      console.error('Error submit gaji:', err);
+      alert('Terjadi kesalahan saat menyimpan data');
+    }
   };
 
   return (
@@ -74,25 +162,43 @@ const AdminDaftarGajiForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Input
                 label="Nama Karyawan"
-                name="karyawan"
+                name="nama"
                 placeholder="Contoh: Budi Santoso"
-                value={form.karyawan}
+                value={form.nama}
                 onChange={onChange}
               />
-              <Input
-                label="Divisi"
-                name="divisi"
-                placeholder="Contoh: Produksi"
-                value={form.divisi}
-                onChange={onChange}
-              />
-              <Input
-                label="Posisi/Jabatan"
-                name="posisi"
-                placeholder="Contoh: Supervisor"
-                value={form.posisi}
-                onChange={onChange}
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Divisi</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2"
+                  value={selectedDivisiId}
+                  onChange={(e) => {
+                    setSelectedDivisiId(e.target.value);
+                    setForm((prev) => ({ ...prev, jabatan_id: '' }));
+                  }}
+                >
+                  <option value="">Pilih divisi</option>
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                <select
+                  className="w-full border rounded-md px-3 py-2"
+                  name="jabatan_id"
+                  value={form.jabatan_id}
+                  onChange={onChange}
+                  disabled={!selectedDivisiId}
+                >
+                  <option value="">Pilih jabatan</option>
+                  {divisions
+                    .find((d) => String(d.id) === String(selectedDivisiId))?.children?.map((j) => (
+                      <option key={j.id} value={j.id}>{j.name}</option>
+                    ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -123,22 +229,29 @@ const AdminDaftarGajiForm = () => {
             </div>
           </div>
 
-          {/* Catatan */}
+          {/* Optional: User ID terkait (jika ingin mengaitkan akun aplikasi) */}
           <div>
             <Input
-              label="Catatan"
-              name="catatan"
-              placeholder="Tambahkan catatan atau keterangan (opsional)"
-              value={form.catatan}
+              label="User ID (opsional)"
+              name="user_id"
+              placeholder="Isi jika ingin mengaitkan ke user tertentu"
+              value={form.user_id}
               onChange={onChange}
+              type="number"
+              min="0"
+              step="1"
+              inputMode="numeric"
             />
           </div>
 
           {/* Aksi */}
           <div className="flex items-center gap-3 justify-end">
-            <Button type="button" variant="outline" onClick={() => setForm({
-              karyawan: '', divisi: '', posisi: '', gaji_pokok: '', tunjangan_kinerja: '', tunjangan_posisi: '', uang_makan: '', lembur: '', bonus: '', potongan: '', bpjstk: '', bpjs_kesehatan: '', bpjs_kes_penambahan: '', sp_1_2: '', pinjaman_karyawan: '', pph21: '', catatan: '',
-            })}>Reset</Button>
+            <Button type="button" variant="outline" onClick={() => {
+              setForm({
+                nama: '', jabatan_id: '', gaji_pokok: '', tunjangan_kinerja: '', tunjangan_posisi: '', uang_makan: '', lembur: '', bonus: '', potongan: '', bpjstk: '', bpjs_kesehatan: '', bpjs_kes_penambahan: '', sp_1_2: '', pinjaman_karyawan: '', pph21: '', user_id: '',
+              });
+              setSelectedDivisiId('');
+            }}>Reset</Button>
             <Button type="submit" className="px-6">Simpan</Button>
           </div>
         </form>

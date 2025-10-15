@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { MenuProvider } from '../../contexts/MenuContext'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import { useLocation } from 'react-router-dom'
@@ -21,7 +20,6 @@ const Layout = ({ children }) => {
   }, [])
 
   return (
-    <MenuProvider>
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
@@ -68,7 +66,6 @@ const Layout = ({ children }) => {
           <MobileFloatingAdd key={location.pathname} />
         </div>
       </div>
-    </MenuProvider>
   )
 }
 

@@ -23,11 +23,10 @@ import {
 } from 'lucide-react'
 import Card, { CardHeader, CardBody } from '@/components/UI/Card'
 import Button from '@/components/UI/Button'
-import Input from '@/components/UI/Input'
-import Select from '@/components/UI/Select'
 import Badge from '@/components/UI/Badge'
 import toast from 'react-hot-toast'
 import { MENU_CODES } from '@/config/menuCodes'
+import { Dialog, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI, DialogBody as DialogBodyUI, DialogFooter as DialogFooterUI } from '@/components/UI/Dialog'
 
 const AdminTrainingList = () => {
   const { user } = useAuth()
@@ -43,6 +42,52 @@ const AdminTrainingList = () => {
     completedTrainings: 0,
     totalParticipants: 0
   })
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [formTraining, setFormTraining] = useState({
+    training_dasar: false,
+    training_leadership: false,
+    training_skill: false,
+    training_lanjutan: false,
+  })
+
+  useEffect(() => {
+    if (detailOpen && selectedUser) {
+      setIsEditing(false)
+      setFormTraining({
+        training_dasar: !!selectedUser.training_dasar,
+        training_leadership: !!selectedUser.training_leadership,
+        training_skill: !!selectedUser.training_skill,
+        training_lanjutan: !!selectedUser.training_lanjutan,
+      })
+    }
+  }, [detailOpen, selectedUser])
+
+  const handleSaveEdit = async () => {
+    if (!selectedUser) return
+    try {
+      setSaveLoading(true)
+      const payload = { ...formTraining, user_id: selectedUser.id }
+      const resp = await trainingService.updateUserTrainingStatus(selectedUser.id, payload)
+      if (resp && (resp.success === undefined || resp.success === true)) {
+        toast.success('Status training berhasil disimpan')
+        // Update state list
+        setTrainings(prev => prev.map(u => u.id === selectedUser.id ? { ...u, ...formTraining } : u))
+        // Update selected
+        setSelectedUser(prev => prev ? { ...prev, ...formTraining } : prev)
+        setIsEditing(false)
+      } else {
+        toast.error(resp?.message || 'Gagal menyimpan status training')
+      }
+    } catch (e) {
+      console.error('Save training error:', e)
+      toast.error('Terjadi kesalahan saat menyimpan')
+    } finally {
+      setSaveLoading(false)
+    }
+  }
 
   // Hanya jalankan pemanggilan API admin jika role benar-benar admin
   useEffect(() => {
@@ -213,7 +258,7 @@ const AdminTrainingList = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-0 bg-gray-50 min-h-screen">
 
       {/* Header Merah + Badge (unified style) */}
       <div className="bg-red-800 text-white px-6 py-4">
@@ -226,148 +271,128 @@ const AdminTrainingList = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent"
-              onClick={exportData}
+            <Link
+              to="/admin/training/new"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
-              <Download className="h-4 w-4" />
-              <span className="font-semibold">Export</span>
-            </Button>
-            <Link to="/admin/training/new">
-              <Button className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent">
-                <Plus className="h-4 w-4" />
-                <span className="font-semibold">Tambah</span>
-              </Button>
+              <Plus className="h-4 w-4" />
+              <span className="font-semibold">Tambah</span>
             </Link>
           </div>
         </div>
       </div>
 
       {/* Spacing below header */}
-      <div className="mb-2"></div>
+      <div className="my-0"></div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Karyawan</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalUsers || 0}</p>
-              </div>
+      {/* Stats Cards (match Poskas style) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
-          </CardBody>
-        </Card>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Training Dasar</p>
+              <p className="text-xl font-bold text-gray-900">{stats.trainingDasarCompleted || 0}</p>
+              <p className="text-[11px] text-gray-500">{stats.trainingDasarPercentage || 0}% selesai</p>
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Training Dasar</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.trainingDasarCompleted || 0}</p>
-                <p className="text-xs text-gray-500">{stats.trainingDasarPercentage || 0}% selesai</p>
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-yellow-50 flex items-center justify-center">
+              <BookOpen className="h-5 w-5 text-yellow-600" />
             </div>
-          </CardBody>
-        </Card>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Training Leadership</p>
+              <p className="text-xl font-bold text-gray-900">{stats.trainingLeadershipCompleted || 0}</p>
+              <p className="text-[11px] text-gray-500">{stats.trainingLeadershipPercentage || 0}% selesai</p>
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-yellow-100 rounded-lg">
-                <BookOpen className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Training Leadership</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.trainingLeadershipCompleted || 0}</p>
-                <p className="text-xs text-gray-500">{stats.trainingLeadershipPercentage || 0}% selesai</p>
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-purple-50 flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-purple-600" />
             </div>
-          </CardBody>
-        </Card>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Training Skill</p>
+              <p className="text-xl font-bold text-gray-900">{stats.trainingSkillCompleted || 0}</p>
+              <p className="text-[11px] text-gray-500">{stats.trainingSkillPercentage || 0}% selesai</p>
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardBody>
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Training Skill</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.trainingSkillCompleted || 0}</p>
-                <p className="text-xs text-gray-500">{stats.trainingSkillPercentage || 0}% selesai</p>
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Users className="h-5 w-5 text-blue-600" />
             </div>
-          </CardBody>
-        </Card>
+            <div>
+              <p className="text-xs font-medium text-gray-500">Training Lanjutan</p>
+              <p className="text-xl font-bold text-gray-900">{stats.trainingLanjutanCompleted || 0}</p>
+              <p className="text-[11px] text-gray-500">{stats.trainingLanjutanPercentage || 0}% selesai</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Filter Data Training</h3>
-            <Button variant="outline" size="sm" onClick={handleReset}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reset
-            </Button>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Filters - always visible, styled like Poskas (tanpa header) */}
+      <Card className="rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+        <CardBody className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cari Karyawan</label>
-              <Input
-                placeholder="Cari nama atau email karyawan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau email karyawan..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
             </div>
-            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <Select
+              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+              <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Semua Role</option>
                 <option value="admin">Admin</option>
                 <option value="leader">Leader</option>
                 <option value="divisi">Divisi</option>
-              </Select>
+              </select>
             </div>
-          </div>
-          
-          <div className="flex gap-2 mt-4">
-            <Button onClick={handleSearch}>
-              <Search className="h-4 w-4 mr-2" />
-              Cari
-            </Button>
+            <div className="flex items-end">
+              <button
+                onClick={handleSearch}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+              >
+                <Search className="h-4 w-4" />
+                <span className="font-semibold">Pencarian</span>
+              </button>
+            </div>
           </div>
         </CardBody>
       </Card>
 
       {/* Training List */}
-      <Card>
-        <CardHeader>
+      <Card className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
+        <CardHeader className="px-6 py-3 bg-red-700 text-white">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-900">Daftar Data Training Karyawan</h3>
-            <Link to="/admin/training/new">
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Tambah Data Training
-              </Button>
-            </Link>
+            <h3 className="text-lg md:text-base font-extrabold uppercase tracking-wider text-white">Daftar Data Training Karyawan</h3>
+            <span className="text-sm md:text-base font-semibold text-white">Total Data Karyawan : {stats.totalUsers || 0}</span>
           </div>
         </CardHeader>
-        <CardBody>
+        <CardBody className="px-6 py-4">
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -411,7 +436,11 @@ const AdminTrainingList = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {trainings.map((userTraining) => (
-                    <tr key={userTraining.id} className="hover:bg-gray-50">
+                    <tr
+                      key={userTraining.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => { setSelectedUser(userTraining); setDetailOpen(true) }}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -453,11 +482,12 @@ const AdminTrainingList = () => {
                           <Link
                             to={`/admin/training/${userTraining.id}/edit`}
                             className="text-blue-600 hover:text-blue-900"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Edit className="h-4 w-4" />
                           </Link>
                           <button
-                            onClick={() => handleDelete(userTraining.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(userTraining.id) }}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -499,8 +529,130 @@ const AdminTrainingList = () => {
           )}
         </CardBody>
       </Card>
+
+      {/* Detail Modal */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent>
+          <DialogHeaderUI>
+            <DialogTitleUI>Detail Training Karyawan</DialogTitleUI>
+          </DialogHeaderUI>
+          <DialogBodyUI>
+            {selectedUser ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-base font-semibold text-gray-900">{selectedUser.nama}</p>
+                    <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                  </div>
+                </div>
+
+                {/* Role dipisahkan di atas - tampil sederhana: Role : Keterangan */}
+                <div className="px-0 py-2 border-b border-gray-200">
+                  <p className="text-sm text-gray-700">
+                    Role : <span className="font-medium text-gray-900 uppercase">{selectedUser.role}</span>
+                  </p>
+                </div>
+
+                {/* Training status */}
+                {!isEditing ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm text-gray-600">Training Dasar</span>
+                      <Badge variant={selectedUser.training_dasar ? 'success' : 'secondary'}>
+                        {selectedUser.training_dasar ? 'Selesai' : 'Belum'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm text-gray-600">Training Leadership</span>
+                      <Badge variant={selectedUser.training_leadership ? 'success' : 'secondary'}>
+                        {selectedUser.training_leadership ? 'Selesai' : 'Belum'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm text-gray-600">Training Skill</span>
+                      <Badge variant={selectedUser.training_skill ? 'success' : 'secondary'}>
+                        {selectedUser.training_skill ? 'Selesai' : 'Belum'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm text-gray-600">Training Lanjutan</span>
+                      <Badge variant={selectedUser.training_lanjutan ? 'success' : 'secondary'}>
+                        {selectedUser.training_lanjutan ? 'Selesai' : 'Belum'}
+                      </Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
+                      <span className="text-sm text-gray-700">Training Dasar</span>
+                      <input
+                        type="checkbox"
+                        checked={formTraining.training_dasar}
+                        onChange={(e) => setFormTraining(v => ({ ...v, training_dasar: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
+                      <span className="text-sm text-gray-700">Training Leadership</span>
+                      <input
+                        type="checkbox"
+                        checked={formTraining.training_leadership}
+                        onChange={(e) => setFormTraining(v => ({ ...v, training_leadership: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
+                      <span className="text-sm text-gray-700">Training Skill</span>
+                      <input
+                        type="checkbox"
+                        checked={formTraining.training_skill}
+                        onChange={(e) => setFormTraining(v => ({ ...v, training_skill: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
+                      <span className="text-sm text-gray-700">Training Lanjutan</span>
+                      <input
+                        type="checkbox"
+                        checked={formTraining.training_lanjutan}
+                        onChange={(e) => setFormTraining(v => ({ ...v, training_lanjutan: e.target.checked }))}
+                        className="h-4 w-4"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600">Tidak ada data.</p>
+            )}
+          </DialogBodyUI>
+          <DialogFooterUI>
+            {!isEditing ? (
+              <>
+                <Button onClick={() => setDetailOpen(false)} variant="outline">Tutup</Button>
+                {selectedUser && (
+                  <Button onClick={() => setIsEditing(true)}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <Button onClick={() => setIsEditing(false)} variant="outline">Batal</Button>
+                <Button onClick={handleSaveEdit} disabled={saveLoading} loading={saveLoading}>
+                  Simpan
+                </Button>
+              </>
+            )}
+          </DialogFooterUI>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
-export default AdminTrainingList 
+export default AdminTrainingList

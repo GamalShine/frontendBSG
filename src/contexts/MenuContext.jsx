@@ -335,7 +335,7 @@ export const MenuProvider = ({ children }) => {
             {
               id: 'daftar-gaji',
               title: 'DAFTAR GAJI',
-              path: '/admin/keuangan/gaji',
+              path: '/admin/keuangan/daftar-gaji',
               permissions: ['read'],
               picKey: 'AdminDaftarGaji'
             },

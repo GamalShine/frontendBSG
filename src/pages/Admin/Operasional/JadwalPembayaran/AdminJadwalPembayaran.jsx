@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
 import { jadwalPembayaranService } from '../../../../services/jadwalPembayaranService'
-import { Plus, ChevronDown, ChevronRight } from 'lucide-react'
+import { MENU_CODES } from '../../../../config/menuCodes'
+import { Plus, ChevronDown, ChevronRight, Calendar, Edit2, Wallet, Building2, User, Phone, CreditCard, BadgeDollarSign, Search } from 'lucide-react'
 
 const KATEGORI_OPTIONS = [
   'pajak_kendaraan_pribadi',
@@ -32,6 +35,8 @@ const formatCurrency = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(num)
 }
 
+const prettyKategori = (k) => (k || '').replaceAll('_',' ').toUpperCase()
+
 const emptyForm = {
   nama_item: '',
   kategori: '',
@@ -56,6 +61,9 @@ const AdminJadwalPembayaran = () => {
   const [expandedKategori, setExpandedKategori] = useState({})
   const [expandedYear, setExpandedYear] = useState({})
   const [expandedMonth, setExpandedMonth] = useState({})
+  const [searchTerm, setSearchTerm] = useState('')
+  const [kategoriFilter, setKategoriFilter] = useState('all')
+  const [showFilters, setShowFilters] = useState(false)
 
   const load = async () => {
     try {
@@ -80,13 +88,36 @@ const AdminJadwalPembayaran = () => {
     const max = Math.max(...dates)
     if (!isFinite(max)) return '-'
     const dt = new Date(max)
-    return `${dt.toLocaleDateString('id-ID')} pukul ${dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`
+    try {
+      return format(dt, "d MMMM yyyy 'pukul' HH.mm", { locale: id })
+    } catch {
+      return '-'
+    }
   }, [data])
+
+  // Filter data berdasarkan pencarian sederhana
+  const filteredData = useMemo(() => {
+    let base = data || []
+    if (kategoriFilter !== 'all') {
+      base = base.filter(row => (row.kategori || '').toLowerCase() === kategoriFilter.toLowerCase())
+    }
+    if (!searchTerm) return base
+    const q = searchTerm.toLowerCase()
+    return base.filter(row => (
+      (row.nama_item || '').toLowerCase().includes(q) ||
+      (row.kategori || '').toLowerCase().includes(q) ||
+      (row.outlet || '').toLowerCase().includes(q) ||
+      (row.pemilik_sewa || '').toLowerCase().includes(q) ||
+      (row.no_kontak_pemilik_sewa || '').toLowerCase().includes(q) ||
+      (row.no_rekening || '').toLowerCase().includes(q) ||
+      (row.bulan || '').toLowerCase().includes(q)
+    ))
+  }, [data, searchTerm, kategoriFilter])
 
   // group -> kategori -> tahun -> bulan
   const grouped = useMemo(() => {
     const map = {}
-    for (const item of data) {
+    for (const item of filteredData) {
       const cat = item.kategori || 'lainnya'
       const year = item.tahun || new Date().getFullYear()
       const month = item.bulan || ''
@@ -96,7 +127,7 @@ const AdminJadwalPembayaran = () => {
       map[cat][year][month].push(item)
     }
     return map
-  }, [data])
+  }, [filteredData])
 
   const openCreate = () => {
     setEditingId(null)
@@ -155,11 +186,21 @@ const AdminJadwalPembayaran = () => {
       {/* Header merah */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">Jadwal</h1>
-            <p className="text-sm text-red-100">Pembayaran dan Perawatan</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.jadwalPembayaran}</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">JADWAL</h1>
+              <p className="text-sm text-red-100">Pembayaran dan Perawatan</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              aria-pressed={showFilters}
+            >
+              PENCARIAN
+            </button>
             <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
@@ -169,11 +210,55 @@ const AdminJadwalPembayaran = () => {
       </div>
 
       {/* Last updated */}
-      <div className="px-6 py-2 bg-white border-b">
+      <div className="px-4 py-2 bg-gray-200">
         <div className="text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
       </div>
 
-      <div className="px-6 py-6">
+      {/* Form Pencarian (toggle) */}
+      {showFilters && (
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-6 mb-0">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cari Jadwal</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e)=>setSearchTerm(e.target.value)}
+                    placeholder="Cari nama item, kategori, outlet, pemilik, rekening, bulan..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Kategori</label>
+                <select
+                  value={kategoriFilter}
+                  onChange={(e)=>setKategoriFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="all">Semua Kategori</option>
+                  {KATEGORI_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>{opt.replaceAll('_',' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => { setSearchTerm(''); setKategoriFilter('all'); }}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-0 my-6">
         {error && (
           <div className="text-red-600 mb-3">{error}</div>
         )}
@@ -182,13 +267,20 @@ const AdminJadwalPembayaran = () => {
           <div className="text-gray-600">Memuat data...</div>
         ) : (
           Object.keys(grouped).map((kategori) => {
-            const prettyCat = kategori.replaceAll('_',' ').toUpperCase()
+            const prettyCat = prettyKategori(kategori)
             const catOpen = !!expandedKategori[kategori]
             const years = Object.keys(grouped[kategori] || {}).sort((a,b)=>b-a)
+            const totalItemsInCat = years.reduce((acc, y)=> acc + Object.values(grouped[kategori][y]||{}).reduce((a,arr)=>a+arr.length,0), 0)
+            const totalSewaInCat = years.reduce((acc, y)=> acc + Object.values(grouped[kategori][y]||{}).flat().reduce((a,row)=> a + (Number(row.sewa)||0), 0), 0)
             return (
-              <div key={kategori} className="mb-4 border rounded-lg overflow-hidden">
-                <button onClick={() => setExpandedKategori(v=>({...v,[kategori]:!v[kategori]}))} className="w-full flex items-center justify-between px-4 py-3 bg-red-700 text-white">
-                  <span className="font-semibold">{prettyCat}</span>
+              <div key={kategori} className="mb-6 border rounded-lg overflow-hidden shadow-sm">
+                <button onClick={() => setExpandedKategori(v=>({...v,[kategori]:!v[kategori]}))} className="w-full flex items-center justify-between px-5 py-4 bg-red-700 text-white">
+                  <div className="flex items-center gap-3">
+                    <Building2 className="h-5 w-5 text-red-100" />
+                    <span className="font-bold tracking-wide">{prettyCat}</span>
+                    <span className="ml-2 text-xs bg-white/15 px-2 py-0.5 rounded-full">{totalItemsInCat} item</span>
+                    <span className="ml-1 text-xs bg-white/15 px-2 py-0.5 rounded-full flex items-center gap-1"><BadgeDollarSign className="h-3 w-3" /> {formatCurrency(totalSewaInCat)}</span>
+                  </div>
                   {catOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </button>
                 {catOpen && (
@@ -197,46 +289,53 @@ const AdminJadwalPembayaran = () => {
                       const yearKey = `${kategori}-${y}`
                       const yOpen = !!expandedYear[yearKey]
                       const months = Object.keys(grouped[kategori][y] || {})
+                      const totalItemsInYear = months.reduce((a,m)=> a + (grouped[kategori][y][m]?.length||0), 0)
+                      const totalSewaInYear = months.reduce((a,m)=> a + (grouped[kategori][y][m]||[]).reduce((s,row)=> s + (Number(row.sewa)||0), 0), 0)
                       return (
                         <div key={y} className="border-t">
-                          <button onClick={() => setExpandedYear(v=>({...v,[yearKey]:!v[yearKey]}))} className="w-full flex items-center justify-between px-4 py-2 bg-gray-50 text-gray-800 font-semibold">
-                            <span>Tahun {y}</span>
-                            {yOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                          <button onClick={() => setExpandedYear(v=>({...v,[yearKey]:!v[yearKey]}))} className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 text-gray-800 font-semibold">
+                            <span className="flex items-center gap-2"><Calendar className="h-4 w-4 text-red-600"/> Tahun {y}</span>
+                            <span className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                              <span className="bg-gray-200 px-2 py-0.5 rounded-full">{totalItemsInYear} item</span>
+                              <span className="bg-gray-200 px-2 py-0.5 rounded-full">{formatCurrency(totalSewaInYear)}</span>
+                              {yOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </span>
                           </button>
                           {yOpen && (
-                            <div className="divide-y">
+                            <div className="">
                               {months.map((m) => {
                                 const monthKey = `${yearKey}-${m}`
                                 const mOpen = !!expandedMonth[monthKey]
                                 const items = grouped[kategori][y][m] || []
+                                const monthTotal = items.reduce((a,row)=> a + (Number(row.sewa)||0), 0)
                                 return (
-                                  <div key={m}>
-                                    <button onClick={() => setExpandedMonth(v=>({...v,[monthKey]:!v[monthKey]}))} className="w-full flex items-center justify-between px-4 py-2 text-gray-800 font-medium">
+                                  <div key={m} className="border-t">
+                                    <button onClick={() => setExpandedMonth(v=>({...v,[monthKey]:!v[monthKey]}))} className="w-full flex items-center justify-between px-5 py-2 text-gray-800 font-semibold">
                                       <span className="capitalize">{m || '-'}</span>
-                                      {mOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                      <span className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                                        <span className="bg-gray-100 px-2 py-0.5 rounded-full">{items.length} item</span>
+                                        <span className="bg-gray-100 px-2 py-0.5 rounded-full">{formatCurrency(monthTotal)}</span>
+                                        {mOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                      </span>
                                     </button>
                                     {mOpen && (
-                                      <div className="px-0">
+                                      <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {items.map((row) => (
-                                          <div key={row.id} className="mx-4 mb-4 border rounded overflow-hidden">
-                                            {/* Tabel key:value */}
-                                            <div className="grid grid-cols-1 md:grid-cols-2">
-                                              <div className="border-b p-3 bg-gray-50 font-medium">SEWA OUTLET</div>
-                                              <div className="border-b p-3">{row.nama_item}</div>
-                                              <div className="p-3 border-b bg-gray-50">Sewa</div>
-                                              <div className="p-3 border-b">{formatCurrency(row.sewa)}</div>
-                                              <div className="p-3 border-b bg-gray-50">Pemilik</div>
-                                              <div className="p-3 border-b">{row.pemilik_sewa || '-'}</div>
-                                              <div className="p-3 border-b bg-gray-50">Kontak</div>
-                                              <div className="p-3 border-b">{row.no_kontak_pemilik_sewa || '-'}</div>
-                                              <div className="p-3 border-b bg-gray-50">Rekening</div>
-                                              <div className="p-3 border-b">{row.no_rekening || '-'}</div>
-                                              <div className="p-3 border-b bg-gray-50">Jatuh Tempo</div>
-                                              <div className="p-3 border-b">{row.tanggal_jatuh_tempo ? new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID') : '-'}</div>
-                                              <div className="p-3 border-b bg-gray-50">Bulan</div>
-                                              <div className="p-3 border-b">{row.bulan || '-'}</div>
+                                          <div key={row.id} className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                            <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                                              <div className="font-semibold text-gray-800">{prettyKategori(row.kategori)}</div>
+                                              <button onClick={() => openEdit(row)} className="inline-flex items-center gap-1 text-red-700 hover:text-red-800 text-sm font-medium">
+                                                <Edit2 className="h-4 w-4" /> Edit
+                                              </button>
                                             </div>
-                                            <button onClick={() => openEdit(row)} className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2">Edit</button>
+                                            <div className="p-4 grid grid-cols-1 gap-2 text-sm">
+                                              <div className="flex items-center gap-2 text-gray-700"><Wallet className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Sewa</span><span className="font-semibold">{formatCurrency(row.sewa)}</span></div>
+                                              <div className="flex items-center gap-2 text-gray-700"><User className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Pemilik</span><span className="">{row.pemilik_sewa || '-'}</span></div>
+                                              <div className="flex items-center gap-2 text-gray-700"><Phone className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Kontak</span><span className="">{row.no_kontak_pemilik_sewa || '-'}</span></div>
+                                              <div className="flex items-center gap-2 text-gray-700"><CreditCard className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Rekening</span><span className="">{row.no_rekening || '-'}</span></div>
+                                              <div className="flex items-center gap-2 text-gray-700"><Calendar className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Jatuh Tempo</span><span className="">{row.tanggal_jatuh_tempo ? new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID') : '-'}</span></div>
+                                              <div className="flex items-center gap-2 text-gray-700"><Calendar className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Bulan</span><span className="">{row.bulan || '-'}</span></div>
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
@@ -307,7 +406,8 @@ const AdminJadwalPembayaran = () => {
               </div>
               <div>
                 <label className="block text-sm mb-1">Sewa</label>
-                <input value={formData.sewa} onChange={(e)=>setFormData(v=>({...v,sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
+                <input type="number" step="1000" placeholder="0" value={formData.sewa} onChange={(e)=>setFormData(v=>({...v,sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
+                <div className="text-xs text-gray-500 mt-1">Gunakan angka saja. Contoh: 1500000</div>
               </div>
               <div>
                 <label className="block text-sm mb-1">Pemilik Sewa</label>

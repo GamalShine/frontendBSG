@@ -21,6 +21,7 @@ import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { MENU_CODES } from '@/config/menuCodes';
 import { API_CONFIG } from '../../../../config/constants';
 import { normalizeImageUrl } from '../../../../utils/url';
+import RichTextEditor from '../../../../components/UI/RichTextEditor';
 
 const AdminPoskasEdit = () => {
   const { id } = useParams();
@@ -52,6 +53,12 @@ const AdminPoskasEdit = () => {
   const [isBoldActive, setIsBoldActive] = useState(false);
   const [isItalicActive, setIsItalicActive] = useState(false);
   const [isUnderlineActive, setIsUnderlineActive] = useState(false);
+
+  // Handler untuk RichTextEditor (sinkronkan HTML ke formData)
+  const handleEditorHtmlChange = (e) => {
+    const html = e?.target?.value ?? '';
+    setFormData(prev => ({ ...prev, isi_poskas: html }));
+  };
 
   const updateFormatState = () => {
     try {
@@ -109,6 +116,60 @@ const AdminPoskasEdit = () => {
       .replace(/\sstyle=\"[^\"]*(text-align\s*:\s*(right|left|center|justify))[^\"]*\"/gi, (m) => m.replace(/text-align\s*:\s*(right|left|center|justify)\s*;?/gi, ''))
       .replace(/\sstyle=\"\s*\"/gi, '')
       .replace(/\sstyle='\s*'/gi, '');
+  };
+
+  // Remove zero-width characters
+  const removeZeroWidth = (html) => (html || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
+
+  // Normalize <b> structure: collapse nested, split around <br> and [IMG:id], unwrap placeholder-only bold
+  const normalizeBoldHtml = (html) => {
+    if (!html) return html;
+    let out = html;
+    // standardize strong to b
+    out = out.replace(/<\/?strong>/gi, (m) => m.toLowerCase().includes('</') ? '</b>' : '<b>');
+    // remove <b><br></b> and empty <b></b>
+    out = out.replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>');
+    out = out.replace(/<b>\s*<\/b>/gi, '');
+    // collapse nested <b> until stable
+    try {
+      let prev;
+      do {
+        prev = out;
+        out = out.replace(/<b>\s*<b>/gi, '<b>').replace(/<\/b>\s*<\/b>/gi, '</b>');
+      } while (out !== prev);
+    } catch {}
+    // unwrap placeholder-only bold
+    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+    // split bold across <br>
+    out = out.replace(/<b>([\s\S]*?)<br\s*\/?>([\s\S]*?)<\/b>/gi, (m, a, b) => {
+      const left = a.trim() ? `<b>${a}</b>` : '';
+      const right = b.trim() ? `<b>${b}</b>` : '';
+      return `${left}<br>${right}`;
+    });
+    // split bold around placeholders
+    out = out.replace(/<b>([^]*?)\[IMG:(\d+)\]([^]*?)<\/b>/gi, (m, left, id, right) => {
+      const L = left.trim() ? `<b>${left}</b>` : '';
+      const R = right.trim() ? `<b>${right}</b>` : '';
+      return `${L}[IMG:${id}]${R}`;
+    });
+    return out;
+  };
+  // Cleanup leading/trailing unmatched <b> tags
+  const fixStrayB = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/^(\s*<\/b>)+/i, '');
+    out = out.replace(/(<b>\s*)+$/i, '');
+    return out;
+  };
+  // Unbold-safe: break bold scope where spans force normal weight
+  const unboldSafe = (html) => {
+    if (!html) return html;
+    let out = html;
+    // Replace span with font-weight: normal to close/open <b> around it
+    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</b>${inner}<b>`);
+    out = fixStrayB(out);
+    return out;
   };
 
   // Add CSS for editor behavior (LTR + images + placeholder)
@@ -592,13 +653,14 @@ const AdminPoskasEdit = () => {
 
   const handleEditorBlur = () => {
     const content = editorRef.current ? editorRef.current.innerHTML : '';
-    const clean = sanitizeToLTR(content);
+    let clean = removeZeroWidth(content);
+    clean = sanitizeToLTR(clean);
+    clean = unboldSafe(clean);
+    clean = normalizeBoldHtml(clean);
+    clean = fixStrayB(clean);
     if (editorRef.current) editorRef.current.innerHTML = clean;
     lastContentRef.current = clean;
-    setFormData(prev => ({
-      ...prev,
-      isi_poskas: clean
-    }));
+    setFormData(prev => ({ ...prev, isi_poskas: clean }));
   };
 
   // Handle paste event in editor
@@ -678,10 +740,21 @@ const AdminPoskasEdit = () => {
         }
       }
     }
+    // Handle plain text paste safely
+    const plain = e.clipboardData.getData('text/plain');
+    if (plain) {
+      e.preventDefault();
+      const safe = plain.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r?\n/g, '<br>');
+      document.execCommand('insertHTML', false, safe);
+    }
     // Post-paste sanitize for non-image content
     setTimeout(() => {
       if (editorRef.current) {
-        const cleaned = sanitizeToLTR(editorRef.current.innerHTML);
+        let cleaned = removeZeroWidth(editorRef.current.innerHTML);
+        cleaned = sanitizeToLTR(cleaned);
+        cleaned = unboldSafe(cleaned);
+        cleaned = normalizeBoldHtml(cleaned);
+        cleaned = fixStrayB(cleaned);
         editorRef.current.innerHTML = cleaned;
         try { placeCaretAtEnd(editorRef.current); } catch {}
       }
@@ -823,22 +896,17 @@ const AdminPoskasEdit = () => {
     }
   };
 
-  // Validate form data
+  // Validate form data (gunakan nilai dari RichTextEditor melalui formData.isi_poskas)
   const validateForm = () => {
-    const editorContent = editorRef.current?.innerHTML || '';
-    // Remove base64 images for validation purposes
-    const cleanContent = editorContent.replace(/<img[^>]*src="data:image[^"]*"[^>]*>/g, '').trim();
-    
-    if (!cleanContent) {
+    const editorContent = (formData?.isi_poskas || '').trim();
+    if (!editorContent) {
       toast.error('Isi laporan tidak boleh kosong');
       return false;
     }
-    
-    if (cleanContent.length < 10) {
+    if (editorContent.replace(/<br\s*\/?>/gi, '').replace(/<[^>]+>/g, '').trim().length < 10) {
       toast.error('Isi laporan minimal 10 karakter');
       return false;
     }
-    
     return true;
   };
 
@@ -848,8 +916,8 @@ const AdminPoskasEdit = () => {
     
     if (!validateForm()) return;
     
-    // Get content from editor
-    const editorContent = getEditorContent();
+    // Ambil konten dari state yang sudah diserialisasi oleh RichTextEditor
+    const editorContent = formData?.isi_poskas || '';
     const finalFormData = {
       ...formData,
       isi_poskas: editorContent
@@ -1283,54 +1351,30 @@ const AdminPoskasEdit = () => {
 
           {/* Content Editor */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
-              <button
-                type="button"
-                onClick={() => { document.execCommand('bold'); updateFormatState(); }}
-                className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                aria-pressed={isBoldActive}
-                title="Bold"
-              >
-                B
-              </button>
-              <button
-                type="button"
-                onClick={() => { document.execCommand('italic'); updateFormatState(); }}
-                className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                aria-pressed={isItalicActive}
-                title="Italic"
-              >
-                I
-              </button>
-              <button
-                type="button"
-                onClick={() => { document.execCommand('underline'); updateFormatState(); }}
-                className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                aria-pressed={isUnderlineActive}
-                title="Underline"
-              >
-                U
-              </button>
-              {/* List buttons removed */}
+            {/* Header: Isi Pos Kas */}
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FileText className="h-5 w-5 text-green-600" />
+              </div>
+              <label className="text-lg font-semibold text-gray-900">
+                Isi Pos Kas
+              </label>
             </div>
+            {/* Toolbar */}
+            {/* Toolbar contentEditable dihapus karena memakai RichTextEditor */}
             
-            {/* Editor */}
-            <div
-              ref={editorRef}
-              contentEditable
-              onInput={handleEditorChange}
-              onKeyUp={handleEditorKeyUp}
-              onMouseUp={handleEditorKeyUp}
-              onFocus={updateFormatState}
-              onPaste={handleEditorPaste}
-              className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-              placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
-              style={{ 
-                whiteSpace: 'pre-wrap',
-                lineHeight: '1.6'
+            {/* Editor e-learning */}
+            <RichTextEditor
+              value={formData.isi_poskas}
+              onChange={handleEditorHtmlChange}
+              onFilesChange={(files) => {
+                // files: array of { file, id }
+                setSelectedImages(files); // uploadNewImagesToServer menerima File atau {file,id}
+                setNewImageIds(files.map(f => f.id));
               }}
-            ></div>
+              placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
+              rows={12}
+            />
             
             <p className="text-sm text-gray-500">
               💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)

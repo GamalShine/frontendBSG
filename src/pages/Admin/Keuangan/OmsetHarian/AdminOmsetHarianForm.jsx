@@ -4,17 +4,11 @@ import { useAuth } from '../../../../contexts/AuthContext';
 import { omsetHarianService } from '../../../../services/omsetHarianService';
 import api from '../../../../services/api';
 import { toast } from 'react-hot-toast';
+import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { getEnvironmentConfig } from '../../../../config/environment';
 import { normalizeImageUrl } from '../../../../utils/url';
-import { 
-  ArrowLeft, 
-  Calendar, 
-  FileText, 
-  Image as ImageIcon,
-  Upload,
-  X,
-  Save,
-  RefreshCw
+import RichTextEditor from '../../../../components/UI/RichTextEditor';
+import { ArrowLeft, Calendar, FileText,  Image as ImageIcon, Upload, X, Save, RefreshCw 
 } from 'lucide-react';
 
 const AdminOmsetHarianForm = () => {
@@ -41,6 +35,12 @@ const AdminOmsetHarianForm = () => {
   const [isItalicActive, setIsItalicActive] = useState(false);
   const [isUnderlineActive, setIsUnderlineActive] = useState(false);
   const SHOW_IMAGE_UI = false; // sembunyikan UI gambar di halaman edit
+
+  // Handler RichTextEditor: sinkronkan HTML ke formData
+  const handleEditorHtmlChange = (e) => {
+    const html = e?.target?.value ?? '';
+    setFormData(prev => ({ ...prev, isi_omset: html }));
+  };
 
   const updateFormatState = () => {
     try {
@@ -119,58 +119,70 @@ const AdminOmsetHarianForm = () => {
     } catch (_) {}
   };
 
-  // Normalize/sanitize bold tags in HTML so there are no empty <b></b> and use <b> instead of <strong>
+  // Normalize/sanitize bold tags in HTML so there are no empty <strong></strong> and standardize to <strong>
   const normalizeBoldHtml = (html) => {
     if (!html) return html;
     let out = html;
-    // Normalize strong -> b
-    out = out.replace(/<\s*strong\s*>/gi, '<b>')
-             .replace(/<\s*\/\s*strong\s*>/gi, '</b>');
-    // Remove <b><br></b> -> <br>
-    out = out.replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>');
-    // Remove empty bolds: <b>   </b>
-    out = out.replace(/<b>\s*<\/b>/gi, '');
-    // Collapse nested bolds: <b><b>text</b></b> -> <b>text</b>
-    out = out.replace(/<b>\s*<b>/gi, '<b>')
-             .replace(/<\/b>\s*<\/b>/gi, '</b>');
-    // Repeat collapse until stable to handle triple+ nesting
+    // Normalize b -> strong
+    out = out.replace(/<\s*b\s*>/gi, '<strong>')
+             .replace(/<\s*\/\s*b\s*>/gi, '</strong>');
+    // Remove <strong><br></strong> -> <br>
+    out = out.replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>');
+    // Remove empty bolds: <strong>   </strong>
+    out = out.replace(/<strong>\s*<\/strong>/gi, '');
+    // Collapse nested strongs
     try {
       let prevCollapse;
       do {
         prevCollapse = out;
-        out = out.replace(/<b>\s*<b>/gi, '<b>')
-                 .replace(/<\/b>\s*<\/b>/gi, '</b>');
+        out = out.replace(/<strong>\s*<strong>/gi, '<strong>')
+                 .replace(/<\/strong>\s*<\/strong>/gi, '</strong>');
       } while (out !== prevCollapse);
     } catch (_) {}
 
-    // Unwrap placeholder-only bold: <b>[IMG:123]</b> -> [IMG:123]
-    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+    // Unwrap placeholder-only bold: <strong>[IMG:123]</strong> -> [IMG:123]
+    out = out.replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
 
-    // Split bold across placeholders so image breaks bold scope
+    // Split strong across placeholders so image breaks bold scope
     try {
       let prevSplitImg;
       do {
         prevSplitImg = out;
-        out = out.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
-          const l = left.trim() ? `<b>${left}</b>` : '';
-          const r = right.trim() ? `<b>${right}</b>` : '';
+        out = out.replace(/<strong>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/strong>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<strong>${left}</strong>` : '';
+          const r = right.trim() ? `<strong>${right}</strong>` : '';
           return `${l}${img}${r}`;
         });
       } while (out !== prevSplitImg);
     } catch (_) {}
 
-    // Split bold across <br>: <b>a<br>b</b> => <b>a</b><br><b>b</b>
+    // Split strong across <br>: <strong>a<br>b</strong> => <strong>a</strong><br><strong>b</strong>
     try {
       let prev;
       do {
         prev = out;
-        out = out.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
-          const left = a.trim() ? `<b>${a}</b>` : '';
-          const right = b.trim() ? `<b>${b}</b>` : '';
+        out = out.replace(/<strong>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/strong>/gi, (m, a, b) => {
+          const left = a.trim() ? `<strong>${a}</strong>` : '';
+          const right = b.trim() ? `<strong>${b}</strong>` : '';
           return `${left}<br>${right}`;
         });
       } while (out !== prev);
     } catch (_) {}
+    return out;
+  };
+  const fixStrayStrong = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/^(\s*<\/strong>)+/i, '');
+    out = out.replace(/(<strong>\s*)+$/i, '');
+    return out;
+  };
+  const unboldSafe = (html) => {
+    if (!html) return html;
+    let out = html;
+    // Break strong scope where span forces normal weight
+    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</strong>${inner}<strong>`);
+    out = fixStrayStrong(out);
     return out;
   };
 
@@ -178,7 +190,9 @@ const AdminOmsetHarianForm = () => {
   const sanitizeEditorHtml = () => {
     if (!editorRef.current) return;
     const before = editorRef.current.innerHTML;
-    const cleaned = normalizeBoldHtml(before);
+    let cleaned = unboldSafe(before);
+    cleaned = normalizeBoldHtml(cleaned);
+    cleaned = fixStrayStrong(cleaned);
     if (cleaned !== before) {
       editorRef.current.innerHTML = cleaned;
     }
@@ -334,9 +348,12 @@ const AdminOmsetHarianForm = () => {
     try {
       setLoading(true);
       const response = await omsetHarianService.getOmsetHarianById(id);
-      
-      if (response.success && response.data) {
-        const omsetData = response.data;
+
+      // Terima kedua bentuk: {success, data} atau langsung data object
+      const ok = (response && response.success === true) || (response && typeof response === 'object' && response.id);
+      const omsetData = response?.data || response;
+
+      if (ok && omsetData) {
         console.log('🔍 Raw omset data:', omsetData);
         console.log('🔍 Raw images data:', omsetData.images);
         console.log('🔍 Raw images type:', typeof omsetData.images);
@@ -532,7 +549,9 @@ const AdminOmsetHarianForm = () => {
 
   const handleEditorBlur = () => {
     const content = editorRef.current ? editorRef.current.innerHTML : '';
-    const cleaned = normalizeBoldHtml(content);
+    let cleaned = unboldSafe(content);
+    cleaned = normalizeBoldHtml(cleaned);
+    cleaned = fixStrayStrong(cleaned);
     if (editorRef.current && cleaned !== content) {
       editorRef.current.innerHTML = cleaned;
     }
@@ -700,51 +719,53 @@ const handleEditorMouseUp = () => {
         if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
         return href ? `<a href="${href}">` : '<a>';
       })
-      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
+      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, (m, tag) => {
+        const t = tag.toLowerCase();
+        if (t === 'b') return '<strong>';
+        return `<${t}>`;
+      });
 
-    // Normalize bold variants and prevent wrapping <br> or [IMG:id]
+    // Normalize bold variants to <strong> and prevent wrapping <br> or [IMG:id]
     processedContent = processedContent
-      .replace(/<\s*strong\s*>/gi, '<b>')
-      .replace(/<\s*\/\s*strong\s*>/gi, '</b>')
-      .replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>')
-      .replace(/<b>\s*<\/b>/gi, '')
-      .replace(/<b>\s*<b>/gi, '<b>')
-      .replace(/<\/b>\s*<\/b>/gi, '</b>')
+      .replace(/<\s*b\s*>/gi, '<strong>')
+      .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+      .replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>')
+      .replace(/<strong>\s*<\/strong>/gi, '')
       // unwrap placeholder-only bold
-      .replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
+      .replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
 
-    // Split bold across placeholders in processed content
+    // Split strong across placeholders in processed content
     try {
       let prevSplitImg2;
       do {
         prevSplitImg2 = processedContent;
-        processedContent = processedContent.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
-          const l = left.trim() ? `<b>${left}</b>` : '';
-          const r = right.trim() ? `<b>${right}</b>` : '';
+        processedContent = processedContent.replace(/<strong>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/strong>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<strong>${left}</strong>` : '';
+          const r = right.trim() ? `<strong>${right}</strong>` : '';
           return `${l}${img}${r}`;
         });
       } while (processedContent !== prevSplitImg2);
     } catch (_) {}
 
-    // Ulangi collapse nested <b> sampai stabil
+    // Ulangi collapse nested <strong> sampai stabil
     try {
       let prevCollapse2;
       do {
         prevCollapse2 = processedContent;
         processedContent = processedContent
-          .replace(/<b>\s*<b>/gi, '<b>')
-          .replace(/<\/b>\s*<\/b>/gi, '</b>');
+          .replace(/<strong>\s*<strong>/gi, '<strong>')
+          .replace(/<\/strong>\s*<\/strong>/gi, '</strong>');
       } while (processedContent !== prevCollapse2);
     } catch (_) {}
 
-    // Split bold across <br>: <b>a<br>b</b> => <b>a</b><br><b>b</b>
+    // Split strong across <br>: <strong>a<br>b</strong> => <strong>a</strong><br><strong>b</strong>
     try {
       let prev2;
       do {
         prev2 = processedContent;
-        processedContent = processedContent.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
-          const left = a.trim() ? `<b>${a}</b>` : '';
-          const right = b.trim() ? `<b>${b}</b>` : '';
+        processedContent = processedContent.replace(/<strong>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/strong>/gi, (m, a, b) => {
+          const left = a.trim() ? `<strong>${a}</strong>` : '';
+          const right = b.trim() ? `<strong>${b}</strong>` : '';
           return `${left}<br>${right}`;
         });
       } while (processedContent !== prev2);
@@ -759,11 +780,11 @@ const handleEditorMouseUp = () => {
     // Ensure any newline characters are persisted visually as <br>
     processedContent = processedContent.replace(/\n/g, '<br>');
 
-    // Final cleanup: hapus tag <b> yang tidak berpasangan di awal/akhir konten
-    // - leading </b> tanpa pembuka
-    processedContent = processedContent.replace(/^(\s*<\/b>)+/i, '');
-    // - trailing <b> tanpa penutup
-    processedContent = processedContent.replace(/(<b>\s*)+$/i, '');
+    // Final cleanup: hapus tag <strong> yang tidak berpasangan di awal/akhir konten
+    // - leading </strong> tanpa pembuka
+    processedContent = processedContent.replace(/^(\s*<\/strong>)+/i, '');
+    // - trailing <strong> tanpa penutup
+    processedContent = processedContent.replace(/(<strong>\s*)+$/i, '');
 
     // Jalankan normalisasi bold terakhir kali untuk memastikan konsistensi akhir
     processedContent = normalizeBoldHtml(processedContent);
@@ -819,8 +840,28 @@ const handleEditorMouseUp = () => {
     setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Validasi isi omset harian (menggunakan nilai dari RichTextEditor)
+  const validateIsiOmset = () => {
+    const html = formData?.isi_omset || '';
+    const plain = html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+    if (!plain) {
+      toast.error('Isi omset tidak boleh kosong');
+      return false;
+    }
+    if (plain.length < 10) {
+      toast.error('Isi omset minimal 10 karakter');
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Validasi sebelum proses upload & submit
+    if (!validateIsiOmset()) return;
     setIsSubmitting(true);
     try {
       // 1) Pastikan gambar baru diupload ke server terlebih dahulu
@@ -862,8 +903,8 @@ const handleEditorMouseUp = () => {
         ...newImages
       ];
 
-      // 3) Ambil konten editor (placeholder [IMG:id] sudah konsisten dengan id lokal)
-      const isiContent = getEditorContent();
+      // 3) Ambil konten dari RichTextEditor (sudah diserialisasi: img -> [IMG:id], normalisasi <strong>/<br>)
+      const isiContent = formData?.isi_omset || '';
 
       // 4) Hanya simpan gambar yang benar-benar dipakai di editor
       const usedIdMatches = [...isiContent.matchAll(/\[IMG:(\d+)\]/g)];
@@ -889,6 +930,12 @@ const handleEditorMouseUp = () => {
       setIsSubmitting(false);
     }
   };
+
+  if (isEditMode && loading) {
+    return (
+      <div className="p-6"><LoadingSpinner /></div>
+    );
+  }
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
@@ -968,86 +1015,18 @@ const handleEditorMouseUp = () => {
                 Isi Omset Harian
               </label>
             </div>
-            
-            <div className="space-y-4">
-              {/* Toolbar for basic formatting like on Poskas */}
-              <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    // prevent button from stealing focus/selection
-                    e.preventDefault();
-                    if (editorRef.current) editorRef.current.focus();
-                    restoreSelection();
-                    const hadBr = selectionHasBr();
-                    document.execCommand('bold');
-                    if (hadBr) ensureBrAtCursor();
-                    updateFormatState();
-                    saveSelection();
-                  }}
-                  className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                  aria-pressed={isBoldActive}
-                  title="Bold"
-                >
-                  B
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    if (editorRef.current) editorRef.current.focus();
-                    restoreSelection();
-                    const hadBr = selectionHasBr();
-                    document.execCommand('italic');
-                    if (hadBr) ensureBrAtCursor();
-                    updateFormatState();
-                    saveSelection();
-                  }}
-                  className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                  aria-pressed={isItalicActive}
-                  title="Italic"
-                >
-                  I
-                </button>
-                <button
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    if (editorRef.current) editorRef.current.focus();
-                    restoreSelection();
-                    const hadBr = selectionHasBr();
-                    document.execCommand('underline');
-                    if (hadBr) ensureBrAtCursor();
-                    updateFormatState();
-                    saveSelection();
-                  }}
-                  className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                  aria-pressed={isUnderlineActive}
-                  title="Underline"
-                >
-                  U
-                </button>
-              </div>
-              <div
-                ref={editorRef}
-                contentEditable
-                data-placeholder="Masukkan isi omset harian... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
-                onInput={handleEditorChange}
-                onBlur={handleEditorBlur}
-                onPaste={handleEditorPaste}
-                onKeyUp={handleEditorKeyUp}
-                onMouseUp={handleEditorMouseUp}
-                onKeyDown={handleEditorKeyDown}
-                dir="ltr"
-                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-left"
-                style={{ whiteSpace: 'pre-wrap' }}
-                dangerouslySetInnerHTML={isEditMode ? { __html: formData.isi_omset } : undefined}
-              />
-              
-              <p className="text-sm text-gray-500">
-                💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
-              </p>
-            </div>
+
+            <RichTextEditor
+              value={formData.isi_omset}
+              onChange={handleEditorHtmlChange}
+              onFilesChange={(files) => {
+                // files: array of { file, id }
+                setSelectedImages(files);
+              }}
+              placeholder="Masukkan isi omset harian... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+              rows={12}
+            />
+            <p className="text-sm text-gray-500">💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)</p>
           </div>
 
           {/* Image Management Section - Only show in edit mode (disembunyikan sementara) */}
