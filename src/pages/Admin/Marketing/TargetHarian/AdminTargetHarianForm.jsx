@@ -33,6 +33,48 @@ const AdminTargetHarianForm = () => {
     setForm(prev => ({ ...prev, [name]: value }));
   };
 
+  // Helpers: remove zero-width, unbold-safe, normalize strong
+  const removeZeroWidth = (html) => (html || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const normalizeBoldHtml = (html) => {
+    if (!html) return html;
+    let out = html;
+    // standardize <b> -> <strong>
+    out = out.replace(/<\s*b\s*>/gi, '<strong>').replace(/<\s*\/\s*b\s*>/gi, '</strong>');
+    // remove empty and <strong><br></strong>
+    out = out.replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>');
+    out = out.replace(/<strong>\s*<\/strong>/gi, '');
+    // collapse nested
+    try { let prev; do { prev = out; out = out.replace(/<strong>\s*<strong>/gi, '<strong>').replace(/<\/strong>\s*<\/strong>/gi, '</strong>'); } while (out !== prev); } catch {}
+    // unwrap placeholder-only
+    out = out.replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
+    // split across <br>
+    out = out.replace(/<strong>([\s\S]*?)<br\s*\/?>([\s\S]*?)<\/strong>/gi, (m,a,b) => {
+      const L = a.trim() ? `<strong>${a}</strong>` : '';
+      const R = b.trim() ? `<strong>${b}</strong>` : '';
+      return `${L}<br>${R}`;
+    });
+    // split around [IMG:id]
+    out = out.replace(/<strong>([^]*?)\[IMG:(\d+)\]([^]*?)<\/strong>/gi, (m,left,id,right) => {
+      const L = left.trim() ? `<strong>${left}</strong>` : '';
+      const R = right.trim() ? `<strong>${right}</strong>` : '';
+      return `${L}[IMG:${id}]${R}`;
+    });
+    return out;
+  };
+  const fixStrayStrong = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/^(\s*<\/strong>)+/i, '');
+    out = out.replace(/(<strong>\s*)+$/i, '');
+    return out;
+  };
+  const unboldSafe = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</strong>${inner}<strong>`);
+    return fixStrayStrong(out);
+  };
+
   const onSelectFiles = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -231,6 +273,14 @@ const AdminTargetHarianForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.tanggal_target) return toast.error('Tanggal target wajib diisi');
+    // sanitize editor before serialize
+    if (editorRef.current) {
+      let tmp = removeZeroWidth(editorRef.current.innerHTML || '');
+      tmp = unboldSafe(tmp);
+      tmp = normalizeBoldHtml(tmp);
+      tmp = fixStrayStrong(tmp);
+      editorRef.current.innerHTML = tmp;
+    }
     const editorContent = getEditorContent();
     if (!editorContent || editorContent.trim().length < 10) return toast.error('Isi target minimal 10 karakter');
     setSubmitting(true);
@@ -300,6 +350,15 @@ const AdminTargetHarianForm = () => {
                   ref={editorRef}
                   contentEditable
                   onInput={handleEditorChange}
+                  onBlur={() => {
+                    if (!editorRef.current) return;
+                    let html = editorRef.current.innerHTML || '';
+                    html = removeZeroWidth(html);
+                    html = unboldSafe(html);
+                    html = normalizeBoldHtml(html);
+                    html = fixStrayStrong(html);
+                    editorRef.current.innerHTML = html;
+                  }}
                   onMouseUp={handleEditorInteraction}
                   onKeyUp={handleEditorInteraction}
                   onFocus={handleEditorInteraction}

@@ -18,16 +18,68 @@ const RichTextEditor = ({
   const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
-    if (editorRef.current && !isInitialized) {
+    if (!editorRef.current) return
+    // Hanya sinkron saat inisialisasi pertama (untuk halaman Edit ketika data baru di-fetch)
+    if (!isInitialized) {
       editorRef.current.innerHTML = value || ''
       setIsInitialized(true)
     }
+    // Setelah inisialisasi, JANGAN overwrite innerHTML dari prop value
+    // untuk menghindari img di editor berubah menjadi token [IMG:id]
   }, [value, isInitialized])
 
   // Ensure content is captured whenever the editor changes
   const handleInput = () => {
     if (onChange && editorRef.current) {
-      const content = editorRef.current.innerHTML
+      // Serialize: replace <img data-image-id="ID"> with [IMG:ID]
+      let content = editorRef.current.innerHTML
+      try {
+        // Use a temporary DOM to safely transform
+        const tmp = document.createElement('div')
+        tmp.innerHTML = content
+        // Find images with data-image-id and replace with token text nodes
+        const imgs = tmp.querySelectorAll('img[data-image-id]')
+        imgs.forEach(img => {
+          const id = img.getAttribute('data-image-id')
+          const token = document.createTextNode(`[IMG:${id}]`)
+          img.parentNode.replaceChild(token, img)
+        })
+        content = tmp.innerHTML
+      } catch {}
+      // Normalize <b> to <strong> and cleanup
+      try {
+        content = content
+          .replace(/<\s*b\s*>/gi, '<strong>')
+          .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+          .replace(/<strong>\s*(?:<br\s*\/??\s*>)+\s*<\/strong>/gi, '<br>')
+          .replace(/<strong>\s*<\/strong>/gi, '')
+        // collapse nested <strong>
+        let prev
+        do {
+          prev = content
+          content = content
+            .replace(/<strong>\s*<strong>/gi, '<strong>')
+            .replace(/<\/strong>\s*<\/strong>/gi, '</strong>')
+        } while (content !== prev)
+      } catch {}
+      // Normalize block containers to <br> (remove <div>/<p> wrappers)
+      try {
+        content = content
+          .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+          .replace(/<\s*p[^>]*>/gi, '')
+          .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+          .replace(/<\s*div[^>]*>/gi, '')
+          .replace(/<br[^>]*>/gi, '<br>')
+          // collapse 3+ consecutive <br> to max 2
+          .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+      } catch {}
+      // Remove zero-width and trim stray leading/trailing breaks
+      try {
+        content = content
+          .replace(/[\u200B-\u200D\uFEFF]/g, '')
+          .replace(/^(?:\s*<br>)+/i, '')
+          .replace(/(?:<br>\s*)+$/i, '')
+      } catch {}
       console.log('RichTextEditor: Content changed:', content.substring(0, 100))
       onChange({
         target: {
@@ -47,7 +99,7 @@ const RichTextEditor = ({
   // Ensure content is captured on focus
   const handleFocus = () => {
     setIsFocused(true)
-    handleInput()
+    // Jangan serialisasi saat fokus agar gambar tidak langsung berubah ke [IMG:id]
   }
 
   // Add function to get current content
@@ -67,65 +119,88 @@ const RichTextEditor = ({
     }
   }, [onChange])
 
+  // Generate a simple unique ID for image placeholders
+  const genImageId = () => Date.now() + Math.floor(Math.random() * 1000)
+
+  // Insert <img ... data-image-id> preview at caret
+  const insertImagePreview = (id, dataUrl, alt = 'Image') => {
+    const img = document.createElement('img')
+    img.src = dataUrl
+    img.alt = alt
+    img.setAttribute('data-image-id', id)
+    img.style.maxWidth = '100%'
+    img.style.height = 'auto'
+    img.style.margin = '10px 0'
+    img.style.borderRadius = '4px'
+    img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+
+    const sel = window.getSelection()
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0)
+      range.deleteContents()
+      range.insertNode(img)
+      range.collapse(false)
+    } else if (editorRef.current) {
+      editorRef.current.appendChild(img)
+    }
+    // add a trailing <br> for readability
+    document.execCommand('insertHTML', false, '<br>')
+  }
+
   const handlePaste = (e) => {
     e.preventDefault()
-    
-    const items = (e.clipboardData || e.originalEvent.clipboardData).items
-    
+
+    const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items || []
+
     for (let item of items) {
-      if (item.type.indexOf('image') !== -1) {
-        const blob = item.getAsFile()
-        
-        // Add file to uploadedFiles state instead of inserting base64
-        setUploadedFiles(prev => {
-          const newFiles = [...prev, blob];
-          
-          // Notify parent component about new files
-          if (onFilesChange) {
-            onFilesChange(newFiles)
+      if ((item.type || '').indexOf('image') !== -1) {
+        const file = item.getAsFile()
+        if (file) {
+          const id = genImageId()
+          setUploadedFiles(prev => {
+            const newList = [...prev, { file, id }]
+            if (onFilesChange) onFilesChange(newList)
+            return newList
+          })
+          // Read as data URL for inline preview
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            const dataUrl = ev.target.result
+            insertImagePreview(id, dataUrl, file.name || 'Image')
+            handleInput()
           }
-          
-          return newFiles;
-        })
-        
-        // Insert placeholder instead of base64 image
-        const placeholder = document.createElement('div')
-        placeholder.className = 'image-placeholder'
-        placeholder.style.cssText = `
-          border: 2px dashed #ccc;
-          padding: 20px;
-          margin: 10px 0;
-          text-align: center;
-          background: #f9f9f9;
-          border-radius: 4px;
-          color: #666;
-        `
-        placeholder.innerHTML = `
-          <div>📷 ${blob.name || 'Pasted Image'}</div>
-          <div style="font-size: 12px; margin-top: 5px;">
-            ${(blob.size / 1024).toFixed(1)} KB - Will be uploaded when form is submitted
-          </div>
-        `
-        
-        // Insert placeholder at cursor position
-        const selection = window.getSelection()
-        if (selection.rangeCount > 0) {
-          const range = selection.getRangeAt(0)
-          range.deleteContents()
-          range.insertNode(placeholder)
-          range.collapse(false)
-        } else {
-          editorRef.current.appendChild(placeholder)
+          reader.readAsDataURL(file)
+          return
         }
-        
-        handleInput()
-        return
       }
     }
-    
-    // If no image, paste as text
-    const text = e.clipboardData.getData('text/html') || e.clipboardData.getData('text/plain')
-    document.execCommand('insertHTML', false, text)
+
+    // If no image, paste with line breaks preserved
+    const html = e.clipboardData.getData('text/html') || ''
+    const plain = e.clipboardData.getData('text/plain') || ''
+
+    let toInsert = ''
+    if (plain) {
+      // Escape and convert newlines to <br>
+      toInsert = plain
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\r?\n/g, '<br>')
+    } else if (html) {
+      // Normalize common block tags to <br> and keep <br>
+      toInsert = html
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/<br[^>]*>/gi, '<br>')
+        // Normalize <b> to <strong>
+        .replace(/<\s*b\s*>/gi, '<strong>')
+        .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+    }
+
+    document.execCommand('insertHTML', false, toInsert)
     handleInput()
   }
 
@@ -144,51 +219,22 @@ const RichTextEditor = ({
       const files = Array.from(e.target.files)
       
       if (files.length > 0) {
-        // Add files to uploadedFiles state
+        // Generate IDs, update state, and insert inline previews
+        const filesWithIds = files.map((file) => ({ file, id: genImageId() }))
         setUploadedFiles(prev => {
-          const newFiles = [...prev, ...files];
-          
-          // Notify parent component about new files
-          if (onFilesChange) {
-            onFilesChange(newFiles)
-          }
-          
-          return newFiles;
+          const newList = [...prev, ...filesWithIds]
+          if (onFilesChange) onFilesChange(newList)
+          return newList
         })
-        
-        // Insert placeholders into editor (NOT base64 images)
-        files.forEach((file, index) => {
-          // Create a placeholder div instead of actual image
-          const placeholder = document.createElement('div')
-          placeholder.className = 'image-placeholder'
-          placeholder.style.cssText = `
-            border: 2px dashed #ccc;
-            padding: 20px;
-            margin: 10px 0;
-            text-align: center;
-            background: #f9f9f9;
-            border-radius: 4px;
-            color: #666;
-          `
-          placeholder.innerHTML = `
-            <div>📷 ${file.name}</div>
-            <div style="font-size: 12px; margin-top: 5px;">
-              ${(file.size / 1024).toFixed(1)} KB - Will be uploaded when form is submitted
-            </div>
-          `
-          
-          // Insert placeholder at cursor position
-          const selection = window.getSelection()
-          if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0)
-            range.deleteContents()
-            range.insertNode(placeholder)
-            range.collapse(false)
-          } else {
-            editorRef.current.appendChild(placeholder)
+
+        filesWithIds.forEach(({ id, file }) => {
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            const dataUrl = ev.target.result
+            insertImagePreview(id, dataUrl, file.name || 'Image')
+            handleInput()
           }
-          
-          handleInput()
+          reader.readAsDataURL(file)
         })
       }
     }
@@ -239,8 +285,6 @@ const RichTextEditor = ({
         onBlur={handleBlur}
         onKeyUp={handleInput}
         onKeyDown={handleInput}
-        onMouseUp={handleInput}
-        onMouseDown={handleInput}
         className={`
           border border-gray-300 rounded-b-lg p-3 min-h-[${rows * 1.5}rem] 
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500

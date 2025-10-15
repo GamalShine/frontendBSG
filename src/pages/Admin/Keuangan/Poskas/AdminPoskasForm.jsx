@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, FileText, RefreshCw, Save, X } from 'lucide-react';
 import { MENU_CODES } from '@/config/menuCodes';
 import { getEnvironmentConfig } from '../../../../config/environment';
+import RichTextEditor from '../../../../components/UI/RichTextEditor';
 
 const AdminPoskasForm = () => {
   const navigate = useNavigate();
@@ -79,42 +80,15 @@ const AdminPoskasForm = () => {
   const [imageIdMap, setImageIdMap] = useState(new Map()); // Map untuk tracking image ID
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
-  const editorRef = useRef(null);
-  const savedRangeRef = useRef(null);
-  const lastContentRef = useRef('');
-  const [editorInitialized, setEditorInitialized] = useState(false);
-  const [isBoldActive, setIsBoldActive] = useState(false);
-  const [isItalicActive, setIsItalicActive] = useState(false);
-  const [isUnderlineActive, setIsUnderlineActive] = useState(false);
-
-  // Selection helpers to preserve cursor/selection in contenteditable
-  const saveSelection = () => {
-    try {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        savedRangeRef.current = sel.getRangeAt(0).cloneRange();
-      }
-    } catch (_) {}
+  // Editor RichTextEditor tidak membutuhkan ref/toolbar state di sini
+  
+  // Handler untuk RichTextEditor (sinkronkan HTML ke formData)
+  const handleEditorHtmlChange = (e) => {
+    const html = e?.target?.value ?? '';
+    setFormData(prev => ({ ...prev, isi_poskas: html }));
   };
 
-  const restoreSelection = () => {
-    try {
-      const range = savedRangeRef.current;
-      if (range) {
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    } catch (_) {}
-  };
-
-  const updateFormatState = () => {
-    try {
-      setIsBoldActive(document.queryCommandState('bold'));
-      setIsItalicActive(document.queryCommandState('italic'));
-      setIsUnderlineActive(document.queryCommandState('underline'));
-    } catch (_) {}
-  };
+  // Editor contentEditable lama dihapus; helper terkait selection/toolbar tidak diperlukan lagi
 
   // Escape plain text to safe HTML
   const escapeHtml = (text) => {
@@ -127,54 +101,67 @@ const AdminPoskasForm = () => {
       .replace(/'/g, '&#39;');
   };
 
-  // Normalize/sanitize bold tags in HTML and keep structure stable
+  // Normalize/sanitize bold tags in HTML and keep structure stable (standardize to <strong>)
   const normalizeBoldHtml = (html) => {
     if (!html) return html;
     let out = html;
-    // Normalize strong -> b
-    out = out.replace(/<\s*strong\s*>/gi, '<b>')
-             .replace(/<\s*\/\s*strong\s*>/gi, '</b>');
-    // Remove <b><br></b> -> <br>
-    out = out.replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>');
-    // Remove empty bolds
-    out = out.replace(/<b>\s*<\/b>/gi, '');
-    // Collapse nested bolds
-    out = out.replace(/<b>\s*<b>/gi, '<b>')
-             .replace(/<\/b>\s*<\/b>/gi, '</b>');
+    // Convert <b> -> <strong>
+    out = out.replace(/<\s*b\s*>/gi, '<strong>')
+             .replace(/<\s*\/\s*b\s*>/gi, '</strong>');
+    // Remove <strong><br></strong> -> <br>
+    out = out.replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>');
+    // Remove empty strongs
+    out = out.replace(/<strong>\s*<\/strong>/gi, '');
+    // Collapse nested strongs
     try {
       let prevCollapse;
       do {
         prevCollapse = out;
-        out = out.replace(/<b>\s*<b>/gi, '<b>')
-                 .replace(/<\/b>\s*<\/b>/gi, '</b>');
+        out = out.replace(/<strong>\s*<strong>/gi, '<strong>')
+                 .replace(/<\/strong>\s*<\/strong>/gi, '</strong>');
       } while (out !== prevCollapse);
     } catch (_) {}
     // Unwrap placeholder-only bold
-    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
-    // Split bold across placeholders
+    out = out.replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
+    // Split strong across placeholders
     try {
       let prevSplitImg;
       do {
         prevSplitImg = out;
-        out = out.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
-          const l = left.trim() ? `<b>${left}</b>` : '';
-          const r = right.trim() ? `<b>${right}</b>` : '';
+        out = out.replace(/<strong>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/strong>/gi, (m, left, img, right) => {
+          const l = left.trim() ? `<strong>${left}</strong>` : '';
+          const r = right.trim() ? `<strong>${right}</strong>` : '';
           return `${l}${img}${r}`;
         });
       } while (out !== prevSplitImg);
     } catch (_) {}
-    // Split bold across <br>
+    // Split strong across <br>
     try {
       let prev;
       do {
         prev = out;
-        out = out.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
-          const left = a.trim() ? `<b>${a}</b>` : '';
-          const right = b.trim() ? `<b>${b}</b>` : '';
+        out = out.replace(/<strong>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/strong>/gi, (m, a, b) => {
+          const left = a.trim() ? `<strong>${a}</strong>` : '';
+          const right = b.trim() ? `<strong>${b}</strong>` : '';
           return `${left}<br>${right}`;
         });
       } while (out !== prev);
     } catch (_) {}
+    return out;
+  };
+  const fixStrayStrong = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/^(\s*<\/strong>)+/i, '');
+    out = out.replace(/(<strong>\s*)+$/i, '');
+    return out;
+  };
+  const unboldSafe = (html) => {
+    if (!html) return html;
+    let out = html;
+    // break strong scope where span enforces normal weight
+    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</strong>${inner}<strong>`);
+    out = fixStrayStrong(out);
     return out;
   };
 
@@ -209,31 +196,7 @@ const AdminPoskasForm = () => {
     }
   }, [isEditMode, id]);
 
-  // Track selection changes to keep latest range (mouse/keyboard and global selectionchange)
-  useEffect(() => {
-    const editor = editorRef.current;
-    if (!editor) return;
-    const onMouseUp = () => { saveSelection(); updateFormatState(); };
-    const onKeyUp = () => { saveSelection(); updateFormatState(); };
-    const onSelectionChange = () => {
-      saveSelection();
-      // Only update when selection is inside the editor
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) return;
-      const node = sel.anchorNode;
-      if (node && editor.contains(node)) {
-        updateFormatState();
-      }
-    };
-    editor.addEventListener('mouseup', onMouseUp);
-    editor.addEventListener('keyup', onKeyUp);
-    document.addEventListener('selectionchange', onSelectionChange);
-    return () => {
-      editor.removeEventListener('mouseup', onMouseUp);
-      editor.removeEventListener('keyup', onKeyUp);
-      document.removeEventListener('selectionchange', onSelectionChange);
-    };
-  }, []);
+  // Listener selection untuk contentEditable lama dihapus
 
   const loadExistingData = async () => {
     try {
@@ -282,18 +245,7 @@ const AdminPoskasForm = () => {
     }
   };
 
-  // Initialize editor content once after data load to avoid React resets of selection
-  useEffect(() => {
-    if (!editorInitialized && !loading && editorRef.current) {
-      const initial = formData.isi_poskas || '';
-      editorRef.current.innerHTML = sanitizeToLTR(initial);
-      lastContentRef.current = initial;
-      setEditorInitialized(true);
-      // Move caret to end for a natural typing experience
-      placeCaretAtEnd(editorRef.current);
-      updateFormatState();
-    }
-  }, [editorInitialized, loading, formData.isi_poskas]);
+  // Inisialisasi editor contentEditable lama dihapus (menggunakan RichTextEditor)
 
   // Handle text editor changes
   const handleInputChange = (e) => {
@@ -304,339 +256,29 @@ const AdminPoskasForm = () => {
     }));
   };
 
-  const handleEditorChange = (e) => {
-    const content = e.target.innerHTML;
-    lastContentRef.current = content;
-    // Avoid frequent setState to prevent caret reset; commit on blur/submit
-    // Microtask sanitize to remove any accidental RTL attributes/styles from new nodes (layout only)
-    if (editorRef.current) {
-      requestAnimationFrame(() => {
-        try {
-          const nodes = editorRef.current.querySelectorAll('[dir], [style]');
-          nodes.forEach((n) => {
-            if (n.hasAttribute('dir')) n.removeAttribute('dir');
-            const style = n.getAttribute('style');
-            if (style) {
-              let cleaned = style
-                .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
-                .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
-                .replace(/\s*;\s*$/,'');
-              if (cleaned.trim().length === 0) {
-                n.removeAttribute('style');
-              } else {
-                n.setAttribute('style', cleaned);
-              }
-            }
-          });
-        } catch {}
-      });
-    }
-    updateFormatState();
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
-  const handleEditorKeyUp = () => {
-    // As an additional safeguard, normalize after keyup
-    if (!editorRef.current) return;
-    try {
-      const nodes = editorRef.current.querySelectorAll('[dir], [style]');
-      nodes.forEach((n) => {
-        if (n.hasAttribute('dir')) n.removeAttribute('dir');
-        const style = n.getAttribute('style');
-        if (style) {
-          let cleaned = style
-            .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
-            .replace(/text-align\s*:\s*(right)\s*;?/gi, 'text-align: left;')
-            .replace(/\s*;\s*$/,'');
-          if (cleaned.trim().length === 0) {
-            n.removeAttribute('style');
-          } else {
-            n.setAttribute('style', cleaned);
-          }
-        }
-      });
-    } catch {}
-    updateFormatState();
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
-  const handleEditorBlur = () => {
-    const content = editorRef.current ? editorRef.current.innerHTML : '';
-    // First layout sanitize (LTR), then structural bold normalize
-    let clean = sanitizeToLTR(content);
-    clean = normalizeBoldHtml(clean);
-    if (editorRef.current) editorRef.current.innerHTML = clean;
-    lastContentRef.current = clean;
-    setFormData(prev => ({
-      ...prev,
-      isi_poskas: clean
-    }));
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
   // Ensure Enter creates a clean line break without ZWSP or bold manipulation
-  const handleEditorKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      try {
-        document.execCommand('insertLineBreak');
-      } catch (_) {
-        document.execCommand('insertHTML', false, '<br>');
-      }
-    }
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
   // Focus editor helper
-  const focusEditor = () => {
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
   // Execute formatting command
-  const exec = (cmd, value = null) => {
-    // Restore selection so formatting applies to the highlighted text
-    if (savedRangeRef.current) {
-      restoreSelection();
-    } else if (editorRef.current) {
-      // No saved selection: put caret at end to ensure command still works
-      placeCaretAtEnd(editorRef.current);
-    }
-    try {
-      if (cmd === 'createLink') {
-        const url = value || window.prompt('Masukkan URL tautan (https://...)');
-        if (!url) return;
-        document.execCommand('createLink', false, url);
-        return;
-      }
-      if (cmd === 'unlink') {
-        document.execCommand('unlink');
-        return;
-      }
-      document.execCommand(cmd, false, value);
-      // Save selection after command so subsequent actions keep range
-      saveSelection();
-    } catch (e) {
-      console.warn('Exec command error', cmd, e);
-    }
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
   // Handle paste event in editor
-  const handleEditorPaste = async (e) => {
-    const items = e.clipboardData.items;
-    
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      
-      if (item.type.indexOf('image') !== -1) {
-        e.preventDefault();
-        
-        const file = item.getAsFile();
-        if (file) {
-          console.log('📸 Pasted image detected:', file.name, file.size);
-          
-          // Validate file size
-          if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            toast.error('Gambar terlalu besar. Maksimal 10MB');
-            return;
-          }
-          
-          // Check total image count
-          if (selectedImages.length >= 5) {
-            toast.error('Maksimal 5 gambar per laporan');
-            return;
-          }
-          
-          // Generate unique ID untuk gambar
-          const imageId = Date.now() + Math.floor(Math.random() * 1000);
-          
-          // Add to selected images dengan ID
-          const imageWithId = { file, id: imageId };
-          setSelectedImages(prev => [...prev, imageWithId]);
-          
-          // Store mapping file -> ID
-          setImageIdMap(prev => new Map(prev.set(file, imageId)));
-          
-          // Create preview URL and insert image into editor
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const imageUrl = e.target.result;
-            
-            // Add to preview URLs
-            setImagePreviewUrls(prev => [...prev, imageUrl]);
-            
-            // Create image element for editor dengan data-image-id
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            img.alt = 'Pasted image';
-            img.className = 'pasted-image';
-            img.setAttribute('data-image-id', imageId);
-            
-            // Insert image into editor at cursor position
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(img);
-              range.collapse(false);
-              
-              // Add a line break after the image
-              const br = document.createElement('br');
-              range.insertNode(br);
-              range.collapse(false);
-              
-              // Trigger editor change event
-              const event = new Event('input', { bubbles: true });
-              editorRef.current.dispatchEvent(event);
-            }
-            
-            toast.success('Gambar berhasil ditambahkan');
-          };
-          reader.readAsDataURL(file);
-        }
-      }
-    }
-    // Handle plain text paste
-    const text = e.clipboardData.getData('text/plain');
-    if (text) {
-      e.preventDefault();
-      const html = escapeHtml(text).replace(/\r?\n/g, '<br>');
-      document.execCommand('insertHTML', false, html);
-    }
-  };
+  // Handler editor lama dihapus (digantikan RichTextEditor)
 
   // Get editor content with [IMG:id] placeholders and preserve safe formatting
-  const getEditorContent = () => {
-    if (!editorRef.current) {
-      console.log('🔍 Debug: Editor ref not found');
-      return '';
-    }
-    
-    const content = editorRef.current.innerHTML;
-    console.log('🔍 Debug: Raw editor HTML:', content);
-    
-    if (!content || content.trim() === '') {
-      console.log('🔍 Debug: Editor content is empty');
-      return '';
-    }
-    
-    // Convert HTML content but keep allowed tags and replace images with placeholders
-    let processedContent = content;
-    // Remove zero-width characters
-    processedContent = processedContent
-      .replace(/\u200B/g, '')
-      .replace(/\u200C/g, '')
-      .replace(/\u200D/g, '')
-      .replace(/\uFEFF/g, '');
-    
-    // Replace base64 images dengan [IMG:id] placeholders
-    const imgRegex = /<img[^>]*data-image-id="([^"]*)"[^>]*>/g;
-    let imgMatch;
-    let imageCount = 0;
-    
-    while ((imgMatch = imgRegex.exec(content)) !== null) {
-      const imageId = imgMatch[1];
-      const placeholder = `[IMG:${imageId}]`;
-      processedContent = processedContent.replace(imgMatch[0], placeholder);
-      imageCount++;
-      console.log(`🔍 Debug: Replaced image with placeholder: [IMG:${imageId}]`);
-    }
-    
-    // Normalize block separators by turning divs/p into line breaks
-    processedContent = processedContent
-      .replace(/<div[^>]*>/gi, '\n')
-      .replace(/<\/div>/gi, '')
-      .replace(/<p[^>]*>/gi, '\n')
-      .replace(/<\/p>/gi, '');
-
-    // Keep only allowed tags and sanitize anchors
-    processedContent = processedContent
-      .replace(/<br[^>]*>/gi, '<br>')
-      .replace(/<a([^>]*)>/gi, (m, attrs) => {
-        const hrefMatch = attrs.match(/href\s*=\s*"([^"]*)"|href\s*=\s*'([^']*)'|href\s*=\s*([^\s>]+)/i);
-        let href = hrefMatch ? (hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || '') : '';
-        if (!/^https?:|^mailto:|^tel:/i.test(href)) href = '';
-        return href ? `<a href="${href}">` : '<a>';
-      })
-      .replace(/<(b|strong|i|em|u|ul|ol|li)[^>]*>/gi, '<$1>');
-
-    // Normalize bold variants and prevent wrapping <br> or [IMG:id]
-    processedContent = processedContent
-      .replace(/<\s*strong\s*>/gi, '<b>')
-      .replace(/<\s*\/\s*strong\s*>/gi, '</b>')
-      .replace(/<b>\s*(?:<br\s*\/?\s*>)+\s*<\/b>/gi, '<br>')
-      .replace(/<b>\s*<\/b>/gi, '')
-      .replace(/<b>\s*<b>/gi, '<b>')
-      .replace(/<\/b>\s*<\/b>/gi, '</b>')
-      // unwrap placeholder-only bold
-      .replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
-
-    // Split bold across placeholders
-    try {
-      let prevSplitImg2;
-      do {
-        prevSplitImg2 = processedContent;
-        processedContent = processedContent.replace(/<b>([^<>]*?)\s*(\[IMG:\d+\])\s*([^<>]*?)<\/b>/gi, (m, left, img, right) => {
-          const l = left.trim() ? `<b>${left}</b>` : '';
-          const r = right.trim() ? `<b>${right}</b>` : '';
-          return `${l}${img}${r}`;
-        });
-      } while (processedContent !== prevSplitImg2);
-    } catch (_) {}
-
-    // Collapse nested <b> to stable
-    try {
-      let prevCollapse2;
-      do {
-        prevCollapse2 = processedContent;
-        processedContent = processedContent
-          .replace(/<b>\s*<b>/gi, '<b>')
-          .replace(/<\/b>\s*<\/b>/gi, '</b>');
-      } while (processedContent !== prevCollapse2);
-    } catch (_) {}
-
-    // Split bold across <br>
-    try {
-      let prev2;
-      do {
-        prev2 = processedContent;
-        processedContent = processedContent.replace(/<b>([^<>]*)<br\s*\/?\s*>([^<>]*)<\/b>/gi, (m, a, b) => {
-          const left = a.trim() ? `<b>${a}</b>` : '';
-          const right = b.trim() ? `<b>${b}</b>` : '';
-          return `${left}<br>${right}`;
-        });
-      } while (processedContent !== prev2);
-    } catch (_) {}
-
-    // Minimal decode (do not decode lt/gt so literal "<b>" won't become tags)
-    processedContent = processedContent
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&');
-
-    // Ensure any newline characters are persisted visually as <br>
-    processedContent = processedContent.replace(/\n/g, '<br>');
-
-    // Final cleanup: remove unmatched leading </b> and trailing <b>
-    processedContent = processedContent.replace(/^(\s*<\/b>)+/i, '');
-    processedContent = processedContent.replace(/(<b>\s*)+$/i, '');
-
-    // Final normalization pass
-    processedContent = normalizeBoldHtml(processedContent);
-
-    console.log('🔍 Debug: Final processed content:', processedContent);
-    console.log('🔍 Debug: Content length:', processedContent.length);
-    console.log('🔍 Debug: Images found:', imageCount);
-    
-    return processedContent;
-  };
+  // Serializer editor lama dihapus (digantikan RichTextEditor)
 
   // Ensure editor has minimum content
-  const ensureEditorContent = () => {
-    if (editorRef.current) {
-      const content = editorRef.current.innerHTML;
-      if (!content || content.trim() === '' || content === '<br>' || content === '<div><br></div>') {
-        editorRef.current.innerHTML = '';
-        console.log('🔍 Debug: Editor content cleared for minimum content');
-      }
-    }
-  };
+  // Helper editor lama dihapus (digantikan RichTextEditor)
 
   // Handle image selection
   const handleImageSelect = (e) => {
@@ -707,8 +349,7 @@ const AdminPoskasForm = () => {
       return false;
     }
     
-    // Get content dari editor dengan format yang benar
-    const editorContent = getEditorContent();
+    const editorContent = formData.isi_poskas || '';
     console.log('🔍 Debug: Validating editor content:', editorContent);
     
     if (!editorContent || editorContent.trim() === '') {
@@ -788,11 +429,8 @@ const AdminPoskasForm = () => {
     
     console.log('🔍 Debug: Form submission started');
     
-    // Ensure editor has proper content
-    ensureEditorContent();
-    
-    // Get content from editor dengan format [IMG:id]
-    const editorContent = getEditorContent();
+    // Ambil konten dari state (RichTextEditor mengisi formData.isi_poskas)
+    const editorContent = formData.isi_poskas || '';
     console.log('🔍 Debug: Editor content:', editorContent);
     
     // Double check validation
@@ -1009,54 +647,18 @@ const AdminPoskasForm = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Toolbar (B/I/U) - match Edit page behavior */}
-              <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => { document.execCommand('bold'); updateFormatState(); }}
-                  className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                  aria-pressed={isBoldActive}
-                  title="Bold"
-                >
-                  B
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { document.execCommand('italic'); updateFormatState(); }}
-                  className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                  aria-pressed={isItalicActive}
-                  title="Italic"
-                >
-                  I
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { document.execCommand('underline'); updateFormatState(); }}
-                  className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                  aria-pressed={isUnderlineActive}
-                  title="Underline"
-                >
-                  U
-                </button>
-              </div>
-              <div
-                ref={editorRef}
-                contentEditable
-                data-placeholder="Masukkan isi posisi kas... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
-                onInput={handleEditorChange}
-                onKeyUp={handleEditorKeyUp}
-                onMouseUp={handleEditorKeyUp}
-                onFocus={updateFormatState}
-                onPaste={handleEditorPaste}
-                dir="ltr"
-                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-left"
-                style={{ whiteSpace: 'pre-wrap' }}
+              <RichTextEditor
+                value={formData.isi_poskas}
+                onChange={handleEditorHtmlChange}
+                onFilesChange={(files) => {
+                  // files: array of { file, id }
+                  setSelectedImages(files.map(f => ({ file: f.file, id: f.id })));
+                }}
+                placeholder="Masukkan isi posisi kas... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+                rows={12}
               />
-              
-              <p className="text-sm text-gray-500">
-                💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
-              </p>
-                </div>
+              <p className="text-sm text-gray-500">💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)</p>
+            </div>
               </div>
 
           {/* Submit Buttons hidden (moved to header) */}

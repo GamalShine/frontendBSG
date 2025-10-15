@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import RichTextEditor from '../../../../components/UI/RichTextEditor';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
@@ -35,6 +36,12 @@ const AdminLaporanKeuanganForm = () => {
   const editorRef = useRef(null);
   const [hasInitializedContent, setHasInitializedContent] = useState(false);
 
+  // Handler RichTextEditor: sinkronkan HTML ke formData
+  const handleEditorHtmlChange = (e) => {
+    const html = e?.target?.value ?? '';
+    setFormData(prev => ({ ...prev, isi_laporan: html }));
+  };
+
   // Formatting active states
   const [isBoldActive, setIsBoldActive] = useState(false);
   const [isItalicActive, setIsItalicActive] = useState(false);
@@ -46,6 +53,56 @@ const AdminLaporanKeuanganForm = () => {
       setIsItalicActive(document.queryCommandState('italic'));
       setIsUnderlineActive(document.queryCommandState('underline'));
     } catch (_) {}
+  };
+
+  // Helpers: zero-width cleanup and bold normalization to <strong>
+  const removeZeroWidth = (html) => (html || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
+  const normalizeBoldHtml = (html) => {
+    if (!html) return html;
+    let out = html;
+    // standardize <b> -> <strong>
+    out = out.replace(/<\s*b\s*>/gi, '<strong>').replace(/<\s*\/\s*b\s*>/gi, '</strong>');
+    // remove <strong><br></strong> and empty strong
+    out = out.replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>');
+    out = out.replace(/<strong>\s*<\/strong>/gi, '');
+    // collapse nested strong
+    try {
+      let prev;
+      do {
+        prev = out;
+        out = out.replace(/<strong>\s*<strong>/gi, '<strong>').replace(/<\/strong>\s*<\/strong>/gi, '</strong>');
+      } while (out !== prev);
+    } catch {}
+    // unwrap <strong>[IMG:id]</strong>
+    out = out.replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
+    // split strong across <br>
+    out = out.replace(/<strong>([\s\S]*?)<br\s*\/?>([\s\S]*?)<\/strong>/gi, (m, a, b) => {
+      const left = a.trim() ? `<strong>${a}</strong>` : '';
+      const right = b.trim() ? `<strong>${b}</strong>` : '';
+      return `${left}<br>${right}`;
+    });
+    // split strong around [IMG:id]
+    out = out.replace(/<strong>([^]*?)\[IMG:(\d+)\]([^]*?)<\/strong>/gi, (m, left, id, right) => {
+      const L = left.trim() ? `<strong>${left}</strong>` : '';
+      const R = right.trim() ? `<strong>${right}</strong>` : '';
+      return `${L}[IMG:${id}]${R}`;
+    });
+    return out;
+  };
+  const fixStrayStrong = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/^(\s*<\/strong>)+/i, '');
+    out = out.replace(/(<strong>\s*)+$/i, '');
+    return out;
+  };
+  const unboldSafe = (html) => {
+    if (!html) return html;
+    let out = html;
+    // break strong scope around spans that force normal
+    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</strong>${inner}<strong>`);
+    out = fixStrayStrong(out);
+    return out;
   };
 
   const placeCaretAtEnd = (el) => {
@@ -412,6 +469,13 @@ const AdminLaporanKeuanganForm = () => {
         }
       }
     }
+    // Safe plain text paste
+    const text = e.clipboardData.getData('text/plain');
+    if (text) {
+      e.preventDefault();
+      const safe = String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\r?\n/g,'<br>');
+      document.execCommand('insertHTML', false, safe);
+    }
   };
 
   const getEditorContent = () => {
@@ -420,7 +484,7 @@ const AdminLaporanKeuanganForm = () => {
     const content = editorRef.current.innerHTML;
     if (!content || content.trim() === '') return '';
 
-    let html = content;
+    let html = removeZeroWidth(content);
 
     // Convert existing image tags with data-image-id to placeholders [IMG:id]
     const existingImgRegex = /<img[^>]*data-image-id="(\d+)"[^>]*>/g;
@@ -473,8 +537,12 @@ const AdminLaporanKeuanganForm = () => {
                .replace(new RegExp(placeholders.uClose, 'gi'), '</u>')
                .replace(new RegExp(placeholders.brTag, 'gi'), '<br>');
 
-    // Basic sanitize
-    html = html.replace(/<script.*?>[\s\S]*?<\/script>/gi, '')
+    // Unbold-safe, normalize bold structure and basic sanitize
+    html = unboldSafe(html);
+    html = normalizeBoldHtml(html)
+               .replace(/^(\s*<\/strong>)+/i, '')
+               .replace(/(<strong>\s*)+$/i, '')
+               .replace(/<script.*?>[\s\S]*?<\/script>/gi, '')
                .replace(/&nbsp;/g, ' ')
                .trim();
 
@@ -535,7 +603,15 @@ const AdminLaporanKeuanganForm = () => {
       return;
     }
 
-    const editorContent = getEditorContent();
+    // Sanitize editor before serialize
+    if (editorRef.current) {
+      let tmp = removeZeroWidth(editorRef.current.innerHTML || '');
+      tmp = unboldSafe(tmp);
+      tmp = normalizeBoldHtml(tmp);
+      tmp = fixStrayStrong(tmp);
+      editorRef.current.innerHTML = tmp;
+    }
+    const editorContent = formData?.isi_laporan || '';
     if (!editorContent || editorContent.trim() === '') {
       toast.error('Isi laporan tidak boleh kosong');
       return;
@@ -838,47 +914,17 @@ const AdminLaporanKeuanganForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Isi Laporan *
                 </label>
-                {/* Toolbar (B/I/U) */}
-                <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => { document.execCommand('bold'); updateFormatState(); }}
-                    className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                    aria-pressed={isBoldActive}
-                    title="Bold"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { document.execCommand('italic'); updateFormatState(); }}
-                    className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                    aria-pressed={isItalicActive}
-                    title="Italic"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { document.execCommand('underline'); updateFormatState(); }}
-                    className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                    aria-pressed={isUnderlineActive}
-                    title="Underline"
-                  >
-                    U
-                  </button>
-                </div>
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorChange}
-                  onKeyUp={() => updateFormatState()}
-                  onMouseUp={() => updateFormatState()}
-                  onFocus={updateFormatState}
-                  onPaste={handleEditorPaste}
-                  data-placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
-                  className="w-full min-h-[400px] p-4 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                <RichTextEditor
+                  value={formData.isi_laporan}
+                  onChange={handleEditorHtmlChange}
+                  onFilesChange={(files) => {
+                    // files: array of { file, id }
+                    setSelectedImages(files);
+                  }}
+                  placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
+                  rows={12}
                 />
+                <p className="text-xs text-gray-500 mt-1">💡 Anda bisa paste gambar langsung dari clipboard atau klik ikon gambar di toolbar.</p>
               </div>
             </div>
           </div>

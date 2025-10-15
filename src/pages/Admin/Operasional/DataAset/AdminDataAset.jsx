@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Building2, 
   Car, 
@@ -37,6 +37,7 @@ const AdminDataAset = () => {
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
+    console.log('[AdminDataAset] mounted - versi UI: poskas-style v1');
     fetchDataAset();
   }, []);
 
@@ -122,8 +123,8 @@ const AdminDataAset = () => {
   };
 
   const renderAsetCard = (aset) => (
-    <div key={aset.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
+    <div key={aset.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2">
           {getKategoriIcon(aset.kategori)}
           <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getKategoriColor(aset.kategori)}`}>
@@ -147,12 +148,12 @@ const AdminDataAset = () => {
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         {/* Nama Aset */}
         {aset.nama_aset && (
           <div className="flex items-center space-x-2">
             <Building2 className="w-4 h-4 text-gray-400" />
-            <span className="font-medium text-gray-900">{aset.nama_aset}</span>
+            <span className="text-sm font-medium text-gray-900">{aset.nama_aset}</span>
           </div>
         )}
 
@@ -160,7 +161,7 @@ const AdminDataAset = () => {
         {aset.merk_kendaraan && (
           <div className="flex items-center space-x-2">
             <CarIcon className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-700">{aset.merk_kendaraan}</span>
+            <span className="text-xs text-gray-700">{aset.merk_kendaraan}</span>
           </div>
         )}
 
@@ -168,7 +169,7 @@ const AdminDataAset = () => {
         {aset.nama_barang && (
           <div className="flex items-center space-x-2">
             <Monitor className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-700">{aset.nama_barang}</span>
+            <span className="text-xs text-gray-700">{aset.nama_barang}</span>
           </div>
         )}
 
@@ -176,7 +177,7 @@ const AdminDataAset = () => {
         {aset.lokasi && (
           <div className="flex items-center space-x-2">
             <MapPin className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600 text-sm">{aset.lokasi}</span>
+            <span className="text-gray-600 text-xs">{aset.lokasi}</span>
           </div>
         )}
 
@@ -184,7 +185,7 @@ const AdminDataAset = () => {
         {aset.atas_nama && (
           <div className="flex items-center space-x-2">
             <User className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600 text-sm">Atas Nama: {aset.atas_nama}</span>
+            <span className="text-gray-600 text-xs">Atas Nama: {aset.atas_nama}</span>
           </div>
         )}
 
@@ -192,7 +193,7 @@ const AdminDataAset = () => {
         {aset.status && (
           <div className="flex items-center space-x-2">
             <Shield className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600 text-sm">Status: {aset.status}</span>
+            <span className="text-gray-600 text-xs">Status: {aset.status}</span>
           </div>
         )}
 
@@ -200,7 +201,7 @@ const AdminDataAset = () => {
         {aset.data_pembelian && (
           <div className="flex items-center space-x-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600 text-sm">Pembelian: {aset.data_pembelian}</span>
+            <span className="text-gray-600 text-xs">Pembelian: {aset.data_pembelian}</span>
           </div>
         )}
 
@@ -208,7 +209,7 @@ const AdminDataAset = () => {
         {aset.penanggung_jawab && (
           <div className="flex items-center space-x-2">
             <User className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600 text-sm">PJ: {aset.penanggung_jawab}</span>
+            <span className="text-gray-600 text-xs">PJ: {aset.penanggung_jawab}</span>
           </div>
         )}
 
@@ -218,19 +219,19 @@ const AdminDataAset = () => {
             {aset.plat_nomor && (
               <div className="flex items-center space-x-2">
                 <CarIcon className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">Plat: {aset.plat_nomor}</span>
+                <span className="text-gray-600 text-xs">Plat: {aset.plat_nomor}</span>
               </div>
             )}
             {aset.pajak_berlaku && (
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">Pajak: {aset.pajak_berlaku}</span>
+                <span className="text-gray-600 text-xs">Pajak: {aset.pajak_berlaku}</span>
               </div>
             )}
             {aset.stnk_berlaku && (
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">STNK: {aset.stnk_berlaku}</span>
+                <span className="text-gray-600 text-xs">STNK: {aset.stnk_berlaku}</span>
               </div>
             )}
           </>
@@ -242,19 +243,19 @@ const AdminDataAset = () => {
             {aset.merk && (
               <div className="flex items-center space-x-2">
                 <Monitor className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">Merk: {aset.merk}</span>
+                <span className="text-gray-600 text-xs">Merk: {aset.merk}</span>
               </div>
             )}
             {aset.model && (
               <div className="flex items-center space-x-2">
                 <Monitor className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">Model: {aset.model}</span>
+                <span className="text-gray-600 text-xs">Model: {aset.model}</span>
               </div>
             )}
             {aset.serial_number && (
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">SN: {aset.serial_number}</span>
+                <span className="text-gray-600 text-xs">SN: {aset.serial_number}</span>
               </div>
             )}
           </>
@@ -266,20 +267,20 @@ const AdminDataAset = () => {
             {aset.no_sertifikat && (
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">Sertifikat: {aset.no_sertifikat}</span>
+                <span className="text-gray-600 text-xs">Sertifikat: {aset.no_sertifikat}</span>
               </div>
             )}
             {aset.data_pbb && (
               <div className="flex items-center space-x-2">
                 <FileText className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600 text-sm">PBB: {aset.data_pbb}</span>
+                <span className="text-gray-600 text-xs">PBB: {aset.data_pbb}</span>
               </div>
             )}
           </>
         )}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-100">
+      <div className="mt-2 pt-2 border-t border-gray-100">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Created by: {aset.creator?.nama || 'Unknown'}</span>
           <span>{format(new Date(aset.created_at), 'dd MMM yyyy', { locale: id })}</span>
@@ -308,6 +309,22 @@ const AdminDataAset = () => {
     kendaraan: filteredData.filter(aset => ['KENDARAAN_PRIBADI', 'KENDARAAN_OPERASIONAL', 'KENDARAAN_DISTRIBUSI'].includes(aset.kategori)),
     elektronik: filteredData.filter(aset => aset.kategori === 'ELEKTRONIK')
   };
+
+  // Hitung teks "Terakhir diupdate" dari created_at terbaru
+  const lastUpdatedText = useMemo(() => {
+    if (!Array.isArray(dataAset) || dataAset.length === 0) return '-';
+    // Ambil item dengan created_at paling baru
+    const latest = [...dataAset]
+      .filter(i => !!i?.created_at)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    const dt = latest?.created_at;
+    if (!dt) return '-';
+    try {
+      return format(new Date(dt), "d MMMM yyyy 'pukul' HH.mm", { locale: id });
+    } catch (e) {
+      return '-';
+    }
+  }, [dataAset]);
 
   if (loading) {
     return (
@@ -371,62 +388,62 @@ const AdminDataAset = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Data aset terbaru berada di paling atas</div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
-      <div className="px-6 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="px-0 py-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Building2 className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Aset</p>
-                <p className="text-2xl font-bold text-gray-900">{dataAset.length}</p>
+                <p className="text-xs font-medium text-gray-500">Total Aset</p>
+                <p className="text-lg font-bold text-gray-900">{dataAset.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <CarIcon className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Kendaraan</p>
-                <p className="text-2xl font-bold text-gray-900">{groupedData.kendaraan.length}</p>
+                <p className="text-xs font-medium text-gray-500">Kendaraan</p>
+                <p className="text-lg font-bold text-gray-900">{groupedData.kendaraan.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <Monitor className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Elektronik</p>
-                <p className="text-2xl font-bold text-gray-900">{groupedData.elektronik.length}</p>
+                <p className="text-xs font-medium text-gray-500">Elektronik</p>
+                <p className="text-lg font-bold text-gray-900">{groupedData.elektronik.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-orange-100 rounded-lg">
                 <Building2 className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Properti</p>
-                <p className="text-2xl font-bold text-gray-900">{groupedData.properti.length}</p>
+                <p className="text-xs font-medium text-gray-500">Properti</p>
+                <p className="text-lg font-bold text-gray-900">{groupedData.properti.length}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-6">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-6">
           <div className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -463,12 +480,12 @@ const AdminDataAset = () => {
         </div>
 
         {/* Data Sections */}
-        <div className="space-y-6">
+        <div className="space-y-3">
         {/* Properti Section */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
           <button
             onClick={() => setActiveSection(activeSection === 'properti' ? '' : 'properti')}
-            className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
           >
             <div className="flex items-center space-x-3">
               <Building2 className="w-6 h-6" />
@@ -485,9 +502,9 @@ const AdminDataAset = () => {
           </button>
           
           {activeSection === 'properti' && (
-            <div className="p-6">
+            <div className="p-4">
               {groupedData.properti.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                   {groupedData.properti.map(renderAsetCard)}
                 </div>
               ) : (
@@ -500,10 +517,10 @@ const AdminDataAset = () => {
         </div>
 
         {/* Kendaraan Section */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
           <button
             onClick={() => setActiveSection(activeSection === 'kendaraan' ? '' : 'kendaraan')}
-            className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
           >
             <div className="flex items-center space-x-3">
               <CarIcon className="w-6 h-6" />
@@ -520,9 +537,9 @@ const AdminDataAset = () => {
           </button>
           
           {activeSection === 'kendaraan' && (
-            <div className="p-6">
+            <div className="p-4">
               {groupedData.kendaraan.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                   {groupedData.kendaraan.map(renderAsetCard)}
                 </div>
               ) : (
@@ -535,10 +552,10 @@ const AdminDataAset = () => {
         </div>
 
         {/* Elektronik Section */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
           <button
             onClick={() => setActiveSection(activeSection === 'elektronik' ? '' : 'elektronik')}
-            className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+            className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
           >
             <div className="flex items-center space-x-3">
               <Monitor className="w-6 h-6" />
@@ -555,9 +572,9 @@ const AdminDataAset = () => {
           </button>
           
           {activeSection === 'elektronik' && (
-            <div className="p-6">
+            <div className="p-4">
               {groupedData.elektronik.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                   {groupedData.elektronik.map(renderAsetCard)}
                 </div>
               ) : (
@@ -572,7 +589,7 @@ const AdminDataAset = () => {
 
         {/* Last Updated Info */}
         <div className="bg-gray-200 px-4 py-2 text-sm text-gray-600 mt-6 rounded-lg">
-          Data terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
+          Terakhir diupdate: {lastUpdatedText}
         </div>
       </div>
 

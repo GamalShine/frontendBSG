@@ -1,10 +1,11 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
 import { mediaSosialService } from '@/services/mediaSosialService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '@/config/environment';
+import RichTextEditor from '@/components/UI/RichTextEditor';
 
 const AdminMedsosForm = () => {
   const navigate = useNavigate();
@@ -31,10 +32,8 @@ const AdminMedsosForm = () => {
 
   const env = getEnvironmentConfig();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ tanggal_laporan: defaultDate });
-  const [editorHtml, setEditorHtml] = useState('');
-  const [uploadedImages, setUploadedImages] = useState([]);
-  const editorRef = useRef(null);
+  const [form, setForm] = useState({ tanggal_laporan: defaultDate, isi_laporan: '' });
+  const [selectedImages, setSelectedImages] = useState([]); // { file, id }
 
   // Helpers: sanitizer & normalizer
   const removeZeroWidth = (html) => (html || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
@@ -52,69 +51,59 @@ const AdminMedsosForm = () => {
   const normalizeBoldHtml = (html) => {
     if (!html) return html;
     let out = html;
-    // standardize strong to b
-    out = out.replace(/<\/?strong>/gi, (m) => m.toLowerCase().includes('</') ? '</b>' : '<b>');
-    // remove empty <b></b>
-    out = out.replace(/<b>\s*<\/b>/gi, '');
-    // collapse nested b until stable
+    // standardize b -> strong
+    out = out.replace(/<\/?b>/gi, (m) => m.includes('</') ? '</strong>' : '<strong>');
+    // remove <strong><br></strong> and empty <strong></strong>
+    out = out.replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>');
+    out = out.replace(/<strong>\s*<\/strong>/gi, '');
+    // collapse nested <strong>
     try {
       let prev;
       do {
         prev = out;
-        out = out.replace(/<b>\s*<b>/gi, '<b>').replace(/<\/b>\s*<\/b>/gi, '</b>');
+        out = out.replace(/<strong>\s*<strong>/gi, '<strong>')
+                 .replace(/<\/strong>\s*<\/strong>/gi, '</strong>');
       } while (out !== prev);
     } catch {}
-    // unwrap [IMG:id] inside bold
-    out = out.replace(/<b>\s*(\[IMG:\d+\])\s*<\/b>/gi, '$1');
-    // split bold across <br>
-    out = out.replace(/<b>([\s\S]*?)<br\s*\/?>([\s\S]*?)<\/b>/gi, (m, a, b) => {
-      const left = a.trim() ? `<b>${a}</b>` : '';
-      const right = b.trim() ? `<b>${b}</b>` : '';
+    // unwrap placeholder-only bold
+    out = out.replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
+    // split strong across <br>
+    out = out.replace(/<strong>([\s\S]*?)<br\s*\/?>([\s\S]*?)<\/strong>/gi, (m, a, b) => {
+      const left = a.trim() ? `<strong>${a}</strong>` : '';
+      const right = b.trim() ? `<strong>${b}</strong>` : '';
       return `${left}<br>${right}`;
     });
-    // split bold around placeholders
-    out = out.replace(/<b>([^]*?)\[IMG:(\d+)\]([^]*?)<\/b>/gi, (m, left, id, right) => {
-      const L = left.trim() ? `<b>${left}</b>` : '';
-      const R = right.trim() ? `<b>${right}</b>` : '';
+    // split strong around placeholders
+    out = out.replace(/<strong>([^]*?)\[IMG:(\d+)\]([^]*?)<\/strong>/gi, (m, left, id, right) => {
+      const L = left.trim() ? `<strong>${left}</strong>` : '';
+      const R = right.trim() ? `<strong>${right}</strong>` : '';
       return `${L}[IMG:${id}]${R}`;
     });
     return out;
   };
+  const fixStrayStrong = (html) => {
+    if (!html) return html;
+    let out = html;
+    out = out.replace(/^(\s*<\/strong>)+/i, '');
+    out = out.replace(/(<strong>\s*)+$/i, '');
+    return out;
+  };
+  const unboldSafe = (html) => {
+    if (!html) return html;
+    let out = html;
+    // convert spans that force normal weight to break strong scope
+    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</strong>${inner}<strong>`);
+    out = fixStrayStrong(out);
+    return out;
+  };
   const escapeHtml = (str) => (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
-  const handleEditorChange = (e) => {
-    setEditorHtml(e.target.innerHTML);
-    // Micro sanitize dir/style only; avoid heavy ops to keep caret stable
-    if (editorRef.current) {
-      requestAnimationFrame(() => {
-        try {
-          const nodes = editorRef.current.querySelectorAll('[dir], [style]');
-          nodes.forEach((n) => {
-            if (n.hasAttribute('dir')) n.removeAttribute('dir');
-            const style = n.getAttribute('style');
-            if (style) {
-              let cleaned = style
-                .replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, '')
-                .replace(/text-align\s*:\s*(right|left|center|justify)\s*;?/gi, '')
-                .replace(/\s*;\s*$/, '');
-              if (cleaned.trim().length === 0) n.removeAttribute('style');
-              else n.setAttribute('style', cleaned);
-            }
-          });
-        } catch {}
-      });
-    }
+  const handleEditorHtmlChange = (e) => {
+    const html = e?.target?.value ?? '';
+    setForm(prev => ({ ...prev, isi_laporan: html }));
   };
 
-  const handleEditorBlur = () => {
-    if (!editorRef.current) return;
-    let html = editorRef.current.innerHTML || '';
-    html = removeZeroWidth(html);
-    html = sanitizeToLTR(html);
-    html = normalizeBoldHtml(html);
-    editorRef.current.innerHTML = html;
-    setEditorHtml(html);
-  };
+  // RichTextEditor sudah melakukan normalisasi dan serialisasi saat onChange/blur
 
   const applyFormat = (cmd) => (e) => {
     e.preventDefault();
@@ -143,104 +132,9 @@ const AdminMedsosForm = () => {
     return u;
   };
 
-  const handlePaste = async (e) => {
-    const items = e.clipboardData?.items || [];
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      if (item.type && item.type.indexOf('image') !== -1) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (!file) continue;
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error('Gambar terlalu besar. Maksimal 10MB');
-          continue;
-        }
-        try {
-          const formData = new FormData();
-          formData.append('images', file);
-          const res = await fetch(`${env.API_BASE_URL}/upload/media-sosial`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            body: formData,
-          });
-          const json = await res.json();
-          if (!json.success) throw new Error(json.message || 'Upload gagal');
-          const fileInfo = json.data[0];
-          const displayUrl = normalizeImageUrl(fileInfo.url || fileInfo.path);
-          const imgId = Date.now() + Math.floor(Math.random() * 1000);
-          setUploadedImages(prev => [...prev, { id: imgId, url: displayUrl, serverPath: fileInfo.path || fileInfo.url }]);
-          const imgTag = `<img src="${displayUrl}" data-image-id="${imgId}" style="max-width:100%;height:auto;margin:8px 0;border-radius:6px;" />`;
-          const sel = window.getSelection();
-          if (sel && sel.rangeCount > 0) {
-            const range = sel.getRangeAt(0);
-            range.deleteContents();
-            const temp = document.createElement('div');
-            temp.innerHTML = imgTag;
-            const node = temp.firstChild;
-            range.insertNode(node);
-            range.setStartAfter(node);
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            const target = e.target.closest('[contenteditable="true"]');
-            if (target) {
-              const event = new Event('input', { bubbles: true });
-              target.dispatchEvent(event);
-            }
-          } else {
-            setEditorHtml(prev => prev + imgTag);
-          }
-          toast.success('Gambar ditambahkan');
-        } catch (err) {
-          console.error(err);
-          toast.error('Gagal upload gambar');
-        }
-      } else if (item.kind === 'string' && item.type === 'text/plain') {
-        // Safe text paste: escape and convert newlines to <br>
-        e.preventDefault();
-        item.getAsString((text) => {
-          const safe = escapeHtml(text).replace(/\r?\n/g, '<br>');
-          const sel = window.getSelection();
-          if (sel && sel.rangeCount > 0) {
-            const range = sel.getRangeAt(0);
-            range.deleteContents();
-            const temp = document.createElement('div');
-            temp.innerHTML = safe;
-            const frag = document.createDocumentFragment();
-            let n;
-            while ((n = temp.firstChild)) frag.appendChild(n);
-            range.insertNode(frag);
-            range.collapse(false);
-            if (editorRef.current) editorRef.current.dispatchEvent(new Event('input', { bubbles: true }));
-          } else {
-            setEditorHtml((prev) => prev + safe);
-          }
-        });
-      }
-    }
-  };
+  // Paste/upload ditangani oleh RichTextEditor melalui onFilesChange
 
-  const getEditorContent = () => {
-    if (!editorRef.current) return '';
-    let html = editorRef.current.innerHTML || '';
-    html = removeZeroWidth(html);
-    // Convert images to placeholders
-    html = html.replace(/<img[^>]*data-image-id="(\d+)"[^>]*>/g, (_m, id) => `[IMG:${id}]`);
-    // Only allow basic tags: b i u br and placeholders/text
-    // Replace disallowed tags but preserve line breaks
-    html = html
-      .replace(/<\/?(div|p)>/gi, '\n')
-      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-      .replace(/<\/?(span|font|h\d|blockquote|pre|code|table|thead|tbody|tr|td)[^>]*>/gi, '')
-      .replace(/&nbsp;/g, ' ');
-    // Normalize bold structure
-    html = normalizeBoldHtml(html);
-    // Collapse multiple newlines and convert to <br>
-    html = html.replace(/\n+/g, '<br>');
-    // Final trim
-    html = html.trim();
-    return html;
-  };
+  // RichTextEditor sudah menyimpan konten ter-serialisasi di form.isi_laporan
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -250,25 +144,52 @@ const AdminMedsosForm = () => {
     }
     try {
       setSaving(true);
-      // Sanitize on submit
-      if (editorRef.current) {
-        let tmp = editorRef.current.innerHTML || '';
-        tmp = removeZeroWidth(tmp);
-        tmp = sanitizeToLTR(tmp);
-        tmp = normalizeBoldHtml(tmp);
-        editorRef.current.innerHTML = tmp;
-        setEditorHtml(tmp);
-      }
-      const isi = getEditorContent();
-      if (!isi || isi.replace(/<br>/g,'').trim().length < 5) {
+      const isi = form?.isi_laporan || '';
+      if (!isi || isi.replace(/<br>/g,'').trim().length < 10) {
         toast.error('Isi laporan terlalu pendek');
         setSaving(false);
         return;
       }
+      // Upload gambar baru terlebih dahulu
+      const uploadNewImages = async () => {
+        if (!selectedImages || selectedImages.length === 0) return [];
+        const fd = new FormData();
+        selectedImages.forEach((item) => { if (item?.file) fd.append('images', item.file); });
+        try {
+          const res = await fetch(`${env.API_BASE_URL}/upload/media-sosial`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: fd,
+          });
+          if (!res.ok) throw new Error('Upload gagal');
+          const json = await res.json();
+          if (json?.success && Array.isArray(json.data)) {
+            return json.data.map((f, idx) => ({
+              id: selectedImages[idx]?.id,
+              name: f.originalName || selectedImages[idx]?.file?.name || `medsos_${Date.now()}_${idx}.jpg`,
+              url: f.url || f.path,
+              serverPath: f.path || f.url,
+            })).filter(x => x.id);
+          }
+          toast.error('Upload gambar gagal');
+          return [];
+        } catch (err) {
+          console.error('Upload medsos gagal:', err);
+          toast.error('Gagal mengupload gambar');
+          return [];
+        }
+      };
+      const newImages = await uploadNewImages();
+      const allImages = [...newImages];
+      // Filter hanya gambar yang dipakai di konten (berdasarkan [IMG:id])
+      const usedIdMatches = [...isi.matchAll(/\[IMG:(\d+)\]/g)];
+      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
+      const filteredImages = allImages.filter((img) => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
+
       await mediaSosialService.create({
         tanggal_laporan: form.tanggal_laporan,
         isi_laporan: isi,
-        images: uploadedImages,
+        images: filteredImages,
       });
       toast.success('Laporan medsos berhasil ditambahkan');
       navigate('/admin/marketing/medsos');
@@ -336,7 +257,8 @@ const AdminMedsosForm = () => {
             <p className="text-sm text-gray-500 mt-2">Pilih tanggal untuk laporan medsos ini</p>
           </div>
 
-          {/* Isi Laporan Editor */}
+          {/* Isi Laporan Editor */
+          }
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-2 bg-green-100 rounded-lg">
@@ -348,21 +270,12 @@ const AdminMedsosForm = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Toolbar sederhana */}
-              <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200">
-                <button type="button" onMouseDown={applyFormat('bold')} className="px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100">B</button>
-                <button type="button" onMouseDown={applyFormat('italic')} className="px-2 py-1 text-sm rounded italic hover:bg-gray-100">I</button>
-                <button type="button" onMouseDown={applyFormat('underline')} className="px-2 py-1 text-sm rounded underline hover:bg-gray-100">U</button>
-              </div>
-              <div
-                ref={editorRef}
-                contentEditable
-                data-placeholder="Masukkan isi laporan medsos... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
-                onInput={handleEditorChange}
-                onBlur={handleEditorBlur}
-                onPaste={handlePaste}
-                className="min-h-[300px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none text-left"
-                style={{ whiteSpace: 'pre-wrap' }}
+              <RichTextEditor
+                value={form.isi_laporan}
+                onChange={handleEditorHtmlChange}
+                onFilesChange={(files) => setSelectedImages(files)}
+                placeholder="Masukkan isi laporan medsos... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+                rows={12}
               />
               <p className="text-sm text-gray-500">💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)</p>
             </div>

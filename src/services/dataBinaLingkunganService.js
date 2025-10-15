@@ -19,6 +19,10 @@ export const adminDataBinaLingkunganService = {
   remove: (id) => api.delete(`${adminBase}/${id}`),
   getLocations: () => api.get(`${adminBase}/locations/list`),
   getByLocation: (lokasi) => api.get(`${adminBase}/location/${encodeURIComponent(lokasi)}`),
+  // Lampiran APIs
+  getLampiran: (id) => api.get(`${adminBase}/${id}/lampiran`),
+  uploadLampiran: (id, formData) => api.post(`${adminBase}/${id}/lampiran`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deleteLampiran: (id, stored_name) => api.delete(`${adminBase}/${id}/lampiran`, { data: { stored_name } }),
 };
 
 export const ownerDataBinaLingkunganService = {

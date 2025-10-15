@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
   Home,
@@ -81,18 +81,16 @@ const Sidebar = () => {
   const { user, allowedMenuKeys } = useAuth()
 
   const location = useLocation()
-  const [expandedMenus, setExpandedMenus] = useState(new Set())
-
-  // Restore expanded state on mount
-  useEffect(() => {
+  const [expandedMenus, setExpandedMenus] = useState(() => {
     try {
       const saved = localStorage.getItem('sidebar_expanded')
       if (saved) {
         const arr = JSON.parse(saved)
-        if (Array.isArray(arr)) setExpandedMenus(new Set(arr))
+        if (Array.isArray(arr)) return new Set(arr)
       }
     } catch {}
-  }, [])
+    return new Set()
+  })
 
   const toggleMenu = (menuId) => {
     setExpandedMenus(prev => {
@@ -124,20 +122,16 @@ const Sidebar = () => {
   }
 
   // Auto-expand parent menus that contain the active route, to avoid auto-closing after navigation
-  useEffect(() => {
+  useLayoutEffect(() => {
     setExpandedMenus(prev => {
       const next = new Set(prev)
       try {
         menus.forEach(menu => {
           const hasChildren = menu.children && menu.children.length > 0
           if (!hasChildren) return
-          // filter visible children using same rules as renderer
-          const visibleChildren = menu.children.filter(child => {
-            const permOk = checkPermission(child.permissions)
-            const picOk = hasPicAccess(child)
-            return permOk && picOk
-          })
-          if (visibleChildren.some(child => isMenuActive(child.path))) {
+          // Penting: gunakan SEMUA anak untuk menentukan auto-expand,
+          // agar parent tetap terbuka meskipun child tersembunyi karena PIC/permission
+          if (menu.children.some(child => isMenuActive(child.path))) {
             next.add(menu.id)
           }
         })

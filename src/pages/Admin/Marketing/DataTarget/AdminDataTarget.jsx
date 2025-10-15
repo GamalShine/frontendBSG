@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { dataTargetService } from '@/services/dataTargetService';
+import { Link, useNavigate } from 'react-router-dom';
+import { targetHarianService } from '@/services/targetHarianService';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
-import { Plus } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
 
 const AdminDataTarget = () => {
+  const navigate = useNavigate();
   const [view, setView] = useState('years'); // 'years' | 'yearContent'
   const [years, setYears] = useState([]); // [{year: 2024}, ...]
   const [selectedYear, setSelectedYear] = useState(null);
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ totalTarget: 0, totalNominal: 0 });
+  const [stats, setStats] = useState({ totalRecords: 0, totalNominal: 0 });
   const [lastUpdated, setLastUpdated] = useState(null);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ const AdminDataTarget = () => {
   const loadYears = async () => {
     try {
       setLoading(true);
-      const res = await dataTargetService.getYears();
+      const res = await targetHarianService.getYears();
       if (res?.success) setYears(res.data || []);
       else setYears([]);
     } catch (e) {
@@ -37,29 +38,43 @@ const AdminDataTarget = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus data taget ini?')) return;
+    try {
+      const res = await targetHarianService.remove(id);
+      if (res?.success !== false) {
+        // Reload current page data
+        await loadItems(selectedYear, pagination.currentPage);
+      } else {
+        alert(res?.error || 'Gagal menghapus data');
+      }
+    } catch (e) {
+      console.error('Gagal menghapus taget:', e);
+      alert('Gagal menghapus data');
+    }
+  };
+
   const loadStatsAndLastUpdated = async () => {
     try {
-      // Ambil banyak item untuk hitung ringkas di halaman utama
-      const res = await dataTargetService.getAll({ page: 1, limit: 1000 });
+      const res = await targetHarianService.getAll({ page: 1, limit: 1000 });
       if (res?.success) {
-        const its = res.data.items || [];
-        const totalTarget = res.data.pagination?.totalItems ?? its.length;
-        const totalNominal = (res.data.statistics?.totalNominal != null)
-          ? Number(res.data.statistics.totalNominal)
-          : its.reduce((a,b)=> a + (Number(b.target_nominal)||0), 0);
-        setStats({ totalTarget, totalNominal });
+        const its = Array.isArray(res.data) ? res.data : [];
+        const totalRecords = res.pagination?.totalItems ?? its.length;
+        // Tidak ada nominal di tabel 'taget'; set 0
+        const totalNominal = 0;
+        setStats({ totalRecords, totalNominal });
         const latest = its.reduce((max, it) => {
-          const t = new Date(it.updated_at || it.created_at).getTime();
+          const t = new Date(it.updated_at || it.created_at || it.tanggal_target).getTime();
           return Math.max(max, isFinite(t) ? t : 0);
         }, 0);
         setLastUpdated(latest ? new Date(latest) : new Date());
       } else {
-        setStats({ totalTarget: 0, totalNominal: 0 });
+        setStats({ totalRecords: 0, totalNominal: 0 });
         setLastUpdated(new Date());
       }
     } catch (e) {
       console.error('Error loading stats/lastUpdated:', e);
-      setStats({ totalTarget: 0, totalNominal: 0 });
+      setStats({ totalRecords: 0, totalNominal: 0 });
       setLastUpdated(new Date());
     }
   };
@@ -67,10 +82,10 @@ const AdminDataTarget = () => {
   const loadItems = async (year, page = 1) => {
     try {
       setLoading(true);
-      const res = await dataTargetService.getAll({ year, page, limit: 20 });
+      const res = await targetHarianService.getAll({ year, page, limit: 20 });
       if (res?.success) {
-        setItems(res.data.items || []);
-        setPagination(res.data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
+        setItems(Array.isArray(res.data) ? res.data : []);
+        setPagination(res.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
       } else {
         setItems([]);
         setPagination({ currentPage: 1, totalPages: 1, totalItems: 0 });
@@ -112,7 +127,7 @@ const AdminDataTarget = () => {
             <p className="text-sm opacity-90">Admin - Marketing</p>
           </div>
           <Link
-            to="/admin/marketing/target/new"
+            to="/admin/marketing/data-target/new"
             className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
           >
             <Plus className="h-4 w-4" />
@@ -128,7 +143,7 @@ const AdminDataTarget = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="bg-white shadow-sm border p-4">
               <div className="text-sm text-gray-500">Total Target</div>
-              <div className="text-2xl font-bold text-gray-900">{stats.totalTarget || 0}</div>
+              <div className="text-2xl font-bold text-gray-900">{stats.totalRecords || 0}</div>
             </div>
             <div className="bg-white shadow-sm border p-4">
               <div className="text-sm text-gray-500">Total Nominal</div>
@@ -187,10 +202,10 @@ const AdminDataTarget = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold">{selectedYear}</h2>
-                  <p className="text-xs opacity-90">Daftar Data Target</p>
+                  <p className="text-xs opacity-90">Daftar Taget Harian</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Link to="/admin/marketing/target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">
+                  <Link to="/admin/marketing/data-target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">
                     <Plus className="h-4 w-4" /> Tambah
                   </Link>
                   <button onClick={backToYears} className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Kembali</button>
@@ -217,19 +232,50 @@ const AdminDataTarget = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="sticky top-0 bg-red-700 z-10 shadow">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Nama Target</th>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Nominal</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Isi</th>
                       <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
                       <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Dibuat</th>
+                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {items.map((it) => (
                       <tr key={it.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{it.nama_target}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{formatCurrency(it.target_nominal)}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{it.creator?.nama || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{new Date(it.tanggal_target).toLocaleDateString('id-ID')}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {(() => {
+                            const plain = String(it.isi_target || '').replace(/<[^>]*>/g, '');
+                            return plain.length > 100 ? `${plain.slice(0, 100)}...` : plain;
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">{it.user_nama || '-'}</td>
                         <td className="px-6 py-4 text-sm text-gray-500">{new Date(it.created_at).toLocaleDateString('id-ID')}</td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => navigate(`/admin/marketing/data-target/${it.id}`)}
+                              className="text-blue-600 hover:text-blue-900"
+                              title="Lihat"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/admin/marketing/data-target/${it.id}/edit`)}
+                              className="text-green-600 hover:text-green-900"
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(it.id)}
+                              className="text-red-600 hover:text-red-900"
+                              title="Hapus"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>

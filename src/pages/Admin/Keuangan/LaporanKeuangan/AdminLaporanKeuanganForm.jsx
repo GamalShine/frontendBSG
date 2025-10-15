@@ -14,6 +14,7 @@ import {
   Save,
   RefreshCw
 } from 'lucide-react';
+import RichTextEditor from '../../../../components/UI/RichTextEditor';
 
 const LaporanKeuanganForm = () => {
   const navigate = useNavigate();
@@ -34,6 +35,12 @@ const LaporanKeuanganForm = () => {
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const editorRef = useRef(null);
   const [hasInitializedContent, setHasInitializedContent] = useState(false);
+
+  // Handler RichTextEditor: sinkronkan HTML ke formData
+  const handleEditorHtmlChange = (e) => {
+    const html = e?.target?.value ?? '';
+    setFormData(prev => ({ ...prev, isi_laporan: html }));
+  };
 
   // Formatting active states
   const [isBoldActive, setIsBoldActive] = useState(false);
@@ -429,97 +436,6 @@ const LaporanKeuanganForm = () => {
     }
   };
 
-  const handleEditorChange = (e) => {
-    const content = e.target.innerHTML;
-    // Hindari sanitasi agresif saat mengetik; simpan raw lalu dibersihkan saat blur/submit
-    setFormData(prev => ({
-      ...prev,
-      isi_laporan: content
-    }));
-  };
-
-  const handleEditorPaste = async (e) => {
-    const items = e.clipboardData.items;
-
-    let handled = false;
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      if (item.type.indexOf('image') !== -1) {
-        e.preventDefault();
-        handled = true;
-
-        const file = item.getAsFile();
-        if (file) {
-          if (file.size > 10 * 1024 * 1024) {
-            toast.error('Gambar terlalu besar. Maksimal 10MB');
-            return;
-          }
-
-          if (selectedImages.length >= 5) {
-            toast.error('Maksimal 5 gambar per laporan');
-            return;
-          }
-
-          const imageId = Date.now() + Math.floor(Math.random() * 1000);
-          const imageWithId = { file, id: imageId };
-          setSelectedImages(prev => [...prev, imageWithId]);
-
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const imageUrl = e.target.result;
-            setImagePreviewUrls(prev => [...prev, imageUrl]);
-
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            img.alt = 'Pasted image';
-            img.className = 'pasted-image';
-            img.setAttribute('data-image-id', imageId);
-
-            const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              range.deleteContents();
-              range.insertNode(img);
-              range.collapse(false);
-
-              const br = document.createElement('br');
-              range.insertNode(br);
-              range.collapse(false);
-
-              const event = new Event('input', { bubbles: true });
-              editorRef.current.dispatchEvent(event);
-            }
-
-            toast.success('Gambar berhasil ditambahkan');
-          };
-          reader.readAsDataURL(file);
-        }
-      }
-    }
-    if (!handled) {
-      const text = e.clipboardData.getData('text/plain');
-      if (text) {
-        e.preventDefault();
-        const html = escapeHtml(text).replace(/\r?\n/g, '<br>');
-        document.execCommand('insertHTML', false, html);
-        sanitizeEditorHtml();
-      }
-    }
-  };
-
-  const handleEditorKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      // Sisipkan line break sederhana tanpa manipulasi <b> dan tanpa ZWSP
-      try {
-        document.execCommand('insertLineBreak');
-      } catch (_) {
-        document.execCommand('insertHTML', false, '<br>');
-      }
-    }
-  };
-
   const getEditorContent = () => {
     if (!editorRef.current) return '';
 
@@ -692,7 +608,7 @@ const LaporanKeuanganForm = () => {
       return;
     }
 
-    const editorContent = getEditorContent();
+    const editorContent = formData?.isi_laporan || '';
     if (!editorContent || editorContent.trim() === '') {
       toast.error('Isi laporan tidak boleh kosong');
       return;
@@ -795,11 +711,18 @@ const LaporanKeuanganForm = () => {
         return img;
       });
 
+      // Hanya sertakan gambar yang digunakan di konten (berdasarkan token [IMG:id])
+      const usedIdMatches = [...editorContent.matchAll(/\[IMG:(\d+)\]/g)];
+      const usedIds = new Set(usedIdMatches.map(m => parseInt(m[1], 10)));
+      const filteredImages = Array.isArray(finalImages)
+        ? finalImages.filter(img => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)))
+        : [];
+
       const submitData = {
         judul_laporan: formData.judul_laporan,
         tanggal_laporan: formData.tanggal_laporan,
         isi_laporan: editorContent,
-        images: finalImages
+        images: filteredImages
       };
 
       console.log('🔍 Debug: Submitting data:', submitData);
@@ -994,47 +917,17 @@ const LaporanKeuanganForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Isi Laporan *
                 </label>
-                {/* Toolbar (B/I/U) */}
-                <div className="flex flex-wrap items-center gap-2 p-2 rounded-md bg-gray-50 border border-gray-200 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => { document.execCommand('bold'); updateFormatState(); }}
-                    className={`px-2 py-1 text-sm rounded font-semibold hover:bg-gray-100 ${isBoldActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                    aria-pressed={isBoldActive}
-                    title="Bold"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { document.execCommand('italic'); updateFormatState(); }}
-                    className={`px-2 py-1 text-sm rounded italic hover:bg-gray-100 ${isItalicActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                    aria-pressed={isItalicActive}
-                    title="Italic"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { document.execCommand('underline'); updateFormatState(); }}
-                    className={`px-2 py-1 text-sm rounded underline hover:bg-gray-100 ${isUnderlineActive ? 'bg-gray-200 ring-1 ring-gray-300' : ''}`}
-                    aria-pressed={isUnderlineActive}
-                    title="Underline"
-                  >
-                    U
-                  </button>
-                </div>
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorChange}
-                  onKeyUp={() => updateFormatState()}
-                  onMouseUp={() => updateFormatState()}
-                  onFocus={updateFormatState}
-                  onPaste={handleEditorPaste}
-                  data-placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
-                  className="w-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                <RichTextEditor
+                  value={formData.isi_laporan}
+                  onChange={handleEditorHtmlChange}
+                  onFilesChange={(files) => {
+                    // files: array of { file, id }
+                    setSelectedImages(files);
+                  }}
+                  placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
+                  rows={12}
                 />
+                <p className="text-xs text-gray-500 mt-1">💡 Anda bisa paste gambar langsung dari clipboard atau klik ikon gambar di toolbar.</p>
               </div>
             </div>
           </div>

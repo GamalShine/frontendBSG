@@ -1099,6 +1099,8 @@ const ModalSwitch = () => {
               {/* Backward compatibility: redirect old path to new */}
               <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
               <Route path="/admin/sdm/struktur-jobdesk-sop" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
+              {/* Legacy path redirect: jabatan -> struktur-jobdesk */}
+              <Route path="/admin/sdm/jabatan" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
 
               <Route path="/admin/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>

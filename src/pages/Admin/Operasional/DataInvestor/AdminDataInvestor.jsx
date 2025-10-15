@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, 
   Building2, 
@@ -26,6 +26,7 @@ import { id } from 'date-fns/locale';
 import { dataInvestorService } from '@/services/dataInvestorService';
 import { toast } from 'react-hot-toast';
 import AdminDataInvestorForm from './AdminDataInvestorForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog';
 import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminDataInvestor = () => {
@@ -35,7 +36,7 @@ const AdminDataInvestor = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [outletFilter, setOutletFilter] = useState('all');
-  const [tipeFilter, setTipeFilter] = useState('all');
+  
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [outlets, setOutlets] = useState([]);
@@ -43,6 +44,9 @@ const AdminDataInvestor = () => {
   const [expandedOutlets, setExpandedOutlets] = useState({});
   const [editData, setEditData] = useState(null);
   const [initialOpenAttachmentModal, setInitialOpenAttachmentModal] = useState(false);
+  // Preview lampiran
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState(null); // { url, name, isImage }
 
   useEffect(() => {
     fetchDataInvestor();
@@ -104,10 +108,27 @@ const AdminDataInvestor = () => {
       item.alamat?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesOutlet = outletFilter === 'all' || item.outlet === outletFilter;
-    const matchesTipe = tipeFilter === 'all' || item.tipe_data === tipeFilter;
     
-    return matchesSearch && matchesOutlet && matchesTipe;
+    return matchesSearch && matchesOutlet;
   });
+
+  // Last updated text mengikuti pola Indonesia panjang
+  const lastUpdatedText = useMemo(() => {
+    if (!Array.isArray(dataInvestor) || dataInvestor.length === 0) return '-';
+    const timestamps = dataInvestor
+      .map(d => d.updated_at || d.created_at || d.tanggal_join)
+      .filter(Boolean)
+      .map(d => new Date(d).getTime());
+    if (!timestamps.length) return '-';
+    const max = Math.max(...timestamps);
+    if (!isFinite(max)) return '-';
+    const dt = new Date(max);
+    try {
+      return format(dt, "d MMMM yyyy 'pukul' HH.mm", { locale: id });
+    } catch {
+      return '-';
+    }
+  }, [dataInvestor]);
 
   const getTipeColor = (tipe) => {
     switch (tipe) {
@@ -221,30 +242,33 @@ const AdminDataInvestor = () => {
       </div>
 
       {/* Info Update Bar - Abu-abu Muda */}
-      <div className="bg-gray-200 px-4 py-2 text-sm text-gray-600">
-        Data terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+        Terakhir diupdate: {lastUpdatedText}
       </div>
 
-      {/* Search and Filters */}
-      {showFilters && (
-        <div className="bg-white p-4 border-b border-gray-200">
+      {/* Search and Filters - gaya Data Sewa */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-4">
+        <div className="px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Cari investor, outlet, HP, alamat..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-            
             <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Investor</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cari nama, outlet, hp, alamat..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Outlet</label>
               <select
                 value={outletFilter}
                 onChange={(e) => setOutletFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="all">Semua Outlet</option>
                 {outlets.map((outlet, index) => (
@@ -252,34 +276,30 @@ const AdminDataInvestor = () => {
                 ))}
               </select>
             </div>
-            
-            <div>
-              <select
-                value={tipeFilter}
-                onChange={(e) => setTipeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            <div className="flex items-end">
+              <button
+                onClick={() => { setSearchTerm(''); setOutletFilter('all'); }}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
               >
-                <option value="all">Semua Tipe</option>
-                <option value="outlet">Outlet</option>
-                <option value="biodata">Biodata</option>
-              </select>
+                Reset
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Daftar per Outlet */}
-      <div className="p-4 space-y-4">
+      <div className="px-0 pb-0 space-y-3">
         {outlets.map((outlet) => {
           const outletInvestors = filteredData.filter(item => item.outlet === outlet);
           if (outletInvestors.length === 0) return null;
 
           return (
-            <div key={outlet} className="border border-gray-200 rounded-lg overflow-hidden">
+            <div key={outlet} className="bg-white rounded-none md:rounded-lg shadow-sm border border-gray-100 overflow-hidden mt-2">
               <button
                 type="button"
                 onClick={() => setExpandedOutlets(prev => ({ ...prev, [outlet]: !prev[outlet] }))}
-                className="w-full bg-red-800 text-white px-6 py-4 flex items-center justify-between hover:bg-red-900 transition-colors"
+                className="w-full bg-red-800 text-white px-6 py-3 flex items-center justify-between hover:bg-red-900 transition-colors"
               >
                 <span className="font-semibold text-left">{outlet}</span>
                 {expandedOutlets[outlet] ? (
@@ -290,27 +310,27 @@ const AdminDataInvestor = () => {
               </button>
 
               {expandedOutlets[outlet] && (
-              <div className="p-6 bg-white">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="p-4 bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                 {outletInvestors.map((investor) => (
-                  <div key={investor.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                  <div key={investor.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs">
                     <div className="flex items-start justify-between mb-2">
                       <div>
-                        <h4 className="font-semibold text-gray-900 text-base">{investor.nama_investor}</h4>
-                        <p className="text-xs text-gray-500">Outlet: {investor.outlet}</p>
+                        <h4 className="text-sm font-medium text-gray-900">{investor.nama_investor}</h4>
+                        <p className="text-[10px] text-gray-500">Outlet: {investor.outlet}</p>
                       </div>
                       {(() => {
                         const inv = parsePercent(investor.persentase_bagi_hasil);
                         const bos = Math.max(0, 100 - inv);
                         return (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full border bg-green-50 text-green-700 border-green-200">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-semibold rounded-full border bg-green-50 text-green-700 border-green-200">
                             <Percent className="w-3 h-3" /> {`${bos}% Bosgil — ${inv}% Investor`}
                           </span>
                         );
                       })()}
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-gray-100 space-y-2 text-sm leading-relaxed text-gray-700">
+                    <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 text-xs leading-relaxed text-gray-700">
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-gray-400" />
                         <span>{investor.ttl_investor || '-'}</span>
@@ -328,23 +348,23 @@ const AdminDataInvestor = () => {
                         <span className="line-clamp-2">{investor.alamat || '-'}</span>
                       </div>
 
-                      <div className="space-y-2 pt-1">
-                        <div className="flex items-center space-x-2 text-sm text-gray-700">
+                      <div className="space-y-1 pt-1">
+                        <div className="flex items-center space-x-2 text-xs text-gray-700">
                           <PhoneCall className="w-4 h-4 text-gray-400" />
                           <span>Kontak Darurat:</span>
                           <span>{investor.kontak_darurat || '-'}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-700">
+                        <div className="flex items-center space-x-2 text-xs text-gray-700">
                           <Heart className="w-4 h-4 text-gray-400" />
                           <span>Pasangan:</span>
                           <span>{investor.nama_pasangan || '-'}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-700">
+                        <div className="flex items-center space-x-2 text-xs text-gray-700">
                           <Baby className="w-4 h-4 text-gray-400" />
                           <span>Anak:</span>
                           <span>{investor.nama_anak || '-'}</span>
                         </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-700">
+                        <div className="flex items-center space-x-2 text-xs text-gray-700">
                           <Heart className="w-4 h-4 text-gray-400" />
                           <span>Ahli Waris:</span>
                           <span>{investor.ahli_waris || '-'}</span>
@@ -355,20 +375,24 @@ const AdminDataInvestor = () => {
                           if (!files.length) return null;
                           return (
                             <div className="mt-2">
-                              <div className="text-xs font-semibold text-gray-700 mb-1">Lampiran:</div>
+                              <div className="text-[10px] font-semibold text-gray-700 mb-1">Lampiran:</div>
                               <div className="flex flex-wrap gap-2">
-                                {files.map((f, idx) => (
-                                  <a
-                                    key={`${f.name}-${idx}`}
-                                    href={f.url || '#'}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-50"
-                                    title={f.name}
-                                  >
-                                    {(f.mime || '').startsWith('image/') ? '🖼️' : '📎'} {f.name}
-                                  </a>
-                                ))}
+                                {files.map((f, idx) => {
+                                  const isImage = (f.mime || '').startsWith('image/');
+                                  const url = f.url || '#';
+                                  const name = f.name || `file-${idx}`;
+                                  return (
+                                    <button
+                                      key={`${name}-${idx}`}
+                                      type="button"
+                                      onClick={() => { setPreviewItem({ url, name, isImage }); setPreviewOpen(true); }}
+                                      className="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-50"
+                                      title={name}
+                                    >
+                                      {isImage ? '🖼️' : '📎'} {name}
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
@@ -377,7 +401,7 @@ const AdminDataInvestor = () => {
 
                       <div className="flex items-center space-x-2 pt-1">
                         <Wallet className="w-4 h-4 text-gray-400" />
-                        <span>Investasi di Outlet: {investor.investasi_di_outlet ? `Rp ${parseFloat(investor.investasi_di_outlet).toLocaleString('id-ID')}` : '-'}</span>
+                        <span className="text-xs">Investasi di Outlet: {investor.investasi_di_outlet ? `Rp ${parseFloat(investor.investasi_di_outlet).toLocaleString('id-ID')}` : '-'}</span>
                       </div>
                     </div>
 
@@ -441,6 +465,38 @@ const AdminDataInvestor = () => {
         editData={editData}
         initialOpenAttachmentModal={initialOpenAttachmentModal}
       />
+
+      {/* Preview Lampiran */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Pratinjau Lampiran</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            {previewItem && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-medium text-gray-800 truncate" title={previewItem.name}>{previewItem.name}</div>
+                  <div className="flex items-center gap-2">
+                    <a href={previewItem.url} download target="_blank" rel="noreferrer" className="px-3 py-2 bg-gray-100 text-gray-800 rounded hover:bg-gray-200 text-sm">Download</a>
+                    <a href={previewItem.url} target="_blank" rel="noreferrer" className="px-3 py-2 bg-white border rounded hover:bg-gray-50 text-sm">Buka Tab Baru</a>
+                  </div>
+                </div>
+                <div className="border rounded-md bg-gray-50 p-2 max-h-[70vh] overflow-auto flex items-center justify-center">
+                  {previewItem.isImage ? (
+                    <img src={previewItem.url} alt={previewItem.name} className="max-h-[65vh] object-contain" />
+                  ) : (
+                    <iframe src={previewItem.url} title={previewItem.name} className="w-full h-[70vh] bg-white" />
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <button type="button" onClick={() => setPreviewOpen(false)} className="px-4 py-2 border rounded">Tutup</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
