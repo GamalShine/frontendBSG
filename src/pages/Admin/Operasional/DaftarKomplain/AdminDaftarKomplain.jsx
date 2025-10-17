@@ -2,20 +2,20 @@ import React from 'react';
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminKomplainService } from '@/services/komplainService';
+import { adminKomplainService, komplainService } from '@/services/komplainService';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import {
   Plus,
   Search,
   RefreshCw,
-  Eye,
   Edit,
   Trash2,
   MessageSquare,
-  MoreVertical,
-  Copy as CopyIcon,
-  Share2
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  X
 } from 'lucide-react';
 
 const AdminDaftarKomplain = () => {
@@ -29,6 +29,11 @@ const AdminDaftarKomplain = () => {
   const pageSize = 10;
   const [selectedItems, setSelectedItems] = useState([]);
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+  // Modal states
+  const [showForm, setShowForm] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
   
 
   useEffect(() => {
@@ -222,23 +227,17 @@ const AdminDaftarKomplain = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">O01-C1</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR KOMPLAIN</h1>
-              <p className="text-sm text-red-100">Kelola komplain operasional</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowFilters((v) => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              PENCARIAN
-            </button>
-            <Link
-              to="/admin/operasional/komplain/new"
+              type="button"
+              onClick={() => { setEditData(null); setShowForm(true); }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -255,45 +254,47 @@ const AdminDaftarKomplain = () => {
         </div>
       </div>
 
-      {/* Stats Cards - match Omset Harian (3 cols) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 mt-4">
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <MessageSquare className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <MessageSquare className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Menunggu</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.menunggu}</p>
+      {/* Stats Cards - match Data Sewa style */}
+      <div className="px-0 py-2 mt-2">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-0">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-red-100 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Total Komplain</p>
+                <p className="text-lg font-bold text-gray-900">{stats.total}</p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-sm border p-6">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <MessageSquare className="h-5 w-5 text-green-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Clock className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Komplain Menunggu</p>
+                <p className="text-lg font-bold text-gray-900">{stats.menunggu}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Selesai</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.selesai}</p>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Komplain Selesai</p>
+                <p className="text-lg font-bold text-gray-900">{stats.selesai}</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Form Pencarian - gaya Data Sewa */}
-      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-3">
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-2 mb-3">
         <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
@@ -362,13 +363,11 @@ const AdminDaftarKomplain = () => {
                 {paginatedItems.map((row, idx) => {
                   const pelapor = row?.Pelapor || row?.pelapor || {};
                   return (
-                    <div key={row.id} className="relative bg-white border border-gray-100 rounded-md p-3 hover:shadow-md transition-shadow text-xs">
-                      {/* Actions */}
-                      <div className="absolute top-2 right-2 flex items-center gap-1">
-                        <button title="Lihat" onClick={() => navigate(`/admin/operasional/komplain/${row.id}`)} className="p-2 rounded hover:bg-gray-100 text-gray-700"><Eye className="h-4 w-4"/></button>
-                        <button title="Edit" onClick={() => navigate(`/admin/operasional/komplain/${row.id}/edit`)} className="p-2 rounded hover:bg-gray-100 text-amber-600"><Edit className="h-4 w-4"/></button>
+                    <div key={row.id} className="relative bg-white border border-gray-100 rounded-md p-3 hover:shadow-md transition-shadow text-xs" onClick={() => { setDetailItem(row); setShowDetail(true); }}>
+                      {/* Actions (no eye/copy) */}
+                      <div className="absolute top-2 right-2 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <button title="Edit" onClick={() => { setEditData(row); setShowForm(true); }} className="p-2 rounded hover:bg-gray-100 text-amber-600"><Edit className="h-4 w-4"/></button>
                         <button title="Hapus" onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-gray-100 text-red-600"><Trash2 className="h-4 w-4"/></button>
-                        <button title="Copy deskripsi" onClick={() => navigator.clipboard.writeText((row?.deskripsi_komplain||'').toString())} className="p-2 rounded hover:bg-gray-100 text-gray-700"><CopyIcon className="h-4 w-4"/></button>
                       </div>
                       <div className="pr-16">
                         <div className="text-[10px] text-gray-500">{formatDate(row?.created_at || row?.tanggal_pelaporan)}</div>
@@ -417,6 +416,151 @@ const AdminDaftarKomplain = () => {
           </>
         )}
       </div>
+      {/* Form Modal (Tambah/Edit) */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div className="flex items-center">
+                <div>
+                  <h2 className="text-xl font-bold leading-tight">{editData ? 'Edit Komplain' : 'Tambah Komplain'}</h2>
+                </div>
+              </div>
+              <button type="button" onClick={() => { setShowForm(false); setEditData(null); }} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              const payload = {
+                judul_komplain: (fd.get('judul_komplain') || '').toString().trim(),
+                deskripsi_komplain: (fd.get('deskripsi_komplain') || '').toString().trim(),
+                kategori: (fd.get('kategori') || 'lainnya').toString(),
+                prioritas: (fd.get('prioritas') || 'berproses').toString(),
+                status: (fd.get('status') || 'menunggu').toString()
+              };
+              if (!payload.judul_komplain || !payload.deskripsi_komplain) return toast.error('Judul dan deskripsi wajib diisi');
+              try {
+                if (editData?.id) {
+                  await adminKomplainService.updateKomplainStatus(editData.id, payload.status);
+                  await komplainService.updateKomplain(editData.id, payload);
+                  toast.success('Komplain diperbarui');
+                } else {
+                  await komplainService.createKomplain(payload);
+                  toast.success('Komplain ditambahkan');
+                }
+                setShowForm(false); setEditData(null); await loadData();
+              } catch (err) {
+                toast.error(typeof err === 'string' ? err : err?.message || 'Gagal menyimpan komplain');
+              }
+            }} className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+                <div className="rounded-xl border bg-white">
+                  <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                    <div className="text-sm font-semibold text-gray-700">Data Komplain</div>
+                  </div>
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Judul Komplain<span className="text-red-500">*</span></label>
+                      <input name="judul_komplain" defaultValue={editData?.judul_komplain || ''} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Masukkan judul" />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Deskripsi Komplain<span className="text-red-500">*</span></label>
+                      <textarea name="deskripsi_komplain" defaultValue={editData?.deskripsi_komplain || ''} rows={5} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Jelaskan komplain" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Kategori</label>
+                      <select name="kategori" defaultValue={editData?.kategori || 'lainnya'} className="w-full px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                        <option value="sistem">Sistem</option>
+                        <option value="layanan">Layanan</option>
+                        <option value="produk">Produk</option>
+                        <option value="lainnya">Lainnya</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Prioritas</label>
+                      <select name="prioritas" defaultValue={editData?.prioritas || 'berproses'} className="w-full px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                        <option value="mendesak">Mendesak</option>
+                        <option value="penting">Penting</option>
+                        <option value="berproses">Berproses</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                      <select name="status" defaultValue={editData?.status || 'menunggu'} className="w-full px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                        <option value="menunggu">Menunggu</option>
+                        <option value="diproses">Diproses</option>
+                        <option value="selesai">Selesai</option>
+                        <option value="ditolak">Ditolak</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Footer */}
+              <div className="p-0 border-t bg-white">
+                <div className="grid grid-cols-2 gap-2 px-2 py-2">
+                  <button type="button" onClick={() => { setShowForm(false); setEditData(null); }} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Batal</button>
+                  <button type="submit" className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">{editData ? 'Update' : 'Simpan'}</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {showDetail && detailItem && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div className="flex items-center">
+                <div>
+                  <h2 className="text-xl font-bold leading-tight">Detail Komplain</h2>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowDetail(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+              <div className="rounded-xl border bg-white">
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800">
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-semibold text-gray-700 mb-1">Judul Komplain</div>
+                    <div className="px-3 py-2 border rounded-lg bg-gray-50">{detailItem?.judul_komplain || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700 mb-1">Tanggal</div>
+                    <div className="px-3 py-2 border rounded-lg bg-gray-50">{formatDate(detailItem?.created_at || detailItem?.tanggal_pelaporan)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-gray-700 mb-1">Status</div>
+                    <div className="px-3 py-2 border rounded-lg bg-gray-50 capitalize">{detailItem?.status || '-'}</div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-semibold text-gray-700 mb-1">Deskripsi</div>
+                    <div className="px-3 py-2 border rounded-lg bg-gray-50 whitespace-pre-wrap">{detailItem?.deskripsi_komplain || '-'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="p-0 border-t bg-white">
+              <div className="grid grid-cols-2 gap-2 px-2 py-2">
+                <button type="button" onClick={() => { setShowDetail(false); setEditData(detailItem); setShowForm(true); }} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Edit</button>
+                <button type="button" onClick={() => { setShowDetail(false); handleDelete(detailItem.id); }} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Hapus</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

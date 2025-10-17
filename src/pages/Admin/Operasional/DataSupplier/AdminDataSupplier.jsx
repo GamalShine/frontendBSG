@@ -28,30 +28,55 @@ import {
   ChevronRight,
   Truck,
   Factory,
-  Store
+  Store,
+  X
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { dataSupplierService } from '@/services/dataSupplierService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog';
+import AdminDataSupplierForm from './AdminDataSupplierForm';
 
 const AdminDataSupplier = () => {
   const location = useLocation();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [kategoriFilter, setKategoriFilter] = useState('all');
   const [divisiFilter, setDivisiFilter] = useState('all');
   const [stats, setStats] = useState({});
   const [activeSection, setActiveSection] = useState('');
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editData, setEditData] = useState(null);
 
+  // Initial load (full loader)
   useEffect(() => {
-    fetchSuppliers();
-  }, [searchTerm, kategoriFilter, divisiFilter]);
+    const run = async () => {
+      await fetchSuppliers(true);
+      setInitialLoaded(true);
+    };
+    run();
+  }, []);
 
-  const fetchSuppliers = async () => {
+  // Reactive load on filters with debounce (soft loading)
+  useEffect(() => {
+    if (!initialLoaded) return;
+    setFilterLoading(true);
+    const t = setTimeout(async () => {
+      await fetchSuppliers(false);
+      setFilterLoading(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchTerm, kategoriFilter, divisiFilter, initialLoaded]);
+
+  const fetchSuppliers = async (showFullLoading = false) => {
     try {
-      setLoading(true);
+      if (showFullLoading) setLoading(true);
       let params = {};
       
       if (searchTerm) {
@@ -69,7 +94,7 @@ const AdminDataSupplier = () => {
       setError('Gagal memuat data supplier');
       console.error('Error fetching suppliers:', err);
     } finally {
-      setLoading(false);
+      if (showFullLoading) setLoading(false);
     }
   };
 
@@ -113,48 +138,60 @@ const AdminDataSupplier = () => {
   };
 
   const renderSupplierCard = (supplier) => (
-    <div key={supplier.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs">
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex-1">
-          <h4 className="text-sm font-medium text-gray-900">{supplier.nama_supplier}</h4>
-          {supplier.npwp && (
-            <p className="text-xs text-gray-500">NPWP: {supplier.npwp}</p>
-          )}
+    <div
+      key={supplier.id}
+      onClick={() => { setDetailItem(supplier); setShowDetail(true); }}
+      className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow cursor-pointer text-sm"
+    >
+      {/* Header: Nama + Badge */}
+      <div className="flex items-start justify-between mb-2">
+        <div className="pr-2 min-w-0">
+          <h4 className="text-base font-semibold text-gray-900 leading-snug truncate" title={supplier.nama_supplier}>{supplier.nama_supplier || '-'}</h4>
         </div>
-        <span className={`inline-flex px-2 py-1 text-[10px] font-semibold rounded-full ${getDivisiColor(supplier.divisi)}`}>
-          {supplier.divisi}
-        </span>
-      </div>
-
-      <div className="space-y-1 mb-3">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Phone className="h-4 w-4" />
-          <span>{supplier.no_hp_supplier}</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
-          <Calendar className="h-4 w-4" />
-          <span>{supplier.tanggal_kerjasama ? format(new Date(supplier.tanggal_kerjasama), 'dd MMM yyyy', { locale: id }) : '-'}</span>
-        </div>
-        <div className="flex items-start gap-2 text-xs text-gray-600">
-          <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-          <span className="line-clamp-2">{supplier.alamat}</span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span className={`inline-flex px-2 py-1 text-[11px] font-semibold rounded-full ${getDivisiColor(supplier.divisi)}`}>{supplier.divisi || '-'}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Link to={`/admin/operasional/data-supplier/detail/${supplier.id}`}>
-          <button className="p-1 text-gray-500 hover:text-gray-700 border border-gray-300 rounded hover:bg-gray-50">
-            <Eye className="h-4 w-4" />
-          </button>
-        </Link>
-        <Link to={`/admin/operasional/data-supplier/edit/${supplier.id}`}>
-          <button className="p-1 text-gray-500 hover:text-gray-700 border border-gray-300 rounded hover:bg-gray-50">
-            <Edit className="h-4 w-4" />
-          </button>
-        </Link>
+      {/* Meta (tanpa ikon, pakai label teks) */}
+      <div className="mt-2 pt-2 border-t border-gray-100 space-y-1.5 text-gray-800">
+        <div className="flex gap-2">
+          <span className="text-xs text-gray-500 min-w-[130px]">No. HP:</span>
+          <span className="font-medium truncate" title={supplier.no_hp_supplier}>{supplier.no_hp_supplier || '-'}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="text-xs text-gray-500 min-w-[130px]">Tanggal Kerjasama:</span>
+          <span className="font-medium">{supplier.tanggal_kerjasama ? format(new Date(supplier.tanggal_kerjasama), 'dd MMM yyyy', { locale: id }) : '-'}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="text-xs text-gray-500 min-w-[130px]">NPWP:</span>
+          <span className="font-medium truncate" title={supplier.npwp}>{supplier.npwp || '-'}</span>
+        </div>
+        <div className="flex gap-2">
+          <span className="text-xs text-gray-500 min-w-[130px]">Alamat:</span>
+          <span className="font-medium line-clamp-2">{supplier.alamat || '-'}</span>
+        </div>
+        {supplier.keterangan && (
+          <div className="flex gap-2">
+            <span className="text-xs text-gray-500 min-w-[130px]">Keterangan:</span>
+            <span className="font-medium line-clamp-2">{supplier.keterangan}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center justify-end gap-2 pt-3">
         <button
-          onClick={() => handleDelete(supplier.id)}
-          className="p-1 text-red-500 hover:text-red-600 border border-gray-300 rounded hover:bg-red-50"
+          onClick={(e) => { e.stopPropagation(); setEditData(supplier); setShowForm(true); }}
+          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+          title="Edit"
+        >
+          <Edit className="h-4 w-4" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDelete(supplier.id); }}
+          className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
+          title="Hapus"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -180,7 +217,7 @@ const AdminDataSupplier = () => {
     }
   }, [suppliers]);
 
-  if (loading) {
+  if (loading && !initialLoaded) {
     return (
       <div className="container mx-auto p-6">
         <div className="text-center py-12">
@@ -217,16 +254,9 @@ const AdminDataSupplier = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">A01-O2</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA SUPPLIER</h1>
-              <p className="text-sm text-red-100">Kelola dan monitor semua data supplier perusahaan</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => { setSearchTerm(''); setKategoriFilter('all'); setDivisiFilter('all'); }} 
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              RESET FILTER
-            </button>
             <Link
               to="/admin/operasional/data-supplier/form"
               state={{ backgroundLocation: location }}
@@ -300,7 +330,7 @@ const AdminDataSupplier = () => {
         {/* Filters and Actions */}
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-6">
           <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Cari Supplier</label>
                 <div className="relative">
@@ -343,11 +373,26 @@ const AdminDataSupplier = () => {
                   <option value="OPERASIONAL">Operasional</option>
                 </select>
               </div>
+
+              <div className="flex items-end">
+                <button 
+                  onClick={() => { setSearchTerm(''); setKategoriFilter('all'); setDivisiFilter('all'); }} 
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  Reset Filter
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Data Sections by Category */}
+        {filterLoading && (
+          <div className="px-6 py-2 text-xs text-gray-600 flex items-center gap-2">
+            <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-red-600 rounded-full animate-spin" />
+            Memuat hasil pencarian...
+          </div>
+        )}
         <div className="space-y-3">
           {/* Supplier Outlet Section */}
           <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
@@ -356,7 +401,6 @@ const AdminDataSupplier = () => {
               className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <Store className="w-6 h-6" />
                 <span className="text-lg font-semibold">Supplier Outlet</span>
                 <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
                   {groupedSuppliers['SUPPLIER OUTLET'].length}
@@ -391,7 +435,6 @@ const AdminDataSupplier = () => {
               className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <Building className="w-6 h-6" />
                 <span className="text-lg font-semibold">Supplier Toko Tepung & BB</span>
                 <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
                   {groupedSuppliers['SUPPLIER TOKO TEPUNG & BB'].length}
@@ -426,7 +469,6 @@ const AdminDataSupplier = () => {
               className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <Factory className="w-6 h-6" />
                 <span className="text-lg font-semibold">Supplier Produksi</span>
                 <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
                   {groupedSuppliers['SUPPLIER PRODUKSI'].length}
@@ -461,7 +503,6 @@ const AdminDataSupplier = () => {
               className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
             >
               <div className="flex items-center space-x-3">
-                <Truck className="w-6 h-6" />
                 <span className="text-lg font-semibold">Supplier Kambing</span>
                 <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
                   {groupedSuppliers['SUPPLIER KAMBING'].length}
@@ -490,11 +531,111 @@ const AdminDataSupplier = () => {
           </div>
         </div>
 
-        {/* Last Updated Info */}
-        <div className="bg-gray-200 px-4 py-2 text-sm text-gray-600 mt-6 rounded-lg">
-          Terakhir diupdate: {lastUpdatedText}
-        </div>
+        
       </div>
+      {/* Edit Modal */}
+      <AdminDataSupplierForm
+        isOpen={showForm}
+        onClose={() => { setShowForm(false); setEditData(null); }}
+        onSuccess={fetchSuppliers}
+        editData={editData}
+      />
+
+      {/* Detail Modal (read-only, styled like form modal) */}
+      <Dialog open={showDetail} onOpenChange={setShowDetail}>
+        <DialogContent className="p-0 max-w-3xl">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div className="flex items-center">
+                <div>
+                  <h2 className="text-xl font-bold leading-tight">Detail Supplier</h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDetail(false)}
+                className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                aria-label="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+              {detailItem && (
+                <div className="grid grid-cols-12 gap-4">
+                  {/* Card informasi utama */}
+                  <div className="col-span-12">
+                    <div className="rounded-xl border bg-white">
+                      <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                        <div className="text-sm font-semibold text-gray-700">Informasi Supplier</div>
+                      </div>
+                      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Nama Supplier</div>
+                          <div className="font-medium text-gray-900">{detailItem.nama_supplier || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Divisi</div>
+                          <div className="font-medium text-gray-900">{detailItem.divisi || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Kategori Supplier</div>
+                          <div className="text-gray-800">{detailItem.kategori_supplier || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">No. HP</div>
+                          <div className="text-gray-800">{detailItem.no_hp_supplier || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">Tanggal Kerjasama</div>
+                          <div className="text-gray-800">{detailItem.tanggal_kerjasama ? format(new Date(detailItem.tanggal_kerjasama), 'dd MMM yyyy', { locale: id }) : '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-gray-500 mb-1">NPWP</div>
+                          <div className="text-gray-800">{detailItem.npwp || '-'}</div>
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="text-xs text-gray-500 mb-1">Alamat</div>
+                          <div className="text-gray-800 leading-relaxed">{detailItem.alamat || '-'}</div>
+                        </div>
+                        {detailItem.keterangan && (
+                          <div className="md:col-span-2">
+                            <div className="text-xs text-gray-500 mb-1">Keterangan</div>
+                            <div className="text-gray-800 leading-relaxed">{detailItem.keterangan}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-0 border-t bg-white">
+              <div className="grid grid-cols-2 gap-2 px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowDetail(false); setEditData(detailItem); setShowForm(true); }}
+                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDetail(false)}
+                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
