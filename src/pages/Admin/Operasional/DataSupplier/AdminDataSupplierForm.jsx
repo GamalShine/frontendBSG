@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Card, { CardHeader, CardBody } from '@/components/UI/Card';
 import Button from '@/components/UI/Button';
@@ -7,7 +7,7 @@ import Select from '@/components/UI/Select';
 import { X, Save, Building } from 'lucide-react';
 import { dataSupplierService } from '@/services/dataSupplierService';
 
-const AdminDataSupplierForm = () => {
+const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -20,6 +20,24 @@ const AdminDataSupplierForm = () => {
     alamat: '',
     keterangan: ''
   });
+
+  // Determine open state (modal route fallback: open by default)
+  const open = typeof isOpen === 'boolean' ? isOpen : true;
+
+  useEffect(() => {
+    if (editData) {
+      setFormData({
+        kategori_supplier: editData.kategori_supplier || '',
+        divisi: editData.divisi || '',
+        nama_supplier: editData.nama_supplier || '',
+        no_hp_supplier: editData.no_hp_supplier || '',
+        tanggal_kerjasama: editData.tanggal_kerjasama ? String(editData.tanggal_kerjasama).substring(0,10) : '',
+        npwp: editData.npwp || '',
+        alamat: editData.alamat || '',
+        keterangan: editData.keterangan || ''
+      });
+    }
+  }, [editData]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -39,15 +57,32 @@ const AdminDataSupplierForm = () => {
 
     try {
       setSaving(true);
-      await dataSupplierService.create(formData);
-      alert('Supplier berhasil ditambahkan');
-      navigate('/admin/operasional/data-supplier');
+      if (editData && editData.id) {
+        await dataSupplierService.update(editData.id, formData);
+        alert('Supplier berhasil diperbarui');
+        if (onSuccess) onSuccess();
+        if (onClose) return onClose();
+        navigate('/admin/operasional/data-supplier');
+      } else {
+        await dataSupplierService.create(formData);
+        alert('Supplier berhasil ditambahkan');
+        if (onSuccess) onSuccess();
+        if (onClose) return onClose();
+        navigate('/admin/operasional/data-supplier');
+      }
     } catch (err) {
-      alert('Gagal menambahkan supplier');
+      alert(editData ? 'Gagal memperbarui supplier' : 'Gagal menambahkan supplier');
       console.error('Error creating supplier:', err);
     } finally {
       setSaving(false);
     }
+  };
+
+  if (!open) return null;
+
+  const handleClose = () => {
+    if (onClose) return onClose();
+    navigate('/admin/operasional/data-supplier');
   };
 
   return (
@@ -56,7 +91,7 @@ const AdminDataSupplierForm = () => {
       <button
         type="button"
         aria-hidden="true"
-        onClick={() => navigate('/admin/operasional/data-supplier')}
+        onClick={handleClose}
         className="absolute inset-0"
         tabIndex={-1}
       />
@@ -65,16 +100,14 @@ const AdminDataSupplierForm = () => {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            <Building className="w-6 h-6 text-white" />
+          <div className="flex items-center">
             <div>
-              <h1 className="text-xl font-bold leading-tight">Tambah Supplier Baru</h1>
-              <p className="text-xs text-red-100">Lengkapi data supplier dengan benar untuk memudahkan pengelolaan</p>
+              <h1 className="text-xl font-bold leading-tight">{editData ? 'Edit Supplier' : 'Tambah Supplier Baru'}</h1>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => navigate('/admin/operasional/data-supplier')}
+            onClick={handleClose}
             className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
             aria-label="Tutup"
           >
@@ -86,8 +119,7 @@ const AdminDataSupplierForm = () => {
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
           <Card>
             <CardHeader>
-              <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                <Building className="h-5 w-5 text-blue-600" />
+              <h2 className="text-sm font-semibold text-gray-700">
                 Informasi Supplier
               </h2>
             </CardHeader>
@@ -221,7 +253,7 @@ const AdminDataSupplierForm = () => {
           <div className="grid grid-cols-2 gap-2 px-2 py-2">
             <button
               type="button"
-              onClick={() => navigate('/admin/operasional/data-supplier')}
+              onClick={handleClose}
               className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
             >
               Batal
@@ -237,14 +269,13 @@ const AdminDataSupplierForm = () => {
               ) : (
                 <Save className="w-4 h-4" />
               )}
-              <span>{saving ? 'Menyimpan...' : 'Simpan Supplier'}</span>
+              <span>{saving ? 'Menyimpan...' : (editData ? 'Update Supplier' : 'Simpan Supplier')}</span>
             </button>
           </div>
         </div>
       </div>
     </div>
   );
-}
-;
+};
 
 export default AdminDataSupplierForm;

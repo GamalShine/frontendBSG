@@ -82,6 +82,33 @@ export const dataAsetService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  // Upload lampiran untuk data aset (admin)
+  uploadLampiran: async (id, files) => {
+    try {
+      const formData = new FormData();
+      // Backend expects field name 'lampiran' and supports multiple files
+      for (const file of files) {
+        formData.append('lampiran', file);
+      }
+      const response = await api.post(`/admin/data-aset/${id}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Hapus salah satu lampiran berdasarkan index
+  deleteLampiran: async (id, fileIndex) => {
+    try {
+      const response = await api.delete(`/admin/data-aset/${id}/lampiran/${fileIndex}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 

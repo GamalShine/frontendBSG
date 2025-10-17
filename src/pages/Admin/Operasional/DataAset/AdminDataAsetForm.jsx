@@ -8,10 +8,11 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { dataAsetService } from '@/services/dataAsetService';
+import { API_CONFIG } from '@/config/constants';
 import { toast } from 'react-hot-toast';
 
 const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
-  const [formData, setFormData] = useState({
+  const initialForm = {
     nama_aset: '',
     merk_kendaraan: '',
     nama_barang: '',
@@ -39,16 +40,38 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
     serial_number: '',
     tahun_pembelian: '',
     lampiran: ''
-  });
+  }
+  const [formData, setFormData] = useState(initialForm);
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [selectedFiles, setSelectedFiles] = useState([]);
+
+  const toFileUrl = (p) => {
+    if (!p) return '#';
+    const raw = String(p);
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const clean = raw.replace(/^\/+/, '');
+    const url = `${API_CONFIG.BASE_HOST}/${clean}`;
+    return encodeURI(url);
+  };
 
   useEffect(() => {
     if (editData) {
       setFormData(editData);
+    } else {
+      setFormData(initialForm);
     }
+    setSelectedFiles([]);
+    setErrors({});
   }, [editData]);
+
+  const handleClose = () => {
+    setFormData(initialForm);
+    setSelectedFiles([]);
+    setErrors({});
+    onClose();
+  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -114,6 +137,19 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
       } else {
         response = await dataAsetService.createDataAset(formData);
         toast.success('Data aset berhasil ditambahkan');
+        // Jika ada file foto dipilih, langsung upload setelah create
+        try {
+          const newId = response?.data?.id;
+          if (newId && selectedFiles.length > 0) {
+            const loadingToast = toast.loading('Mengunggah lampiran foto...');
+            await dataAsetService.uploadLampiran(newId, selectedFiles);
+            toast.dismiss(loadingToast);
+            toast.success('Lampiran foto berhasil diunggah');
+          }
+        } catch (upErr) {
+          console.error('Upload lampiran setelah create gagal:', upErr);
+          toast.error('Lampiran foto gagal diunggah');
+        }
       }
       
       if (response.success) {
@@ -148,6 +184,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
           tahun_pembelian: '',
           lampiran: ''
         });
+        setSelectedFiles([]);
       }
     } catch (error) {
       console.error('Error saving data aset:', error);
@@ -400,18 +437,14 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
-        {/* Header */}
+        {/* Header (tetap terlihat saat scroll) */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
-          <div className="flex items-center gap-3">
-            {formData.kategori === 'PROPERTI' && <Building2 className="w-6 h-6 text-white" />}
-            {['KENDARAAN_PRIBADI', 'KENDARAAN_OPERASIONAL', 'KENDARAAN_DISTRIBUSI'].includes(formData.kategori) && <Car className="w-6 h-6 text-white" />}
-            {formData.kategori === 'ELEKTRONIK' && <Monitor className="w-6 h-6 text-white" />}
+          <div className="flex items-center">
             <div>
               <h2 className="text-xl font-bold leading-tight">{editData ? 'Edit Data Aset' : 'Tambah Data Aset Baru'}</h2>
-              <p className="text-xs text-red-100">Isi data aset dengan lengkap untuk memudahkan pengelolaan</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+          <button onClick={handleClose} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -530,15 +563,127 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Lampiran</label>
-                      <textarea
-                        name="lampiran"
-                        value={formData.lampiran}
-                        onChange={handleInputChange}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                        placeholder="FOTO, FILE, VIDEO atau keterangan lainnya"
-                      />
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Upload Lampiran (foto/dokumen) - bisa lebih dari 1
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                              const picked = Array.from(e.target.files || [])
+                              // Gabungkan dengan yang sudah dipilih, hilangkan duplikat by (name,size,lastModified)
+                              const key = (f) => `${f.name}|${f.size}|${f.lastModified}`
+                              const existingMap = new Map(selectedFiles.map(f => [key(f), f]))
+                              for (const f of picked) {
+                                const k = key(f)
+                                if (!existingMap.has(k)) existingMap.set(k, f)
+                              }
+                              const merged = Array.from(existingMap.values())
+                              setSelectedFiles(merged)
+                              // Jangan reset e.target.value agar bisa pilih file yang sama lagi jika perlu
+                            }}
+                          />
+                          <span>Pilih File</span>
+                        </label>
+                        {selectedFiles.length > 0 && (
+                          <span className="text-xs text-gray-600">{selectedFiles.length} file dipilih</span>
+                        )}
+                      </div>
+                      {selectedFiles.length > 0 && (
+                        <div className="mt-2 grid grid-cols-4 gap-2">
+                          {selectedFiles.map((f, idx) => {
+                            const isImage = (f.type || '').startsWith('image/')
+                            const ext = (f.name.split('.').pop() || '').toUpperCase()
+                            return (
+                              <div key={idx} className="relative border rounded p-1 text-xs text-gray-700 bg-white group">
+                                {/* Remove button */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedFiles(prev => prev.filter((_, i) => i !== idx))
+                                  }}
+                                  className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block"
+                                  title="Hapus file ini"
+                                >
+                                  ×
+                                </button>
+
+                                {isImage ? (
+                                  <img
+                                    src={URL.createObjectURL(f)}
+                                    alt={f.name}
+                                    className="w-full h-20 object-cover rounded"
+                                  />
+                                ) : (
+                                  <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                    <span className="font-semibold">{ext || 'FILE'}</span>
+                                  </div>
+                                )}
+                                <div className="mt-1 truncate" title={f.name}>{f.name}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        Format didukung: Gambar (JPG, PNG, GIF), PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT.
+                      </p>
+                      {/* Existing attachments (edit mode) */}
+                      {editData && Array.isArray(formData.lampiran) && (
+                        <div className="mt-3">
+                          <div className="text-xs font-semibold text-gray-700 mb-2">Lampiran Tersimpan</div>
+                          {formData.lampiran.length === 0 ? (
+                            <div className="text-xs text-gray-500">Belum ada lampiran.</div>
+                          ) : (
+                            <div className="grid grid-cols-4 gap-2">
+                              {formData.lampiran.map((file, idx) => {
+                                const isImage = String(file.mimetype || '').startsWith('image/');
+                                const url = toFileUrl(file.path);
+                                const name = file.originalname || file.filename || `file-${idx}`;
+                                return (
+                                  <div key={idx} className="relative border rounded p-1 text-xs text-gray-700 bg-white group">
+                                    {isImage ? (
+                                      <a href={url} target="_blank" rel="noreferrer">
+                                        <img src={url} alt={name} className="w-full h-20 object-cover rounded" />
+                                      </a>
+                                    ) : (
+                                      <a href={url} target="_blank" rel="noreferrer" className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                        <span className="font-semibold truncate px-1" title={name}>{(name.split('.').pop() || 'FILE').toUpperCase()}</span>
+                                      </a>
+                                    )}
+                                    <div className="mt-1 truncate" title={name}>{name}</div>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!window.confirm('Hapus lampiran ini?')) return;
+                                        try {
+                                          await dataAsetService.deleteLampiran(editData.id, idx);
+                                          toast.success('Lampiran dihapus');
+                                          // Update local state to remove the deleted file
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            lampiran: (prev.lampiran || []).filter((_, i) => i !== idx)
+                                          }));
+                                        } catch (err) {
+                                          toast.error('Gagal menghapus lampiran');
+                                        }
+                                      }}
+                                      className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block"
+                                      title="Hapus lampiran"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -547,18 +692,18 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
 
             {/* Footer (non-scrollable) */}
           <div className="p-0 border-t bg-white">
-            <div className="grid grid-cols-2 gap-2 px-2 py-2">
+            <div className="grid grid-cols-2 gap-2 px-2 pt-3 pb-0">
               <button
                 type="button"
-                onClick={onClose}
-                className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                onClick={handleClose}
+                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg flex items-center justify-center"
               >
                 Batal
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
               >
                 {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
                 <span>{loading ? 'Menyimpan...' : (editData ? 'Update' : 'Simpan')}</span>

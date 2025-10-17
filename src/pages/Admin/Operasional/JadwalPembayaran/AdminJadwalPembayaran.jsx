@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import { jadwalPembayaranService } from '../../../../services/jadwalPembayaranService'
 import { MENU_CODES } from '../../../../config/menuCodes'
-import { Plus, ChevronDown, ChevronRight, Calendar, Edit2, Wallet, Building2, User, Phone, CreditCard, BadgeDollarSign, Search } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Edit2, Search } from 'lucide-react'
 
 const KATEGORI_OPTIONS = [
   'pajak_kendaraan_pribadi',
@@ -63,7 +63,8 @@ const AdminJadwalPembayaran = () => {
   const [expandedMonth, setExpandedMonth] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
   const [kategoriFilter, setKategoriFilter] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
+  const [detailItem, setDetailItem] = useState(null)
 
   const load = async () => {
     try {
@@ -135,6 +136,11 @@ const AdminJadwalPembayaran = () => {
     setShowForm(true)
   }
 
+  const openDetail = (item) => {
+    setDetailItem(item)
+    setShowDetail(true)
+  }
+
   const openEdit = (item) => {
     setEditingId(item.id)
     setFormData({
@@ -189,18 +195,10 @@ const AdminJadwalPembayaran = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.jadwalPembayaran}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">JADWAL</h1>
-              <p className="text-sm text-red-100">Pembayaran dan Perawatan</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">JADWAL PEMBAYARAN/PERAWATAN</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-              aria-pressed={showFilters}
-            >
-              PENCARIAN
-            </button>
             <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
@@ -214,49 +212,47 @@ const AdminJadwalPembayaran = () => {
         <div className="text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
       </div>
 
-      {/* Form Pencarian (toggle) */}
-      {showFilters && (
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-6 mb-0">
-          <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cari Jadwal</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e)=>setSearchTerm(e.target.value)}
-                    placeholder="Cari nama item, kategori, outlet, pemilik, rekening, bulan..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
+      {/* Form Pencarian (selalu tampil) */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-6 mb-0">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Jadwal</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e)=>setSearchTerm(e.target.value)}
+                  placeholder="Cari nama item, kategori, outlet, pemilik, rekening, bulan..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Kategori</label>
-                <select
-                  value={kategoriFilter}
-                  onChange={(e)=>setKategoriFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                >
-                  <option value="all">Semua Kategori</option>
-                  {KATEGORI_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt.replaceAll('_',' ')}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-end">
-                <button
-                  onClick={() => { setSearchTerm(''); setKategoriFilter('all'); }}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-                >
-                  Reset
-                </button>
-              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Kategori</label>
+              <select
+                value={kategoriFilter}
+                onChange={(e)=>setKategoriFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="all">Semua Kategori</option>
+                {KATEGORI_OPTIONS.map(opt => (
+                  <option key={opt} value={opt}>{opt.replaceAll('_',' ')}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={() => { setSearchTerm(''); setKategoriFilter('all'); }}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+              >
+                Reset
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       <div className="px-0 my-6">
         {error && (
@@ -276,10 +272,9 @@ const AdminJadwalPembayaran = () => {
               <div key={kategori} className="mb-6 border rounded-lg overflow-hidden shadow-sm">
                 <button onClick={() => setExpandedKategori(v=>({...v,[kategori]:!v[kategori]}))} className="w-full flex items-center justify-between px-5 py-4 bg-red-700 text-white">
                   <div className="flex items-center gap-3">
-                    <Building2 className="h-5 w-5 text-red-100" />
                     <span className="font-bold tracking-wide">{prettyCat}</span>
                     <span className="ml-2 text-xs bg-white/15 px-2 py-0.5 rounded-full">{totalItemsInCat} item</span>
-                    <span className="ml-1 text-xs bg-white/15 px-2 py-0.5 rounded-full flex items-center gap-1"><BadgeDollarSign className="h-3 w-3" /> {formatCurrency(totalSewaInCat)}</span>
+                    <span className="ml-1 text-xs bg-white/15 px-2 py-0.5 rounded-full">{formatCurrency(totalSewaInCat)}</span>
                   </div>
                   {catOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </button>
@@ -289,15 +284,13 @@ const AdminJadwalPembayaran = () => {
                       const yearKey = `${kategori}-${y}`
                       const yOpen = !!expandedYear[yearKey]
                       const months = Object.keys(grouped[kategori][y] || {})
-                      const totalItemsInYear = months.reduce((a,m)=> a + (grouped[kategori][y][m]?.length||0), 0)
-                      const totalSewaInYear = months.reduce((a,m)=> a + (grouped[kategori][y][m]||[]).reduce((s,row)=> s + (Number(row.sewa)||0), 0), 0)
                       return (
                         <div key={y} className="border-t">
                           <button onClick={() => setExpandedYear(v=>({...v,[yearKey]:!v[yearKey]}))} className="w-full flex items-center justify-between px-5 py-3 bg-gray-50 text-gray-800 font-semibold">
-                            <span className="flex items-center gap-2"><Calendar className="h-4 w-4 text-red-600"/> Tahun {y}</span>
+                            <span className="flex items-center gap-2">Tahun {y}</span>
                             <span className="text-xs font-medium text-gray-600 flex items-center gap-2">
-                              <span className="bg-gray-200 px-2 py-0.5 rounded-full">{totalItemsInYear} item</span>
-                              <span className="bg-gray-200 px-2 py-0.5 rounded-full">{formatCurrency(totalSewaInYear)}</span>
+                              <span className="bg-gray-200 px-2 py-0.5 rounded-full">{months.reduce((a,m)=> a + (grouped[kategori][y][m]?.length||0), 0)} item</span>
+                              <span className="bg-gray-200 px-2 py-0.5 rounded-full">{formatCurrency(months.reduce((a,m)=> a + (grouped[kategori][y][m]||[]).reduce((s,row)=> s + (Number(row.sewa)||0), 0), 0))}</span>
                               {yOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                             </span>
                           </button>
@@ -321,20 +314,29 @@ const AdminJadwalPembayaran = () => {
                                     {mOpen && (
                                       <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {items.map((row) => (
-                                          <div key={row.id} className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                          <div
+                                            key={row.id}
+                                            className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                            onClick={() => openDetail(row)}
+                                          >
                                             <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
                                               <div className="font-semibold text-gray-800">{prettyKategori(row.kategori)}</div>
-                                              <button onClick={() => openEdit(row)} className="inline-flex items-center gap-1 text-red-700 hover:text-red-800 text-sm font-medium">
-                                                <Edit2 className="h-4 w-4" /> Edit
-                                              </button>
+                                              <div className="flex items-center gap-2">
+                                                <button onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="inline-flex items-center gap-1 text-red-700 hover:text-red-800 text-sm font-medium">
+                                                  <Edit2 className="h-4 w-4" /> Edit
+                                                </button>
+                                                <button onClick={(e) => { e.stopPropagation(); onDelete(row.id) }} className="inline-flex items-center gap-1 text-red-700 hover:text-red-800 text-sm font-medium">
+                                                  Hapus
+                                                </button>
+                                              </div>
                                             </div>
-                                            <div className="p-4 grid grid-cols-1 gap-2 text-sm">
-                                              <div className="flex items-center gap-2 text-gray-700"><Wallet className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Sewa</span><span className="font-semibold">{formatCurrency(row.sewa)}</span></div>
-                                              <div className="flex items-center gap-2 text-gray-700"><User className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Pemilik</span><span className="">{row.pemilik_sewa || '-'}</span></div>
-                                              <div className="flex items-center gap-2 text-gray-700"><Phone className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Kontak</span><span className="">{row.no_kontak_pemilik_sewa || '-'}</span></div>
-                                              <div className="flex items-center gap-2 text-gray-700"><CreditCard className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Rekening</span><span className="">{row.no_rekening || '-'}</span></div>
-                                              <div className="flex items-center gap-2 text-gray-700"><Calendar className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Jatuh Tempo</span><span className="">{row.tanggal_jatuh_tempo ? new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID') : '-'}</span></div>
-                                              <div className="flex items-center gap-2 text-gray-700"><Calendar className="h-4 w-4 text-red-600" /> <span className="w-28 text-gray-500">Bulan</span><span className="">{row.bulan || '-'}</span></div>
+                                            <div className="p-4 grid grid-cols-1 gap-2 text-sm text-gray-700">
+                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Sewa</span><span className="font-semibold">{formatCurrency(row.sewa)}</span></div>
+                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Pemilik</span><span>{row.pemilik_sewa || '-'}</span></div>
+                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Kontak</span><span>{row.no_kontak_pemilik_sewa || '-'}</span></div>
+                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Rekening</span><span>{row.no_rekening || '-'}</span></div>
+                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Jatuh Tempo</span><span>{row.tanggal_jatuh_tempo ? new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID') : '-'}</span></div>
+                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Bulan</span><span>{row.bulan || '-'}</span></div>
                                             </div>
                                           </div>
                                         ))}
@@ -356,6 +358,91 @@ const AdminJadwalPembayaran = () => {
         )}
       </div>
 
+      {/* Modal Detail */}
+      {showDetail && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+          {/* Backdrop click to close */}
+          <button
+            type="button"
+            aria-hidden="true"
+            onClick={() => setShowDetail(false)}
+            className="absolute inset-0"
+            tabIndex={-1}
+          />
+
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-xl font-bold leading-tight">Detail Jadwal Pembayaran</h3>
+              </div>
+              <button onClick={() => setShowDetail(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800">
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Nama Item</div>
+                  <div className="text-base font-medium">{detailItem?.nama_item || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Kategori</div>
+                  <div className="text-base font-medium">{prettyKategori(detailItem?.kategori) || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Tanggal Jatuh Tempo</div>
+                  <div className="text-base font-medium">{detailItem?.tanggal_jatuh_tempo ? new Date(detailItem.tanggal_jatuh_tempo).toLocaleDateString('id-ID') : '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Outlet</div>
+                  <div className="text-base font-medium">{detailItem?.outlet || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Sewa</div>
+                  <div className="text-base font-medium">{formatCurrency(detailItem?.sewa)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Pemilik Sewa</div>
+                  <div className="text-base font-medium">{detailItem?.pemilik_sewa || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">No. Kontak Pemilik</div>
+                  <div className="text-base font-medium">{detailItem?.no_kontak_pemilik_sewa || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">No. Rekening</div>
+                  <div className="text-base font-medium">{detailItem?.no_rekening || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Bulan</div>
+                  <div className="text-base font-medium">{detailItem?.bulan || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Tahun</div>
+                  <div className="text-base font-medium">{detailItem?.tahun || '-'}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-0 border-t bg-white">
+              <div className="px-4 py-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowDetail(false)}
+                  className="px-4 py-2 bg-red-700 text-white font-semibold rounded-lg hover:bg-red-800"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
@@ -373,7 +460,6 @@ const AdminJadwalPembayaran = () => {
             <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
               <div>
                 <h3 className="text-xl font-bold leading-tight">{editingId ? 'Edit' : 'Tambah'} Jadwal Pembayaran</h3>
-                <p className="text-xs text-red-100">Lengkapi data dengan benar untuk memudahkan pengelolaan</p>
               </div>
               <button onClick={() => setShowForm(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
                 ✕

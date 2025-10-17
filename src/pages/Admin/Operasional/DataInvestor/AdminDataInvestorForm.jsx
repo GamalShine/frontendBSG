@@ -12,6 +12,14 @@ import { toast } from 'react-hot-toast';
 import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminDataInvestorForm = ({ isOpen, onClose, onSuccess, editData = null, initialOpenAttachmentModal = false }) => {
+  // Hanya izinkan tipe file yang didukung backend (lihat allowedMimes di backend routes)
+  const ALLOWED_MIMES = new Set([
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp'
+  ]);
+
   const [formData, setFormData] = useState({
     outlet: '',
     daftar_investor: '',
@@ -329,6 +337,20 @@ const AdminDataInvestorForm = ({ isOpen, onClose, onSuccess, editData = null, in
         const response = await dataInvestorService.updateDataInvestor(editData.id, updateData);
         if (response.success) {
           toast.success('Biodata investor berhasil diupdate');
+          
+          // Upload lampiran jika ada file yang dipilih
+          if (filesToUpload && filesToUpload.length > 0) {
+            try {
+              const uploadRes = await dataInvestorService.uploadLampiran(editData.id, filesToUpload);
+              if (uploadRes && uploadRes.success) {
+                toast.success('Lampiran berhasil diunggah');
+              } else {
+                toast.error('Gagal mengunggah lampiran');
+              }
+            } catch (e) {
+              toast.error('Gagal mengunggah lampiran');
+            }
+          }
         } else {
           success = false;
         }
@@ -396,19 +418,19 @@ const AdminDataInvestorForm = ({ isOpen, onClose, onSuccess, editData = null, in
 
 if (!isOpen) return null;
 
-const isOutletForm = false;
-const title = editData ? 'Edit Biodata Investor' : 'Tambah Biodata Investor';
-const buttonText = 'SIMPAN BIODATA';
+  const isOutletForm = false;
+  const title = editData ? 'Edit Biodata Investor' : 'Tambah Investor';
+  const buttonText = 'SIMPAN';
 
 return (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 md:p-6">
     <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[90vh] overflow-y-auto no-scrollbar">
       {/* Header */}
-      <div className="bg-red-800 text-white p-4 md:p-5 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center space-x-3">
-          <div>
+      <div className="bg-red-800 text-white p-3 md:p-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
+            {!editData && <User className="w-5 h-5 text-white" />}
             <h2 className="text-xl font-semibold">{title}</h2>
-            <p className="text-sm text-red-100">{MENU_CODES.operasional.dataInvestor}</p>
           </div>
         </div>
         <button onClick={onClose} className="p-2 hover:bg-red-700 rounded-lg transition-colors">
@@ -417,17 +439,17 @@ return (
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6 md:p-8 pb-8">
-        <div className="space-y-6 md:space-y-7">
+      <form onSubmit={handleSubmit} className="p-6 md:p-6 pb-1">
+        <div className="space-y-3 md:space-y-4">
           {/* NAMA OUTLET */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">NAMA OUTLET <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">NAMA OUTLET <span className="text-red-500">*</span></label>
             <input
               list="outletOptions"
               name="outlet"
               value={formData.outlet}
               onChange={handleInputChange}
-              className={`w-full px-3 h-11 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg ${errors.outlet ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.outlet ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Pilih atau ketik nama outlet"
             />
             <datalist id="outletOptions">
@@ -438,13 +460,13 @@ return (
 
           {/* NAMA INVESTOR */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">NAMA INVESTOR <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">NAMA INVESTOR <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="nama_investor"
               value={formData.nama_investor}
               onChange={handleInputChange}
-              className={`w-full px-3 h-11 border rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg ${errors.nama_investor ? 'border-red-500' : 'border-gray-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent ${errors.nama_investor ? 'border-red-500' : 'border-gray-300'}`}
               placeholder="Masukkan nama investor"
             />
             {errors.nama_investor && (<p className="text-red-500 text-sm mt-1">{errors.nama_investor}</p>)}
@@ -452,55 +474,55 @@ return (
 
           {/* TTL INVESTOR */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">TTL INVESTOR</label>
-            <input type="text" name="ttl_investor" value={formData.ttl_investor} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: Jakarta, 01 Januari 1990" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">TTL INVESTOR</label>
+            <input type="text" name="ttl_investor" value={formData.ttl_investor} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: Jakarta, 01 Januari 1990" />
           </div>
 
           {/* NO. HP */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">NO. HP</label>
-            <input type="text" name="no_hp" value={formData.no_hp} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: 081234567890" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">NO. HP</label>
+            <input type="text" name="no_hp" value={formData.no_hp} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 081234567890" />
           </div>
 
           {/* ALAMAT */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">ALAMAT</label>
-            <textarea name="alamat" value={formData.alamat} onChange={handleInputChange} rows={3} className="w-full px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg min-h-[96px]" placeholder="Masukkan alamat lengkap" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">ALAMAT</label>
+            <textarea name="alamat" value={formData.alamat} onChange={handleInputChange} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent min-h-[84px]" placeholder="Masukkan alamat lengkap" />
           </div>
 
           {/* TANGGAL JOIN */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">TANGGAL JOIN</label>
-            <input type="date" name="tanggal_join" value={formData.tanggal_join} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">TANGGAL JOIN</label>
+            <input type="date" name="tanggal_join" value={formData.tanggal_join} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" />
           </div>
 
           {/* KONTAK DARURAT */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">KONTAK DARURAT</label>
-            <input type="text" name="kontak_darurat" value={formData.kontak_darurat} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: 081234567890" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">KONTAK DARURAT</label>
+            <input type="text" name="kontak_darurat" value={formData.kontak_darurat} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 081234567890" />
           </div>
 
           {/* NAMA PASANGAN */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">NAMA PASANGAN</label>
-            <input type="text" name="nama_pasangan" value={formData.nama_pasangan} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Masukkan nama pasangan" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">NAMA PASANGAN</label>
+            <input type="text" name="nama_pasangan" value={formData.nama_pasangan} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Masukkan nama pasangan" />
           </div>
 
           {/* NAMA ANAK */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">NAMA ANAK</label>
-            <input type="text" name="nama_anak" value={formData.nama_anak} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Masukkan nama anak (pisahkan dengan koma)" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">NAMA ANAK</label>
+            <input type="text" name="nama_anak" value={formData.nama_anak} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Masukkan nama anak (pisahkan dengan koma)" />
           </div>
 
           {/* AHLI WARIS */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">AHLI WARIS</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">AHLI WARIS</label>
             <input
               type="text"
               name="ahli_waris"
               value={formData.ahli_waris}
               onChange={handleInputChange}
-              className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               placeholder="Masukkan nama ahli waris"
               maxLength={150}
             />
@@ -514,52 +536,123 @@ return (
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,image/*"
-                  onChange={(e) => setFilesToUpload(Array.from(e.target.files || []))}
-                  className="block w-full text-sm text-gray-700"
+                  accept="image/jpeg,image/png,image/webp,application/pdf"
+                  onChange={(e) => {
+                    const pickedAll = Array.from(e.target.files || [])
+                    const picked = pickedAll.filter(f => ALLOWED_MIMES.has(f.type))
+                    const rejected = pickedAll.filter(f => !ALLOWED_MIMES.has(f.type))
+                    if (rejected.length) {
+                      toast.error(`Ada ${rejected.length} file ditolak (tipe tidak didukung). Hanya PDF/JPEG/PNG/WEBP yang diizinkan.`)
+                    }
+                    // gabungkan dengan sebelumnya + dedup by name|size|lastModified
+                    const key = (f) => `${f.name}|${f.size}|${f.lastModified}`
+                    const map = new Map((filesToUpload || []).map(f => [key(f), f]))
+                    for (const f of picked) {
+                      const k = key(f)
+                      if (!map.has(k)) map.set(k, f)
+                    }
+                    const merged = Array.from(map.values())
+                    setFilesToUpload(merged)
+                    // Reset input agar bisa pilih file yang sama lagi
+                    e.target.value = ''
+                  }}
+                  className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
                 />
-                <p className="text-xs text-gray-500">File akan diunggah saat Anda menekan tombol Simpan.</p>
+                <p className="text-xs text-gray-500">Anda bisa memilih lebih dari 1 file sekaligus (tekan Ctrl/Cmd saat memilih). File akan diunggah saat Anda menekan tombol Simpan.</p>
                 {filesToUpload && filesToUpload.length > 0 && (
-                  <p className="text-xs text-gray-600">{filesToUpload.length} file dipilih.</p>
+                  <>
+                    <p className="text-xs text-gray-600">{filesToUpload.length} file dipilih.</p>
+                    <div className="grid grid-cols-4 gap-2 mt-1">
+                      {filesToUpload.map((f, idx) => {
+                        const isImage = (f.type || '').startsWith('image/')
+                        const ext = (f.name.split('.').pop() || '').toUpperCase()
+                        return (
+                          <div key={idx} className="relative border rounded p-1 text-xs text-gray-700 bg-white group">
+                            <button
+                              type="button"
+                              onClick={() => setFilesToUpload(prev => prev.filter((_, i) => i !== idx))}
+                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block"
+                              title="Hapus file ini"
+                            >
+                              ×
+                            </button>
+                            {isImage ? (
+                              <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-20 object-cover rounded" />
+                            ) : (
+                              <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                <span className="font-semibold">{ext || 'FILE'}</span>
+                              </div>
+                            )}
+                            <div className="mt-1 truncate" title={f.name}>{f.name}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
               <div className="space-y-3">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,image/*"
-                  onChange={(e) => setFilesToUpload(Array.from(e.target.files || []))}
-                  className="block w-full text-sm text-gray-700"
-                />
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={uploading || !filesToUpload.length}
-                    onClick={async () => {
-                      try {
-                        setUploading(true);
-                        const res = await dataInvestorService.uploadLampiran(editData.id, filesToUpload);
-                        if (res && res.success) {
-                          setAttachments(res.data || []);
-                          setFilesToUpload([]);
-                          toast.success('Lampiran berhasil diunggah');
-                        } else {
-                          toast.error('Gagal mengunggah lampiran');
-                        }
-                      } catch (e) {
-                        toast.error('Gagal mengunggah lampiran');
-                      } finally {
-                        setUploading(false);
+                <div>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(e) => {
+                      const pickedAll = Array.from(e.target.files || [])
+                      const picked = pickedAll.filter(f => ALLOWED_MIMES.has(f.type))
+                      const rejected = pickedAll.filter(f => !ALLOWED_MIMES.has(f.type))
+                      if (rejected.length) {
+                        toast.error(`Ada ${rejected.length} file ditolak (tipe tidak didukung). Hanya PDF/JPEG/PNG/WEBP yang diizinkan.`)
                       }
+                      const key = (f) => `${f.name}|${f.size}|${f.lastModified}`
+                      const map = new Map((filesToUpload || []).map(f => [key(f), f]))
+                      for (const f of picked) {
+                        const k = key(f)
+                        if (!map.has(k)) map.set(k, f)
+                      }
+                      const merged = Array.from(map.values())
+                      setFilesToUpload(merged)
+                      // Reset input agar bisa pilih file yang sama lagi
+                      e.target.value = ''
                     }}
-                    className="px-4 py-2 bg-red-800 text-white rounded-lg disabled:opacity-50"
-                  >{uploading ? 'Mengunggah...' : 'Unggah'}</button>
-                  {filesToUpload && filesToUpload.length > 0 && (
-                    <span className="text-xs text-gray-600">{filesToUpload.length} file dipilih.</span>
-                  )}
+                    className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Anda bisa memilih lebih dari 1 file sekaligus (tekan Ctrl/Cmd saat memilih). File akan diunggah saat Anda menekan tombol Simpan.</p>
                 </div>
+                {filesToUpload && filesToUpload.length > 0 && (
+                  <>
+                    <p className="text-xs text-gray-600">{filesToUpload.length} file dipilih untuk diunggah.</p>
+                    <div className="grid grid-cols-4 gap-2">
+                      {filesToUpload.map((f, idx) => {
+                        const isImage = (f.type || '').startsWith('image/')
+                        const ext = (f.name.split('.').pop() || '').toUpperCase()
+                        return (
+                          <div key={idx} className="relative border rounded p-1 text-xs text-gray-700 bg-white group">
+                            <button
+                              type="button"
+                              onClick={() => setFilesToUpload(prev => prev.filter((_, i) => i !== idx))}
+                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block"
+                              title="Hapus file ini"
+                            >
+                              ×
+                            </button>
+                            {isImage ? (
+                              <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-20 object-cover rounded" />
+                            ) : (
+                              <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                <span className="font-semibold">{ext || 'FILE'}</span>
+                              </div>
+                            )}
+                            <div className="mt-1 truncate" title={f.name}>{f.name}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
                 <div className="border rounded-lg divide-y max-h-80 overflow-y-auto">
+                  <div className="p-2 bg-gray-50 text-xs font-semibold text-gray-700">Lampiran yang sudah diunggah:</div>
                   {(attachments || []).length === 0 ? (
                     <div className="p-3 text-sm text-gray-500">Belum ada lampiran.</div>
                   ) : (
@@ -595,41 +688,48 @@ return (
 
           {/* INVESTASI DI OUTLET */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">INVESTASI DI OUTLET</label>
-            <input type="number" name="investasi_di_outlet" value={formData.investasi_di_outlet} onChange={handleInputChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-base md:text-lg" placeholder="Contoh: 10000000" step="1000" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">INVESTASI DI OUTLET</label>
+            <input type="number" name="investasi_di_outlet" value={formData.investasi_di_outlet} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 10000000" step="1000" />
           </div>
 
           {/* PERSENTASE BAGI HASIL (single legacy) - disembunyikan sesuai permintaan */}
 
           {/* Dua kolom: Bosgil% dan Investor% */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">PERSENTASE (Bosgil — Investor)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">PERSENTASE (Bosgil — Investor)</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Bosgil (%)</label>
-                <input type="number" name="bosgil_percent" min="0" max="100" value={formData.bosgil_percent} onChange={handleBosgilPercentChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 70" />
+                <input type="number" name="bosgil_percent" min="0" max="100" value={formData.bosgil_percent} onChange={handleBosgilPercentChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 70" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Investor (%)</label>
-                <input type="number" name="investor_percent" min="0" max="100" value={formData.investor_percent} onChange={handleInvestorPercentChange} className="w-full px-3 h-11 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 30" />
+                <input type="number" name="investor_percent" min="0" max="100" value={formData.investor_percent} onChange={handleInvestorPercentChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Contoh: 30" />
               </div>
             </div>
             <p className="text-xs text-gray-500 mt-1">Total harus 100%. Mengisi salah satu akan otomatis menyesuaikan yang lain.</p>
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="pt-6 mt-6 sticky bottom-0 bg-white border-t border-gray-200 px-6 md:px-8 pb-4">
-          <button type="submit" disabled={loading} className="w-full bg-red-800 text-white py-4 px-6 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base md:text-lg font-bold uppercase shadow mb-4">
-            {loading ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Menyimpan...</span>
-              </div>
-            ) : (
-              buttonText
-            )}
-          </button>
+        {/* Footer (non-sticky, same as aset) */}
+        <div className="mt-2 p-0 bg-white">
+          <div className="grid grid-cols-2 gap-2 px-2 py-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+            >
+              {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
+              <span>{loading ? 'Menyimpan...' : 'Simpan'}</span>
+            </button>
+          </div>
         </div>
       </form>
     </div>
