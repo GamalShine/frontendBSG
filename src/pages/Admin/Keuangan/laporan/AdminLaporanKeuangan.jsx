@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
@@ -8,12 +8,12 @@ import {
   Search, 
   Calendar, 
   Filter,
-  Eye,
   Edit,
   Trash2,
   TrendingUp,
   RefreshCw,
-  DollarSign
+  DollarSign,
+  ArrowLeft
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { MENU_CODES } from '@/config/menuCodes';
@@ -36,19 +36,128 @@ const AdminLaporanKeuangan = () => {
     total_this_month: 0,
     total_this_year: 0
   });
-  const [monthsView, setMonthsView] = useState('months'); // 'months' | 'monthContent'
+  const [monthsView, setMonthsView] = useState('years'); // 'years' | 'monthContent'
   const [availableMonths, setAvailableMonths] = useState([]); // [{year, month}]
+  const [lastUpdated, setLastUpdated] = useState('');
+  
 
   useEffect(() => {
     if (user) {
-      if (monthsView === 'months') {
+      if (monthsView === 'years') {
         loadAvailableMonths();
-      } else {
+        loadLastUpdated();
+      } else if (monthsView === 'monthContent') {
         loadLaporanKeuangan();
       }
       loadStats();
     }
   }, [user, monthsView, currentPage, monthFilter]);
+
+  // Load latest report for 'Terakhir diupdate'
+  const loadLastUpdated = async () => {
+    try {
+      const res = await laporanKeuanganService.getAllLaporanKeuangan(1, 1, '', '', '');
+      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+        const item = res.data[0];
+        setLastUpdated(item.created_at || item.tanggal_laporan || '');
+      }
+    } catch (e) {
+      // silent fail
+    }
+  };
+
+  // Hapus tahun: jika bukan extraYears, sembunyikan via hiddenYears (tanpa mengubah data server)
+  const handleDeleteYear = (year) => {
+    if (!window.confirm(`Hapus tahun ${year}?`)) return;
+    if (extraYears.includes(year)) {
+      setExtraYears((prev) => {
+        const next = prev.filter((y) => y !== year);
+        try { localStorage.setItem('laporan_extra_years', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    } else {
+      setHiddenYears((prev) => {
+        const next = prev.includes(year) ? prev : [...prev, year];
+        try { localStorage.setItem('laporan_hidden_years', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
+    setExpandedYears((prev) => {
+      const { [year]: _, ...rest } = prev;
+      try { localStorage.setItem('laporan_expanded_years', JSON.stringify(rest)); } catch {}
+      return rest;
+    });
+  };
+
+  // Hydrate extra years and expanded states from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedYears = JSON.parse(localStorage.getItem('laporan_extra_years') || '[]');
+      if (Array.isArray(savedYears) && savedYears.length) {
+        setExtraYears(savedYears);
+      }
+      const savedHidden = JSON.parse(localStorage.getItem('laporan_hidden_years') || '[]');
+      if (Array.isArray(savedHidden) && savedHidden.length) {
+        setHiddenYears(savedHidden);
+      }
+      const savedExpanded = JSON.parse(localStorage.getItem('laporan_expanded_years') || '{}');
+      if (savedExpanded && typeof savedExpanded === 'object') {
+        setExpandedYears(savedExpanded);
+        // prefetch summaries for expanded years
+        Object.keys(savedExpanded).forEach((y) => {
+          if (savedExpanded[y]) {
+            const yearNum = Number(y);
+            const sampleKey = `${yearNum}-01`;
+            if (!monthSummaries[sampleKey]) fetchMonthSummariesForYear(yearNum);
+          }
+        });
+      }
+    } catch {}
+  }, []);
+
+  // Fetch month summaries for a year (latest item + total count)
+  const fetchMonthSummariesForYear = async (year) => {
+    try {
+      const months = getMonthsForYear(year);
+      const requests = months.map(({ month }) => {
+        const key = `${year}-${String(month).padStart(2, '0')}`;
+        return laporanKeuanganService.getAllLaporanKeuangan(1, 1, '', '', key)
+          .then((res) => ({ key, res }))
+          .catch(() => ({ key, res: null }));
+      });
+      const results = await Promise.all(requests);
+      setMonthSummaries((prev) => {
+        const next = { ...prev };
+        results.forEach(({ key, res }) => {
+          if (res?.success) {
+            const item = Array.isArray(res.data) && res.data[0] ? res.data[0] : null;
+            next[key] = {
+              count: res?.pagination?.totalItems ?? 0,
+              lastUpdated: item?.created_at || item?.tanggal_laporan || ''
+            };
+          } else {
+            next[key] = { count: 0, lastUpdated: '' };
+          }
+        });
+        return next;
+      });
+    } catch {}
+  };
+
+  // Build list of years from availableMonths; fallback to current year
+  const currentYear = new Date().getFullYear();
+  const [extraYears, setExtraYears] = useState([]); // tambahan manual dari tombol Tambah Tahun
+  const [hiddenYears, setHiddenYears] = useState([]); // tahun disembunyikan via hapus UI
+  const yearOptions = useMemo(() => {
+    const ys = Array.isArray(availableMonths) ? Array.from(new Set(availableMonths.map(m => m.year))) : [];
+    const merged = Array.from(new Set([...ys, ...extraYears]))
+      .filter(y => !hiddenYears.includes(y))
+      .sort((a,b)=>b-a);
+    return merged.length ? merged : [currentYear];
+  }, [availableMonths, currentYear, extraYears, hiddenYears]);
+  const getMonthsForYear = (year) => Array.from({ length: 12 }, (_, idx) => ({ year, month: idx + 1 }));
+  const [expandedYears, setExpandedYears] = useState({}); // {2024: true}
+  const [monthSummaries, setMonthSummaries] = useState({}); // {'YYYY-MM': {count, lastUpdated}}
 
   const loadLaporanKeuangan = async () => {
     try {
@@ -65,6 +174,19 @@ const AdminLaporanKeuangan = () => {
         setLaporanKeuangan(response.data);
         setTotalPages(response.pagination.totalPages);
         setTotalItems(response.pagination.totalItems);
+        // Update last updated based on latest item in current list
+        if (Array.isArray(response.data) && response.data.length > 0) {
+          // pick newest by created_at then tanggal_laporan
+          const newest = [...response.data].sort((a,b)=>{
+            const ac = a?.created_at ? new Date(a.created_at).getTime() : 0;
+            const bc = b?.created_at ? new Date(b.created_at).getTime() : 0;
+            if (bc !== ac) return bc - ac;
+            const at = a?.tanggal_laporan ? new Date(a.tanggal_laporan).getTime() : 0;
+            const bt = b?.tanggal_laporan ? new Date(b.tanggal_laporan).getTime() : 0;
+            return bt - at;
+          })[0];
+          setLastUpdated(newest?.created_at || newest?.tanggal_laporan || '');
+        }
       } else {
         toast.error('Gagal memuat data laporan keuangan');
       }
@@ -202,7 +324,10 @@ const AdminLaporanKeuangan = () => {
   // Helper function to truncate content
   const truncateContent = (content, maxLength = 100) => {
     if (!content) return '';
-    const text = content.replace(/\[IMG:\d+\]/g, '').replace(/#/g, '');
+    const text = content
+      .replace(/\[IMG:\d+\]/g, '') // remove image placeholders
+      .replace(/<[^>]*>/g, '')       // strip all HTML tags
+      .replace(/#/g, '');            // remove stray heading markers
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   };
 
@@ -279,11 +404,76 @@ const AdminLaporanKeuangan = () => {
     setMonthsView('monthContent');
   };
 
+  const toggleYear = (year) => {
+    setExpandedYears(prev => {
+      const willExpand = !prev[year];
+      const next = { ...prev, [year]: willExpand };
+      if (willExpand) {
+        // lazy fetch summaries if not fetched yet (check one month key)
+        const sampleKey = `${year}-01`;
+        if (!monthSummaries[sampleKey]) {
+          fetchMonthSummariesForYear(year);
+        }
+      }
+      // persist expanded years
+      try { localStorage.setItem('laporan_expanded_years', JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  // Client-side filtering within the current data
+  const filteredLaporan = useMemo(() => {
+    let items = Array.isArray(laporanKeuangan) ? [...laporanKeuangan] : [];
+    // Filter by search term (judul_laporan or isi_laporan plain text)
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      items = items.filter(it => {
+        const judul = (it.judul_laporan || '').toLowerCase();
+        const isi = (it.isi_laporan || '').replace(/<[^>]*>/g, '').toLowerCase();
+        return judul.includes(term) || isi.includes(term);
+      });
+    }
+    // Filter by exact date if provided (YYYY-MM-DD)
+    if (dateFilter && dateFilter.trim() !== '') {
+      items = items.filter(it => String(it.tanggal_laporan || '').startsWith(dateFilter));
+    }
+    return items;
+  }, [laporanKeuangan, searchTerm, dateFilter]);
+
   const backToMonths = () => {
-    setMonthsView('months');
+    setMonthsView('years');
     setMonthFilter('');
     setLaporanKeuangan([]);
     setCurrentPage(1);
+  };
+
+  const backToYears = () => {
+    setMonthsView('years');
+    setMonthFilter('');
+    setLaporanKeuangan([]);
+    setCurrentPage(1);
+  };
+
+  // Handler Tambah Tahun
+  const handleAddYear = () => {
+    const input = window.prompt('Masukkan tahun (YYYY):', String(new Date().getFullYear()));
+    if (!input) return;
+    const yearNum = Number(input);
+    if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 3000) {
+      return alert('Format tahun tidak valid. Contoh yang valid: 2025');
+    }
+    setExtraYears((prev) => {
+      const next = prev.includes(yearNum) ? prev : [...prev, yearNum];
+      try { localStorage.setItem('laporan_extra_years', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setExpandedYears((prev) => {
+      const next = { ...prev, [yearNum]: true };
+      try { localStorage.setItem('laporan_expanded_years', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    // Fetch ringkasan untuk tahun baru
+    fetchMonthSummariesForYear(yearNum);
   };
 
   if (loading) {
@@ -291,64 +481,157 @@ const AdminLaporanKeuangan = () => {
   }
 
   return (
-    <div className="px-0 py-2 bg-gray-50 min-h-screen">
+    <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header + Badge Code */}
-      <div className="bg-red-800 text-white p-4 mb-0">
+      <div className="bg-red-800 text-white px-6 py-4 mb-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-2xl font-bold">LAPORAN KEUANGAN</h1>
-              <p className="text-sm opacity-90">Admin - Keuangan</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">LAPORAN KEUANGAN</h1>
             </div>
           </div>
-          {monthsView === 'months' && (
+          {monthsView === 'years' ? (
             <button
-              onClick={() => navigate('/admin/keuangan/laporan/new')}
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
+              onClick={handleAddYear}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Tambah</span>
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              <span className="hidden sm:inline font-semibold">Tahun</span>
             </button>
+          ) : monthsView === 'monthContent' ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={backToMonths}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline font-semibold">Kembali</span>
+              </button>
+              <button
+                onClick={() => navigate(`/admin/keuangan/laporan/new?month=${encodeURIComponent(monthFilter || '')}`)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+                <span className="hidden sm:inline font-semibold">Tambah</span>
+              </button>
+            </div>
+          ) : (
+            <div className="invisible inline-flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">Placeholder</span>
+            </div>
           )}
         </div>
       </div>
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
-        Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})}
-        {' '}pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600 mb-4">
+        Terakhir diupdate: {lastUpdated ? new Date(lastUpdated).toLocaleString('id-ID', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-'}
       </div>
 
-      {/* Months Folder Grid */}
-      {monthsView === 'months' && (
+      {/* Filters (tampil hanya saat di dalam folder) */}
+      {monthsView === 'monthContent' && (
         <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4">
-          <div className="px-4 py-3 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Pilih Bulan</h2>
-            {loading && <div className="text-sm text-gray-600">Memuat daftar bulan...</div>}
-            {!loading && availableMonths.length === 0 && (
-              <div className="text-sm text-gray-600">Belum ada data bulan tersedia</div>
-            )}
-            {!loading && availableMonths.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 p-1">
-                {availableMonths.map(({ year, month }) => {
-                  const label = new Date(year, month - 1, 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-                  return (
-                    <div
-                      key={`${year}-${month}`}
-                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
-                      onClick={() => openMonthFolder(year, month)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors text-yellow-700 font-bold w-10 h-10 flex items-center justify-center">{month}</div>
-                        <div>
-                          <div className="font-semibold text-gray-800 group-hover:text-red-700">{label}</div>
-                          <div className="text-xs text-gray-500">Folder Bulan</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari laporan keuangan..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
               </div>
-            )}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="month"
+                    value={monthFilter}
+                    onChange={(e) => { setMonthFilter(e.target.value); setMonthsView('monthContent'); setCurrentPage(1); }}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => { setSearchTerm(''); setDateFilter(''); setMonthFilter(''); setMonthsView('months'); setCurrentPage(1); }}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="font-semibold">Reset</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Years Category with expandable months */}
+      {monthsView === 'years' && (
+        <div className="mb-4">
+          <div className="space-y-3">
+            {yearOptions.map((year) => (
+              <div key={year} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleYear(year)}
+                  className="w-full px-4 md:px-6 py-2 md:py-3 flex items-center justify-between bg-red-800 text-white hover:bg-red-700 transition-colors"
+                >
+                  <div className="flex items-center">
+                    <span className="text-lg font-extrabold">{year}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteYear(year); }}
+                      className="inline-flex items-center justify-center h-8 w-8 rounded border border-white/30 text-white hover:bg-white/10"
+                      title={`Hapus tahun ${year}`}
+                      aria-label={`Hapus tahun ${year}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <span className="text-white/90">{expandedYears[year] ? '−' : '+'}</span>
+                  </div>
+                </button>
+                {expandedYears[year] && (
+                  <div className="px-4 md:px-6 py-3 md:py-4 bg-white">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {getMonthsForYear(year).map(({ year: y, month }) => {
+                        const label = new Date(y, month - 1, 1).toLocaleDateString('id-ID', { month: 'long' });
+                        const key = `${y}-${String(month).padStart(2, '0')}`;
+                        const summary = monthSummaries[key] || { count: 0, lastUpdated: '' };
+                        const lastText = summary.lastUpdated
+                          ? new Date(summary.lastUpdated).toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+                          : '-';
+                        return (
+                          <div
+                            key={`${y}-${month}`}
+                            className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
+                            onClick={() => openMonthFolder(y, month)}
+                          >
+                            <div className="text-center">
+                              <div className="font-extrabold text-gray-900 group-hover:text-red-700 uppercase tracking-wide text-base md:text-lg">{label}</div>
+                              <div className="mt-1 text-gray-500 text-xs md:text-sm">{lastText}</div>
+                              <div className="mt-2">
+                                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                  {summary.count.toLocaleString('id-ID')} laporan
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -356,134 +639,94 @@ const AdminLaporanKeuangan = () => {
       {/* Month Content Table */}
       {monthsView === 'monthContent' && (
       <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-        <div className="bg-red-800 text-white px-4 py-3">
+        <div className="bg-red-800 text-white px-4 md:px-6 py-2 md:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={backToMonths}
-                aria-label="Kembali"
-                className="inline-flex items-center justify-center h-8 w-8 rounded border border-white/60 text-white hover:bg-white/10"
-              >
-                &lt;
-              </button>
-              <div>
-                <h2 className="text-lg font-semibold">{formatMonthHeader(monthFilter)}</h2>
-                <p className="text-xs opacity-90">Daftar Laporan Keuangan</p>
-              </div>
+            <div className="flex items-center">
+              <h2 className="text-lg font-extrabold leading-tight">{(formatMonthHeader(monthFilter) || '').toUpperCase()}</h2>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate('/admin/keuangan/laporan/new')}
-                className="bg-white border border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg"
-              >
-                <Plus className="h-4 w-4" /> Tambah
-              </button>
-            </div>
+            <div className="flex items-center gap-2"></div>
           </div>
         </div>
 
-        {/* Ringkasan di dalam folder */}
-        <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
-          <div>
-            Total {formatMonthHeader(monthFilter)}: <span className="font-semibold">{(totalItems || 0).toLocaleString('id-ID')}</span>
-          </div>
-          <div>
-            Ditampilkan: <span className="font-semibold">{(laporanKeuangan?.length || 0).toLocaleString('id-ID')}</span>
-          </div>
-        </div>
+        
 
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="sticky top-0 bg-red-700 z-10 shadow">
+            <thead className="sticky top-0 bg-[#e5e7eb] z-10 shadow">
               <tr>
-                <th className="pl-4 sm:pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
+                <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
                   <input
                     type="checkbox"
                     checked={selectedItems.length === laporanKeuangan.length && laporanKeuangan.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-white text-white focus:ring-white"
+                    className="rounded border-gray-600 text-red-600 focus:ring-red-500"
                   />
                 </th>
-                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Judul</th>
-                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
-                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Dibuat</th>
-                <th className="px-4 md:px-6 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
+                <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">No</th>
+                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Tanggal</th>
+                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Judul</th>
+                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Keterangan</th>
+                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {laporanKeuangan.length === 0 ? (
+              {filteredLaporan.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
-                    <div className="flex flex-col items-center">
+                  <td colSpan="6" className="px-6 py-16 text-center text-gray-500 align-middle">
+                    <div className="flex flex-col items-center justify-center min-h-[12rem]">
                       <DollarSign className="h-12 w-12 text-gray-300 mb-4" />
                       <p className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</p>
-                      <p className="text-gray-500">Belum ada laporan keuangan yang dibuat</p>
+                      <p className="text-gray-500">Belum ada laporan keuangan bulan ini</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                Object.entries(groupByMonth(laporanKeuangan))
-                  .sort((a, b) => b[0].localeCompare(a[0]))
-                  .map(([monthKey, items]) => (
-                    <React.Fragment key={monthKey}>
-                      <tr>
-                        <td colSpan="6" className="bg-gray-50 px-6 py-3 text-sm font-semibold text-gray-700">
-                          {formatMonthHeader(monthKey)}
-                        </td>
-                      </tr>
-                      {items.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/keuangan/laporan/${item.id}`)}>
-                          <td className="pl-4 sm:pl-6 pr-0 py-3 whitespace-nowrap text-sm text-gray-900" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedItems.includes(item.id)}
-                              onChange={() => handleCheckboxChange(item.id)}
-                              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                            />
-                          </td>
-                          <td className="px-4 md:px-6 py-3 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
-                            {formatDate(item.tanggal_laporan)}
-                          </td>
-                          <td className="px-4 md:px-6 py-3 text-sm text-gray-900">
-                            <div className="max-w-[14rem] md:max-w-md break-anywhere md:truncate">
-                              {item.judul_laporan && item.judul_laporan.trim() !== ''
-                                ? item.judul_laporan
-                                : extractTitle(item.isi_laporan)}
-                            </div>
-                          </td>
-                          <td className="px-4 md:px-6 py-3 whitespace-normal md:whitespace-nowrap text-sm text-gray-900">
-                            {item.user_nama || 'Unknown'}
-                          </td>
-                          <td className="px-4 md:px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                            {formatDateTime(item.created_at)}
-                          </td>
-                          <td className="px-4 md:px-6 py-3 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-2">
-                              <Link
-                                to={`/admin/keuangan/laporan/${item.id}`}
-                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-blue-600 hover:bg-blue-50"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                              <Link
-                                to={`/admin/keuangan/laporan/${item.id}/edit`}
-                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-green-600 hover:bg-green-50"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                              <button
-                                onClick={() => handleDelete(item.id)}
-                                className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  ))
+                filteredLaporan.map((item, idx) => (
+                  <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/keuangan/laporan/${item.id}`)}>
+                    <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-1.5 whitespace-nowrap text-sm text-gray-900" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => handleCheckboxChange(item.id)}
+                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      />
+                    </td>
+                    <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-1.5 whitespace-nowrap text-sm text-gray-900">
+                      {(currentPage - 1) * 10 + idx + 1}
+                    </td>
+                    <td className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-normal md:whitespace-nowrap text-sm text-gray-900 font-semibold">
+                      {(formatDate(item.tanggal_laporan) || '').toUpperCase()}
+                    </td>
+                    <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900">
+                      <div className="max-w-[14rem] md:max-w-md break-anywhere md:truncate">
+                        {item.judul_laporan && item.judul_laporan.trim() !== ''
+                          ? item.judul_laporan
+                          : extractTitle(item.isi_laporan)}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-nowrap text-sm text-gray-700">
+                      <div className="max-w-[16rem] md:max-w-lg overflow-hidden text-ellipsis whitespace-nowrap">
+                        {truncateContent(item.isi_laporan || '', 60)}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/admin/keuangan/laporan/${item.id}/edit`}
+                          className="inline-flex items-center justify-center h-8 w-8 rounded-md text-green-600 hover:bg-green-50"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>

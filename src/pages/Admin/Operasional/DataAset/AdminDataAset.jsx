@@ -364,7 +364,7 @@ const AdminDataAset = () => {
           </>
         )}
 
-        {/* Elektronik Specific Fields */}
+        {/* Elektronik Specific Fields */}w
         {aset.kategori === 'ELEKTRONIK' && (
           <>
             {aset.merk && (

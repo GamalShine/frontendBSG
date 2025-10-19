@@ -606,7 +606,7 @@ const AdminDataSewa = () => {
                           {/* Harga Sewa */}
                           <div className="grid grid-cols-[130px,1fr] items-center gap-2 leading-5">
                             <span className="text-gray-600">Harga Sewa</span>
-                            <span className="text-gray-800">{formatRupiah(item.harga_sewa)}</span>
+                            <span className="text-gray-800">{item.harga_sewa || '-'}</span>
                           </div>
                           {/* Jangka Waktu */}
                           <div className="grid grid-cols-[130px,1fr] items-center gap-2 leading-5">
@@ -735,6 +735,10 @@ const AdminDataSewa = () => {
               {/* Detail (read-only, tidak dipisah section) */}
               <div className="rounded-xl border bg-white">
                 <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800">
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-semibold text-gray-700 mb-1">Keterangan</div>
+                    <div className="px-3 py-2 border rounded-lg bg-gray-50">{detailItem?.keterangan || '-'}</div>
+                  </div>
                   <div>
                     <div className="text-sm font-semibold text-gray-700 mb-1">Nama Aset</div>
                     <div className="px-3 py-2 border rounded-lg bg-gray-50">{detailItem?.nama_aset || '-'}</div>
@@ -880,27 +884,64 @@ const AdminDataSewa = () => {
                     <div className="text-sm font-semibold text-gray-700">Informasi Sewa</div>
                   </div>
                   <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input className="border rounded-lg px-3 py-2" placeholder="Nama Aset *" value={formData.nama_aset} onChange={e=>setFormData(p=>({...p,nama_aset:e.target.value}))} />
-                    <input className="border rounded-lg px-3 py-2" placeholder="Jenis Aset *" value={formData.jenis_aset} onChange={e=>setFormData(p=>({...p,jenis_aset:e.target.value}))} />
-                    <input className="border rounded-lg px-3 py-2" placeholder="Jangka Waktu Sewa *" value={formData.jangka_waktu_sewa} onChange={e=>setFormData(p=>({...p,jangka_waktu_sewa:e.target.value}))} />
-                    <input className="border rounded-lg px-3 py-2" placeholder="Harga Sewa *" value={formData.harga_sewa} onChange={e=>setFormData(p=>({...p,harga_sewa:e.target.value}))} />
-                    <input className="border rounded-lg px-3 py-2" placeholder="Nama Pemilik *" value={formData.nama_pemilik} onChange={e=>setFormData(p=>({...p,nama_pemilik:e.target.value}))} />
-                    <input className="border rounded-lg px-3 py-2" placeholder="No HP Pemilik *" value={formData.no_hp_pemilik} onChange={e=>setFormData(p=>({...p,no_hp_pemilik:e.target.value}))} />
-                    <input className="border rounded-lg px-3 py-2 md:col-span-2" placeholder="Alamat Pemilik *" value={formData.alamat_pemilik} onChange={e=>setFormData(p=>({...p,alamat_pemilik:e.target.value}))} />
                     <div>
-                      <label className="block text-sm mb-1">Mulai Sewa *</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Keterangan <span className="text-red-500">*</span></label>
+                      <select className="border rounded-lg px-3 py-2 w-full" value={formData.keterangan} onChange={e=>setFormData(p=>({...p,keterangan:e.target.value}))}>
+                        <option value="">Pilih Keterangan</option>
+                        <option value="OUTLET">OUTLET</option>
+                        <option value="TOKO TEPUNG">TOKO TEPUNG</option>
+                        <option value="KANTOR">KANTOR</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Aset <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.nama_aset} onChange={e=>setFormData(p=>({...p,nama_aset:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Jenis Aset <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.jenis_aset} onChange={e=>setFormData(p=>({...p,jenis_aset:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Jangka Waktu Sewa <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.jangka_waktu_sewa} onChange={e=>setFormData(p=>({...p,jangka_waktu_sewa:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Harga Sewa <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.harga_sewa} onChange={e=>setFormData(p=>({...p,harga_sewa:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Nama Pemilik <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.nama_pemilik} onChange={e=>setFormData(p=>({...p,nama_pemilik:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">No HP Pemilik <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.no_hp_pemilik} onChange={e=>setFormData(p=>({...p,no_hp_pemilik:e.target.value}))} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Alamat Pemilik <span className="text-red-500">*</span></label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.alamat_pemilik} onChange={e=>setFormData(p=>({...p,alamat_pemilik:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Mulai Sewa <span className="text-red-500">*</span></label>
                       <input type="date" className="border rounded-lg px-3 py-2 w-full" value={formData.mulai_sewa} onChange={e=>setFormData(p=>({...p,mulai_sewa:e.target.value}))} />
                     </div>
                     <div>
-                      <label className="block text-sm mb-1">Berakhir Sewa *</label>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Berakhir Sewa <span className="text-red-500">*</span></label>
                       <input type="date" className="border rounded-lg px-3 py-2 w-full" value={formData.berakhir_sewa} onChange={e=>setFormData(p=>({...p,berakhir_sewa:e.target.value}))} />
                     </div>
-                    <input className="border rounded-lg px-3 py-2" placeholder="Penanggung Jawab Pajak" value={formData.penanggung_jawab_pajak} onChange={e=>setFormData(p=>({...p,penanggung_jawab_pajak:e.target.value}))} />
-                    <select className="border rounded-lg px-3 py-2" value={formData.kategori_sewa} onChange={e=>setFormData(p=>({...p,kategori_sewa:e.target.value}))}>
-                      <option value="">Pilih Kategori *</option>
-                      {(categories||[]).map(c => (<option key={c} value={c}>{c}</option>))}
-                    </select>
-                    <textarea className="border rounded-lg px-3 py-2 md:col-span-2" rows="3" placeholder="Keterangan" value={formData.keterangan} onChange={e=>setFormData(p=>({...p,keterangan:e.target.value}))} />
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Penanggung Jawab Pajak</label>
+                      <input className="border rounded-lg px-3 py-2 w-full" value={formData.penanggung_jawab_pajak} onChange={e=>setFormData(p=>({...p,penanggung_jawab_pajak:e.target.value}))} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Kategori Sewa <span className="text-red-500">*</span></label>
+                      <select className="border rounded-lg px-3 py-2 w-full" value={formData.kategori_sewa} onChange={e=>setFormData(p=>({...p,kategori_sewa:e.target.value}))}>
+                        <option value="">Pilih Kategori</option>
+                        <option value="SEWA TAHUNAN">SEWA TAHUNAN</option>
+                        <option value="SEWA BULANAN">SEWA BULANAN</option>
+                        <option value="SEWA JANGKA PANJANG">SEWA JANGKA PANJANG</option>
+                      </select>
+                    </div>
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Lampiran (opsional) - bisa lebih dari 1</label>
                       <div className="flex items-center gap-3">
@@ -1047,6 +1088,12 @@ const AdminDataSewa = () => {
                     <div className="text-sm font-semibold text-gray-700">Informasi Sewa</div>
                   </div>
                   <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <select className="border rounded-lg px-3 py-2" value={formData.keterangan} onChange={e=>setFormData(p=>({...p,keterangan:e.target.value}))}>
+                      <option value="">Pilih Keterangan *</option>
+                      <option value="OUTLET">OUTLET</option>
+                      <option value="TOKO TEPUNG">TOKO TEPUNG</option>
+                      <option value="KANTOR">KANTOR</option>
+                    </select>
                     <input className="border rounded-lg px-3 py-2" placeholder="Nama Aset *" value={formData.nama_aset} onChange={e=>setFormData(p=>({...p,nama_aset:e.target.value}))} />
                     <input className="border rounded-lg px-3 py-2" placeholder="Jenis Aset *" value={formData.jenis_aset} onChange={e=>setFormData(p=>({...p,jenis_aset:e.target.value}))} />
                     <input className="border rounded-lg px-3 py-2" placeholder="Jangka Waktu Sewa *" value={formData.jangka_waktu_sewa} onChange={e=>setFormData(p=>({...p,jangka_waktu_sewa:e.target.value}))} />
@@ -1065,9 +1112,10 @@ const AdminDataSewa = () => {
                     <input className="border rounded-lg px-3 py-2" placeholder="Penanggung Jawab Pajak" value={formData.penanggung_jawab_pajak} onChange={e=>setFormData(p=>({...p,penanggung_jawab_pajak:e.target.value}))} />
                     <select className="border rounded-lg px-3 py-2" value={formData.kategori_sewa} onChange={e=>setFormData(p=>({...p,kategori_sewa:e.target.value}))}>
                       <option value="">Pilih Kategori *</option>
-                      {(categories||[]).map(c => (<option key={c} value={c}>{c}</option>))}
+                      <option value="SEWA TAHUNAN">SEWA TAHUNAN</option>
+                      <option value="SEWA BULANAN">SEWA BULANAN</option>
+                      <option value="SEWA JANGKA PANJANG">SEWA JANGKA PANJANG</option>
                     </select>
-                    <textarea className="border rounded-lg px-3 py-2 md:col-span-2" rows="3" placeholder="Keterangan" value={formData.keterangan} onChange={e=>setFormData(p=>({...p,keterangan:e.target.value}))} />
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Lampiran (opsional) - bisa lebih dari 1</label>
                       <div className="flex items-center gap-3">

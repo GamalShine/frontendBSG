@@ -56,6 +56,9 @@ const AdminDataInvestor = () => {
   const [fitScale, setFitScale] = useState(1);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
+  // Detail modal state
+  const [showDetail, setShowDetail] = useState(false);
+  const [detailData, setDetailData] = useState(null);
 
   useEffect(() => {
     fetchDataInvestor();
@@ -416,7 +419,11 @@ const AdminDataInvestor = () => {
               <div className="p-4 bg-white">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                 {outletInvestors.map((investor) => (
-                  <div key={investor.id} className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs">
+                  <div
+                    key={investor.id}
+                    className="bg-white rounded-lg shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
+                    onClick={() => { setDetailData(investor); setShowDetail(true); }}
+                  >
                     {/* Header strip ala Data Sewa */}
                     <div className="flex items-start justify-between px-3 py-2 bg-gray-50 -mx-3 -mt-3 mb-0 border-b border-gray-100">
                       <h4 className="text-sm md:text-base font-semibold text-gray-900 leading-snug break-words pr-2">{investor.nama_investor || '-'}</h4>
@@ -508,12 +515,12 @@ const AdminDataInvestor = () => {
                       <button
                         className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
                         title="Edit Biodata"
-                        onClick={() => { setEditData(investor); setInitialOpenAttachmentModal(false); setShowForm(true); }}
+                        onClick={(e) => { e.stopPropagation(); setEditData(investor); setInitialOpenAttachmentModal(false); setShowForm(true); }}
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button 
-                        onClick={() => setShowDeleteConfirm(investor.id)}
+                        onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(investor.id); }}
                         className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -563,6 +570,133 @@ const AdminDataInvestor = () => {
         editData={editData}
         initialOpenAttachmentModal={initialOpenAttachmentModal}
       />
+
+      {/* Modal Detail - gaya Jadwal Pembayaran */}
+      {showDetail && detailData && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+          {/* Backdrop click to close */}
+          <button
+            type="button"
+            aria-hidden="true"
+            onClick={() => { setShowDetail(false); setDetailData(null); }}
+            className="absolute inset-0"
+            tabIndex={-1}
+          />
+
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-xl font-bold leading-tight">Detail Investor</h3>
+              </div>
+              <button onClick={() => { setShowDetail(false); setDetailData(null); }} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800">
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Nama Investor</div>
+                  <div className="text-base font-medium">{detailData.nama_investor || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Outlet</div>
+                  <div className="text-base font-medium">{detailData.outlet || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Tanggal Join</div>
+                  <div className="text-base font-medium">{detailData.tanggal_join ? format(new Date(detailData.tanggal_join), 'dd MMM yyyy', { locale: id }) : '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">No HP</div>
+                  <div className="text-base font-medium">{detailData.no_hp || '-'}</div>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="text-sm text-gray-500 mb-1">Alamat</div>
+                  <div className="text-base font-medium whitespace-pre-line">{detailData.alamat || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Kontak Darurat</div>
+                  <div className="text-base font-medium">{detailData.kontak_darurat || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Pasangan</div>
+                  <div className="text-base font-medium">{detailData.nama_pasangan || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Anak</div>
+                  <div className="text-base font-medium">{detailData.nama_anak || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Ahli Waris</div>
+                  <div className="text-base font-medium">{detailData.ahli_waris || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Investasi</div>
+                  <div className="text-base font-medium">{detailData.investasi_di_outlet ? `Rp ${parseFloat(detailData.investasi_di_outlet).toLocaleString('id-ID')}` : '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-500 mb-1">Bagi Hasil</div>
+                  <div className="text-base font-medium">
+                    {(() => {
+                      const inv = parsePercent(detailData.persentase_bagi_hasil);
+                      const bos = Math.max(0, 100 - inv);
+                      return `${bos}% Bosgil — ${inv}% Investor`;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Lampiran */}
+              {(() => {
+                const files = parseLampiran(detailData.lampiran);
+                if (!files.length) return null;
+                return (
+                  <div className="pt-4">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">Lampiran</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {files.map((f, idx) => {
+                        const rawUrl = f.url || '#';
+                        const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : `${API_CONFIG.BASE_HOST}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+                        const name = f.name || `file-${idx}`;
+                        const isImage = (f.mime || '').startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(name);
+                        return (
+                          <div key={`${name}-${idx}`} className="border rounded-md p-1 flex flex-col gap-1">
+                            {isImage ? (
+                              <button type="button" onClick={() => { openPreview(url, name); }} className="block text-left" title={name}>
+                                <img src={url} alt={name} className="w-full h-28 object-cover rounded" />
+                              </button>
+                            ) : (
+                              <button type="button" onClick={() => { openPreview(url, name); }} className="text-[11px] text-blue-600 truncate text-left hover:underline" title={name}>
+                                {name}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="p-0 border-t bg-white">
+              <div className="px-4 py-3 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => { setShowDetail(false); setDetailData(null); }}
+                  className="px-4 py-2 bg-red-700 text-white font-semibold rounded-lg hover:bg-red-800"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Lampiran - gaya halaman Aset/Sewa (overlay full-screen) */}
       {preview.open && (

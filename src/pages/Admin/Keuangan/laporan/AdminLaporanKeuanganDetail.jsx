@@ -5,16 +5,14 @@ import { laporanKeuanganService } from '../../../../services/laporanKeuanganServ
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../../../config/environment';
 import { 
-  ArrowLeft, 
   Calendar, 
   FileText,
   User,
   Clock,
   Edit,
-  Trash2,
-  RefreshCw,
   X
 } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminLaporanKeuanganDetail = () => {
   const navigate = useNavigate();
@@ -228,7 +226,20 @@ const AdminLaporanKeuanganDetail = () => {
   };
 
   const openFullScreenImage = (imageUrl) => {
-    setFullScreenImage(imageUrl);
+    // Terima object image atau string URL, normalisasi seperti di Omset
+    let finalUrl = '';
+    if (typeof imageUrl === 'string') {
+      finalUrl = imageUrl;
+    } else if (imageUrl && typeof imageUrl === 'object') {
+      const raw = imageUrl.url || imageUrl.displayUri || imageUrl.fallbackUri || '';
+      if (raw.startsWith('http')) {
+        finalUrl = raw;
+      } else {
+        const baseUrl = envConfig.BASE_URL.replace('/api', '');
+        finalUrl = `${baseUrl}${raw.startsWith('/') ? '' : '/'}${raw}`;
+      }
+    }
+    setFullScreenImage(finalUrl || imageUrl);
     setShowFullScreenModal(true);
   };
 
@@ -256,135 +267,135 @@ const AdminLaporanKeuanganDetail = () => {
   }
 
   return (
-    <div className="px-0 py-2 bg-gray-50 min-h-screen">
-      {/* Header ala Owner */}
-      <div className="bg-red-800 text-white p-4 mb-0">
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match list/detail style like Omset Harian */}
+      <div className="bg-red-800 text-white px-6 py-4 mb-0 relative">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/admin/keuangan/laporan')}
-              aria-label="Kembali"
-              className="inline-flex items-center bg-white/0 text-white hover:text-gray-100"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-2xl font-bold">Detail Laporan Keuangan</h1>
-              <p className="text-sm opacity-90">Admin - Keuangan</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">LAPORAN KEUANGAN</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => navigate('/admin/keuangan/laporan')}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              KEMBALI
+            </button>
+            <button
               onClick={() => navigate(`/admin/keuangan/laporan/${id}/edit`)}
-              className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 inline-flex items-center gap-2"
             >
               <Edit className="h-4 w-4" />
               <span>Edit</span>
             </button>
-            <button
-              onClick={handleDelete}
-              className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span>Hapus</span>
-            </button>
           </div>
         </div>
       </div>
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
-        Terakhir diupdate: {new Date(laporanData.updated_at || laporanData.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})}
-        {' '}pukul {new Date(laporanData.updated_at || laporanData.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}
-      </div>
 
-      {/* Summary Card */}
-      <div className="bg-white shadow-sm border mb-4">
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-yellow-100">
-                <FileText className="h-6 w-6 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Judul</p>
-                <p className="text-lg font-semibold text-gray-900">{(laporanData.judul_laporan || '').trim() || deriveTitle(laporanData.isi_laporan)}</p>
-              </div>
+      
+
+      {/* Information Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 mb-4">
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <div className="flex items-center space-x-3">
+            <div className="p-1 bg-blue-100 rounded-lg">
+              <Calendar className="h-4 w-4 text-blue-600" />
             </div>
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100">
-                <Calendar className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Tanggal Laporan</p>
-                <p className="text-lg font-semibold text-gray-900">{formatDate(laporanData.tanggal_laporan)}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Tanggal Laporan</p>
+              <p className="text-lg font-semibold text-gray-900">{formatDate(laporanData.tanggal_laporan)}</p>
             </div>
-            
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100">
-                <User className="h-6 w-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Dibuat Oleh</p>
-                <p className="text-lg font-semibold text-gray-900">{laporanData.user_nama || 'Unknown'}</p>
-              </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <div className="flex items-center space-x-3">
+            <div className="p-1 bg-purple-100 rounded-lg">
+              <User className="h-4 w-4 text-purple-600" />
             </div>
-            
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100">
-                <Clock className="h-6 w-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">Dibuat Pada</p>
-                <p className="text-lg font-semibold text-gray-900">{formatDateTime(laporanData.created_at)}</p>
-              </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Dibuat Oleh</p>
+              <p className="text-lg font-semibold text-gray-900">{laporanData.user_nama || 'Admin'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border p-3">
+          <div className="flex items-center space-x-3">
+            <div className="p-1 bg-orange-100 rounded-lg">
+              <Clock className="h-4 w-4 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500">Waktu Input</p>
+              <p className="text-lg font-semibold text-gray-900">{formatDateTime(laporanData.created_at)}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="bg-white shadow-sm border mb-4">
+      {/* Isi Laporan Section */}
+      <div className="bg-white rounded-lg shadow-sm border mb-4">
         <div className="p-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900 mb-1">{(laporanData.judul_laporan || '').trim() || 'Isi Laporan'}</h2>
-          <div className="text-sm text-gray-500">Isi Laporan</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">{(laporanData.judul_laporan || '').trim() || deriveTitle(laporanData.isi_laporan) || 'Isi Laporan'}</h2>
         </div>
-        <div className="p-4">
+        <div className="p-3">
           <div className="prose max-w-none">
+            {contentParts.map((part, index) => {
+              if (part.type === 'text') {
+                return (
+                  <div
+                    key={index}
+                    className="whitespace-pre-wrap text-gray-700 leading-relaxed font-sans"
+                    dangerouslySetInnerHTML={{ __html: part.data }}
+                  />
+                );
+              } else if (part.type === 'image') {
+                return (
+                  <div key={index} className="my-2">
+                    <button
+                      onClick={() => openFullScreenImage(part.data)}
+                      className="block w-full text-left"
+                    >
+                      <img
+                        src={part.data.url}
+                        alt={part.data.name || 'Laporan image'}
+                        className="max-w-full h-auto max-h-96 object-contain rounded-lg shadow-sm border"
+                        style={{ maxHeight: '500px' }}
+                        onError={(e) => {
+                          console.error('❌ Image failed to load:', part.data.url);
+                          e.target.style.display = 'none';
+                          const errorDiv = document.createElement('div');
+                          errorDiv.className = 'p-8 text-center bg-red-50 border-2 border-red-200 rounded-lg';
+                          errorDiv.innerHTML = `
+                            <div class=\"text-red-600 mb-2\">
+                              <svg class=\"w-12 h-12 mx-auto\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">
+                                <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z\"></path>
+                              </svg>
+                            </div>
+                            <p class=\"text-red-800 font-medium\">Gambar gagal dimuat</p>
+                            <p class=\"text-red-600 text-sm\">URL: ${part.data.url}</p>
+                          `;
+                          e.target.parentNode.appendChild(errorDiv);
+                        }}
+                      />
+                    </button>
+                  </div>
+                );
+              }
+              return null;
+            })}
             {contentParts.length === 0 && (
               <div
-                className="whitespace-pre-wrap font-sans text-sm leading-relaxed"
+                className="whitespace-pre-wrap text-gray-700 leading-relaxed font-sans"
                 dangerouslySetInnerHTML={{ __html: laporanData.isi_laporan || '-' }}
               />
             )}
-            {contentParts.map((part, index) => (
-              <div key={index}>
-                {part.type === 'image' ? (
-                  <div className="my-3">
-                    <img
-                      src={part.data.url}
-                      alt={part.data.name || 'Laporan Keuangan Image'}
-                      className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => openFullScreenImage(part.data.url)}
-                      onError={(e) => {
-                        console.error(`❌ Failed to load content image:`, part.data.url);
-                        e.target.style.border = '2px solid red';
-                        e.target.style.backgroundColor = '#fee';
-                        e.target.alt = 'Gambar gagal dimuat';
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="whitespace-pre-wrap font-sans text-sm leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: part.data }}
-                  />
-                )}
-              </div>
-            ))}
           </div>
         </div>
       </div>
-      {/* Galeri gambar disembunyikan agar konsisten dengan Owner */}
 
       {/* Full Screen Image Modal */}
       {showFullScreenModal && fullScreenImage && (

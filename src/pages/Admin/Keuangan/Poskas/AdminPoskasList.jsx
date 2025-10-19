@@ -439,16 +439,9 @@ const AdminPoskasList = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.poskas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
-              <p className="text-sm text-red-100">Kelola data posisi kas outlet</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              PENCARIAN
-            </button>
             <Link
               to="/admin/keuangan/poskas/new"
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
@@ -502,8 +495,7 @@ const AdminPoskasList = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      {showFilters && (
+      {/* Filters (selalu tampil) */}
       <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -544,7 +536,6 @@ const AdminPoskasList = () => {
           </div>
         </div>
       </div>
-      )}
 
       {/* Data Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">

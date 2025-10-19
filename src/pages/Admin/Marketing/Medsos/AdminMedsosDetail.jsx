@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { mediaSosialService } from '@/services/mediaSosialService';
 import { getEnvironmentConfig } from '@/config/environment';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Calendar, User, Clock, Edit } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Clock, Edit, Trash2, MoreVertical, RefreshCw, Info } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminMedsosDetail = () => {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ const AdminMedsosDetail = () => {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [renderedHtml, setRenderedHtml] = useState('');
+  const [showActionMenu, setShowActionMenu] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -89,65 +91,111 @@ const AdminMedsosDetail = () => {
     return d.toLocaleString('id-ID', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm('Hapus laporan medsos ini?')) return;
+    try {
+      await mediaSosialService.remove(id);
+      toast.success('Laporan medsos dihapus');
+      navigate('/admin/marketing/medsos');
+    } catch (e) {
+      toast.error('Gagal menghapus data');
+    }
+  };
+
   return (
-    <div className="px-0 py-2 bg-gray-50 min-h-screen">
-      {/* Header ala acuan */}
-      <div className="bg-red-800 text-white p-4 mb-0">
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match Poskas */}
+      <div className="bg-red-800 text-white px-6 py-4 mb-4 relative">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/admin/marketing/medsos')} aria-label="Kembali" className="inline-flex items-center bg-white/0 text-white hover:text-gray-100">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.medsos}</span>
             <div>
-              <h1 className="text-2xl font-bold">Detail Laporan Medsos</h1>
-              <p className="text-sm opacity-90">Admin - Marketing</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">MEDIA SOSIAL</h1>
             </div>
           </div>
-          <button onClick={() => navigate(`/admin/marketing/medsos/${id}/edit`)} className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2">
-            <Edit className="w-4 h-4" /> <span>Edit</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin/marketing/medsos')}
+              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              KEMBALI
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowActionMenu(v => !v)}
+                aria-label="Aksi"
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white/90 hover:bg-white/10"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+              {showActionMenu && (
+                <div className="absolute right-0 mt-2 w-44 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-20">
+                  <div className="py-1">
+                    <button
+                      onClick={() => { setShowActionMenu(false); navigate(`/admin/marketing/medsos/${id}/edit`); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                    >
+                      <Edit className="h-4 w-4 text-blue-600" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowActionMenu(false); handleDelete(); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>Hapus</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
-      {/* Info bar */}
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
-        Terakhir diupdate: {data ? fmtDate(data.updated_at || data.created_at) : '-'} pukul {data ? new Date(data.updated_at || data.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
-      </div>
 
-      <div className="w-full px-4 md:px-6">
-        {/* Summary cards flat */}
+      
+
+      <div className="w-full px-0 md:px-0">
+        {/* Summary cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="bg-white shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100"><Calendar className="h-5 w-5 text-blue-600" /></div>
+          <div className="bg-white rounded-lg shadow-sm border p-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-1 bg-red-100 rounded-lg">
+                <Calendar className="h-4 w-4 text-red-600" />
+              </div>
               <div>
-                <div className="text-sm text-gray-500">Tanggal Laporan</div>
-                <div className="text-lg font-semibold text-gray-900">{fmtDate(data?.tanggal_laporan)}</div>
+                <p className="text-sm font-medium text-gray-500">Tanggal Laporan</p>
+                <p className="text-lg font-semibold text-gray-900">{fmtDate(data?.tanggal_laporan)}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100"><User className="h-5 w-5 text-green-600" /></div>
+          <div className="bg-white rounded-lg shadow-sm border p-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-1 bg-blue-100 rounded-lg">
+                <User className="h-4 w-4 text-blue-600" />
+              </div>
               <div>
-                <div className="text-sm text-gray-500">Dibuat Oleh</div>
-                <div className="text-lg font-semibold text-gray-900">{data?.user_nama || '-'}</div>
+                <p className="text-sm font-medium text-gray-500">Dibuat Oleh</p>
+                <p className="text-lg font-semibold text-gray-900">{data?.user_nama || data?.admin_nama || data?.created_by || 'Admin'}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white shadow-sm border p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100"><Clock className="h-5 w-5 text-purple-600" /></div>
+          <div className="bg-white rounded-lg shadow-sm border p-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-1 bg-purple-100 rounded-lg">
+                <Clock className="h-4 w-4 text-purple-600" />
+              </div>
               <div>
-                <div className="text-sm text-gray-500">Waktu Input</div>
-                <div className="text-lg font-semibold text-gray-900">{fmtDT(data?.created_at)}</div>
+                <p className="text-sm font-medium text-gray-500">Waktu Input</p>
+                <p className="text-lg font-semibold text-gray-900">{fmtDT(data?.created_at)}</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Content flat */}
-        <div className="bg-white shadow-sm border mb-12">
-          <div className="p-4">
+        {/* Content */}
+        <div className="bg-white rounded-lg shadow-sm border mb-12">
+          <div className="p-3">
             {loading ? (
               <div className="text-sm text-gray-600">Memuat detail...</div>
             ) : error ? (

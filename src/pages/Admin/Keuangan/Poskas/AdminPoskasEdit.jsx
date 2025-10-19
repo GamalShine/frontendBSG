@@ -1156,7 +1156,6 @@ const AdminPoskasEdit = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.poskas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">EDIT POSKAS</h1>
-              <p className="text-sm text-red-100">Perbarui data posisi kas</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1376,9 +1375,7 @@ const AdminPoskasEdit = () => {
               rows={12}
             />
             
-            <p className="text-sm text-gray-500">
-              💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)
-            </p>
+            
           </div>
 
           {/* Hidden sections for existing images and upload */}
@@ -1555,28 +1552,30 @@ const AdminPoskasEdit = () => {
             </div>
           </div>
 
-          {/* Submit Buttons */}
-          <div className="flex space-x-4 p-6">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/keuangan/poskas')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? (
-                <LoadingSpinner className="h-4 w-4" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
-            </button>
-          </div>
+          {/* Submit Buttons hidden (moved to header) */}
+          {false && (
+            <div className="flex space-x-4 p-6">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/keuangan/poskas')}
+                className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="flex items-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <LoadingSpinner className="h-4 w-4" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>
