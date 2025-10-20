@@ -48,7 +48,10 @@ const AdminMedsos = () => {
       const res = await mediaSosialService.list({ page: 1, limit: 1 });
       if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
         const item = res.data[0];
-        setLastUpdated(item.created_at || item.tanggal_laporan || '');
+        // Normalisasi tanggal agar aman diparse di semua browser
+        const raw = item.created_at || item.tanggal_laporan || '';
+        const dt = parseToDate(raw);
+        setLastUpdated(dt ? dt.toISOString() : '');
       }
     } catch (e) {
       // silent fail
@@ -76,6 +79,19 @@ const AdminMedsos = () => {
     const filtered = merged.filter(y => !hiddenYears.includes(y));
     return filtered.sort((a,b)=>b-a);
   }, [years, extraYears, hiddenYears]);
+
+  // Prefetch ringkasan bulan untuk tahun-tahun yang sudah dalam keadaan expanded (misal hasil restore dari localStorage)
+  useEffect(() => {
+    if (!displayYears || displayYears.length === 0) return;
+    displayYears.forEach((y) => {
+      if (expandedYears[y]) {
+        const sampleKey = `${y}-01`;
+        if (!monthSummaries[sampleKey]) {
+          fetchMonthSummariesForYear(y);
+        }
+      }
+    });
+  }, [displayYears, expandedYears]);
 
   const toggleYear = async (year) => {
     setExpandedYears(prev => {
@@ -125,7 +141,12 @@ const AdminMedsos = () => {
             const item = Array.isArray(res.data) && res.data[0] ? res.data[0] : null;
             next[key] = {
               count: res?.pagination?.totalItems ?? 0,
-              lastUpdated: item?.created_at || item?.tanggal_laporan || ''
+              // Simpan dalam bentuk ISO agar rendering konsisten
+              lastUpdated: (() => {
+                const raw = item?.created_at || item?.tanggal_laporan || '';
+                const dt = parseToDate(raw);
+                return dt ? dt.toISOString() : '';
+              })()
             };
           } else {
             next[key] = { count: 0, lastUpdated: '' };
@@ -246,6 +267,39 @@ const AdminMedsos = () => {
     return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
   };
 
+  // Utilitas: parsing tanggal yang lebih robust untuk berbagai format string ("YYYY-MM-DD HH:mm:ss", dsb.)
+  const parseToDate = (val) => {
+    if (!val) return null;
+    if (val instanceof Date) return isNaN(val) ? null : val;
+    // Coba parse langsung
+    let d = new Date(val);
+    if (!isNaN(d)) return d;
+    if (typeof val === 'string') {
+      // Ganti spasi antara tanggal-jam menjadi 'T' agar valid ISO
+      const withT = val.replace(' ', 'T');
+      d = new Date(withT);
+      if (!isNaN(d)) return d;
+      // Coba ubah dd/mm/yyyy menjadi yyyy-mm-dd jika pola seperti itu terdeteksi
+      const ddmmyyyy = withT.replace(/(\b\d{2})\/(\d{2})\/(\d{4}\b)/, '$3-$2-$1');
+      d = new Date(ddmmyyyy);
+      if (!isNaN(d)) return d;
+    }
+    return null;
+  };
+
+  const formatDateTimeID = (val) => {
+    const d = parseToDate(val);
+    return d
+      ? d.toLocaleString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '-';
+  };
+
+  // Format singkat sesuai permintaan: tgl/bln/thn. jam  ->  dd/MM/yyyy. HH:mm
+  const formatDateTimeShort = (val) => {
+    const d = parseToDate(val);
+    return d ? format(d, 'dd/MM/yyyy. HH:mm') : '-';
+  };
+
   const FolderIcon = ({ open=false }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={`w-10 h-10 ${open ? 'text-yellow-600' : 'text-yellow-500'}`}>
       <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
@@ -296,7 +350,7 @@ const AdminMedsos = () => {
       </div>
 
       {/* Subheader: Timestamp berdasarkan data terbaru */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdated ? new Date(lastUpdated).toLocaleString('id-ID', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-'}</div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {formatDateTimeID(lastUpdated)}</div>
 
       <div className="w-full px-0 md:px-0 mt-4">
         {view === 'years' && (
@@ -335,9 +389,7 @@ const AdminMedsos = () => {
                           const label = (monthNames[idx] || `Bulan ${month}`).toUpperCase();
                           const key = `${y}-${String(month).padStart(2, '0')}`;
                           const summary = monthSummaries[key] || { count: 0, lastUpdated: '' };
-                          const lastText = summary.lastUpdated
-                            ? new Date(summary.lastUpdated).toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
-                            : '-';
+                          const lastText = formatDateTimeShort(summary.lastUpdated);
                           return (
                             <div
                               key={`${y}-${month}`}
@@ -425,9 +477,9 @@ const AdminMedsos = () => {
 
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader className="sticky top-0 bg-[#e5e7eb] z-10 shadow">
-                    <TableRow>
-                      <TableHead className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
+                  <TableHeader className="sticky top-0 bg-[#E3E5EA] z-10 shadow">
+                    <TableRow className="hover:bg-[#E3E5EA] cursor-default">
+                      <TableHead className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">
                         <input
                           type="checkbox"
                           checked={selectedItems.length === monthContent.length && monthContent.length > 0}
@@ -435,10 +487,10 @@ const AdminMedsos = () => {
                           className="rounded border-gray-600 text-red-600 focus:ring-red-500"
                         />
                       </TableHead>
-                      <TableHead className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[0.95rem] font-semibold text-gray-900 uppercase tracking-wider">No</TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.95rem] font-semibold text-gray-900 uppercase tracking-wider">Tanggal</TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.95rem] font-semibold text-gray-900 uppercase tracking-wider">Keterangan</TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.95rem] font-semibold text-gray-900 uppercase tracking-wider">Aksi</TableHead>
+                      <TableHead className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">No</TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">Tanggal</TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">Keterangan</TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">Aksi</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

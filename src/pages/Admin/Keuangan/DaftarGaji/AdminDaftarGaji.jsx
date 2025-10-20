@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import LoadingSpinner from '@/components/UI/LoadingSpinner'
 import { API_CONFIG } from '@/config/constants'
 import { MENU_CODES } from '@/config/menuCodes'
 import { ChevronDown, ChevronUp, Plus, Search } from 'lucide-react'
+import Button from '@/components/UI/Button'
+import Input from '@/components/UI/Input'
 
 const currency = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n || 0)
 
@@ -18,6 +20,41 @@ const AdminDaftarGaji = () => {
   const [hierarchy, setHierarchy] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [branchFilter, setBranchFilter] = useState('all')
+
+  // Modal tambah gaji
+  const [showForm, setShowForm] = useState(false)
+  const [divisions, setDivisions] = useState([]) // [{id,name,children:[{id,name}]}]
+  const [selectedDivisiId, setSelectedDivisiId] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [jabatanOptions, setJabatanOptions] = useState([])
+  const [loadingJabatan, setLoadingJabatan] = useState(false)
+  const [usersOptions, setUsersOptions] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+  const [form, setForm] = useState({
+    nama: '',
+    jabatan_id: '',
+    gaji_pokok: '',
+    tunjangan_kinerja: '',
+    tunjangan_posisi: '',
+    uang_makan: '',
+    lembur: '',
+    bonus: '',
+    potongan: '',
+    bpjstk: '',
+    bpjs_kesehatan: '',
+    bpjs_kes_penambahan: '',
+    sp_1_2: '',
+    pinjaman_karyawan: '',
+    pph21: '',
+    user_id: '',
+  })
+
+  const onChange = (e) => {
+    const { name, value } = e.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const numberProps = { type: 'number', step: '1', min: '0', inputMode: 'numeric' }
 
   const buildMock = () => ({
     pic: 'Ka.Keuangan',
@@ -97,6 +134,149 @@ const AdminDaftarGaji = () => {
   }
 
   useEffect(() => { loadInitial() }, [])
+
+  // Load hierarchy saat modal dibuka
+  useEffect(() => {
+    if (!showForm) return
+    const loadHierarchy = async () => {
+      try {
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token')
+        const res = await fetch(`${API_CONFIG.BASE_URL}/admin/sdm/hierarchy`, {
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+        const data = await res.json()
+        if (res.ok && data?.success && Array.isArray(data.data)) setDivisions(data.data)
+        else setDivisions(Array.isArray(hierarchy) ? hierarchy : [])
+      } catch (e) {
+        console.error('Gagal memuat hierarchy SDM:', e)
+        setDivisions(Array.isArray(hierarchy) ? hierarchy : [])
+      }
+    }
+    loadHierarchy()
+  }, [showForm, hierarchy])
+
+  // Load jabatan langsung dari endpoint sdm_jabatan ketika divisi dipilih
+  useEffect(() => {
+    const loadJabatanByDivisi = async () => {
+      if (!showForm || !selectedDivisiId) {
+        setJabatanOptions([])
+        return
+      }
+      try {
+        setLoadingJabatan(true)
+        const token = localStorage.getItem('token') || localStorage.getItem('access_token')
+        const url = `${API_CONFIG.BASE_URL}/admin/sdm/jabatan?divisi_id=${encodeURIComponent(selectedDivisiId)}&limit=200&status_aktif=true`
+        const res = await fetch(url, {
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        })
+        const data = await res.json()
+        if (res.ok && data?.success && Array.isArray(data.data)) {
+          const opts = data.data.map(j => ({ id: j.id, name: j.nama_jabatan || j.name || `Jabatan ${j.id}` }))
+          setJabatanOptions(opts)
+        } else {
+          setJabatanOptions([])
+        }
+      } catch (e) {
+        console.error('Gagal memuat jabatan:', e)
+        setJabatanOptions([])
+      } finally {
+        setLoadingJabatan(false)
+      }
+    }
+    loadJabatanByDivisi()
+  }, [showForm, selectedDivisiId])
+
+  // Load users (nama karyawan) dari tabel users saat modal dibuka
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (!showForm) return
+      try {
+        setLoadingUsers(true)
+        // Ambil users aktif, limit besar agar memadai; sesuaikan jika perlu pagination
+        const url = `${API_CONFIG.BASE_URL.replace(/\/$/, '')}/users?page=1&limit=200&status=active`
+        const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } })
+        const data = await res.json()
+        if (res.ok && data?.success && Array.isArray(data.data)) {
+          // data.data adalah array user; exclude role 'owner'
+          const opts = data.data
+            .filter(u => String(u.role).toLowerCase() !== 'owner')
+            .map(u => ({ id: u.id, name: u.nama || u.username || `User ${u.id}` }))
+          setUsersOptions(opts)
+        } else {
+          setUsersOptions([])
+        }
+      } catch (e) {
+        console.error('Gagal memuat users:', e)
+        setUsersOptions([])
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+    loadUsers()
+  }, [showForm])
+
+  // Sumber opsi divisi: gunakan hasil fetch modal, fallback ke hierarchy awal
+  const divisionOptions = useMemo(() => {
+    if (Array.isArray(divisions) && divisions.length) return divisions
+    if (Array.isArray(hierarchy) && hierarchy.length) return hierarchy
+    return []
+  }, [divisions, hierarchy])
+
+  const toNumber = (v) => {
+    if (v === '' || v === null || v === undefined) return 0
+    const n = Number(v)
+    return isNaN(n) ? 0 : n
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (submitting) return
+    if (!form.nama || !String(form.nama).trim()) { alert('Nama karyawan wajib diisi'); return }
+    if (!form.jabatan_id) { alert('Silakan pilih jabatan'); return }
+
+    const payload = {
+      nama: form.nama,
+      jabatan_id: Number(form.jabatan_id),
+      gaji_pokok: toNumber(form.gaji_pokok),
+      tunjangan_kinerja: toNumber(form.tunjangan_kinerja),
+      tunjangan_posisi: toNumber(form.tunjangan_posisi),
+      uang_makan: toNumber(form.uang_makan),
+      lembur: toNumber(form.lembur),
+      bonus: toNumber(form.bonus),
+      potongan: toNumber(form.potongan),
+      bpjstk: toNumber(form.bpjstk),
+      bpjs_kesehatan: toNumber(form.bpjs_kesehatan),
+      bpjs_kes_penambahan: toNumber(form.bpjs_kes_penambahan),
+      sp_1_2: toNumber(form.sp_1_2),
+      pinjaman_karyawan: toNumber(form.pinjaman_karyawan),
+      pph21: toNumber(form.pph21),
+      user_id: form.user_id ? Number(form.user_id) : null,
+    }
+    try {
+      setSubmitting(true)
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token')
+      const res = await fetch(`${API_CONFIG.BASE_URL}/admin/sdm/employees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (res.ok && data?.success) {
+        alert('Data gaji karyawan berhasil dibuat')
+        setShowForm(false)
+        setForm({ nama: '', jabatan_id: '', gaji_pokok: '', tunjangan_kinerja: '', tunjangan_posisi: '', uang_makan: '', lembur: '', bonus: '', potongan: '', bpjstk: '', bpjs_kesehatan: '', bpjs_kes_penambahan: '', sp_1_2: '', pinjaman_karyawan: '', pph21: '', user_id: '' })
+        setSelectedDivisiId('')
+        await loadInitial()
+      } else {
+        alert(data?.message || 'Gagal menyimpan data gaji')
+      }
+    } catch (err) {
+      console.error('Error submit gaji:', err)
+      alert('Terjadi kesalahan saat menyimpan data')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const toggleBranch = (branchId) => {
     const next = expandedBranch === branchId ? null : branchId
@@ -190,7 +370,6 @@ const AdminDaftarGaji = () => {
   if (!data) return null
 
   const lastUpdatedText = formatDateTimeID(data.lastUpdated)
-  const designUpdatedText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
   const breakdown = selectedDept ? data.payrollByDepartment[selectedDept] : null
   const earningTotalComputed = breakdown ? Object.values(breakdown.earning).reduce((a, b) => a + (b || 0), 0) : 0
   const deductionTotalComputed = breakdown ? Object.values(breakdown.deduction).reduce((a, b) => a + (b || 0), 0) : 0
@@ -327,29 +506,24 @@ const AdminDaftarGaji = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.daftarGaji}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR GAJI</h1>
-              <p className="text-sm text-red-100">Ringkasan gaji per cabang dan divisi</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              PENCARIAN
-            </button>
-            <Link
-              to="/admin/keuangan/daftar-gaji/new"
+              onClick={() => setShowForm(true)}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
-            </Link>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
+      {/* ... rest of the code remains the same ... */}
       <div className="mt-4">
         {/* Form Pencarian */}
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-3">
@@ -393,9 +567,9 @@ const AdminDaftarGaji = () => {
         </div>
 
         {/* Daftar Cabang */}
-        <div className="space-y-3">
+        <div className="space-y-3 mt-4">
           {filteredBranches.map((branch) => (
-            <div key={branch.id} className="border border-gray-200 rounded-md overflow-hidden">
+            <div key={branch.id} className="border border-gray-200 rounded-md overflow-hidden min-h-[48px]">
               <button
                 type="button"
                 onClick={() => toggleBranch(branch.id)}
@@ -494,6 +668,142 @@ const AdminDaftarGaji = () => {
           </div>
         )}
       </div>
+
+      {/* Modal Tambah Daftar Gaji */}
+      {showForm && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+          {/* Backdrop click to close */}
+          <button
+            type="button"
+            aria-hidden="true"
+            onClick={() => setShowForm(false)}
+            className="absolute inset-0"
+            tabIndex={-1}
+          />
+
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div>
+                <h3 className="text-xl font-bold leading-tight">Tambah Daftar Gaji</h3>
+              </div>
+              <button onClick={() => setShowForm(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+              <form id="gajiForm" onSubmit={handleSubmit} className="space-y-4">
+                {/* Info Karyawan */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900">Informasi Karyawan</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pilih User (Nama Karyawan) <span className="text-red-600">*</span></label>
+                      <select
+                        className="w-full border rounded-md px-3 py-2"
+                        value={form.user_id || ''}
+                        onChange={(e) => {
+                          const selectedId = e.target.value
+                          const user = usersOptions.find(u => String(u.id) === String(selectedId))
+                          setForm(prev => ({ ...prev, user_id: selectedId ? Number(selectedId) : '', nama: user?.name || '' }))
+                        }}
+                        disabled={loadingUsers}
+                      >
+                        <option value="">{loadingUsers ? 'Memuat users...' : 'Pilih user'}</option>
+                        {usersOptions.map(u => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Divisi <span className="text-red-600">*</span></label>
+                      <select
+                        className="w-full border rounded-md px-3 py-2"
+                        value={selectedDivisiId}
+                        onChange={(e) => { setSelectedDivisiId(e.target.value); setForm((p)=>({ ...p, jabatan_id: '' })) }}
+                      >
+                        <option value="">Pilih divisi</option>
+                        {divisionOptions.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan <span className="text-red-600">*</span></label>
+                      <select
+                        className="w-full border rounded-md px-3 py-2"
+                        name="jabatan_id"
+                        value={form.jabatan_id}
+                        onChange={onChange}
+                        disabled={!selectedDivisiId || loadingJabatan}
+                      >
+                        <option value="">{loadingJabatan ? 'Memuat jabatan...' : 'Pilih jabatan'}</option>
+                        {jabatanOptions.map((j) => (
+                          <option key={j.id} value={j.id}>{j.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Komponen Penghasilan */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Komponen Penghasilan</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input label="Gaji Pokok (Rp)" name="gaji_pokok" value={form.gaji_pokok} onChange={onChange} {...numberProps} />
+                    <Input label="Tunjangan Kinerja (Rp)" name="tunjangan_kinerja" value={form.tunjangan_kinerja} onChange={onChange} {...numberProps} />
+                    <Input label="Tunjangan Posisi (Rp)" name="tunjangan_posisi" value={form.tunjangan_posisi} onChange={onChange} {...numberProps} />
+                    <Input label="Uang Makan (Rp)" name="uang_makan" value={form.uang_makan} onChange={onChange} {...numberProps} />
+                    <Input label="Lembur (Rp)" name="lembur" value={form.lembur} onChange={onChange} {...numberProps} />
+                    <Input label="Bonus (Rp)" name="bonus" value={form.bonus} onChange={onChange} {...numberProps} />
+                  </div>
+                </div>
+
+                {/* Komponen Potongan */}
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Komponen Potongan</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input label="Potongan (Rp)" name="potongan" value={form.potongan} onChange={onChange} {...numberProps} />
+                    <Input label="BPJSTK (Rp)" name="bpjstk" value={form.bpjstk} onChange={onChange} {...numberProps} />
+                    <Input label="BPJS Kesehatan (Rp)" name="bpjs_kesehatan" value={form.bpjs_kesehatan} onChange={onChange} {...numberProps} />
+                    <Input label="BPJS Kes Penambahan (Rp)" name="bpjs_kes_penambahan" value={form.bpjs_kes_penambahan} onChange={onChange} {...numberProps} />
+                    <Input label="SP 1/2 (Rp)" name="sp_1_2" value={form.sp_1_2} onChange={onChange} {...numberProps} />
+                    <Input label="Pinjaman Karyawan (Rp)" name="pinjaman_karyawan" value={form.pinjaman_karyawan} onChange={onChange} {...numberProps} />
+                    <Input label="PPH21 (Rp)" name="pph21" value={form.pph21} onChange={onChange} {...numberProps} />
+                  </div>
+                </div>
+
+                
+              </form>
+            </div>
+
+            {/* Footer */}
+            <div className="p-0 border-t bg-white">
+              <div className="grid grid-cols-2 gap-2 px-2 py-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  form="gajiForm"
+                  disabled={submitting}
+                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
+                >
+                  {submitting ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,8 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { targetHarianService } from '@/services/targetHarianService';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, User, Clock, FileText, RefreshCw, Edit, Trash2, MoreVertical, X } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
+import { getEnvironmentConfig } from '@/config/environment';
 
 const AdminDataTargetDetail = () => {
   const navigate = useNavigate();
@@ -12,6 +14,8 @@ const AdminDataTargetDetail = () => {
   const [showActionMenu, setShowActionMenu] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageSrc, setModalImageSrc] = useState('');
+  const contentRef = useRef(null);
+  const env = getEnvironmentConfig();
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +52,80 @@ const AdminDataTargetDetail = () => {
     }
   }, [data]);
 
+  // Bangun HTML final: ganti placeholder [IMG:id] ke tag <img>, hilangkan tag/atribut berbahaya
+  const renderedHtml = useMemo(() => {
+    let html = String(data?.isi_target || '');
+    if (!html) return '';
+    const normalizeImageUrl = (u) => {
+      try {
+        let url = String(u || '');
+        if (!url) return '';
+        // perbaiki duplikasi skema
+        url = url.replace(/^https?:\/\/https?:\/\//i, (m) => m.replace('http://http://', 'http://').replace('https://https://', 'https://'));
+        // ganti /api/uploads -> /uploads
+        url = url.replace(/\/api\/uploads\//i, '/uploads/');
+        // jika relatif tanpa leading slash, tambahkan
+        const isAbsolute = /^https?:|^data:|^blob:/i.test(url);
+        if (!isAbsolute) {
+          if (!url.startsWith('/')) url = '/' + url;
+          const base = (env.API_BASE_URL || '').replace(/\/$/, '');
+          const baseNoApi = base.replace(/\/api\/?$/, '');
+          return `${baseNoApi}${url}`;
+        }
+        return url;
+      } catch { return String(u || ''); }
+    };
+    // Sanitasi sederhana
+    try {
+      html = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+      html = html.replace(/on\w+=\"[^\"]*\"/gi, '');
+      html = html.replace(/on\w+=\'[^\']*\'/gi, '');
+      html = html.replace(/javascript:/gi, '');
+    } catch {}
+    // Map id -> url
+    const byId = new Map();
+    parsedImages.forEach((img) => {
+      if (typeof img.id !== 'undefined') byId.set(Number(img.id), normalizeImageUrl(img.url || img.uri || img.path || ''));
+    });
+    html = html.replace(/\[IMG:(\d+)\]/g, (_m, g1) => {
+      const id = Number(g1);
+      const src = byId.get(id);
+      if (!src) return '';
+      return `<figure class=\"my-2\"><img src=\"${src}\" alt=\"image_${id}\" style=\"max-width:100%;height:auto;border-radius:0.5rem\" /></figure>`;
+    });
+    // Normalisasi tag <img> yang sudah ada di konten ke URL yang valid dan styling responsif
+    html = html.replace(/<img\s+[^>]*src=(["'])([^"']+)\1[^>]*>/gi, (_m, q, src) => {
+      const nsrc = normalizeImageUrl(src);
+      return `<img src="${nsrc}" style="max-width:100%;height:auto;border-radius:0.5rem" />`;
+    });
+    // Ubah newline menjadi <br> jika masih ada
+    html = html.replace(/\n/g, '<br>');
+    return html;
+  }, [data, parsedImages]);
+
+  // Enable click-to-preview for inline images rendered from HTML
+  useEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+    const imgs = Array.from(root.querySelectorAll('img'));
+    const handlers = imgs.map((img) => {
+      const handler = (e) => {
+        e.preventDefault();
+        const src = img.getAttribute('src');
+        if (src) {
+          setModalImageSrc(src);
+          setShowImageModal(true);
+        }
+      };
+      img.addEventListener('click', handler);
+      img.style.cursor = 'pointer';
+      return { img, handler };
+    });
+    return () => {
+      handlers.forEach(({ img, handler }) => img.removeEventListener('click', handler));
+    };
+  }, [renderedHtml]);
+
   const handleDelete = async () => {
     if (!window.confirm('Hapus data ini?')) return;
     try {
@@ -81,14 +159,13 @@ const AdminDataTargetDetail = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header - ala Omset Harian */}
+      {/* Header - samakan badge dengan halaman lain */}
       <div className="bg-red-800 text-white px-6 py-4 mb-4 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">TAGET</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.dataTarget}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DETAIL TAGET HARIAN</h1>
-              <p className="text-sm text-red-100">Detail isi Taget Harian</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -162,35 +239,17 @@ const AdminDataTargetDetail = () => {
         </div>
       </div>
 
-      {/* Content Section */}
+      {/* Content Section */
+      }
       <div className="bg-white rounded-lg shadow-sm border mb-4">
         <div className="p-3">
           <div className="flex items-center space-x-3 mb-2">
             <div className="p-1 bg-orange-100 rounded-lg"><FileText className="h-4 w-4 text-orange-600" /></div>
             <h2 className="text-lg font-semibold text-gray-900">Isi Taget</h2>
           </div>
-          <div className="text-gray-700 text-base leading-relaxed whitespace-pre-wrap">
-            {String(data.isi_target || '').split('\n').map((ln, idx) => (
-              <div key={idx}>{ln}</div>
-            ))}
+          <div ref={contentRef} className="prose prose-sm max-w-none text-gray-800 leading-relaxed">
+            <div dangerouslySetInnerHTML={{ __html: renderedHtml }} />
           </div>
-
-          {parsedImages.length > 0 && (
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-              {parsedImages.map((img, idx) => (
-                <div key={idx} className="bg-gray-50 border rounded-lg p-2">
-                  <img
-                    src={img.url || img.uri}
-                    alt={img.name || `image_${idx+1}`}
-                    className="w-full h-32 object-cover rounded cursor-pointer"
-                    onClick={() => { setModalImageSrc(img.url || img.uri); setShowImageModal(true); }}
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                  <div className="mt-1 text-xs text-gray-500 truncate">{img.name || '-'}</div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 

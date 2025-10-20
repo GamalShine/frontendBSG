@@ -316,7 +316,7 @@ const AdminJadwalPembayaran = () => {
                                         {items.map((row) => (
                                           <div
                                             key={row.id}
-                                            className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                            className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer min-h-[200px]"
                                             onClick={() => openDetail(row)}
                                           >
                                             <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">

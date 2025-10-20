@@ -4,12 +4,15 @@ import { toast } from 'react-hot-toast';
 import { targetHarianService } from '@/services/targetHarianService';
 import api from '@/services/api';
 import { X, Save, RefreshCw, Calendar, FileText } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
+import RichTextEditor from '@/components/UI/RichTextEditor';
 
 const AdminDataTargetForm = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ tanggal_target: new Date().toISOString().slice(0,10), isi_target: '' });
-  const [images, setImages] = useState([]); // {url, filename, path, ...}
+  const [images, setImages] = useState([]); // Hasil upload via paste lama (fallback)
+  const [selectedImages, setSelectedImages] = useState([]); // Files dari RichTextEditor (belum terupload)
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -21,7 +24,7 @@ const AdminDataTargetForm = () => {
       toast.error('Tanggal target wajib diisi');
       return false;
     }
-    if (!form.isi_target || String(form.isi_target).trim().length < 3) {
+    if (!form.isi_target || String(form.isi_target).replace(/<br>/g,'').trim().length < 10) {
       toast.error('Isi target wajib diisi');
       return false;
     }
@@ -33,10 +36,38 @@ const AdminDataTargetForm = () => {
     if (!validate()) return;
     try {
       setSaving(true);
+      // Upload gambar baru dari editor jika ada
+      let uploadedEditorImages = [];
+      if (selectedImages && selectedImages.length) {
+        const fd = new FormData();
+        selectedImages.forEach((item) => { if (item?.file) fd.append('images', item.file); });
+        try {
+          const res = await api.post('/upload/target', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+          if (res?.data?.success && Array.isArray(res.data.data)) {
+            uploadedEditorImages = res.data.data.map((f, idx) => ({
+              id: selectedImages[idx]?.id,
+              name: f.originalName || selectedImages[idx]?.file?.name || `target_${Date.now()}_${idx}.jpg`,
+              url: f.url || f.path,
+              serverPath: f.path || f.url,
+            }));
+          }
+        } catch (err) {
+          console.error('Upload editor images gagal:', err);
+          toast.error('Upload gambar gagal');
+        }
+      }
+
+      // Gabungkan dengan gambar hasil paste lama (jika ada)
+      const allImages = [...uploadedEditorImages, ...(images || [])];
+      // Kirim hanya gambar yang dipakai di konten editor berdasarkan placeholder [IMG:id]
+      const usedIdMatches = [...String(form.isi_target||'').matchAll(/\[IMG:(\d+)\]/g)];
+      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
+      const filteredImages = allImages.filter((img) => (typeof img.id !== 'undefined') ? usedIds.has(parseInt(img.id, 10)) : true);
+
       const payload = {
         tanggal_target: form.tanggal_target,
         isi_target: form.isi_target,
-        images: images && images.length ? images : null
+        images: filteredImages.length ? filteredImages : null,
       };
       const res = await targetHarianService.create(payload);
       if (res?.success) {
@@ -108,14 +139,13 @@ const AdminDataTargetForm = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header ala Omset Harian */}
+      {/* Header ala Medsos */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">TAGET</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.marketing.dataTarget}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TAMBAH TAGET HARIAN</h1>
-              <p className="text-sm text-red-100">Tambah data taget harian baru</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -143,7 +173,7 @@ const AdminDataTargetForm = () => {
 
       {/* Form Section */}
       <div className="bg-white rounded-none shadow-sm border-y">
-        <form id="taget-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+        <form id="taget-form" onSubmit={handleSubmit} className="w-full">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-2">
               <div className="p-2 bg-red-100 rounded-lg">
@@ -168,42 +198,15 @@ const AdminDataTargetForm = () => {
               </div>
               <label className="text-lg font-semibold text-gray-900">Isi Target</label>
             </div>
-            {/* Sederhana: gunakan textarea; UI gambar disembunyikan */}
-            <textarea
-              name="isi_target"
+            {/* Gunakan RichTextEditor seperti di Medsos */}
+            <RichTextEditor
               value={form.isi_target}
-              onChange={onChange}
-              onPaste={handlePaste}
-              rows={10}
+              onChange={(e) => setForm((f) => ({ ...f, isi_target: e?.target?.value ?? '' }))}
+              onFilesChange={(files) => setSelectedImages(files)}
               placeholder="Tulis isi taget harian..."
-              className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              rows={12}
             />
-            {images.length > 0 && (
-              <div className="mt-4">
-                <div className="text-sm font-medium text-gray-700 mb-2">Gambar</div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="bg-gray-50 border rounded-lg p-2 relative">
-                      <img
-                        src={img.url || img.uri}
-                        alt={img.originalName || img.name || `image_${idx+1}`}
-                        className="w-full h-32 object-cover rounded"
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-1 right-1 bg-white/90 hover:bg-white text-red-600 border rounded px-2 py-0.5 text-xs"
-                      >
-                        Hapus
-                      </button>
-                      <div className="mt-1 text-xs text-gray-500 truncate">{img.originalName || img.name || '-'}</div>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Anda bisa paste gambar (Ctrl+V) langsung ke textarea untuk menambahkan gambar.</p>
-              </div>
-            )}
+            {/* Preview/grid gambar disembunyikan sesuai permintaan */}
           </div>
         </form>
       </div>

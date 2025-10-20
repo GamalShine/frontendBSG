@@ -49,7 +49,6 @@ const AdminAnekaGrafikList = () => {
   const [activeTab, setActiveTab] = useState('omzet');
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -305,17 +304,9 @@ const AdminAnekaGrafikList = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaGrafik}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA GRAFIK</h1>
-              <p className="text-sm text-red-100">Kelola daftar grafik keuangan</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-              aria-pressed={showFilters}
-            >
-              PENCARIAN
-            </button>
             <button
               onClick={handleAdd}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
@@ -335,48 +326,46 @@ const AdminAnekaGrafikList = () => {
       </div>
 
       {/* Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
-          <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Cari aneka grafik..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari aneka grafik..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="date"
-                    value={dateFilter}
-                    onChange={handleDateFilter}
-                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="date"
+                  value={dateFilter}
+                  onChange={handleDateFilter}
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
               </div>
-              <div className="flex items-end">
-                <button
-                  onClick={resetFilters}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="font-semibold">Reset</span>
-                </button>
-              </div>
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={resetFilters}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="font-semibold">Reset</span>
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Navigation Tabs */}
       <div className="bg-white px-6 py-3 border-b border-gray-200">
