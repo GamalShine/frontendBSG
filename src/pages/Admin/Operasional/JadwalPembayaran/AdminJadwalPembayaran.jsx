@@ -316,7 +316,7 @@ const AdminJadwalPembayaran = () => {
                                         {items.map((row) => (
                                           <div
                                             key={row.id}
-                                            className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                            className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer min-h-[200px]"
                                             onClick={() => openDetail(row)}
                                           >
                                             <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
@@ -370,7 +370,7 @@ const AdminJadwalPembayaran = () => {
             tabIndex={-1}
           />
 
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
               <div>

@@ -583,7 +583,9 @@ const AdminPoskasForm = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.poskas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT POSKAS' : 'TAMBAH POSKAS'}</h1>
-              <p className="text-sm text-red-100">{isEditMode ? 'Perbarui data posisi kas' : 'Tambah data posisi kas baru'}</p>
+              {isEditMode && (
+                <p className="text-sm text-red-100">Perbarui data posisi kas</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -654,11 +656,10 @@ const AdminPoskasForm = () => {
                   // files: array of { file, id }
                   setSelectedImages(files.map(f => ({ file: f.file, id: f.id })));
                 }}
-                placeholder="Masukkan isi posisi kas... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+                placeholder="Masukkan isi posisi kas . . . "
                 rows={12}
               />
-              <p className="text-sm text-gray-500">💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)</p>
-            </div>
+               </div>
               </div>
 
           {/* Submit Buttons hidden (moved to header) */}

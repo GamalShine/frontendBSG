@@ -49,12 +49,15 @@
   const removeImage = (idx) => {
     setImages((prev) => prev.filter((_, i) => i !== idx));
   };
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { targetHarianService } from '@/services/targetHarianService';
 import { X, Save, RefreshCw, Calendar, FileText } from 'lucide-react';
 import api from '@/services/api';
+import { MENU_CODES } from '@/config/menuCodes';
+import RichTextEditor from '@/components/UI/RichTextEditor';
+import { getEnvironmentConfig } from '@/config/environment';
 
 const AdminDataTargetEdit = () => {
   const { id } = useParams();
@@ -62,7 +65,10 @@ const AdminDataTargetEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ tanggal_target: '', isi_target: '' });
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState([]); // legacy pasted images
+  const [selectedImages, setSelectedImages] = useState([]); // files from RichTextEditor (not yet uploaded)
+  const [editorInitialHtml, setEditorInitialHtml] = useState('');
+  const env = getEnvironmentConfig();
 
   useEffect(() => {
     const load = async () => {
@@ -83,6 +89,40 @@ const AdminDataTargetEdit = () => {
             }
           } catch { imgs = []; }
           setImages(imgs || []);
+
+          // Bangun HTML awal editor agar foto asli tampil (ganti [IMG:id] -> <img data-image-id src=...>)
+          const normalizeImageUrl = (u) => {
+            try {
+              let url = String(u || '');
+              if (!url) return '';
+              url = url.replace(/^https?:\/\/https?:\/\//i, (m) => m.replace('http://http://', 'http://').replace('https://https://', 'https://'));
+              url = url.replace(/\/api\/uploads\//i, '/uploads/');
+              const isAbsolute = /^https?:|^data:|^blob:/i.test(url);
+              if (!isAbsolute) {
+                if (!url.startsWith('/')) url = '/' + url;
+                const base = (env.API_BASE_URL || '').replace(/\/$/, '');
+                const baseNoApi = base.replace(/\/api\/?$/, '');
+                return `${baseNoApi}${url}`;
+              }
+              return url;
+            } catch { return String(u || ''); }
+          };
+          try {
+            const byId = new Map();
+            (imgs || []).forEach((img) => {
+              if (typeof img.id !== 'undefined') byId.set(Number(img.id), normalizeImageUrl(img.url || img.uri || img.path || ''));
+            });
+            let html = String(it.isi_target || '');
+            html = html.replace(/\[IMG:(\d+)\]/g, (_m, g1) => {
+              const id = Number(g1);
+              const src = byId.get(id);
+              if (!src) return '';
+              return `<img data-image-id="${id}" src="${src}" style="max-width:100%;height:auto;border-radius:0.5rem;margin:10px 0;box-shadow:0 2px 4px rgba(0,0,0,0.1)" />`;
+            });
+            setEditorInitialHtml(html);
+          } catch {
+            setEditorInitialHtml(String(it.isi_target || ''));
+          }
         } else {
           toast.error(res?.error || 'Gagal memuat data');
         }
@@ -106,7 +146,7 @@ const AdminDataTargetEdit = () => {
       toast.error('Tanggal target wajib diisi');
       return false;
     }
-    if (!form.isi_target || String(form.isi_target).trim().length < 3) {
+    if (!form.isi_target || String(form.isi_target).replace(/<br>/g,'').trim().length < 10) {
       toast.error('Isi target wajib diisi');
       return false;
     }
@@ -118,10 +158,35 @@ const AdminDataTargetEdit = () => {
     if (!validate()) return;
     try {
       setSaving(true);
+      // Upload gambar baru dari editor jika ada
+      let uploadedEditorImages = [];
+      if (selectedImages && selectedImages.length) {
+        const fd = new FormData();
+        selectedImages.forEach((item) => { if (item?.file) fd.append('images', item.file); });
+        try {
+          const resUp = await api.post('/upload/target', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+          if (resUp?.data?.success && Array.isArray(resUp.data.data)) {
+            uploadedEditorImages = resUp.data.data.map((f, idx) => ({
+              id: selectedImages[idx]?.id,
+              name: f.originalName || selectedImages[idx]?.file?.name || `target_${Date.now()}_${idx}.jpg`,
+              url: f.url || f.path,
+              serverPath: f.path || f.url,
+            }));
+          }
+        } catch (err) {
+          console.error('Upload editor images gagal:', err);
+          toast.error('Upload gambar gagal');
+        }
+      }
+      const allImages = [...uploadedEditorImages, ...(images || [])];
+      const usedIdMatches = [...String(form.isi_target||'').matchAll(/\[IMG:(\d+)\]/g)];
+      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
+      const filteredImages = allImages.filter((img) => (typeof img.id !== 'undefined') ? usedIds.has(parseInt(img.id, 10)) : true);
+
       const payload = {
         tanggal_target: form.tanggal_target,
         isi_target: form.isi_target,
-        images: images && images.length ? images : null
+        images: filteredImages.length ? filteredImages : null,
       };
       const res = await targetHarianService.update(id, payload);
       if (res?.success) {
@@ -140,21 +205,20 @@ const AdminDataTargetEdit = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header ala Omset Harian */}
+      {/* Header ala Medsos */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-semibold bg.white/10 rounded px-2 py-1 select-none">TAGET</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.marketing.dataTarget}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">EDIT TAGET HARIAN</h1>
-              <p className="text-sm text-red-100">Perbarui data taget harian</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate('/admin/marketing/data-target')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text.white hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
               title="Batal"
             >
               <X className="h-4 w-4" />
@@ -175,7 +239,7 @@ const AdminDataTargetEdit = () => {
 
       {/* Form Section */}
       <div className="bg-white rounded-none shadow-sm border-y">
-        <form id="taget-edit-form" onSubmit={handleSubmit} className="max-w-3xl mx-auto">
+        <form id="taget-edit-form" onSubmit={handleSubmit} className="w-full">
           {loading ? (
             <div className="p-8 text-center text-gray-600">Memuat data...</div>
           ) : (
@@ -204,41 +268,14 @@ const AdminDataTargetEdit = () => {
                   </div>
                   <label className="text-lg font-semibold text-gray-900">Isi Target</label>
                 </div>
-                <textarea
-                  name="isi_target"
-                  value={form.isi_target}
-                  onChange={onChange}
-                  onPaste={handlePaste}
-                  rows={10}
+                <RichTextEditor
+                  value={editorInitialHtml}
+                  onChange={(e) => setForm((f) => ({ ...f, isi_target: e?.target?.value ?? '' }))}
+                  onFilesChange={(files) => setSelectedImages(files)}
                   placeholder="Tulis isi taget harian..."
-                  className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  rows={12}
                 />
-                {images.length > 0 && (
-                  <div className="mt-4">
-                    <div className="text-sm font-medium text-gray-700 mb-2">Gambar</div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {images.map((img, idx) => (
-                        <div key={idx} className="bg-gray-50 border rounded-lg p-2 relative">
-                          <img
-                            src={img.url || img.uri}
-                            alt={img.originalName || img.name || `image_${idx+1}`}
-                            className="w-full h-32 object-cover rounded"
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(idx)}
-                            className="absolute top-1 right-1 bg-white/90 hover:bg-white text-red-600 border rounded px-2 py-0.5 text-xs"
-                          >
-                            Hapus
-                          </button>
-                          <div className="mt-1 text-xs text-gray-500 truncate">{img.originalName || img.name || '-'}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">Anda bisa paste gambar (Ctrl+V) langsung ke textarea untuk menambahkan gambar.</p>
-                  </div>
-                )}
+                {/* Preview/grid gambar disembunyikan sesuai permintaan */}
               </div>
             </>
           )}

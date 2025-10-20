@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Card, { CardHeader, CardBody } from '@/components/UI/Card';
-import Button from '@/components/UI/Button';
 import { mediaSosialService } from '@/services/mediaSosialService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '@/config/environment';
 import RichTextEditor from '@/components/UI/RichTextEditor';
+import { MENU_CODES } from '@/config/menuCodes';
+import { X, Save, RefreshCw } from 'lucide-react';
 
 const AdminMedsosEdit = () => {
   const navigate = useNavigate();
@@ -209,53 +209,76 @@ const AdminMedsosEdit = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-red-800 text-white p-4">
+      {/* Header merah ala keuangan */}
+      <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Edit Laporan Media Sosial (Admin)</h1>
-            <p className="text-sm opacity-90">Marketing - Medsos</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.medsos}</span>
+            <h1 className="text-2xl font-bold">EDIT LAP MEDSOS</h1>
           </div>
-          <Button onClick={() => navigate(-1)} className="bg-white text-red-700 hover:bg-gray-100">Kembali</Button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+              <span>Batal</span>
+            </button>
+            <button
+              form="medsos-edit-form"
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+            >
+              {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="w-full px-4 md:px-6 mt-4">
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Form Edit</h2>
-                {error && <div className="text-sm text-red-600 mt-1">{error}</div>}
+      {/* Section putih tanpa kotak judul */}
+      <div className="bg-white rounded-none shadow-sm border-y mt-0">
+        {loading ? (
+          <div className="p-6 text-sm text-gray-600">Memuat data...</div>
+        ) : (
+          <form id="medsos-edit-form" onSubmit={onSubmit}>
+            {/* Tanggal Laporan */}
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <span className="text-red-700 font-semibold">📅</span>
+                </div>
+                <label className="text-lg font-semibold text-gray-900">Tanggal Laporan</label>
               </div>
+              <input
+                type="date"
+                value={form.tanggal_laporan}
+                onChange={(e) => setForm(prev => ({ ...prev, tanggal_laporan: e.target.value }))}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
             </div>
-          </CardHeader>
-          <CardBody>
-            {loading ? (
-              <div className="text-sm text-gray-600">Memuat data...</div>
-            ) : (
-              <form onSubmit={onSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1">Tanggal Laporan</label>
-                  <input type="date" className="w-full border rounded px-3 py-2" value={form.tanggal_laporan} onChange={(e) => setForm(prev => ({ ...prev, tanggal_laporan: e.target.value }))} required />
+
+            {/* Isi Laporan */}
+            <div className="p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <span className="text-green-700 font-semibold">📝</span>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-700 mb-1">Isi Laporan (bisa paste gambar)</label>
-                  <RichTextEditor
-                    value={form.isi_laporan}
-                    onChange={handleEditorHtmlChange}
-                    onFilesChange={(files) => setSelectedImages(files)}
-                    placeholder="Masukkan isi laporan medsos... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
-                    rows={12}
-                  />
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <Button type="button" onClick={() => navigate(-1)} className="bg-gray-100 text-gray-700 hover:bg-gray-200">Batal</Button>
-                  <Button type="submit" disabled={saving} className="bg-red-700 text-white hover:bg-red-800">{saving ? 'Menyimpan...' : 'Simpan'}</Button>
-                </div>
-              </form>
-            )}
-          </CardBody>
-        </Card>
+                <label className="text-lg font-semibold text-gray-900">Isi Laporan</label>
+              </div>
+              <RichTextEditor
+                value={form.isi_laporan}
+                onChange={handleEditorHtmlChange}
+                onFilesChange={(files) => setSelectedImages(files)}
+                placeholder="Masukkan isi laporan media sosial..."
+                rows={12}
+              />
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

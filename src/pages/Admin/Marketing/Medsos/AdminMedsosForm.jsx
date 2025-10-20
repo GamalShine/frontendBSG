@@ -6,6 +6,8 @@ import { mediaSosialService } from '@/services/mediaSosialService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '@/config/environment';
 import RichTextEditor from '@/components/UI/RichTextEditor';
+import { MENU_CODES } from '@/config/menuCodes';
+import { X, Save, RefreshCw } from 'lucide-react';
 
 const AdminMedsosForm = () => {
   const navigate = useNavigate();
@@ -203,30 +205,31 @@ const AdminMedsosForm = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header merah full-width ala Omset Harian */}
+      {/* Header merah: samakan dengan halaman utama */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/admin/marketing/medsos')}
-              className="px-3 py-2 rounded-lg border border-white/60 hover:bg-white/10"
-              title="Kembali"
-            >
-              {/* Icon bisa ditambahkan jika dibutuhkan */}
-              <span className="font-semibold">Kembali</span>
-            </button>
-            <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TAMBAH LAPORAN MEDSOS</h1>
-              <p className="text-sm text-red-100">Tambah data laporan media sosial baru</p>
+          <div className="flex items-center">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.medsos}</span>
+              <h1 className="text-2xl font-bold">TAMBAH LAP MEDSOS</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => navigate('/admin/marketing/medsos')}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+              <span>Batal</span>
+            </button>
+            <button
               form="medsos-form"
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
             >
+              {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
             </button>
           </div>
@@ -274,30 +277,13 @@ const AdminMedsosForm = () => {
                 value={form.isi_laporan}
                 onChange={handleEditorHtmlChange}
                 onFilesChange={(files) => setSelectedImages(files)}
-                placeholder="Masukkan isi laporan medsos... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+                placeholder="Masukkan isi laporan media sosial..."
                 rows={12}
               />
-              <p className="text-sm text-gray-500">💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)</p>
             </div>
           </div>
 
-          {/* Tombol Submit bawah (opsional) */}
-          <div className="flex space-x-4 p-6">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/marketing/medsos')}
-              className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
-            </button>
-          </div>
+          {/* Tombol Submit bawah dihilangkan agar fokus pada tombol header */}
         </form>
       </div>
     </div>

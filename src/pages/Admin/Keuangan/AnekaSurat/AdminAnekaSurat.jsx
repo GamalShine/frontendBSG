@@ -27,7 +27,9 @@ import {
   FileClock,
   FileCheck,
   RefreshCw,
-  MoreVertical
+  MoreVertical,
+  ZoomIn,
+  ZoomOut
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -60,6 +62,13 @@ const AdminAnekaSurat = () => {
   const [uploading, setUploading] = useState(false);
   const [stats, setStats] = useState({});
   const [showBulkMenu, setShowBulkMenu] = useState(false);
+  // Preview modal state
+  const [preview, setPreview] = useState({ open: false, url: '', name: '', type: 'other' });
+  const [zoom, setZoom] = useState({ scale: 1, x: 0, y: 0 });
+  const isDraggingRef = React.useRef(false);
+  const lastPosRef = React.useRef({ x: 0, y: 0 });
+  const [previewText, setPreviewText] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const documentTypes = [
     'PERJANJIAN KERJA',
@@ -197,6 +206,89 @@ const AdminAnekaSurat = () => {
       .replace(/\\/g, '/')
       .replace(/^\/+/, '');
     return `${API_CONFIG.BASE_HOST}/${normalized}`;
+  };
+
+  // Simple file type detection
+  const detectFileType = (extOrUrl) => {
+    const s = String(extOrUrl || '').toLowerCase();
+    if (s.includes('image/') || ['jpg','jpeg','png','gif','webp','bmp'].some(x => s.endsWith(`.${x}`))) return 'image';
+    if (s.includes('video/') || ['mp4','webm','ogg','mov'].some(x => s.endsWith(`.${x}`))) return 'video';
+    if (s.includes('application/pdf') || s.endsWith('.pdf')) return 'pdf';
+    const officeExts = ['doc','docx','xls','xlsx','ppt','pptx'];
+    const officeMimes = [
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    ];
+    if (officeExts.some(x => s.endsWith(`.${x}`)) || officeMimes.some(m => s.includes(m))) return 'office';
+    if (s.includes('text/') || ['txt','csv','md','log','json'].some(x => s.endsWith(`.${x}`))) return 'text';
+    return 'other';
+  };
+
+  const openPreview = (url, name, hint) => {
+    const type = detectFileType(hint || name || url);
+    setPreview({ open: true, url, name: name || url, type });
+    setZoom({ scale: 1, x: 0, y: 0 });
+  };
+  const closePreview = () => setPreview({ open: false, url: '', name: '', type: 'other' });
+
+  // ESC to close preview
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') closePreview(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Load text content when previewing text files
+  useEffect(() => {
+    const loadText = async () => {
+      if (!preview.open || preview.type !== 'text' || !preview.url) return;
+      try {
+        setPreviewLoading(true);
+        const res = await fetch(preview.url);
+        const txt = await res.text();
+        setPreviewText(txt);
+      } catch (e) {
+        setPreviewText('Gagal memuat konten teks.');
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+    loadText();
+  }, [preview.open, preview.type, preview.url]);
+
+  // Zoom & Pan handlers (match Aset behavior)
+  const handleWheel = (e) => {
+    if (preview.type !== 'image') return;
+    e.preventDefault();
+    const delta = -Math.sign(e.deltaY) * 0.1;
+    setZoom((z) => {
+      const next = Math.min(5, Math.max(0.5, z.scale + delta));
+      if (next === 1) return { scale: 1, x: 0, y: 0 };
+      return { ...z, scale: next };
+    });
+  };
+  const handleMouseDown = (e) => {
+    if (preview.type !== 'image') return;
+    if (zoom.scale <= 1) return;
+    isDraggingRef.current = true;
+    lastPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+  const handleMouseMove = (e) => {
+    if (preview.type !== 'image') return;
+    if (!isDraggingRef.current) return;
+    const dx = e.clientX - lastPosRef.current.x;
+    const dy = e.clientY - lastPosRef.current.y;
+    lastPosRef.current = { x: e.clientX, y: e.clientY };
+    setZoom((z) => ({ ...z, x: z.x + dx, y: z.y + dy }));
+  };
+  const handleMouseUp = () => { isDraggingRef.current = false; };
+  const handleDoubleClick = () => {
+    if (preview.type !== 'image') return;
+    setZoom((z) => (z.scale === 1 ? { scale: 2, x: 0, y: 0 } : { scale: 1, x: 0, y: 0 }));
   };
 
   const downloadFile = (url, suggestedName) => {
@@ -506,12 +598,10 @@ const AdminAnekaSurat = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaSurat}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT</h1>
-              <p className="text-sm text-red-100">Kelola dan monitor semua dokumen hukum & perjanjian</p>
             </div>
           </div>
           <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end"></div>
           <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
-            {/* Tombol Reset Filter & Refresh disembunyikan sesuai permintaan */}
             <button
               onClick={() => { resetForm(); setShowAddModal(true); }}
               aria-label="Tambah Aneka Surat"
@@ -520,25 +610,6 @@ const AdminAnekaSurat = () => {
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline font-semibold">Tambah</span>
             </button>
-            <div className="relative">
-              <button
-                onClick={() => setShowBulkMenu(v => !v)}
-                aria-label="Aksi massal"
-                className="inline-flex items-center justify-center w-9 py-2 min-h-[40px] rounded-lg border border-white/60 text-white hover:bg-white/10 leading-none"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-              {showBulkMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white text-gray-900 rounded-lg shadow-lg border border-gray-100 z-20">
-                  <div className="py-1">
-                    <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
-                    <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
-                    <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
-                    <button onClick={handleBulkOpenAll} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Open All (ceklist)</button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
@@ -621,19 +692,22 @@ const AdminAnekaSurat = () => {
                   </button>
 
                   {expandedCategories.has(jenis) && (
-                    <div className="p-0 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-2">
+                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                       {documents.map((doc) => (
-                        <div key={doc.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-200 pt-3 pb-0 px-3 h-full flex flex-col text-xs m-3 overflow-hidden">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex-1">
-                              <h3 className="text-sm font-semibold text-gray-900 mb-1">{doc.judul_dokumen}</h3>
-                              <div className="flex items-center text-xs text-gray-500 mb-2">
-                                <Calendar className="w-4 h-4 mr-1" />
-                                {format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}
+                        <div key={doc.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow h-full flex flex-col text-sm overflow-hidden">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1 space-y-1 text-sm">
+                              <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
+                                <span className="text-gray-700">Judul</span>
+                                <span className="text-gray-900 font-semibold truncate">{doc.judul_dokumen}</span>
                               </div>
-                              <div className="flex items-center text-xs text-gray-500 mb-2">
-                                <User className="w-4 h-4 mr-1" />
-                                {doc.user_nama || 'Admin'}
+                              <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
+                                <span className="text-gray-700">Tanggal</span>
+                                <span className="text-gray-900">{format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}</span>
+                              </div>
+                              <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
+                                <span className="text-gray-700">Dibuat Oleh</span>
+                                <span className="text-gray-900">{doc.user_nama || 'Admin'}</span>
                               </div>
                             </div>
                             <div className="flex space-x-2 flex-shrink-0">
@@ -654,35 +728,42 @@ const AdminAnekaSurat = () => {
 
                           {doc.lampiran && (
                             <div className="mt-3">
-                              <div className="flex items-center text-sm text-gray-600 mb-2">
-                                <Paperclip className="w-4 h-4 mr-1" />
-                                {Array.isArray(doc.lampiran) ? doc.lampiran.length : 1} Lampiran
+                              <div className="flex items-center mb-1">
+                                <span className="text-[11px] font-semibold text-gray-700">Lampiran</span>
                               </div>
-                              <div className="space-y-2">
-                                {Array.isArray(doc.lampiran) ? doc.lampiran.map((file, index) => (
-                                  <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg gap-3">
-                                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                      <FileText className="w-6 h-6 text-gray-600" />
-                                      <div>
-                                        <div className="text-xs font-medium text-gray-900 truncate whitespace-nowrap max-w-full">
-                                          {file.file_name || file.name}
-                                        </div>
-                                        <div className="text-[10px] text-gray-500">Dokumen</div>
-                                      </div>
+                              {(Array.isArray(doc.lampiran) ? doc.lampiran : []).length === 0 ? (
+                                <p className="text-[11px] text-gray-500">Belum ada lampiran</p>
+                              ) : (
+                                <div className="grid grid-cols-3 gap-2">
+                                  {doc.lampiran.map((file, index) => (
+                                    <div key={index} className="border rounded-md p-2 flex items-center justify-between gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const url = getAttachmentUrl(file.file_path || file.url);
+                                          openPreview(url, file.file_name || file.name || url, file.mimetype || file.file_name || file.name || url);
+                                        }}
+                                        className="flex items-center gap-2 min-w-0 text-left flex-1 hover:bg-gray-50 rounded px-1 py-0.5"
+                                        title="Lihat"
+                                      >
+                                        <FileText className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                                        <div className="text-[11px] text-gray-900 truncate">{file.file_name || file.name}</div>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const url = getAttachmentUrl(file.file_path || file.url);
+                                          const name = file.file_name || file.name || (url.split('/').pop() || 'file');
+                                          downloadFile(url, name);
+                                        }}
+                                        className="inline-flex items-center justify-center h-7 w-7 p-0 text-blue-600 hover:bg-blue-100 rounded-md flex-shrink-0"
+                                        title="Download"
+                                      >
+                                        <Download className="w-4 h-4" />
+                                      </button>
                                     </div>
-                                    <button
-                                      onClick={() => {
-                                        const url = getAttachmentUrl(file.file_path || file.url);
-                                        const name = file.file_name || file.name || (url.split('/').pop() || 'file');
-                                        downloadFile(url, name);
-                                      }}
-                                      className="inline-flex items-center justify-center h-8 w-8 p-0 text-blue-600 hover:bg-blue-100 rounded-lg flex-shrink-0"
-                                    >
-                                      <Download className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                )) : null}
-                              </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -695,6 +776,88 @@ const AdminAnekaSurat = () => {
           )}
         </div>
       </div>
+
+      {/* Preview Modal */}
+      {preview.open && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-0 z-[60]" onClick={closePreview}>
+          <div className="relative max-w-[92vw] max-h=[92vh] w-auto h-auto" onClick={(e)=>e.stopPropagation()}>
+            {/* Actions: Download & Close */}
+            <div className="fixed top-4 right-4 z-[61] flex items-center gap-2">
+              <a href={preview.url} download target="_blank" rel="noreferrer" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white shadow" title="Download" onClick={(e)=>e.stopPropagation()}>
+                <Download className="w-5 h-5" />
+              </a>
+              <button onClick={closePreview} className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white shadow" title="Tutup (Esc)">✕</button>
+            </div>
+            {/* Zoom controls (image only) */}
+            <div className="fixed top-16 right-4 z-[61] flex flex-col items-center gap-2">
+              <button onClick={(e)=>{ e.stopPropagation(); setZoom(z=>({ ...z, scale: Math.min(5, z.scale + 0.25) })) }} disabled={preview.type !== 'image'} className={`p-2 rounded-full shadow ${preview.type !== 'image' ? 'bg-white/10 text-white/50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 text-white'}`} title="Zoom In">
+                <ZoomIn className="w-5 h-5" />
+              </button>
+              <button onClick={(e)=>{ e.stopPropagation(); setZoom(z=>({ ...z, scale: Math.max(0.5, z.scale - 0.25), x: (z.scale - 0.25) <= 1 ? 0 : z.x, y: (z.scale - 0.25) <= 1 ? 0 : z.y })) }} disabled={preview.type !== 'image'} className={`p-2 rounded-full shadow ${preview.type !== 'image' ? 'bg-white/10 text-white/50 cursor-not-allowed' : 'bg-white/10 hover:bg-white/20 text-white'}`} title="Zoom Out">
+                <ZoomOut className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Filename badge */}
+            <div className="fixed top-4 left-4 z-[61] text-white/90 text-xs max-w-[60vw] truncate" title={preview.name}>{preview.name}</div>
+            {/* Content */}
+            {preview.type === 'image' && (
+              <div className="max-h-[92vh] max-w-[92vw] overflow-hidden cursor-grab active:cursor-grabbing select-none"
+                   onWheel={handleWheel}
+                   onMouseDown={handleMouseDown}
+                   onMouseMove={handleMouseMove}
+                   onMouseUp={handleMouseUp}
+                   onMouseLeave={handleMouseUp}
+                   onDoubleClick={handleDoubleClick}>
+                <img src={preview.url} alt={preview.name} draggable={false}
+                     style={{ transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.scale})`, transformOrigin: 'center center' }}
+                     className="max-h-[92vh] max-w-[92vw] w-auto h-auto object-contain" />
+              </div>
+            )}
+            {preview.type === 'video' && (
+              <video src={preview.url} controls className="max-h-[92vh] max-w-[92vw] w-auto h-auto bg-black rounded select-none" />
+            )}
+            {preview.type === 'pdf' && (
+              <iframe src={preview.url} title={preview.name} className="w-[92vw] h-[92vh] bg-white rounded" />
+            )}
+            {preview.type === 'office' && (
+              (() => {
+                const host = (API_CONFIG.BASE_HOST || '').toLowerCase();
+                const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+                if (isLocal) {
+                  return (
+                    <div className="text-center text-sm text-white/90 max-w-[80vw]">
+                      <p className="mb-3">Preview dokumen Office tidak tersedia di lingkungan localhost.</p>
+                      <div className="flex items-center justify-center gap-2">
+                        <a href={preview.url} target="_blank" rel="noreferrer" className="inline-block px-3 py-1.5 rounded bg-white/10 hover:bg-white/20 text-white">Buka di tab baru</a>
+                        <a href={preview.url} download target="_blank" rel="noreferrer" className="inline-block px-3 py-1.5 rounded bg-white/10 hover:bg-white/20 text-white">Download</a>
+                      </div>
+                    </div>
+                  )
+                }
+                const officeView = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(preview.url)}`
+                return (
+                  <iframe src={officeView} title={preview.name} className="w-[92vw] h-[92vh] bg-white rounded" />
+                )
+              })()
+            )}
+            {preview.type === 'text' && (
+              <div className="w-[92vw] h-[92vh] bg-white/95 rounded p-3 overflow-auto">
+                {previewLoading ? (
+                  <div className="text-sm text-gray-700">Memuat konten...</div>
+                ) : (
+                  <pre className="text-xs text-gray-900 whitespace-pre-wrap break-words">{previewText}</pre>
+                )}
+              </div>
+            )}
+            {preview.type === 'other' && (
+              <div className="text-center text-sm text-white/90">
+                <p className="mb-3">Preview tidak tersedia untuk tipe file ini.</p>
+                <a href={preview.url} target="_blank" rel="noreferrer" className="inline-block px-3 py-1.5 rounded bg-white/10 hover:bg-white/20 text-white">Buka di tab baru</a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Add Modal */}
       {showAddModal && (

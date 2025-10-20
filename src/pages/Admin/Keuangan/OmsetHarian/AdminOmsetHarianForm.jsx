@@ -946,7 +946,9 @@ const handleEditorMouseUp = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">H01-K6</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT OMSET HARIAN' : 'TAMBAH OMSET HARIAN'}</h1>
-              <p className="text-sm text-red-100">{isEditMode ? 'Perbarui data omset harian' : 'Tambah data omset harian baru'}</p>
+              {isEditMode && (
+                <p className="text-sm text-red-100">Perbarui data omset harian</p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1023,10 +1025,10 @@ const handleEditorMouseUp = () => {
                 // files: array of { file, id }
                 setSelectedImages(files);
               }}
-              placeholder="Masukkan isi omset harian... Anda bisa paste gambar langsung dari clipboard (Ctrl+V)"
+              placeholder="Masukkan isi omset harian . . . "
               rows={12}
             />
-            <p className="text-sm text-gray-500">💡 Tips: Anda bisa paste gambar langsung dari clipboard (Ctrl+V)</p>
+          
           </div>
 
           {/* Image Management Section - Only show in edit mode (disembunyikan sementara) */}

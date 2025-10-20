@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import RichTextEditor from '../../../../components/UI/RichTextEditor';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '../../../../config/environment';
 import {
-  ArrowLeft,
   Calendar,
   FileText,
   Image as ImageIcon,
@@ -15,9 +14,11 @@ import {
   Save,
   RefreshCw
 } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminLaporanKeuanganForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { user } = useAuth();
   const envConfig = getEnvironmentConfig();
@@ -35,6 +36,15 @@ const AdminLaporanKeuanganForm = () => {
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const editorRef = useRef(null);
   const [hasInitializedContent, setHasInitializedContent] = useState(false);
+  const backMonth = (() => {
+    try {
+      const qs = new URLSearchParams(location.search || '');
+      const m = qs.get('month');
+      return m && m.trim() ? m.trim() : null;
+    } catch (_) {
+      return null;
+    }
+  })();
 
   // Handler RichTextEditor: sinkronkan HTML ke formData
   const handleEditorHtmlChange = (e) => {
@@ -733,7 +743,8 @@ const AdminLaporanKeuanganForm = () => {
 
       if (response.success) {
         toast.success(isEditMode ? 'Laporan keuangan berhasil diperbarui' : 'Laporan keuangan berhasil dibuat');
-        navigate('/admin/keuangan/laporan');
+        const target = backMonth ? `/admin/keuangan/laporan?month=${encodeURIComponent(backMonth)}` : '/admin/keuangan/laporan';
+        navigate(target);
       } else {
         toast.error(response.message || 'Gagal menyimpan laporan keuangan');
       }
@@ -831,42 +842,45 @@ const AdminLaporanKeuanganForm = () => {
   }
 
   return (
-    <div className="px-0 py-2 bg-gray-50 min-h-screen">
-      {/* Header ala Owner */}
-      <div className="bg-red-800 text-white p-4 mb-0">
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - match Poskas style */}
+      <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/admin/keuangan/laporan')}
-              aria-label="Kembali"
-              className="inline-flex items-center bg-white/0 text-white hover:text-gray-100"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-2xl font-bold">{isEditMode ? 'Edit Laporan Keuangan' : 'Tambah Laporan Keuangan'}</h1>
-              <p className="text-sm opacity-90">Admin - Keuangan</p>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT LAPORAN KEUANGAN' : 'TAMBAH LAPORAN KEUANGAN'}</h1>
             </div>
           </div>
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="bg-white border-red-600 text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 disabled:opacity-50"
-          >
-            <Save className="h-4 w-4" />
-            <span>{isSubmitting ? 'Menyimpan...' : 'Simpan'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => backMonth ? navigate(`/admin/keuangan/laporan?month=${encodeURIComponent(backMonth)}`) : navigate(-1)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              title="Batal"
+            >
+              <X className="h-4 w-4" />
+              <span>Batal</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+            >
+              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              <span>{isEditMode ? (isSubmitting ? 'Menyimpan...' : 'Perbarui') : (isSubmitting ? 'Menyimpan...' : 'Simpan')}</span>
+            </button>
+          </div>
         </div>
       </div>
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1 mb-4">
-        {isEditMode ? 'Mode Edit' : 'Mode Tambah'}
-      </div>
+      
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-0 mt-3">
         {/* Main Form */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="col-span-1 lg:col-span-3">
           {/* Basic Info */}
-          <div className="bg-white shadow-sm border">
+          <div className="bg-white shadow-sm border rounded-xl overflow-hidden">
             <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Informasi Laporan</h2>
             </div>
@@ -924,7 +938,6 @@ const AdminLaporanKeuanganForm = () => {
                   placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
                   rows={12}
                 />
-                <p className="text-xs text-gray-500 mt-1">💡 Anda bisa paste gambar langsung dari clipboard atau klik ikon gambar di toolbar.</p>
               </div>
             </div>
           </div>
@@ -932,8 +945,8 @@ const AdminLaporanKeuanganForm = () => {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          {/* Image Upload */}
-          <div className="bg-white border">
+          {/* Image Upload (hidden visually, functions retained) */}
+          <div className="bg-white border hidden">
             <div className="p-4 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900">Gambar</h2>
             </div>
@@ -1046,8 +1059,8 @@ const AdminLaporanKeuanganForm = () => {
             </div>
           </div>
 
-          {/* Help */}
-          <div className="bg-blue-50 border border-blue-200 p-4">
+          {/* Help (hidden visually) */}
+          <div className="bg-blue-50 border border-blue-200 p-4 hidden">
             <h3 className="text-lg font-semibold text-blue-900 mb-3">Panduan</h3>
             <div className="space-y-3 text-sm text-blue-800">
               <div>

@@ -1,35 +1,62 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { targetHarianService } from '@/services/targetHarianService';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminDataTarget = () => {
   const navigate = useNavigate();
-  const [view, setView] = useState('years'); // 'years' | 'yearContent'
+  const [view, setView] = useState('years'); // 'years' | 'monthContent'
   const [years, setYears] = useState([]); // [{year: 2024}, ...]
   const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedMonth, setSelectedMonth] = useState(null); // 1-12
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalRecords: 0, totalNominal: 0 });
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedYears, setExpandedYears] = useState({}); // {2025:true}
+  const [extraYears, setExtraYears] = useState([]);
+  const [hiddenYears, setHiddenYears] = useState([]);
+  const [monthSummaries, setMonthSummaries] = useState({}); // {'YYYY-MM':{count,lastUpdated}}
+  const [selectedItems, setSelectedItems] = useState([]);
 
   useEffect(() => {
     if (view === 'years') {
       loadYears();
       loadStatsAndLastUpdated();
-    } else if (view === 'yearContent' && selectedYear) {
+    } else if (view === 'monthContent' && selectedYear) {
       loadItems(selectedYear, pagination.currentPage);
     }
   }, [view, selectedYear, pagination.currentPage]);
+
+  // Hydrate localStorage for years state
+  useEffect(() => {
+    try {
+      const ex = JSON.parse(localStorage.getItem('dataTarget_extra_years') || '[]');
+      if (Array.isArray(ex)) setExtraYears(ex);
+      const hid = JSON.parse(localStorage.getItem('dataTarget_hidden_years') || '[]');
+      if (Array.isArray(hid)) setHiddenYears(hid);
+      const exp = JSON.parse(localStorage.getItem('dataTarget_expanded_years') || '{}');
+      if (exp && typeof exp === 'object') setExpandedYears(exp);
+    } catch {}
+  }, []);
+
+  // Prefetch ringkasan bulan untuk tahun yang sudah expanded (hasil restore)
+  // (dipindah ke bawah setelah deklarasi displayYears untuk menghindari TDZ)
 
   const loadYears = async () => {
     try {
       setLoading(true);
       const res = await targetHarianService.getYears();
-      if (res?.success) setYears(res.data || []);
-      else setYears([]);
+      const ysRaw = res?.success ? (res.data || []) : [];
+      // Normalisasi: backend bisa mengembalikan [{year:2025}, ...] atau [2025, ...]
+      const ys = ysRaw
+        .map((it) => (it && typeof it === 'object' && 'year' in it ? Number(it.year) : Number(it)))
+        .filter((n) => Number.isFinite(n));
+      setYears(ys);
     } catch (e) {
       console.error('Error loading years:', e);
       setYears([]);
@@ -99,17 +126,175 @@ const AdminDataTarget = () => {
     }
   };
 
-  const openYear = (year) => {
-    setSelectedYear(year);
-    setPagination((p) => ({ ...p, currentPage: 1 }));
-    setView('yearContent');
+  const toggleYear = async (year) => {
+    setExpandedYears((prev) => {
+      const next = { ...prev, [year]: !prev[year] };
+      try { localStorage.setItem('dataTarget_expanded_years', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    // Prefetch summaries for this year
+    const keyProbe = `${year}-01`;
+    if (!monthSummaries[keyProbe]) {
+      await fetchMonthSummariesForYear(year);
+    }
   };
 
   const backToYears = () => {
     setView('years');
     setSelectedYear(null);
+    setSelectedMonth(null);
     setItems([]);
     setPagination({ currentPage: 1, totalPages: 1, totalItems: 0 });
+    setSelectedItems([]);
+  };
+
+  const openMonth = (m) => {
+    setSelectedMonth(m);
+    setPagination((p) => ({ ...p, currentPage: 1 }));
+    setView('monthContent');
+  };
+
+  const backToMonths = () => {
+    setView('yearContent');
+    setSelectedMonth(null);
+    setSearchTerm('');
+  };
+
+  const stripHtml = (html = '') => {
+    try {
+      return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    } catch {
+      return String(html || '');
+    }
+  };
+
+  const MONTH_NAMES = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI','JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
+
+  const displayYears = useMemo(() => {
+    // Pastikan semua bernilai angka murni
+    const baseYears = (years || []).map((y) => Number(y)).filter((n) => Number.isFinite(n));
+    const extra = (extraYears || []).map((y) => Number(y)).filter((n) => Number.isFinite(n));
+    const merged = Array.from(new Set([...baseYears, ...extra]));
+    const hidden = new Set((hiddenYears || []).map((y) => Number(y)).filter((n) => Number.isFinite(n)));
+    const filtered = merged.filter((y) => !hidden.has(y));
+    return filtered.sort((a, b) => b - a);
+  }, [years, extraYears, hiddenYears]);
+
+  // Prefetch ringkasan bulan untuk tahun yang sudah expanded (hasil restore)
+  useEffect(() => {
+    if (!displayYears || displayYears.length === 0) return;
+    displayYears.forEach((y) => {
+      if (expandedYears[y]) {
+        const sampleKey = `${y}-01`;
+        if (!monthSummaries[sampleKey]) {
+          fetchMonthSummariesForYear(y);
+        }
+      }
+    });
+  }, [displayYears, expandedYears]);
+
+  const formatDateTimeShort = (val) => {
+    if (!val) return '-';
+    try { const d = new Date(val); if (!isNaN(d)) return d.toLocaleString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).replace(',', '.'); } catch {}
+    return '-';
+  };
+
+  const fetchMonthSummariesForYear = async (year) => {
+    try {
+      // Ambil semua data setahun, lalu hitung per bulan di sisi klien
+      const res = await targetHarianService.getAll({ year, page: 1, limit: 1000 });
+      const arr = Array.isArray(res?.data) ? res.data : [];
+      // Group by month
+      const byMonth = Array.from({ length: 12 }, () => []);
+      arr.forEach((it) => {
+        const raw = it.tanggal_target || it.created_at || it.updated_at;
+        const d = raw ? new Date(raw) : null;
+        if (d && !isNaN(d)) {
+          const m = d.getMonth(); // 0-11
+          if (m >= 0 && m < 12) byMonth[m].push(it);
+        }
+      });
+      setMonthSummaries((prev) => {
+        const next = { ...prev };
+        for (let i = 0; i < 12; i++) {
+          const mArr = byMonth[i];
+          const key = `${year}-${String(i + 1).padStart(2, '0')}`;
+          if (!mArr || mArr.length === 0) {
+            next[key] = { count: 0, lastUpdated: '' };
+          } else {
+            // lastUpdated = max dari updated_at/created_at/tanggal_target
+            let latest = 0;
+            mArr.forEach((it) => {
+              const cand = new Date(it.updated_at || it.created_at || it.tanggal_target).getTime();
+              if (isFinite(cand)) latest = Math.max(latest, cand);
+            });
+            next[key] = { count: mArr.length, lastUpdated: latest ? new Date(latest).toISOString() : '' };
+          }
+        }
+        return next;
+      });
+    } catch {
+      // Jika gagal, set semua bulan kosong agar UI tidak salah menampilkan
+      setMonthSummaries((prev) => {
+        const next = { ...prev };
+        for (let i = 1; i <= 12; i++) {
+          const key = `${year}-${String(i).padStart(2, '0')}`;
+          if (!next[key]) next[key] = { count: 0, lastUpdated: '' };
+        }
+        return next;
+      });
+    }
+  };
+
+  const handleAddYear = () => {
+    const input = window.prompt('Masukkan tahun (YYYY):', String(new Date().getFullYear()));
+    if (!input) return;
+    const yearNum = Number(input);
+    if (!Number.isInteger(yearNum) || yearNum < 2000 || yearNum > 3000) {
+      alert('Format tahun tidak valid. Contoh yang valid: 2025');
+      return;
+    }
+    setExtraYears((prev) => {
+      const next = prev.includes(yearNum) ? prev : [...prev, yearNum];
+      try { localStorage.setItem('dataTarget_extra_years', JSON.stringify(next)); } catch {}
+      return next;
+    });
+    setExpandedYears((prev) => ({ ...prev, [yearNum]: true }));
+    fetchMonthSummariesForYear(yearNum);
+  };
+
+  const handleDeleteYear = (year) => {
+    if (!window.confirm(`Hapus tahun ${year}?`)) return;
+    if (extraYears.includes(year)) {
+      setExtraYears((prev) => {
+        const next = prev.filter((y) => y !== year);
+        try { localStorage.setItem('dataTarget_extra_years', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    } else {
+      setHiddenYears((prev) => {
+        const next = prev.includes(year) ? prev : [...prev, year];
+        try { localStorage.setItem('dataTarget_hidden_years', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    }
+    setExpandedYears((prev) => {
+      const { [year]: _, ...rest } = prev;
+      try { localStorage.setItem('dataTarget_expanded_years', JSON.stringify(rest)); } catch {}
+      return rest;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.length === items.length && items.length > 0) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(items.map((it) => it.id));
+    }
+  };
+
+  const handleCheckRow = (id) => {
+    setSelectedItems((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const formatCurrency = (num) => {
@@ -120,194 +305,189 @@ const AdminDataTarget = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header ala Medsos */}
-      <div className="bg-red-800 text-white p-4 mb-0">
+      <div className="bg-red-800 text-white px-6 py-5 mb-0">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">DATA TARGET</h1>
-            <p className="text-sm opacity-90">Admin - Marketing</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.dataTarget}</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TARGET</h1>
+            </div>
           </div>
-          <Link
-            to="/admin/marketing/data-target/new"
-            className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 hover:bg-red-50 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Tambah</span>
-          </Link>
+          {view === 'years' ? (
+            <button onClick={handleAddYear} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">+ <span className="hidden sm:inline font-semibold">Tahun</span></button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button onClick={backToYears} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors">← <span className="hidden sm:inline font-semibold">Kembali</span></button>
+              <Link to="/admin/marketing/data-target/new" className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">+ <span className="hidden sm:inline font-semibold">Tambah</span></Link>
+            </div>
+          )}
         </div>
       </div>
-      <div className="bg-gray-200 px-4 py-2 text-xs text-gray-600 -mt-1">Terakhir diupdate: {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
+      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600 -mt-1">Terakhir diupdate: {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
-      <div className="py-4">
-        {/* Stats Cards (halaman utama sebelum folder) */}
+      <div className="pt-2 pb-4">
+        {/* Years as accordion (with expand and month summaries) */}
         {view === 'years' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="bg-white shadow-sm border p-4">
-              <div className="text-sm text-gray-500">Total Target</div>
-              <div className="text-2xl font-bold text-gray-900">{stats.totalRecords || 0}</div>
-            </div>
-            <div className="bg-white shadow-sm border p-4">
-              <div className="text-sm text-gray-500">Total Nominal</div>
-              <div className="text-2xl font-bold text-gray-900">{`Rp ${(stats.totalNominal||0).toLocaleString('id-ID')}`}</div>
-            </div>
-            <div className="bg-white shadow-sm border p-4">
-              <div className="text-sm text-gray-500">Jumlah Tahun</div>
-              <div className="text-2xl font-bold text-gray-900">{years.length}</div>
-            </div>
-          </div>
-        )}
-        {/* Grid Years dibungkus card putih ala Owner */}
-        {view === 'years' && (
-          <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4">
-            <div className="px-4 py-3 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Pilih Tahun</h2>
-            </div>
-            <div className="p-3">
-              {loading && (
-                <div className="text-sm text-gray-600">Memuat daftar tahun...</div>
-              )}
-              {!loading && years.length === 0 && (
-                <div className="text-sm text-gray-600">Belum ada data</div>
-              )}
-              {!loading && years.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {years.map(({ year }) => (
-                    <div
-                      key={year}
-                      className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all"
-                      onClick={() => openYear(year)}
+          <div className="px-0 md:px-0 mt-2">
+            {loading && (
+              <div className="text-sm text-gray-600">Memuat daftar tahun...</div>
+            )}
+            {!loading && displayYears.length === 0 && (
+              <div className="text-sm text-gray-600">Belum ada data</div>
+            )}
+            {!loading && displayYears.length > 0 && (
+              <div className="space-y-3">
+                {displayYears.map((y) => (
+                  <div key={y} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleYear(y)}
+                      className="w-full px-4 md:px-6 py-2 md:py-3 flex items-center justify-between bg-red-800 text-white hover:bg-red-700 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="shrink-0 p-2 rounded-lg bg-yellow-50 group-hover:bg-yellow-100 transition-colors">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-yellow-500">
-                            <path d="M10.5 4.5a1.5 1.5 0 0 1 1.06.44l1.5 1.5c.28.3.67.46 1.07.46H19.5A2.25 2.25 0 0 1 21.75 9v7.5A2.25 2.25 0 0 1 19.5 18.75h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h5.25z" />
-                          </svg>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-800 group-hover:text-red-700">{year}</div>
-                          <div className="text-xs text-gray-500">Folder Tahun</div>
+                      <div className="flex items-center"><span className="text-lg font-extrabold">{y}</span></div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteYear(y); }}
+                          className="inline-flex items-center justify-center h-8 w-8 rounded border border-white/30 text-white hover:bg-white/10"
+                          title={`Hapus tahun ${y}`}
+                          aria-label={`Hapus tahun ${y}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                        <span className="text-white/90">{expandedYears[y] ? '−' : '+'}</span>
+                      </div>
+                    </button>
+                    {expandedYears[y] && (
+                      <div className="px-4 md:px-6 py-3 md:py-4 bg-white">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                          {MONTH_NAMES.map((label, idx) => {
+                            const m = idx + 1;
+                            const key = `${y}-${String(m).padStart(2,'0')}`;
+                            const summary = monthSummaries[key] || { count: 0, lastUpdated: '' };
+                            return (
+                              <div key={key} className="group p-4 bg-white cursor-pointer border border-gray-200 rounded-xl hover:border-red-300 hover:shadow-md transition-all" onClick={() => { setSelectedYear(y); openMonth(m); }}>
+                                <div className="text-center">
+                                  <div className="font-extrabold text-gray-900 group-hover:text-red-700 uppercase tracking-wide text-base md:text-lg">{label}</div>
+                                  {/* Last updated: '-' jika kosong */}
+                                  <div className="mt-1 text-gray-500 text-xs md:text-sm">{Number(summary.count || 0) > 0 ? formatDateTimeShort(summary.lastUpdated) : '-'}</div>
+                                  {/* Badge jumlah: selalu tampil, termasuk 0 laporan */}
+                                  <div className="mt-2">
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                                      {Number(summary.count || 0).toLocaleString('id-ID')} laporan
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Year Content */}
-        {view === 'yearContent' && (
-          <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-            <div className="bg-red-800 text-white px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">{selectedYear}</h2>
-                  <p className="text-xs opacity-90">Daftar Taget Harian</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link to="/admin/marketing/data-target/new" className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">
-                    <Plus className="h-4 w-4" /> Tambah
-                  </Link>
-                  <button onClick={backToYears} className="bg-white text-red-700 hover:bg-red-50 inline-flex items-center gap-2 px-3 py-2 rounded-lg">Kembali</button>
+        {/* MonthContent: filter + table */}
+        {view === 'monthContent' && (
+          <div className="px-0 md:px-0">
+
+            {/* Filter Card ala Medsos */}
+            <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4 mt-3">
+              <div className="px-4 md:px-6 py-3">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+                    <input type="text" placeholder="Cari target harian..." value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
+                    <input type="month" value={`${String(selectedYear||'').padStart(4,'0')}-${String((selectedMonth||1)).padStart(2,'0')}`} onChange={(e)=>{ const val=e.target.value; if(!val) return; const [y,m]=val.split('-').map(Number); setSelectedYear(y); openMonth(m); }} className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                  </div>
+                  <div className="flex items-end">
+                    <button onClick={()=>{ setSearchTerm(''); }} className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors">Reset</button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Summary bar */}
-            <div className="px-4 py-2 bg-gray-100 text-xs text-gray-700 flex items-center justify-between">
-              <div>
-                Total Tahun {selectedYear}: <span className="font-semibold">{(pagination.totalItems || 0).toLocaleString('id-ID')}</span>
+            {/* Card konten bulan + Tabel */}
+            <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
+              <div className="bg-red-800 text-white px-4 md:px-6 py-2 md:py-3">
+                <h2 className="text-lg font-extrabold leading-tight">{(MONTH_NAMES[(selectedMonth||1)-1] + ' ' + selectedYear).toUpperCase()}</h2>
               </div>
-              <div>
-                Ditampilkan: <span className="font-semibold">{(items?.length || 0).toLocaleString('id-ID')}</span>
-              </div>
-            </div>
-
-            {loading ? (
-              <LoadingSpinner />
-            ) : items.length === 0 ? (
-              <div className="p-8 text-center text-gray-600">Belum ada data pada tahun ini</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="sticky top-0 bg-red-700 z-10 shadow">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Isi</th>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Dibuat</th>
-                      <th className="px-6 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {items.map((it) => (
-                      <tr key={it.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 text-sm text-gray-900">{new Date(it.tanggal_target).toLocaleDateString('id-ID')}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          {(() => {
-                            const plain = String(it.isi_target || '').replace(/<[^>]*>/g, '');
-                            return plain.length > 100 ? `${plain.slice(0, 100)}...` : plain;
-                          })()}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-900">{it.user_nama || '-'}</td>
-                        <td className="px-6 py-4 text-sm text-gray-500">{new Date(it.created_at).toLocaleDateString('id-ID')}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => navigate(`/admin/marketing/data-target/${it.id}`)}
-                              className="text-blue-600 hover:text-blue-900"
-                              title="Lihat"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => navigate(`/admin/marketing/data-target/${it.id}/edit`)}
-                              className="text-green-600 hover:text-green-900"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(it.id)}
-                              className="text-red-600 hover:text-red-900"
-                              title="Hapus"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
+              {loading ? (
+                <LoadingSpinner />
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full table-fixed">
+                    <thead className="sticky top-0 bg-[#E3E5EA] z-10 shadow">
+                      <tr>
+                        <th className="w-10 pl-4 pr-2 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
+                          <input type="checkbox" checked={selectedItems.length === items.length && items.length>0} onChange={handleSelectAll} className="rounded border-gray-600 text-red-600 focus:ring-red-500" />
+                        </th>
+                        <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">No</th>
+                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Tanggal</th>
+                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Keterangan</th>
+                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Aksi</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Pagination */}
-            {!loading && pagination.totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Menampilkan {((pagination.currentPage - 1) * 20) + 1} - {Math.min(pagination.currentPage * 20, pagination.totalItems)} dari {pagination.totalItems}
+                    </thead>
+                    <tbody>
+                      {items
+                        .filter(it => {
+                          const m = new Date(it.tanggal_target).getMonth()+1;
+                          if (m !== selectedMonth) return false;
+                          if (!searchTerm) return true;
+                          return stripHtml(it.isi_target||'').toLowerCase().includes(searchTerm.toLowerCase());
+                        })
+                        .map((it, idx) => (
+                          <tr key={it.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/marketing/data-target/${it.id}`)}>
+                            <td className="w-10 pl-4 sm:pl-6 pr-0 py-1.5 text-sm text-gray-900 whitespace-nowrap" onClick={(e)=>e.stopPropagation()}>
+                              <input type="checkbox" checked={selectedItems.includes(it.id)} onChange={()=>handleCheckRow(it.id)} className="rounded border-gray-300 text-red-600 focus:ring-red-500" />
+                            </td>
+                            <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-1.5 text-sm text-gray-900 whitespace-nowrap">{idx+1}</td>
+                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900 whitespace-nowrap font-semibold">{new Date(it.tanggal_target).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }).toUpperCase()}</td>
+                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900">
+                              <div className="max-w-[14rem] md:max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
+                                {(() => {
+                                  const plain = stripHtml(it.isi_target||'');
+                                  return plain.length > 120 ? `${plain.slice(0,120)}...` : plain;
+                                })()}
+                              </div>
+                            </td>
+                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900 whitespace-nowrap" onClick={(e)=>e.stopPropagation()}>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => navigate(`/admin/marketing/data-target/${it.id}/edit`)}
+                                  className="inline-flex items-center justify-center h-8 w-8 rounded-md text-green-600 hover:bg-green-50"
+                                  title="Edit"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(it.id)}
+                                  className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-600 hover:bg-red-50"
+                                  title="Hapus"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      {(!items || items.filter(it => new Date(it.tanggal_target).getMonth()+1 === selectedMonth).length === 0) && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-600">Belum ada data</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPagination((p) => ({ ...p, currentPage: Math.max(p.currentPage - 1, 1) }))}
-                    disabled={pagination.currentPage === 1}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Sebelumnya
-                  </button>
-                  <span className="text-sm">Halaman {pagination.currentPage} dari {pagination.totalPages}</span>
-                  <button
-                    onClick={() => setPagination((p) => ({ ...p, currentPage: Math.min(p.currentPage + 1, p.totalPages) }))}
-                    disabled={pagination.currentPage === pagination.totalPages}
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Selanjutnya
-                  </button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
