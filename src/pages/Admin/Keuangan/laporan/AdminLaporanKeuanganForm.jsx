@@ -433,15 +433,6 @@ const AdminLaporanKeuanganForm = () => {
 
         const file = item.getAsFile();
         if (file) {
-          if (file.size > 10 * 1024 * 1024) {
-            toast.error('Gambar terlalu besar. Maksimal 10MB');
-            return;
-          }
-
-          if (selectedImages.length >= 5) {
-            toast.error('Maksimal 5 gambar per laporan');
-            return;
-          }
 
           const imageId = Date.now() + Math.floor(Math.random() * 1000);
           const imageWithId = { file, id: imageId };
@@ -769,22 +760,8 @@ const AdminLaporanKeuanganForm = () => {
 
     if (files.length === 0) return;
 
-    // Batasi maksimal total 5 gambar
-    if (selectedImages.length + files.length > 5) {
-      toast.error('Maksimal 5 gambar');
-      return;
-    }
-
-    // Validasi tipe
-    const validFiles = files.filter(file => {
-      const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(file.type);
-      if (!isValidType) {
-        toast.error('Hanya file gambar yang diperbolehkan');
-        return false;
-      }
-      return true;
-    });
-    if (validFiles.length === 0) return;
+    // Tidak ada batasan jumlah/tipe file
+    const validFiles = files;
 
     // Bungkus ke objek { file, id } agar kompatibel dengan uploadImagesToServer (menggunakan image.file)
     const withIds = validFiles.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));

@@ -431,7 +431,7 @@ const AdminDataBinaLingkungan = () => {
       <div className="px-0 py-4">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-3 px-0">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <User className="h-5 w-5 text-blue-600" />
@@ -442,7 +442,7 @@ const AdminDataBinaLingkungan = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <Briefcase className="h-5 w-5 text-green-600" />
@@ -453,7 +453,7 @@ const AdminDataBinaLingkungan = () => {
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <MapPin className="h-5 w-5 text-purple-600" />
@@ -467,7 +467,7 @@ const AdminDataBinaLingkungan = () => {
         </div>
 
         {/* Filter: hanya cari */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-4">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-200 mb-4">
           <div className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
@@ -482,18 +482,18 @@ const AdminDataBinaLingkungan = () => {
         </div>
 
         {/* Card List tanpa kategori lokasi */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-2">
           <div className="px-4 sm:px-6 py-4">
             {items.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
+                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
                     onClick={() => { setDetailItem(item); setShowDetail(true); }}
                   >
                     {/* Header strip ala Data Sewa */}
-                    <div className="flex items-start justify-between px-3 py-2 bg-red-800 -mx-3 -mt-3 mb-0 border-b border-red-700 rounded-t-lg">
+                    <div className="flex items-start justify-between px-3 py-3 bg-red-800 -mx-3 -mt-3 mb-0 border-b border-red-700 rounded-t-lg">
                       <h4 className="text-sm md:text-base font-semibold text-white leading-snug break-words pr-2">{item.nama || '-'}</h4>
                       <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-full border bg-blue-50 text-blue-700 border-blue-200">{item.jabatan || '—'}</span>
                     </div>

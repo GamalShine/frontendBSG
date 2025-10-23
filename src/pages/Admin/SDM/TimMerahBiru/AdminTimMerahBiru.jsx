@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { Dialog, DialogContent } from '@/components/UI/Dialog'
+import AdminTimMerahBiruForm from './AdminTimMerahBiruForm'
 import { timService } from '../../../../services/timService'
 import { 
   Search, 
@@ -26,7 +28,13 @@ const AdminTimMerahBiru = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [showFilters, setShowFilters] = useState(false)
+  // Pencarian selalu tampil; state toggle dihapus
+  const [showForm, setShowForm] = useState(false)
+  // Edit modal state
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [editInitial, setEditInitial] = useState(null)
+  const [editId, setEditId] = useState(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   useEffect(() => {
     if (activeTab === 'merah') {
@@ -34,7 +42,7 @@ const AdminTimMerahBiru = () => {
     } else {
       loadTimBiru()
     }
-  }, [activeTab, currentPage, divisiFilter, statusFilter])
+  }, [activeTab, currentPage, divisiFilter, statusFilter, searchTerm])
 
   const loadTimMerah = async () => {
     try {
@@ -172,6 +180,32 @@ const AdminTimMerahBiru = () => {
     }
   }
 
+  // Open edit modal and fetch detail
+  const openEdit = async (id) => {
+    try {
+      setEditLoading(true)
+      setEditId(id)
+      const resp = activeTab === 'merah' ? await timService.getTimMerahById(id) : await timService.getTimBiruById(id)
+      if (resp?.success) {
+        const data = resp.data
+        setEditInitial({
+          user_id: data.user_id,
+          status: data.status,
+          prestasi: data.prestasi,
+          keterangan: data.keterangan || ''
+        })
+        setShowEditForm(true)
+      } else {
+        toast.error('Gagal memuat data untuk edit')
+      }
+    } catch (e) {
+      console.error('Open edit error:', e)
+      toast.error('Gagal memuat data untuk edit')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   // Tanggal + jam untuk banner "Terakhir diupdate"
   const formatDateTime = (dateString) => {
     if (!dateString) return '-'
@@ -195,177 +229,138 @@ const AdminTimMerahBiru = () => {
   }, [activeTab, timMerah, timBiru])
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen">
       {/* Header - mengikuti gaya Omset Harian */}
-      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div className="flex items-center gap-4 min-w-0">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.timMerahBiru}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TIM MERAH BIRU</h1>
-              <p className="text-sm text-red-100">Kelola data tim merah dan biru</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
-            <button
-              onClick={() => setShowFilters(v => !v)}
-              aria-label="Buka Pencarian dan Filter"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline font-semibold">PENCARIAN</span>
-            </button>
-            <Link
-              to={`/admin/sdm/tim/${activeTab}/form`}
-              aria-label="Tambah Data Tim"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline font-semibold">Tambah</span>
-            </Link>
-          </div>
+          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end"></div>
         </div>
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
-      <div className="p-4 sm:p-6">
+      {/* Pencarian & Filter (selalu tampil) - gaya mengikuti Training */}
+      <div className="p-0">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+          <div className="px-6 py-4">
+            <div className={`grid grid-cols-1 ${activeTab === 'merah' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama karyawan..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {activeTab === 'merah' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="SP1">SP1</option>
+                    <option value="SP2">SP2</option>
+                    <option value="SP3">SP3</option>
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Divisi</label>
+                <select
+                  value={divisiFilter}
+                  onChange={(e) => setDivisiFilter(e.target.value)}
+                  className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="all">Semua Divisi</option>
+                  <option value="BSG PUSAT">BSG PUSAT</option>
+                  <option value="BSG BSD">BSG BSD</option>
+                  <option value="SOGIL">SOGIL</option>
+                  <option value="BSG SIDOARJO">BSG SIDOARJO</option>
+                  <option value="BSG BUAH BATU">BSG BUAH BATU</option>
+                  <option value="BSG KARAWACI">BSG KARAWACI</option>
+                </select>
+              </div>
+              <div className="flex items-end h-full">
+                <button
+                  onClick={() => {
+                    setSearchTerm('')
+                    setDivisiFilter('all')
+                    setStatusFilter('all')
+                    setActiveTab('merah')
+                    setCurrentPage(1)
+                    loadTimMerah()
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors w-full md:w-auto"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="font-semibold">Reset</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
       {/* Tabs */}
-      <div className="mb-4">
-        <div className="border-b border-gray-200 bg-white rounded-t-lg">
-          <nav className="-mb-px flex space-x-6 px-4 pt-3 overflow-x-auto whitespace-nowrap scrollbar-hide">
-            <button
-              onClick={() => setActiveTab('merah')}
-              className={`py-3 px-3 border-b-2 font-semibold text-sm transition-colors ${
-                activeTab === 'merah'
-                  ? 'border-red-600 text-red-700'
-                  : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
-              }`}
-            >
-              Tim Merah
-            </button>
-            <button
-              onClick={() => setActiveTab('biru')}
-              className={`py-3 px-3 border-b-2 font-semibold text-sm transition-colors ${
-                activeTab === 'biru'
-                  ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300'
-              }`}
-            >
-              Tim Biru
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      {/* Filters */}
-      {showFilters && (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 my-4">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-800">Pencarian & Filter</h3>
-          <button
-            onClick={() => {
-              setSearchTerm('')
-              setDivisiFilter('all')
-              setStatusFilter('all')
-              setActiveTab('merah')
-              setCurrentPage(1)
-              loadTimMerah()
-            }}
-            aria-label="Reset Filter"
-            className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            <span className="hidden sm:inline font-semibold">Reset</span>
-          </button>
-        </div>
-        <div className="px-6 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Cari nama karyawan..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Divisi Filter */}
-          <div className="lg:w-48">
-            <select
-              value={divisiFilter}
-              onChange={(e) => setDivisiFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            >
-              <option value="all">Semua Divisi</option>
-              <option value="BSG PUSAT">BSG PUSAT</option>
-              <option value="BSG BSD">BSG BSD</option>
-              <option value="SOGIL">SOGIL</option>
-              <option value="BSG SIDOARJO">BSG SIDOARJO</option>
-              <option value="BSG BUAH BATU">BSG BUAH BATU</option>
-              <option value="BSG KARAWACI">BSG KARAWACI</option>
-            </select>
-          </div>
-
-          {/* Status Filter - Only for Tim Merah */}
-          {activeTab === 'merah' && (
-            <div className="lg:w-48">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+      <div className="mb-0">
+        <div className="bg-red-800 text-white">
+          <div className="flex items-center justify-between px-4 py-3">
+            <nav className="flex space-x-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
+              <button
+                onClick={() => setActiveTab('merah')}
+                className={`py-2 px-4 font-semibold text-base rounded-md transition-colors ${
+                  activeTab === 'merah'
+                    ? 'bg-white/20 text-white'
+                  : 'text-white/80 hover:text-white hover:bg-white/10'
+                }`}
               >
-                <option value="all">Semua Status</option>
-                <option value="SP1">SP1</option>
-                <option value="SP2">SP2</option>
-                <option value="SP3">SP3</option>
-              </select>
-            </div>
-          )}
-
-          {/* Search Button */}
-          <div className="flex lg:justify-end">
+                TIM MERAH
+              </button>
+              <button
+                onClick={() => setActiveTab('biru')}
+                className={`py-2 px-4 font-semibold text-base rounded-md transition-colors ${
+                  activeTab === 'biru'
+                    ? 'bg-white/20 text-white'
+                  : 'text-white/80 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                TIM BIRU
+              </button>
+            </nav>
             <button
-              onClick={handleSearch}
-              aria-label="Cari"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-6 sm:py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              type="button"
+              onClick={() => setShowForm(true)}
+              aria-label="Tambah Data Tim"
+              className={`ml-4 inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors shadow-sm bg-white ${activeTab === 'merah' ? 'text-red-700 hover:bg-red-50' : 'text-blue-700 hover:bg-blue-50'}`}
             >
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">Cari</span>
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline font-semibold">Tambah</span>
             </button>
           </div>
         </div>
       </div>
-      </div>
-      )}
 
-      {/* Actions */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6 bg-white rounded-lg border p-4 shadow-sm">
-        <div className="text-sm text-gray-600">
-          Total: {totalItems} data
-        </div>
-        <Link
-          to={`/admin/sdm/tim/${activeTab}/form`}
-          aria-label="Tambah Data Tim"
-          className={`text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:opacity-90 flex items-center gap-2 ${
-            activeTab === 'merah' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Tambah Tim {activeTab === 'merah' ? 'Merah' : 'Biru'}</span>
-        </Link>
-      </div>
+      {/* Filters lama dihapus karena sudah dipindahkan dan selalu ditampilkan */}
+
+      {/* Actions box dihapus sesuai permintaan; tombol Tambah dipindah ke header Tabs */}
 
       {/* Table */}
-      <div className="bg-white rounded-lg shadow table-responsive">
+      <div className="bg-white rounded-b-lg shadow table-responsive">
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
@@ -380,24 +375,24 @@ const AdminTimMerahBiru = () => {
         ) : (
           <div className="table-responsive">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="sticky top-0 bg-red-50 z-10">
+              <thead className="sticky top-0 bg-gray-200 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                     Karyawan
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                     Divisi
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                     Posisi
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                     {activeTab === 'merah' ? 'Status' : 'Prestasi'}
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                     Keterangan
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                     Aksi
                   </th>
                 </tr>
@@ -407,10 +402,10 @@ const AdminTimMerahBiru = () => {
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 sm:px-6 py-4 whitespace-normal md:whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
                           activeTab === 'merah' ? 'bg-red-100' : 'bg-blue-100'
                         }`}>
-                          <User className={`h-5 w-5 ${
+                          <User className={`h-6 w-6 ${
                             activeTab === 'merah' ? 'text-red-600' : 'text-blue-600'
                           }`} />
                         </div>
@@ -447,12 +442,14 @@ const AdminTimMerahBiru = () => {
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <Link
-                          to={`/admin/sdm/tim/${activeTab}/edit/${item.id}`}
+                        <button
+                          type="button"
+                          onClick={() => openEdit(item.id)}
                           className="text-blue-600 hover:text-blue-900"
+                          title="Edit"
                         >
                           <Edit className="h-4 w-4" />
-                        </Link>
+                        </button>
                         <button
                           onClick={() => activeTab === 'merah' ? handleDeleteMerah(item.id) : handleDeleteBiru(item.id)}
                           className="text-red-600 hover:text-red-900"
@@ -498,6 +495,128 @@ const AdminTimMerahBiru = () => {
           </div>
         )}
       </div>
+
+      {/* Modal Tambah Tim Merah/Biru */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-2xl w-full p-0 overflow-hidden rounded-2xl border border-gray-200">
+          {/* Header Modal */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+            <div>
+              <h3 className="text-xl font-bold leading-tight">Tambah Tim {activeTab === 'merah' ? 'Merah' : 'Biru'}</h3>
+            </div>
+            <button
+              onClick={() => setShowForm(false)}
+              className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Tutup"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Body Modal */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+            <AdminTimMerahBiruForm
+              typeOverride={activeTab}
+              formId="timMBForm"
+              hideHeader
+              hideActions
+              onSuccess={() => {
+                setShowForm(false)
+                if (activeTab === 'merah') {
+                  loadTimMerah()
+                } else {
+                  loadTimBiru()
+                }
+              }}
+              onCancel={() => setShowForm(false)}
+            />
+          </div>
+
+          {/* Footer Modal */}
+          <div className="p-0 border-t bg-white">
+            <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="timMBForm"
+                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Tim Merah/Biru */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent className="max-w-2xl w-full p-0 overflow-hidden rounded-2xl border border-gray-200">
+          {/* Header Modal */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+            <div>
+              <h3 className="text-xl font-bold leading-tight">Edit Tim {activeTab === 'merah' ? 'Merah' : 'Biru'}</h3>
+            </div>
+            <button
+              onClick={() => setShowEditForm(false)}
+              className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Tutup"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Body Modal */}
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+            {editLoading ? (
+              <div className="text-gray-600">Memuat data...</div>
+            ) : (
+              <AdminTimMerahBiruForm
+                typeOverride={activeTab}
+                formId="timMBEditForm"
+                hideHeader
+                hideActions
+                editingId={editId}
+                initialData={editInitial}
+                onSuccess={() => {
+                  setShowEditForm(false)
+                  if (activeTab === 'merah') {
+                    loadTimMerah()
+                  } else {
+                    loadTimBiru()
+                  }
+                }}
+                onCancel={() => setShowEditForm(false)}
+              />
+            )}
+          </div>
+
+          {/* Footer Modal */}
+          <div className="p-0 border-t bg-white">
+            <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <button
+                type="button"
+                onClick={() => setShowEditForm(false)}
+                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="timMBEditForm"
+                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+              >
+                Simpan
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
       {/* Close inner content wrapper */}
       </div>
     </div>

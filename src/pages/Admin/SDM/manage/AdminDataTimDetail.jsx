@@ -9,11 +9,6 @@ const Row = ({ label, children }) => (
   </div>
 );
 
-const formatCurrency = (n) => {
-  if (n === null || n === undefined) return '-';
-  const val = Number(n) || 0;
-  return `Rp ${val.toLocaleString('id-ID')}`;
-};
 
 const AdminDataTimDetail = () => {
   const { id } = useParams();
@@ -99,24 +94,6 @@ const AdminDataTimDetail = () => {
               {/* Training */}
               <Row label="Data Training">{`DASAR ${data.training_dasar ? '✓' : '✗'}, SKILLO ${data.training_skillo ? '✓' : '✗'}, LEADERSHIP ${data.training_leadership ? '✓' : '✗'}, LANJUTAN ${data.training_lanjutan ? '✓' : '✗'}`}</Row>
 
-              {/* Gaji */}
-              <div className="px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700">Informasi Gaji</div>
-              <Row label="Gaji Pokok">{formatCurrency(data.gaji_pokok)}</Row>
-              <Row label="Tunjangan Kinerja">{formatCurrency(data.tunjangan_kinerja)}</Row>
-              <Row label="Tunjangan Posisi">{formatCurrency(data.tunjangan_posisi)}</Row>
-              <Row label="Uang Makan">{formatCurrency(data.uang_makan)}</Row>
-              <Row label="Lembur">{formatCurrency(data.lembur)}</Row>
-              <Row label="Bonus">{formatCurrency(data.bonus)}</Row>
-              <Row label="Total Gaji">{formatCurrency(data.total_gaji)}</Row>
-              <Row label="Potongan">{formatCurrency(data.potongan)}</Row>
-              <Row label="BPJSTK">{formatCurrency(data.bpjstk)}</Row>
-              <Row label="BPJS Kesehatan">{formatCurrency(data.bpjs_kesehatan)}</Row>
-              <Row label="BPJS Kes Penambahan">{formatCurrency(data.bpjs_kes_penambahan)}</Row>
-              <Row label="SP 1/2">{formatCurrency(data.sp_1_2)}</Row>
-              <Row label="Pinjaman Karyawan">{formatCurrency(data.pinjaman_karyawan)}</Row>
-              <Row label="PPH21">{formatCurrency(data.pph21)}</Row>
-              <Row label="Total Potongan">{formatCurrency(data.total_potongan)}</Row>
-              <Row label="Total Gaji yang Dibayarkan">{formatCurrency(data.total_gaji_dibayarkan)}</Row>
             </div>
           )}
         </div>

@@ -677,17 +677,7 @@ const AdminPoskasEdit = () => {
         if (file) {
           console.log('📸 Pasted image detected:', file.name, file.size);
           
-          // Validate file size
-          if (file.size > 10 * 1024 * 1024) { // 10MB limit
-            toast.error('Gambar terlalu besar. Maksimal 10MB');
-            return;
-          }
-          
-          // Check total image count (existing + new)
-          if (existingImages.length + selectedImages.length >= 5) {
-            toast.error('Maksimal 5 gambar per laporan');
-            return;
-          }
+          // Tidak ada validasi ukuran atau jumlah gambar
           
           // Generate ID for this new image
           const timestamp = Date.now();
@@ -765,24 +755,8 @@ const AdminPoskasEdit = () => {
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
     
-    // Validate file types
-    const validFiles = files.filter(file => {
-      if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} bukan file gambar yang valid`);
-        return false;
-      }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error(`${file.name} terlalu besar. Maksimal 10MB`);
-        return false;
-      }
-      return true;
-    });
-
-    // Check total image count (existing + new)
-    if (existingImages.length + selectedImages.length + validFiles.length > 5) {
-      toast.error('Maksimal 5 gambar per laporan');
-      return;
-    }
+    // Tidak ada validasi tipe/ukuran/jumlah file
+    const validFiles = files;
 
     // Generate IDs for new images
     const newIds = validFiles.map(() => {
@@ -1521,7 +1495,7 @@ const AdminPoskasEdit = () => {
                   Pilih Gambar Baru
                 </button>
                 <p className="text-sm text-gray-500 mt-2">
-                  Maksimal 5 gambar total, ukuran maksimal 10MB per gambar
+                  Format file bebas, tidak ada batasan jumlah maupun ukuran.
                 </p>
               </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -27,6 +27,7 @@ import Badge from '@/components/UI/Badge'
 import toast from 'react-hot-toast'
 import { MENU_CODES } from '@/config/menuCodes'
 import { Dialog, DialogContent, DialogHeader as DialogHeaderUI, DialogTitle as DialogTitleUI, DialogBody as DialogBodyUI, DialogFooter as DialogFooterUI } from '@/components/UI/Dialog'
+import AdminTrainingForm from './AdminTrainingForm'
 
 const AdminTrainingList = () => {
   const { user } = useAuth()
@@ -44,6 +45,10 @@ const AdminTrainingList = () => {
   })
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
+  const [editInitial, setEditInitial] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [saveLoading, setSaveLoading] = useState(false)
   const [formTraining, setFormTraining] = useState({
@@ -52,6 +57,32 @@ const AdminTrainingList = () => {
     training_skill: false,
     training_lanjutan: false,
   })
+
+  // Helper: format tanggal + waktu
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Ambil waktu update terakhir dari item terbaru
+  const lastUpdatedText = useMemo(() => {
+    if (!Array.isArray(trainings) || trainings.length === 0) return '-'
+    // Cari tanggal terbaru dari updated_at atau created_at
+    let latestTs = 0
+    trainings.forEach((t) => {
+      const ts = new Date(t.updated_at || t.created_at || 0).getTime()
+      if (!Number.isNaN(ts) && ts > latestTs) latestTs = ts
+    })
+    if (!latestTs) return '-'
+    return formatDateTime(latestTs)
+  }, [trainings])
 
   useEffect(() => {
     if (detailOpen && selectedUser) {
@@ -64,6 +95,29 @@ const AdminTrainingList = () => {
       })
     }
   }, [detailOpen, selectedUser])
+
+  const openCreate = () => {
+    setCreateOpen(true)
+  }
+
+  const openEditModal = async (userRow) => {
+    // userRow adalah baris user dari tabel dengan field training
+    try {
+      setEditLoading(true)
+      setEditInitial({
+        user_id: userRow.id,
+        training_dasar: !!userRow.training_dasar,
+        training_leadership: !!userRow.training_leadership,
+        training_skill: !!userRow.training_skill,
+        training_lanjutan: !!userRow.training_lanjutan,
+        catatan: userRow.catatan || ''
+      })
+      setSelectedUser(userRow)
+      setEditOpen(true)
+    } finally {
+      setEditLoading(false)
+    }
+  }
 
   const handleSaveEdit = async () => {
     if (!selectedUser) return
@@ -267,20 +321,22 @@ const AdminTrainingList = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.dataTraining}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TRAINING</h1>
-              <p className="text-sm text-red-100">Kelola data training dan sertifikasi karyawan</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              to="/admin/training/new"
+            <button
+              onClick={openCreate}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
-            </Link>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Info bar */}
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Spacing below header */}
       <div className="my-0"></div>
@@ -384,15 +440,19 @@ const AdminTrainingList = () => {
         </CardBody>
       </Card>
 
-      {/* Training List */}
-      <Card className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
-        <CardHeader className="px-6 py-3 bg-red-700 text-white">
+      {/* Training List - Header box terpisah */}
+      <div className="rounded-t-none shadow-sm border border-gray-100 border-b-0 mt-4 overflow-hidden">
+        <div className="px-6 py-3 bg-red-700 text-white">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg md:text-base font-extrabold uppercase tracking-wider text-white">Daftar Data Training Karyawan</h3>
-            <span className="text-sm md:text-base font-semibold text-white">Total Data Karyawan : {stats.totalUsers || 0}</span>
+            <h3 className="text-base md:text-base font-semibold uppercase tracking-wide text-white">Daftar Data Training Karyawan</h3>
+            <span className="text-base md:text-base font-semibold text-white">Total Karyawan : {stats.totalUsers || 0}</span>
           </div>
-        </CardHeader>
-        <CardBody className="px-6 py-4">
+        </div>
+      </div>
+
+      {/* Tabel pada box terpisah */}
+      <div className="bg-white rounded-b-xl shadow-sm border border-gray-100 border-t-0 mt-0">
+        <div className="px-0 pt-0 pb-4">
           {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -406,30 +466,30 @@ const AdminTrainingList = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                       Nama Karyawan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                       Email
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                       Role
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Training Dasar
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
+                      Dasar
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Training Leadership
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
+                      Leadership
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Training Skill
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
+                      Skill
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Training Lanjutan
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
+                      Lanjutan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
                       Aksi
                     </th>
                   </tr>
@@ -479,13 +539,14 @@ const AdminTrainingList = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
-                          <Link
-                            to={`/admin/training/${userTraining.id}/edit`}
+                          <button
+                            type="button"
                             className="text-blue-600 hover:text-blue-900"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); openEditModal(userTraining) }}
+                            title="Edit"
                           >
                             <Edit className="h-4 w-4" />
-                          </Link>
+                          </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(userTraining.id) }}
                             className="text-red-600 hover:text-red-900"
@@ -503,7 +564,7 @@ const AdminTrainingList = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex justify-between items-center mt-6">
+            <div className="flex justify-between items-center mt-6 px-6">
               <p className="text-sm text-gray-700">
                 Halaman {currentPage} dari {totalPages}
               </p>
@@ -527,8 +588,8 @@ const AdminTrainingList = () => {
               </div>
             </div>
           )}
-        </CardBody>
-      </Card>
+        </div>
+      </div>
 
       {/* Detail Modal */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
@@ -634,7 +695,7 @@ const AdminTrainingList = () => {
               <>
                 <Button onClick={() => setDetailOpen(false)} variant="outline">Tutup</Button>
                 {selectedUser && (
-                  <Button onClick={() => setIsEditing(true)}>
+                  <Button onClick={() => { setDetailOpen(false); openEditModal(selectedUser); }}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit
                   </Button>
@@ -649,6 +710,64 @@ const AdminTrainingList = () => {
               </>
             )}
           </DialogFooterUI>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Tambah Training */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-3xl w-full p-0 overflow-hidden rounded-2xl border border-gray-200">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+            <div>
+              <h3 className="text-xl font-bold leading-tight">Tambah Status Training Karyawan</h3>
+            </div>
+            <button onClick={() => setCreateOpen(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">✕</button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+            <AdminTrainingForm
+              inModal
+              formId="adminTrainingCreateForm"
+              onSuccess={() => { setCreateOpen(false); loadTrainings(); loadStats(); }}
+              onCancel={() => setCreateOpen(false)}
+            />
+          </div>
+          <div className="p-0 border-t bg-white">
+            <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <button type="button" onClick={() => setCreateOpen(false)} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Batal</button>
+              <button type="submit" form="adminTrainingCreateForm" className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Simpan</button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Training */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-3xl w-full p-0 overflow-hidden rounded-2xl border border-gray-200">
+          <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+            <div>
+              <h3 className="text-xl font-bold leading-tight">Edit Status Training Karyawan</h3>
+            </div>
+            <button onClick={() => setEditOpen(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">✕</button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+            {editLoading ? (
+              <div className="text-gray-600">Memuat data...</div>
+            ) : (
+              <AdminTrainingForm
+                inModal
+                formId="adminTrainingEditForm"
+                editingIdOverride={selectedUser?.id}
+                initialData={editInitial}
+                onSuccess={() => { setEditOpen(false); loadTrainings(); loadStats(); }}
+                onCancel={() => setEditOpen(false)}
+              />
+            )}
+          </div>
+          <div className="p-0 border-t bg-white">
+            <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <button type="button" onClick={() => setEditOpen(false)} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Batal</button>
+              <button type="submit" form="adminTrainingEditForm" className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Simpan</button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

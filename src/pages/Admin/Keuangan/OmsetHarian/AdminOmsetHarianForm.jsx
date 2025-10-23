@@ -611,14 +611,6 @@ const handleEditorMouseUp = () => {
         handled = true;
         const file = item.getAsFile();
         if (file) {
-          if (file.size > 10 * 1024 * 1024) {
-            toast.error('Gambar terlalu besar. Maksimal 10MB');
-            return;
-          }
-          if (selectedImages.length >= 5) {
-            toast.error('Maksimal 5 gambar per laporan');
-            return;
-          }
           const imageId = Date.now() + Math.floor(Math.random() * 1000);
           const imageWithId = { file, id: imageId };
           setSelectedImages(prev => [...prev, imageWithId]);
@@ -802,9 +794,7 @@ const handleEditorMouseUp = () => {
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    const max = 5 - selectedImages.length;
-    const toAdd = files.slice(0, Math.max(0, max));
-    const newItems = toAdd.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
+    const newItems = files.map(file => ({ file, id: Date.now() + Math.floor(Math.random() * 1000) }));
     setSelectedImages(prev => [...prev, ...newItems]);
     newItems.forEach((item) => {
       const reader = new FileReader();

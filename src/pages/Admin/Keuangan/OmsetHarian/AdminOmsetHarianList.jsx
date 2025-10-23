@@ -267,7 +267,7 @@ const AdminOmsetHarianList = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header - match POSKAS style */}
-      <div className="bg-red-800 text-white px-6 py-4">
+      <div className="bg-red-800 text-white px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.omsetHarian}</span>
@@ -288,7 +288,7 @@ const AdminOmsetHarianList = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards (seragam Poskas) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">

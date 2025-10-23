@@ -7,7 +7,9 @@ export const aturanService = {
     return res.data
   },
   async listAdmin(params = {}) {
-    const res = await api.get(API_ENDPOINTS.SDM.ATURAN.ADMIN.LIST, { params })
+    // Backend belum menyediakan endpoint khusus admin (/admin/aturan)
+    // Gunakan endpoint umum /aturan agar kompatibel
+    const res = await api.get(API_ENDPOINTS.SDM.ATURAN.LIST, { params })
     return res.data
   },
   async listDivisi(params = {}) {
@@ -23,7 +25,9 @@ export const aturanService = {
     return res.data
   },
   async getByIdAdmin(id) {
-    const res = await api.get(API_ENDPOINTS.SDM.ATURAN.ADMIN.BY_ID(id))
+    // Backend belum menyediakan endpoint khusus admin (/admin/aturan/:id)
+    // Gunakan endpoint umum /aturan/:id
+    const res = await api.get(API_ENDPOINTS.SDM.ATURAN.BY_ID(id))
     return res.data
   },
   async getByIdDivisi(id) {
@@ -35,15 +39,19 @@ export const aturanService = {
     return res.data
   },
   async createAdmin(payload) {
-    const res = await api.post(API_ENDPOINTS.SDM.ATURAN.ADMIN.LIST, payload)
+    // Gunakan endpoint umum untuk create
+    const res = await api.post(API_ENDPOINTS.SDM.ATURAN.LIST, payload)
     return res.data
   },
   async updateAdmin(id, payload) {
-    const res = await api.put(API_ENDPOINTS.SDM.ATURAN.ADMIN.BY_ID(id), payload)
+    // Gunakan endpoint umum untuk update
+    const res = await api.put(API_ENDPOINTS.SDM.ATURAN.BY_ID(id), payload)
     return res.data
   },
   async deleteAdmin(id) {
-    const res = await api.delete(API_ENDPOINTS.SDM.ATURAN.ADMIN.BY_ID(id))
+    // Gunakan endpoint umum untuk delete (soft)
+    const res = await api.delete(API_ENDPOINTS.SDM.ATURAN.BY_ID(id))
     return res.data
   }
 }
+
