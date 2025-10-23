@@ -143,6 +143,54 @@ const AdminDataTim = () => {
 
   useEffect(() => { fetchHierarchy(); }, []);
 
+  // Hitungan ringkas: jumlah karyawan, divisi, dan jabatan
+  const stats = useMemo(() => {
+    const divisi = (hierarchy || []).length;
+    let jabatan = 0;
+    let karyawan = 0;
+    (hierarchy || []).forEach(d => {
+      const jabs = d.children || [];
+      jabatan += jabs.length;
+      jabs.forEach(j => { karyawan += (j.children || []).length; });
+    });
+    return { divisi, jabatan, karyawan };
+  }, [hierarchy]);
+
+  // Ambil waktu 'terakhir update' (data terakhir dibuat)
+  const latestCreatedAt = useMemo(() => {
+    let latest = null;
+    const consider = (val) => {
+      if (!val) return;
+      const t = new Date(val);
+      if (!isNaN(t)) latest = (!latest || t > latest) ? t : latest;
+    };
+    (hierarchy || []).forEach(d => {
+      // Divisi
+      consider(d.created_at || d.createdAt);
+      (d.children || []).forEach(j => {
+        // Jabatan
+        consider(j.created_at || j.createdAt);
+        (j.children || []).forEach(e => {
+          // Karyawan
+          consider(e.created_at || e.createdAt || e.created);
+        });
+      });
+    });
+    return latest;
+  }, [hierarchy]);
+
+  const formatDateTimeID = (dateObj) => {
+    if (!dateObj) return '-';
+    try {
+      const tgl = new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(dateObj);
+      const hh = String(dateObj.getHours()).padStart(2, '0');
+      const mm = String(dateObj.getMinutes()).padStart(2, '0');
+      return `${tgl} pukul ${hh}.${mm}`;
+    } catch {
+      return String(dateObj);
+    }
+  };
+
   // Load detail lengkap saat selected berubah
   useEffect(() => {
     const load = async () => {
@@ -289,14 +337,50 @@ const AdminDataTim = () => {
         .no-scrollbar::-webkit-scrollbar { display: none; }
       `}</style>
       {/* Header */}
-      <div className="bg-red-800 text-white px-6 py-4">
+      <div className="bg-red-800 text-white px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.dataTim}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TIM</h1>
-              <p className="text-sm text-red-100">Kelola data tim: divisi, jabatan, dan karyawan</p>
             </div>
+          </div>
+        </div>
+      </div>
+      {/* Subheader: Terakhir diupdate */}
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-600">
+        Terakhir diupdate: <span className="text-gray-800">{formatDateTimeID(latestCreatedAt)}</span>
+      </div>
+
+      {/* Ringkasan jumlah */}
+      <div className="px-0 mt-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Jumlah Karyawan</div>
+              <div className="text-2xl font-extrabold text-gray-900">{stats.karyawan}</div>
+            </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">
+              <Users className="h-5 w-5" />
+            </span>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Jumlah Divisi</div>
+              <div className="text-2xl font-extrabold text-gray-900">{stats.divisi}</div>
+            </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+              <Building2 className="h-5 w-5" />
+            </span>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">Jumlah Jabatan</div>
+              <div className="text-2xl font-extrabold text-gray-900">{stats.jabatan}</div>
+            </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <Briefcase className="h-5 w-5" />
+            </span>
           </div>
         </div>
       </div>
@@ -384,8 +468,8 @@ const AdminDataTim = () => {
 
       {/* Content Switcher by Tab */}
       {activeTab === 'dataTim' && (
-      <div className="px-0 pb-8 pt-3">
-        <div className="bg-white rounded-md shadow-sm border border-gray-100">
+      <div className="px-0 pb-8 pt-0">
+        <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
           <div className="px-6 py-3 border-b flex items-center justify-between">
             <div className="text-sm font-semibold text-gray-800">Data Tim</div>
             <button onClick={() => { setShowAddTim(true); setAddTimForm({ nama: '', email: '', no_hp: '', tanggal_bergabung: '', divisi_id: '', jabatan_id: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">Tambah Tim</button>
@@ -393,18 +477,18 @@ const AdminDataTim = () => {
           {loading && <div className="p-8 text-center text-gray-500">Memuat data...</div>}
           {error && !loading && <div className="p-8 text-center text-red-600">{error}</div>}
           {!loading && !error && (
-            <div className="divide-y">
+            <div className="space-y-3">
               {(filteredHierarchy || []).map(div => {
                 const totalDiv = (div.children || []).reduce((acc, j) => acc + (j.children?.length || 0), 0);
                 const openDiv = !!expandedDivisi[div.id];
                 return (
-                  <div key={div.id} className="">
+                  <div key={div.id} className="rounded-lg overflow-hidden border border-gray-200 bg-white">
                     <button onClick={() => toggleDivisi(div.id)} className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors">
                       <div className="flex items-center gap-2">
                         {openDiv ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                         <span className="font-semibold tracking-tight">{div.name}</span>
                       </div>
-                      <span className="text-sm bg-red-700 px-2 py-1 rounded-full">{totalDiv}</span>
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{totalDiv}</span>
                     </button>
                     {openDiv && (
                       <div className="mt-0 px-4 md:px-6 py-4 grid grid-cols-1 gap-3">
@@ -456,8 +540,8 @@ const AdminDataTim = () => {
       )}
 
       {activeTab === 'jabatan' && (
-        <div className="px-0 pb-8 pt-3">
-          <div className="bg-white rounded-md shadow-sm border border-gray-100">
+        <div className="px-0 pb-8 pt-0">
+          <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
             <div className="px-6 py-3 border-b flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-800">Daftar Jabatan per Divisi</div>
               <button onClick={() => { setShowAddJabatan(true); setJabatanForm({ nama_jabatan: '', divisi_id: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">Tambah Jabatan</button>
@@ -467,20 +551,20 @@ const AdminDataTim = () => {
                 const open = !!expandedDivForJabatanPanel[div.id];
                 const jabCount = (div.children || []).length;
                 return (
-                  <div key={div.id}>
+                  <div key={div.id} className="rounded-lg overflow-hidden border border-gray-200 bg-white m-3">
                     <button
                       onClick={() => setExpandedDivForJabatanPanel(p=>({ ...p, [div.id]: !p[div.id] }))}
                       className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
                     >
                       <span className="font-semibold tracking-tight">{div.name}</span>
-                      <span className="text-xs bg-red-700 px-2 py-0.5 rounded-full">{jabCount} jabatan</span>
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{jabCount} jabatan</span>
                     </button>
                     {open && (
                       <div className="bg-white">
                         {(div.children || []).map(jab => (
-                          <div key={jab.id} className="px-6 py-2 border-t border-gray-100 flex items-center justify-between">
+                          <div key={jab.id} className="px-6 py-2 border-t border-gray-100 flex items-center justify-between hover:bg-gray-50">
                             <span className="text-sm font-medium text-gray-800">{jab.name}</span>
-                            <span className="text-xs text-gray-600">{(jab.children||[]).length} orang</span>
+                            <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{(jab.children||[]).length} orang</span>
                           </div>
                         ))}
                         {jabCount === 0 && (
@@ -500,8 +584,8 @@ const AdminDataTim = () => {
       )}
 
       {activeTab === 'divisi' && (
-        <div className="px-0 pb-8 pt-3">
-          <div className="bg-white rounded-md shadow-sm border border-gray-100">
+        <div className="px-0 pb-8 pt-0">
+          <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
             <div className="px-6 py-3 border-b flex items-center justify-between">
               <div className="text-sm font-semibold text-gray-800">Daftar Divisi</div>
               <button onClick={() => { setShowAddDivisi(true); setDivisiForm({ nama_divisi: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">Tambah Divisi</button>
@@ -511,11 +595,11 @@ const AdminDataTim = () => {
                 const jabCount = (div.children || []).length;
                 const empCount = (div.children || []).reduce((acc, j) => acc + ((j.children||[]).length), 0);
                 return (
-                  <div key={div.id} className="px-6 py-3 flex items-center justify-between">
+                  <div key={div.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
                     <div className="text-sm font-semibold text-gray-800">{div.name}</div>
-                    <div className="text-xs text-gray-600 flex items-center gap-3">
-                      <span className="bg-gray-200 px-2 py-0.5 rounded-full">{jabCount} jabatan</span>
-                      <span className="bg-gray-200 px-2 py-0.5 rounded-full">{empCount} orang</span>
+                    <div className="text-xs text-gray-600 flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full border border-gray-300 bg-white">{jabCount} jabatan</span>
+                      <span className="px-2 py-0.5 rounded-full border border-gray-300 bg-white">{empCount} orang</span>
                     </div>
                   </div>
                 );
@@ -920,7 +1004,7 @@ const AdminDataTim = () => {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelected(null)} />
-          <div className="relative z-10 w-full max-w-4xl bg-white rounded-2xl shadow-2xl border flex flex-col max-h-[92vh] overflow-hidden">
+          <div className="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-2xl border flex flex-col max-h-[92vh] overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between">
               <h2 className="text-lg font-semibold">Detail Anggota Tim</h2>
@@ -969,23 +1053,6 @@ const AdminDataTim = () => {
 
                   <Row label="Data Training">{`DASAR ${detail.training_dasar ? '✓' : '✗'}, SKILLO ${detail.training_skillo ? '✓' : '✗'}, LEADERSHIP ${detail.training_leadership ? '✓' : '✗'}, LANJUTAN ${detail.training_lanjutan ? '✓' : '✗'}`}</Row>
 
-                  <div className="px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700">Informasi Gaji</div>
-                  <Row label="Gaji Pokok">{formatCurrency(detail.gaji_pokok)}</Row>
-                  <Row label="Tunjangan Kinerja">{formatCurrency(detail.tunjangan_kinerja)}</Row>
-                  <Row label="Tunjangan Posisi">{formatCurrency(detail.tunjangan_posisi)}</Row>
-                  <Row label="Uang Makan">{formatCurrency(detail.uang_makan)}</Row>
-                  <Row label="Lembur">{formatCurrency(detail.lembur)}</Row>
-                  <Row label="Bonus">{formatCurrency(detail.bonus)}</Row>
-                  <Row label="Total Gaji">{formatCurrency(detail.total_gaji)}</Row>
-                  <Row label="Potongan">{formatCurrency(detail.potongan)}</Row>
-                  <Row label="BPJSTK">{formatCurrency(detail.bpjstk)}</Row>
-                  <Row label="BPJS Kesehatan">{formatCurrency(detail.bpjs_kesehatan)}</Row>
-                  <Row label="BPJS Kes Penambahan">{formatCurrency(detail.bpjs_kes_penambahan)}</Row>
-                  <Row label="SP 1/2">{formatCurrency(detail.sp_1_2)}</Row>
-                  <Row label="Pinjaman Karyawan">{formatCurrency(detail.pinjaman_karyawan)}</Row>
-                  <Row label="PPH21">{formatCurrency(detail.pph21)}</Row>
-                  <Row label="Total Potongan">{formatCurrency(detail.total_potongan)}</Row>
-                  <Row label="Total Gaji yang Dibayarkan">{formatCurrency(detail.total_gaji_dibayarkan)}</Row>
                 </div>
               )}
             </div>
@@ -993,8 +1060,8 @@ const AdminDataTim = () => {
             {/* Footer buttons */}
             <div className="p-0 border-t bg-white">
               <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setSelected(null)}>Tutup</button>
-                <button className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => { setEditTarget(detail); setSelected(null); }}>Edit</button>
+                <button className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setSelected(null)}>Tutup</button>
+                <button className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => { setEditTarget(detail); setSelected(null); }}>Edit</button>
               </div>
             </div>
           </div>
@@ -1143,9 +1210,9 @@ const AdminDataTim = () => {
             {/* Footer */}
             <div className="p-0 border-t bg-white">
               <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setEditTarget(null)}>Batal</button>
+                <button className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setEditTarget(null)}>Batal</button>
                 <button
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg disabled:opacity-60"
+                  className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg disabled:opacity-60"
                   disabled={savingEdit || editLoading}
                   onClick={async () => {
                     if (!editTarget?.id) return;

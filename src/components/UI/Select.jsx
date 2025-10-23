@@ -10,6 +10,7 @@ export const Select = ({
   placeholder, 
   error, 
   className = '',
+  buttonClassName = '',
   disabled = false,
   ...props 
 }) => {
@@ -93,7 +94,7 @@ export const Select = ({
           error 
             ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
             : 'border-gray-300'
-        } ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer'}`}
+        } ${disabled ? 'bg-gray-50 cursor-not-allowed' : 'cursor-pointer'} ${buttonClassName}`}
         {...props}
         role="combobox"
       >

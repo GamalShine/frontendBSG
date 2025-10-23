@@ -82,10 +82,6 @@ const AdminTargetHarianForm = () => {
     const newPreviews = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error('Gambar terlalu besar. Maksimal 10MB');
-        continue;
-      }
       const imageId = Date.now() + Math.floor(Math.random() * 1000);
       newSelected.push({ file, id: imageId });
       const reader = new FileReader();
@@ -159,14 +155,6 @@ const AdminTargetHarianForm = () => {
         e.preventDefault();
         const file = item.getAsFile();
         if (!file) continue;
-        if (file.size > 10 * 1024 * 1024) {
-          toast.error('Gambar terlalu besar. Maksimal 10MB');
-          continue;
-        }
-        if (selectedImages.length >= 5) {
-          toast.error('Maksimal 5 gambar per data target');
-          continue;
-        }
         const imageId = Date.now() + Math.floor(Math.random() * 1000);
         const imageWithId = { file, id: imageId };
         setSelectedImages(prev => [...prev, imageWithId]);
@@ -367,7 +355,7 @@ const AdminTargetHarianForm = () => {
                   className="w-full min-h-[400px] p-4 border border-gray-300 focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
                   suppressContentEditableWarning
                 />
-                <p className="text-xs text-gray-500 mt-1">Maksimal 5 gambar. Anda bisa paste gambar atau unggah dari file di panel kanan.</p>
+                <p className="text-xs text-gray-500 mt-1">Anda bisa paste gambar atau unggah dari file di panel kanan.</p>
               </div>
             </form>
           </div>
@@ -387,7 +375,7 @@ const AdminTargetHarianForm = () => {
                   <label htmlFor="image-upload-target" className="cursor-pointer inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900">
                     <span>Pilih Gambar</span>
                   </label>
-                  <p className="text-sm text-gray-500 mt-2">Maksimal 5 gambar, format JPG, PNG, GIF</p>
+                  <p className="text-sm text-gray-500 mt-2">Format file bebas sesuai kebutuhan</p>
                 </div>
               </div>
               {(selectedImages.length > 0) && (

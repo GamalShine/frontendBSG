@@ -283,25 +283,8 @@ const AdminPoskasForm = () => {
   // Handle image selection
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    
-    // Validate file types
-    const validFiles = files.filter(file => {
-      if (!file.type.startsWith('image/')) {
-        toast.error(`${file.name} bukan file gambar yang valid`);
-        return false;
-      }
-      if (file.size > 10 * 1024 * 1024) { // 10MB limit
-        toast.error(`${file.name} terlalu besar. Maksimal 10MB`);
-        return false;
-      }
-      return true;
-    });
-
-    // Check total image count
-    if (selectedImages.length + validFiles.length > 5) {
-      toast.error('Maksimal 5 gambar per laporan');
-      return;
-    }
+    // Tidak ada batasan jumlah/ukuran/tipe file
+    const validFiles = files;
 
     // Generate ID untuk setiap gambar
     const imagesWithIds = validFiles.map(file => ({
@@ -658,6 +641,7 @@ const AdminPoskasForm = () => {
                 }}
                 placeholder="Masukkan isi posisi kas . . . "
                 rows={12}
+                showUploadList={false}
               />
                </div>
               </div>

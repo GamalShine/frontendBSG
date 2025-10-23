@@ -96,6 +96,26 @@ const AdminKPI = () => {
     }
   }, [photoFile]);
 
+  // Hitung waktu "Terakhir Update" dari data yang terakhir dibuat
+  const lastUpdated = (() => {
+    try {
+      const all = [
+        ...(Array.isArray(kpiData.divisi) ? kpiData.divisi : []),
+        ...(Array.isArray(kpiData.leader) ? kpiData.leader : []),
+        ...(Array.isArray(kpiData.individu) ? kpiData.individu : [])
+      ];
+      const times = all
+        .map(it => it?.created_at || it?.createdAt || it?.created)
+        .filter(Boolean)
+        .map(d => new Date(d).getTime())
+        .filter(t => Number.isFinite(t));
+      if (!times.length) return null;
+      return new Date(Math.max(...times));
+    } catch {
+      return null;
+    }
+  })();
+
   // Fetch users for dropdown (id_user)
   const fetchUsers = useCallback(async () => {
     try {
@@ -362,13 +382,12 @@ const AdminKPI = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header - unified style with badge */}
-      <div className="bg-red-800 text-white px-6 py-4">
+      <div className="bg-red-800 text-white px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.kpi}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">KPI SDM</h1>
-              <p className="text-sm text-red-100">Kelola indikator kinerja SDM</p>
             </div>
           </div>
         </div>
@@ -377,14 +396,7 @@ const AdminKPI = () => {
       {/* Last Update Info */}
       <div className="bg-gray-200 px-6 py-2">
         <p className="text-sm text-gray-600">
-          Data terakhir diupdate: {new Date().toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })} pukul {new Date().toLocaleTimeString('id-ID', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
+          Terakhir Update: {lastUpdated ? lastUpdated.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) + ' pukul ' + lastUpdated.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
         </p>
       </div>
 

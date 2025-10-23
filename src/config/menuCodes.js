@@ -17,6 +17,7 @@ export const MENU_CODES = {
     kpi: 'H01-S4',
     timMerahBiru: 'H01-S5',
     dataTraining: 'H01-S6',
+    sopAturan: 'H01-S7',
   },
   operasional: {
     dataAset: 'H01-P1',

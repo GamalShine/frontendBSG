@@ -3,6 +3,7 @@ import { Plus, FileText, Search, Edit3, Trash2 } from 'lucide-react';
 import api from '../../../../services/api';
 import { API_ENDPOINTS } from '../../../../config/constants';
 import { aturanService } from '../../../../services/aturanService';
+import { MENU_CODES } from '@/config/menuCodes';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
@@ -23,8 +24,7 @@ const AdminSopAturan = () => {
     divisi_id: '',
     nama_category: '',
     kategori_id: '',
-    judul_procedure: '',
-    isi: ''
+    judul_procedure: ''
   });
   const [divisions, setDivisions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -37,8 +37,7 @@ const AdminSopAturan = () => {
   const [sopEditForm, setSopEditForm] = useState({
     nama_divisi: '',
     nama_category: '',
-    judul_procedure: '',
-    isi: ''
+    judul_procedure: ''
   });
 
   // Aturan state (kolom kanan)
@@ -64,13 +63,19 @@ const AdminSopAturan = () => {
     isi_aturan: '',
   });
   const [files, setFiles] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const loadSop = async () => {
     try {
       setLoadingSop(true);
       const res = await api.get(API_ENDPOINTS.SDM.SOP.STRUCTURE);
       const data = Array.isArray(res?.data?.data) ? res.data.data : [];
-      setSop(data);
+      // Backend mengembalikan kategori sebagai `sopCategories`; peta ke `categories` agar UI konsisten
+      const mapped = data.map((div) => ({
+        ...div,
+        categories: Array.isArray(div?.sopCategories) ? div.sopCategories : (Array.isArray(div?.categories) ? div.categories : []),
+      }));
+      setSop(mapped);
       setErrorSop('');
     } catch (err) {
       setErrorSop(err?.response?.data?.message || 'Gagal memuat struktur SOP');
@@ -87,6 +92,17 @@ const AdminSopAturan = () => {
       const res = await aturanService.listAdmin(q ? { q } : {});
       const data = Array.isArray(res?.data) ? res.data : [];
       setAturan(data);
+      // Hitung last updated dari data aturan (created_at paling baru)
+      try {
+        const maxCreated = data
+          .map(it => it?.created_at || it?.createdAt)
+          .filter(Boolean)
+          .map(d => new Date(d).getTime());
+        if (maxCreated.length > 0) {
+          const maxTs = Math.max(...maxCreated);
+          setLastUpdated(new Date(maxTs));
+        }
+      } catch {}
       setErrorAturan('');
     } catch (err) {
       setErrorAturan(err?.message || 'Gagal memuat aturan');
@@ -99,27 +115,30 @@ const AdminSopAturan = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
+      {/* Header Merah + Badge Code Menu (unified style) */}
+      <div className="bg-red-800 text-white px-6 py-5">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">S.O.P dan Aturan</h1>
-            <p className="text-sm text-red-100">Admin - SDM</p>
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.sopAturan}</span>
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">S.O.P & ATURAN</h1>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-100 px-4 sm:px-6 py-2 text-xs text-gray-700">
-        Terakhir diupdate: {new Date().toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-xs text-gray-800">
+        Terakhir diupdate: {lastUpdated ? new Date(lastUpdated).toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
       </div>
 
       <div className="py-4 sm:py-6 px-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Kolom S.O.P */}
           <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="px-4 py-3 border-b bg-red-700 text-white flex items-center justify-between">
               <div>
-                <h2 className="text-base md:text-lg font-semibold text-gray-900">S.O.P</h2>
-                <p className="text-xs text-gray-500">Standar Operasional Prosedur</p>
+                <h2 className="text-base md:text-lg font-semibold text-white">S.O.P</h2>
+                <p className="text-xs text-red-100">Standar Operasional Prosedur</p>
               </div>
               <button
                 type="button"
@@ -131,7 +150,7 @@ const AdminSopAturan = () => {
                   } catch { setDivisions([]); }
                   setShowSopAddModal(true);
                 }}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white text-red-700 border border-red-600 rounded-lg hover:bg-red-50"
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Tambah</span>
@@ -179,7 +198,7 @@ const AdminSopAturan = () => {
                                 onClick={() => {
                                   setSopEditType('division');
                                   setSopEditItem(div);
-                                  setSopEditForm({ nama_divisi: div.nama_divisi, nama_category: '', judul_procedure: '', isi: '' });
+                                  setSopEditForm({ nama_divisi: div.nama_divisi, nama_category: '', judul_procedure: '' });
                                   setShowSopEditModal(true);
                                   toast.dismiss(); toast('Edit Divisi dibuka');
                                 }}
@@ -191,14 +210,8 @@ const AdminSopAturan = () => {
                                 type="button"
                                 title="Hapus Divisi"
                                 onClick={async () => {
-                                  if (!window.confirm(`Hapus Divisi "${div.nama_divisi}"? Semua kategori & prosedur terkait akan terhapus.`)) return;
-                                  try {
-                                    await api.delete(`/sop/divisions/${div.id}`);
-                                    toast.success('Divisi terhapus');
-                                    await loadSop();
-                                  } catch {
-                                    toast.error('Gagal menghapus divisi');
-                                  }
+                                  // Endpoint hapus divisi belum tersedia di backend
+                                  toast.error('Hapus Divisi belum didukung oleh backend saat ini');
                                 }}
                                 className="p-2 rounded hover:bg-gray-100 text-red-600"
                               >
@@ -217,7 +230,7 @@ const AdminSopAturan = () => {
                                         onClick={() => {
                                           setSopEditType('category');
                                           setSopEditItem(cat);
-                                          setSopEditForm({ nama_divisi: '', nama_category: cat.nama_category, judul_procedure: '', isi: '' });
+                                          setSopEditForm({ nama_divisi: '', nama_category: cat.nama_category, judul_procedure: '' });
                                           setShowSopEditModal(true);
                                           toast.dismiss(); toast('Edit Kategori dibuka');
                                         }}
@@ -257,7 +270,7 @@ const AdminSopAturan = () => {
                                               onClick={() => {
                                                 setSopEditType('step');
                                                 setSopEditItem(step);
-                                                setSopEditForm({ nama_divisi:'', nama_category:'', judul_procedure: step.judul_procedure || '', isi: step.isi || '' });
+                                                setSopEditForm({ nama_divisi:'', nama_category:'', judul_procedure: step.judul_procedure || '' });
                                                 setShowSopEditModal(true);
                                                 toast.dismiss(); toast('Edit Prosedur dibuka');
                                               }}
@@ -305,15 +318,15 @@ const AdminSopAturan = () => {
           </div>
           {/* Kolom Aturan */}
           <div className="bg-white border rounded-lg shadow-sm">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
+            <div className="px-4 py-3 border-b bg-red-700 text-white flex items-center justify-between">
               <div>
-                <h2 className="text-base md:text-lg font-semibold text-gray-900">Aturan</h2>
-                <p className="text-xs text-gray-500">Aturan & Tata Tertib Kerja</p>
+                <h2 className="text-base md:text-lg font-semibold text-white">ATURAN</h2>
+                <p className="text-xs text-red-100">Aturan & Tata Tertib Kerja</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white text-red-700 border border-red-600 rounded-lg hover:bg-red-50"
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Tambah</span>
@@ -559,10 +572,18 @@ const AdminSopAturan = () => {
                     <select value={sopForm.divisi_id} onChange={async (e)=>{
                       const v=e.target.value; setSopForm({...sopForm, divisi_id:v, kategori_id:'', nama_category:''});
                       if (v) {
-                        try {
-                          const cats = await api.get(`/sop/divisions/${v}/categories`);
-                          setCategories(Array.isArray(cats?.data?.data) ? cats.data.data : []);
-                        } catch { setCategories([]); }
+                        // Ambil kategori dari struktur SOP yang sudah dimuat agar tidak tergantung endpoint backend
+                        const divObj = (sop || []).find(d => String(d.id) === String(v));
+                        const localCats = Array.isArray(divObj?.categories) ? divObj.categories : [];
+                        if (localCats.length > 0) {
+                          setCategories(localCats);
+                        } else {
+                          // Fallback ke API bila perlu
+                          try {
+                            const cats = await api.get(`/sop/divisions/${v}/categories`);
+                            setCategories(Array.isArray(cats?.data?.data) ? cats.data.data : []);
+                          } catch { setCategories([]); }
+                        }
                       } else {
                         setCategories([]);
                       }
@@ -585,10 +606,16 @@ const AdminSopAturan = () => {
                     <select value={sopForm.divisi_id} onChange={async (e)=>{
                       const v=e.target.value; setSopForm({...sopForm, divisi_id:v, kategori_id:''});
                       if (v) {
-                        try {
-                          const cats = await api.get(`/sop/divisions/${v}/categories`);
-                          setCategories(Array.isArray(cats?.data?.data) ? cats.data.data : []);
-                        } catch { setCategories([]); }
+                        const divObj = (sop || []).find(d => String(d.id) === String(v));
+                        const localCats = Array.isArray(divObj?.categories) ? divObj.categories : [];
+                        if (localCats.length > 0) {
+                          setCategories(localCats);
+                        } else {
+                          try {
+                            const cats = await api.get(`/sop/divisions/${v}/categories`);
+                            setCategories(Array.isArray(cats?.data?.data) ? cats.data.data : []);
+                          } catch { setCategories([]); }
+                        }
                       } else {
                         setCategories([]);
                       }
@@ -605,12 +632,14 @@ const AdminSopAturan = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Judul Prosedur</label>
-                    <input type="text" value={sopForm.judul_procedure} onChange={(e)=>setSopForm({...sopForm, judul_procedure:e.target.value})} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Mis. Input Data" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Isi (opsional)</label>
-                    <textarea rows={3} value={sopForm.isi} onChange={(e)=>setSopForm({...sopForm, isi:e.target.value})} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Isi Prosedur</label>
+                    <textarea
+                      rows={5}
+                      value={sopForm.judul_procedure}
+                      onChange={(e)=>setSopForm({...sopForm, judul_procedure:e.target.value})}
+                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="Tulis isi prosedur di sini"
+                    />
                   </div>
                 </>
               )}
@@ -625,17 +654,20 @@ const AdminSopAturan = () => {
                     setSopSaving(true);
                     if (sopType==='division') {
                       if (!sopForm.nama_divisi) { toast.error('Nama divisi wajib'); setSopSaving(false); return; }
-                      await api.post(API_ENDPOINTS.SDM.SOP.DIVISIONS, { nama_divisi: sopForm.nama_divisi });
+                      // Endpoint tambah divisi belum tersedia di backend
+                      toast.error('Tambah Divisi belum didukung oleh backend saat ini');
                     } else if (sopType==='category') {
                       if (!sopForm.divisi_id || !sopForm.nama_category) { toast.error('Divisi dan nama kategori wajib'); setSopSaving(false); return; }
-                      await api.post('/sop/categories', { id_divisi: sopForm.divisi_id, nama_category: sopForm.nama_category });
+                      // Backend expects sdm_divisi_id & nama_category
+                      await api.post('/sop/categories', { sdm_divisi_id: sopForm.divisi_id, nama_category: sopForm.nama_category });
                     } else if (sopType==='step') {
-                      if (!sopForm.kategori_id || !sopForm.judul_procedure) { toast.error('Kategori dan judul prosedur wajib'); setSopSaving(false); return; }
-                      await api.post('/sop/steps', { id_category: sopForm.kategori_id, judul_procedure: sopForm.judul_procedure, isi: sopForm.isi || null });
+                      if (!sopForm.kategori_id || !sopForm.judul_procedure) { toast.error('Kategori dan isi prosedur wajib'); setSopSaving(false); return; }
+                      // Backend expects category_id & judul_procedure; isi optional is ignored in controller
+                      await api.post('/sop/steps', { category_id: sopForm.kategori_id, judul_procedure: sopForm.judul_procedure });
                     }
                     toast.success('S.O.P berhasil ditambahkan');
                     setShowSopAddModal(false);
-                    setSopForm({ nama_divisi:'', divisi_id:'', nama_category:'', kategori_id:'', judul_procedure:'', isi:'' });
+                    setSopForm({ nama_divisi:'', divisi_id:'', nama_category:'', kategori_id:'', judul_procedure:'' });
                     await loadSop();
                   } catch (e) {
                     toast.error('Gagal menambahkan S.O.P');
@@ -686,20 +718,11 @@ const AdminSopAturan = () => {
               {sopEditType === 'step' && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Judul Prosedur</label>
-                    <input
-                      type="text"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Isi Prosedur</label>
+                    <textarea
+                      rows={5}
                       value={sopEditForm.judul_procedure}
                       onChange={(e)=>setSopEditForm({...sopEditForm, judul_procedure: e.target.value})}
-                      className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Isi (opsional)</label>
-                    <textarea
-                      rows={4}
-                      value={sopEditForm.isi}
-                      onChange={(e)=>setSopEditForm({...sopEditForm, isi: e.target.value})}
                       className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     />
                   </div>
@@ -720,8 +743,8 @@ const AdminSopAturan = () => {
                       if (!sopEditForm.nama_category) { toast.error('Nama kategori wajib'); setSopEditSaving(false); return; }
                       await api.put(`/sop/categories/${sopEditItem?.id}`, { nama_category: sopEditForm.nama_category });
                     } else if (sopEditType === 'step') {
-                      if (!sopEditForm.judul_procedure) { toast.error('Judul prosedur wajib'); setSopEditSaving(false); return; }
-                      await api.put(`/sop/steps/${sopEditItem?.id}`, { judul_procedure: sopEditForm.judul_procedure, isi: sopEditForm.isi || null });
+                      if (!sopEditForm.judul_procedure) { toast.error('Isi prosedur wajib'); setSopEditSaving(false); return; }
+                      await api.put(`/sop/steps/${sopEditItem?.id}`, { judul_procedure: sopEditForm.judul_procedure });
                     }
                     toast.success('Perubahan disimpan');
                     setShowSopEditModal(false);

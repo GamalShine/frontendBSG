@@ -10,7 +10,8 @@ const RichTextEditor = ({
   error,
   rows = 6,
   label,
-  required = false
+  required = false,
+  showUploadList = true
 }) => {
   const editorRef = useRef(null)
   const [isFocused, setIsFocused] = useState(false)
@@ -296,7 +297,7 @@ const RichTextEditor = ({
       />
       
       {/* File Upload Status */}
-      {uploadedFiles.length > 0 && (
+      {showUploadList && uploadedFiles.length > 0 && (
         <div className="mt-2 p-2 bg-blue-50 rounded-lg">
           <p className="text-xs text-blue-600 mb-1">📁 File yang akan diupload:</p>
           <div className="space-y-1">

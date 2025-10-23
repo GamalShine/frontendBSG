@@ -500,7 +500,7 @@ const AdminDaftarGaji = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header (konsisten dengan halaman lain) */}
-      <div className="bg-red-800 text-white px-6 py-4">
+      <div className="bg-red-800 text-white px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.daftarGaji}</span>
@@ -521,7 +521,7 @@ const AdminDaftarGaji = () => {
         </div>
       </div>
 
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* ... rest of the code remains the same ... */}
       <div className="mt-4">

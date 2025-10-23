@@ -509,7 +509,6 @@ const AdminPoskasDetail = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.poskas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">POSKAS</h1>
-              <p className="text-sm text-red-100">Detail isi Pos Kas</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
