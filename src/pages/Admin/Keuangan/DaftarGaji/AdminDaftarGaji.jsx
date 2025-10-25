@@ -521,7 +521,7 @@ const AdminDaftarGaji = () => {
         </div>
       </div>
 
-      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* ... rest of the code remains the same ... */}
       <div className="mt-4">

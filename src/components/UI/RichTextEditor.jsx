@@ -11,7 +11,9 @@ const RichTextEditor = ({
   rows = 6,
   label,
   required = false,
-  showUploadList = true
+  showUploadList = true,
+  hideAlign = false,
+  hideImage = false
 }) => {
   const editorRef = useRef(null)
   const [isFocused, setIsFocused] = useState(false)
@@ -242,15 +244,18 @@ const RichTextEditor = ({
     input.click()
   }
 
-  const toolbarButtons = [
+  const baseButtons = [
     { icon: Bold, command: 'bold', title: 'Bold' },
     { icon: Italic, command: 'italic', title: 'Italic' },
     { icon: Underline, command: 'underline', title: 'Underline' },
-    { icon: AlignLeft, command: 'justifyLeft', title: 'Align Left' },
-    { icon: AlignCenter, command: 'justifyCenter', title: 'Align Center' },
-    { icon: AlignRight, command: 'justifyRight', title: 'Align Right' },
+    { icon: AlignLeft, command: 'justifyLeft', title: 'Align Left', group: 'align' },
+    { icon: AlignCenter, command: 'justifyCenter', title: 'Align Center', group: 'align' },
+    { icon: AlignRight, command: 'justifyRight', title: 'Align Right', group: 'align' },
     { icon: Image, command: 'insertImage', title: 'Insert Image', custom: insertImage }
   ]
+  let toolbarButtons = baseButtons
+  if (hideAlign) toolbarButtons = toolbarButtons.filter(b => b.group !== 'align')
+  if (hideImage) toolbarButtons = toolbarButtons.filter(b => b.command !== 'insertImage')
 
   return (
     <div className="w-full">

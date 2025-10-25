@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import api from '../../services/api'
 import { API_CONFIG, API_ENDPOINTS } from '../../config/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -134,7 +134,91 @@ const StrukturJobdeskSOP = () => {
   const [openSopDiv, setOpenSopDiv] = useState({}) // { [divisiId]: boolean }
   const [openSopCat, setOpenSopCat] = useState({}) // { [categoryId]: boolean }
 
+  // Modal Tambah Terpadu (Jobdesk)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [addType, setAddType] = useState('department') // department | position
+  const [selectedDivisiId, setSelectedDivisiId] = useState('')
+  const [selectedDeptId, setSelectedDeptId] = useState('')
+  const [deptForm, setDeptForm] = useState({ nama_department: '', keterangan: '' })
+  const [posForm, setPosForm] = useState({ nama_position: '', keterangan: '' })
+
+  const openUnifiedAdd = () => {
+    setAddType('department')
+    setSelectedDivisiId('')
+    setSelectedDeptId('')
+    setDeptForm({ nama_department: '', keterangan: '' })
+    setPosForm({ nama_position: '', keterangan: '' })
+    setShowAddModal(true)
+  }
+
+  const submitUnifiedAdd = async (e) => {
+    e?.preventDefault?.()
+    try {
+      if (addType === 'department') {
+        if (!selectedDivisiId) return alert('Pilih divisi terlebih dahulu')
+        await api.post('/jobdesk/departments', {
+          divisi_id: Number(selectedDivisiId),
+          nama_department: deptForm.nama_department,
+          keterangan: deptForm.keterangan,
+          status: 0,
+        })
+      } else {
+        if (!selectedDeptId) return alert('Pilih department terlebih dahulu')
+        await api.post('/jobdesk/positions', {
+          department_id: Number(selectedDeptId),
+          nama_position: posForm.nama_position,
+          keterangan: posForm.keterangan,
+          status: 0,
+        })
+      }
+      setShowAddModal(false)
+      await fetchAll()
+    } catch (err) {
+      alert(err.response?.data?.message || 'Gagal menyimpan data')
+    }
+  }
+
   const imageBase = useMemo(() => (API_CONFIG.BASE_HOST ? `${API_CONFIG.BASE_HOST}/uploads/` : ''), [])
+
+  // Format tanggal terakhir update untuk header
+  const lastUpdatedText = useMemo(() => {
+    try {
+      if (!struktur) return ''
+      const ts = struktur.updated_at || struktur.created_at
+      if (!ts) return ''
+      const d = new Date(ts)
+      return d.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    } catch {
+      return ''
+    }
+  }, [struktur])
+
+  // Zoom state untuk gambar struktur organisasi
+  const [zoomScale, setZoomScale] = useState(1)
+  const [transformOrigin, setTransformOrigin] = useState('center center')
+  const imgWrapRef = useRef(null)
+
+  const handleImgMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    setTransformOrigin(`${x}% ${y}%`)
+  }
+
+  const handleImgMouseEnter = () => {
+    setZoomScale(2.5)
+  }
+
+  const handleImgMouseLeave = () => {
+    setZoomScale(1)
+    setTransformOrigin('center center')
+  }
 
   // Struktur organisasi (hardcoded) dengan Owner sebagai root (tanpa JSON)
   const initialTree = useMemo(() => ([
@@ -328,11 +412,22 @@ const StrukturJobdeskSOP = () => {
   })
 
   const fetchAll = async () => {
-    // Struktur Organisasi: gunakan initialTree (hardcoded)
-    setLoading((s) => ({ ...s, struktur: true }))
+    // Struktur Organisasi: fetch dari backend (tampilkan data terbaru)
+    try {
+      setLoading((s) => ({ ...s, struktur: true }))
+      setError((e) => ({ ...e, struktur: '' }))
+      const res = await api.get(API_ENDPOINTS.SDM.STRUKTUR_ORGANISASI)
+      const data = res?.data?.data || null
+      setStruktur(data)
+    } catch (err) {
+      setError((e) => ({ ...e, struktur: err.response?.data?.message || 'Gagal memuat struktur organisasi' }))
+      setStruktur(null)
+    } finally {
+      setLoading((s) => ({ ...s, struktur: false }))
+    }
+
+    // Tree dummy tetap ditampilkan sebagai ilustrasi struktur (local state)
     setTree(initialTree)
-    setError((e) => ({ ...e, struktur: '' }))
-    setLoading((s) => ({ ...s, struktur: false }))
 
     // Jobdesk (struktur lengkap)
     try {
@@ -430,19 +525,21 @@ const StrukturJobdeskSOP = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
     {/* Unified Header with Badge */}
-    <div className="bg-red-800 text-white px-6 py-4">
+    <div className="bg-red-800 text-white px-4 sm:px-6 py-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.strukturSOP}</span>
           <div>
             <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">STRUKTUR & JOBDESK</h1>
-            <p className="text-sm text-red-100">Kelola struktur organisasi dan jobdesk</p>
           </div>
         </div>
       </div>
     </div>
 
-    <div className="container mx-auto p-6">
+    {/* Subheader: Terakhir diupdate */}
+    <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText || '-'}</div>
+
+    <div className="w-full px-0 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">BOSGIL GROUP 2025</h1>
         <div className="flex gap-2">
@@ -454,42 +551,67 @@ const StrukturJobdeskSOP = () => {
 
       {activeTab === 'struktur' && (
         <SectionCard
-          title="Struktur Organisasi"
+          title={struktur?.judul || 'Struktur Organisasi'}
           right={
-            <div className="flex gap-2">
-              <TabButton active={false} onClick={resetTree}>Reset Struktur</TabButton>
-              {canManage && (
-                <TabButton active={false} onClick={() => handleAdd(tree[0]?.id || 1)}>Tambah Anak ROOT</TabButton>
-              )}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => (struktur ? openUpdate() : openCreate())}
+                className="px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+              >
+                Edit
+              </button>
             </div>
           }
         >
           {loading.struktur && <Loading />}
           {error.struktur && <ErrorBox message={error.struktur} />}
-          {!loading.struktur && !error.struktur && (
-            tree && tree.length > 0 ? (
-              <div className="space-y-2">
-                {tree.map((n) => (
-                  <OrgTreeNode key={n.id} node={n}
-                    onToggle={handleToggle} onEdit={handleEdit} onAdd={handleAdd} onDelete={handleDelete}
-                    onDragStart={() => {}}
-                    onDropHere={(srcId, targetId) => moveNode(srcId, targetId)}
-                    onMoveUp={moveUp}
-                    onMoveDown={moveDown}
-                    canManage={canManage}
+
+          {/* Detail Struktur Organisasi dari database */}
+          {!loading.struktur && !error.struktur && struktur && (
+            <div className="mb-5">
+              {struktur.deskripsi && (
+                <p className="mt-1 text-sm text-gray-600 whitespace-pre-line">{struktur.deskripsi}</p>
+              )}
+              {struktur.foto && (
+                <div
+                  ref={imgWrapRef}
+                  className="mt-3 overflow-hidden rounded-md border"
+                  onMouseMove={handleImgMouseMove}
+                  onMouseEnter={handleImgMouseEnter}
+                  onMouseLeave={handleImgMouseLeave}
+                >
+                  <img
+                    src={`${imageBase}${struktur.foto}`}
+                    alt={struktur.judul || 'Struktur Organisasi'}
+                    className="w-full select-none"
+                    style={{
+                      transform: `scale(${zoomScale})`,
+                      transformOrigin: transformOrigin,
+                      transition: 'transform 180ms ease-out',
+                    }}
+                    draggable={false}
                   />
-                ))}
-              </div>
-            ) : (
-              <EmptyState text="Belum ada struktur. Tambahkan node untuk memulai." />
-            )
+                </div>
+              )}
+            </div>
           )}
-          <p className="text-xs text-gray-500 mt-3">Catatan: Ini tampilan dummy yang bisa diubah-ubah (local state). Integrasi simpan ke server bisa ditambahkan nanti.</p>
+          {/* Tree dummy dihilangkan sesuai permintaan */}
         </SectionCard>
       )}
 
       {activeTab === 'jobdesk' && (
-        <SectionCard title="Struktur Jobdesk">
+        <SectionCard title="Struktur Jobdesk" right={
+          canManage ? (
+            <button
+              type="button"
+              onClick={openUnifiedAdd}
+              className="px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+            >
+              Tambah
+            </button>
+          ) : null
+        }>
           {loading.jobdesk && <Loading />}
           {error.jobdesk && <ErrorBox message={error.jobdesk} />}
           {!loading.jobdesk && !error.jobdesk && (
@@ -517,6 +639,7 @@ const StrukturJobdeskSOP = () => {
                       </button>
                       {isOpen && (
                         <div className="px-4 pb-4">
+                          {/* Tombol tambah per divisi dihapus - gunakan tombol Tambah global */}
                           {deptCount > 0 ? (
                             <div className="space-y-2">
                               {divisi.departments.map((dept) => {
@@ -540,27 +663,21 @@ const StrukturJobdeskSOP = () => {
                                     </button>
                                     {open && (
                                       <div className="px-3 pb-3">
+                                        {/* Tombol tambah per department dihapus - gunakan tombol Tambah global */}
                                         {posCount > 0 ? (
-                                          <div className="mt-2 flex flex-wrap gap-2">
+                                          <ul className="mt-2 space-y-1 text-sm text-gray-700 list-disc list-inside">
                                             {dept.positions.map((pos) => {
                                               const isNonaktif = pos.status === 1
                                               return (
-                                                <span
-                                                  key={`pos-${pos.id}`}
-                                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border ${
-                                                    isNonaktif
-                                                      ? 'bg-red-50 text-red-700 border-red-200'
-                                                      : 'bg-gray-50 text-gray-700 border-gray-200'
-                                                  }`}
-                                                  title={isNonaktif ? 'Posisi nonaktif' : 'Posisi aktif'}
-                                                >
-                                                  <span className={`h-1.5 w-1.5 rounded-full ${isNonaktif ? 'bg-red-500' : 'bg-gray-400'}`}></span>
-                                                  {pos.nama_position}
-                                                  {isNonaktif && <span className="ml-1">(nonaktif)</span>}
-                                                </span>
+                                                <li key={`pos-${pos.id}`} className="flex items-start justify-between gap-2">
+                                                  <span>
+                                                    {pos.nama_position}
+                                                    {isNonaktif && <span className="ml-1 text-red-600 text-xs">(nonaktif)</span>}
+                                                  </span>
+                                                </li>
                                               )
                                             })}
-                                          </div>
+                                          </ul>
                                         ) : (
                                           <div className="text-xs text-gray-400 mt-1">Tidak ada posisi.</div>
                                         )}
@@ -589,7 +706,199 @@ const StrukturJobdeskSOP = () => {
       {/* Section SOP dihilangkan untuk semua role */}
     </div>
 
-    {/* Modal lama untuk upload foto struktur disembunyikan */}
+    {/* Modal Form Struktur Organisasi */}
+    {showForm && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40" onClick={() => setShowForm(false)} />
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+          <div className="px-5 py-3 bg-red-800 text-white rounded-t-lg">
+            <h3 className="text-lg font-semibold">
+              {formMode === 'create' ? 'Tambah Struktur Organisasi' : 'Ubah Struktur Organisasi'}
+            </h3>
+          </div>
+          <form onSubmit={submitForm} className="px-5 py-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Judul</label>
+              <input
+                type="text"
+                name="judul"
+                value={form.judul}
+                onChange={onFormChange}
+                className="mt-1 w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Contoh: Struktur Organisasi Bosgil Group 2025"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Deskripsi</label>
+              <textarea
+                name="deskripsi"
+                value={form.deskripsi}
+                onChange={onFormChange}
+                className="mt-1 w-full border rounded-md px-3 py-2 text-sm h-24 focus:outline-none focus:ring-2 focus:ring-red-500"
+                placeholder="Tambahkan keterangan bila diperlukan"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Foto Struktur (opsional)</label>
+              <input
+                type="file"
+                name="foto"
+                accept="image/*"
+                onChange={onFormChange}
+                className="mt-1 block w-full text-sm"
+              />
+              {(preview || struktur?.foto) && (
+                <div className="mt-3">
+                  <img
+                    src={preview || `${imageBase}${struktur?.foto}`}
+                    alt="Preview"
+                    className="w-full max-w-md rounded border"
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2 rounded-md text-sm bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-md text-sm bg-red-600 text-white hover:bg-red-700"
+              >
+                Simpan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Modal Tambah Terpadu (Department/Posisi) */}
+    {showAddModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40" onClick={() => setShowAddModal(false)} />
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-xl mx-4">
+          <div className="px-5 py-3 bg-red-800 text-white rounded-t-lg">
+            <h3 className="text-lg font-semibold">Tambah Jobdesk</h3>
+          </div>
+          <form onSubmit={submitUnifiedAdd} className="px-5 py-4 space-y-4">
+            <div className="space-y-3">
+              <div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setAddType('department'); setSelectedDeptId('') }}
+                    aria-pressed={addType === 'department'}
+                    className={`px-3 py-2 rounded-lg border ${addType === 'department' ? 'bg-red-50 border-red-400 text-red-700' : 'bg-white'}`}
+                  >
+                    Kategori
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setAddType('position'); }}
+                    aria-pressed={addType === 'position'}
+                    className={`px-3 py-2 rounded-lg border ${addType === 'position' ? 'bg-red-50 border-red-400 text-red-700' : 'bg-white'}`}
+                  >
+                    Prosedur
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Divisi</label>
+                <select
+                  value={selectedDivisiId}
+                  onChange={(e) => { setSelectedDivisiId(e.target.value); setSelectedDeptId('') }}
+                  className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  required
+                >
+                  <option value="" disabled>Pilih Divisi</option>
+                  {jobdesk.map((div) => (
+                    <option key={`opt-div-${div.id}`} value={div.id}>{div.nama_divisi}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {addType === 'department' ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Posisi</label>
+                  <input
+                    type="text"
+                    value={deptForm.nama_department}
+                    onChange={(e) => setDeptForm((f) => ({ ...f, nama_department: e.target.value }))}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Mis. Administrasi"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                  <textarea
+                    value={deptForm.keterangan}
+                    onChange={(e) => setDeptForm((f) => ({ ...f, keterangan: e.target.value }))}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm h-24 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Tambahkan keterangan bila diperlukan"
+                  />
+                </div>
+                {/* Status dihapus sesuai permintaan - default aktif */}
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Posisi</label>
+                  <select
+                    value={selectedDeptId}
+                    onChange={(e) => setSelectedDeptId(e.target.value)}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    required
+                  >
+                    <option value="" disabled>Pilih Posisi</option>
+                    {jobdesk
+                      .filter((div) => String(div.id) === String(selectedDivisiId))
+                      .flatMap((div) => div.departments || [])
+                      .map((dept) => (
+                        <option key={`opt-dept-${dept.id}`} value={dept.id}>{dept.nama_department}</option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Posisi</label>
+                  <input
+                    type="text"
+                    value={posForm.nama_position}
+                    onChange={(e) => setPosForm((f) => ({ ...f, nama_position: e.target.value }))}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Mis. Kasir"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                  <textarea
+                    value={posForm.keterangan}
+                    onChange={(e) => setPosForm((f) => ({ ...f, keterangan: e.target.value }))}
+                    className="mt-1 w-full border rounded-lg px-3 py-2 text-sm h-24 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="Tambahkan keterangan bila diperlukan"
+                  />
+                </div>
+                {/* Status dihapus sesuai permintaan - default aktif */}
+              </>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-md text-sm bg-gray-100 text-gray-700 hover:bg-gray-200">Batal</button>
+              <button type="submit" className="px-4 py-2 rounded-md text-sm bg-red-600 text-white hover:bg-red-700">Simpan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
     </div>
   )
 }

@@ -323,20 +323,12 @@ const AdminTrainingList = () => {
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TRAINING</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="font-semibold">Tambah</span>
-            </button>
-          </div>
+          <div className="flex items-center gap-2">{/* Tombol Tambah disembunyikan */}</div>
         </div>
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Spacing below header */}
       <div className="my-0"></div>
@@ -713,7 +705,8 @@ const AdminTrainingList = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Tambah Training */}
+      {/* Modal Tambah Training - disembunyikan */}
+      {false && (
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-3xl w-full p-0 overflow-hidden rounded-2xl border border-gray-200">
           <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
@@ -738,6 +731,7 @@ const AdminTrainingList = () => {
           </div>
         </DialogContent>
       </Dialog>
+      )}
 
       {/* Modal Edit Training */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

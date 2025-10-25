@@ -642,6 +642,8 @@ const AdminPoskasForm = () => {
                 placeholder="Masukkan isi posisi kas . . . "
                 rows={12}
                 showUploadList={false}
+                hideAlign={true}
+                hideImage={true}
               />
                </div>
               </div>

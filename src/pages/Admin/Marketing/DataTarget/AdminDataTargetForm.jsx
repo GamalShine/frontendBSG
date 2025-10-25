@@ -205,6 +205,8 @@ const AdminDataTargetForm = () => {
               onFilesChange={(files) => setSelectedImages(files)}
               placeholder="Tulis isi taget harian..."
               rows={12}
+              hideAlign={true}
+              hideImage={true}
             />
             {/* Preview/grid gambar disembunyikan sesuai permintaan */}
           </div>

@@ -17,7 +17,7 @@ const AdminSopAturan = () => {
   const [openSopCat, setOpenSopCat] = useState({});
   // Tambah SOP modal state
   const [showSopAddModal, setShowSopAddModal] = useState(false);
-  const [sopType, setSopType] = useState('division'); // division | category | step (Prosedur)
+  const [sopType, setSopType] = useState('category'); // category | step (Prosedur)
   const [sopSaving, setSopSaving] = useState(false);
   const [sopForm, setSopForm] = useState({
     nama_divisi: '',
@@ -121,20 +121,20 @@ const AdminSopAturan = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.sopAturan}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">S.O.P & ATURAN</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ATURAN & SOP</h1>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-xs text-gray-800">
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">
         Terakhir diupdate: {lastUpdated ? new Date(lastUpdated).toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
       </div>
 
       <div className="py-4 sm:py-6 px-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Kolom S.O.P */}
-          <div className="bg-white border rounded-lg shadow-sm">
+          <div className="bg-white border rounded-lg shadow-sm order-2">
             <div className="px-4 py-3 border-b bg-red-700 text-white flex items-center justify-between">
               <div>
                 <h2 className="text-base md:text-lg font-semibold text-white">S.O.P</h2>
@@ -317,7 +317,7 @@ const AdminSopAturan = () => {
             </div>
           </div>
           {/* Kolom Aturan */}
-          <div className="bg-white border rounded-lg shadow-sm">
+          <div className="bg-white border rounded-lg shadow-sm order-1">
             <div className="px-4 py-3 border-b bg-red-700 text-white flex items-center justify-between">
               <div>
                 <h2 className="text-base md:text-lg font-semibold text-white">ATURAN</h2>
@@ -553,18 +553,12 @@ const AdminSopAturan = () => {
               <h3 className="text-lg font-semibold">Tambah S.O.P</h3>
               <button onClick={() => setShowSopAddModal(false)} className="px-2 py-1 rounded hover:bg-white/10">✕</button>
             </div>
-            <div className="px-6 pt-5 grid grid-cols-3 gap-2">
-              <button onClick={() => setSopType('division')} className={`px-3 py-2 rounded-lg border ${sopType==='division'?'bg-red-50 border-red-400 text-red-700':'bg-white'}`}>Divisi</button>
+            <div className="px-6 pt-5 grid grid-cols-2 gap-2">
               <button onClick={() => setSopType('category')} className={`px-3 py-2 rounded-lg border ${sopType==='category'?'bg-red-50 border-red-400 text-red-700':'bg-white'}`}>Kategori</button>
               <button onClick={() => setSopType('step')} className={`px-3 py-2 rounded-lg border ${sopType==='step'?'bg-red-50 border-red-400 text-red-700':'bg-white'}`}>Prosedur</button>
             </div>
             <div className="p-6 space-y-4">
-              {sopType === 'division' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Divisi</label>
-                  <input type="text" value={sopForm.nama_divisi} onChange={(e)=>setSopForm({...sopForm, nama_divisi:e.target.value})} className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Mis. Operasional" />
-                </div>
-              )}
+              {/* Opsi Divisi disembunyikan */}
               {sopType === 'category' && (
                 <>
                   <div>
@@ -652,11 +646,7 @@ const AdminSopAturan = () => {
                 onClick={async ()=>{
                   try {
                     setSopSaving(true);
-                    if (sopType==='division') {
-                      if (!sopForm.nama_divisi) { toast.error('Nama divisi wajib'); setSopSaving(false); return; }
-                      // Endpoint tambah divisi belum tersedia di backend
-                      toast.error('Tambah Divisi belum didukung oleh backend saat ini');
-                    } else if (sopType==='category') {
+                    if (sopType==='category') {
                       if (!sopForm.divisi_id || !sopForm.nama_category) { toast.error('Divisi dan nama kategori wajib'); setSopSaving(false); return; }
                       // Backend expects sdm_divisi_id & nama_category
                       await api.post('/sop/categories', { sdm_divisi_id: sopForm.divisi_id, nama_category: sopForm.nama_category });

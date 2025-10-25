@@ -27,7 +27,7 @@ const MENU_KEYS = [
 
   // SDM (Admin)
   { key: 'AdminSdmStrukturJobdesk', label: 'SDM • Struktur & Jobdesk' },
-  { key: 'AdminSopAturan', label: 'SDM • S.O.P dan Aturan' },
+  { key: 'AdminAturan', label: 'SDM • S.O.P dan Aturan' },
   { key: 'AdminSdmDataTim', label: 'SDM • Data Tim' },
   { key: 'AdminSdmKpi', label: 'SDM • KPI' },
   { key: 'AdminTimMerahBiru', label: 'SDM • Tim Merah/Biru' },
@@ -559,6 +559,11 @@ const PicMenuManagement = () => {
 
 // Helper untuk menampilkan label dari key menu
 function getMenuLabel(key) {
+  // Fallback kompatibilitas: key lama -> label baru
+  const legacyLabelMap = {
+    AdminSopAturan: 'SDM • S.O.P dan Aturan',
+  };
+  if (legacyLabelMap[key]) return legacyLabelMap[key];
   const found = MENU_KEYS.find((k) => k.key === key);
   return found ? found.label : key;
 }

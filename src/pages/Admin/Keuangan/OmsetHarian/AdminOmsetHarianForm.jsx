@@ -936,9 +936,7 @@ const handleEditorMouseUp = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">H01-K6</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT OMSET HARIAN' : 'TAMBAH OMSET HARIAN'}</h1>
-              {isEditMode && (
-                <p className="text-sm text-red-100">Perbarui data omset harian</p>
-              )}
+              {/* Teks deskripsi dihapus sesuai permintaan */}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1017,6 +1015,8 @@ const handleEditorMouseUp = () => {
               }}
               placeholder="Masukkan isi omset harian . . . "
               rows={12}
+              hideAlign={true}
+              hideImage={true}
             />
           
           </div>

@@ -244,7 +244,7 @@ const AdminTimMerahBiru = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Pencarian & Filter (selalu tampil) - gaya mengikuti Training */}
       <div className="p-0">

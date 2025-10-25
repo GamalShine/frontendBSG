@@ -350,7 +350,7 @@ const AdminMedsos = () => {
       </div>
 
       {/* Subheader: Timestamp berdasarkan data terbaru */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {formatDateTimeID(lastUpdated)}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {formatDateTimeID(lastUpdated)}</div>
 
       <div className="w-full px-0 md:px-0 mt-4">
         {view === 'years' && (
@@ -478,8 +478,8 @@ const AdminMedsos = () => {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader className="sticky top-0 bg-[#E3E5EA] z-10 shadow">
-                    <TableRow className="hover:bg-[#E3E5EA] cursor-default">
-                      <TableHead className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">
+                    <TableRow className="bg-[#E3E5EA] cursor-default">
+                      <TableHead className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]">
                         <input
                           type="checkbox"
                           checked={selectedItems.length === monthContent.length && monthContent.length > 0}
@@ -487,10 +487,10 @@ const AdminMedsos = () => {
                           className="rounded border-gray-600 text-red-600 focus:ring-red-500"
                         />
                       </TableHead>
-                      <TableHead className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">No</TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">Tanggal</TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">Keterangan</TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider hover:bg-[#E3E5EA] cursor-default">Aksi</TableHead>
+                      <TableHead className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">No</span></TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Tanggal</span></TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Keterangan</span></TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Aksi</span></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

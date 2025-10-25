@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { useMenu } from '../../contexts/MenuContext'
 import { useAuth } from '../../contexts/AuthContext'
+import { API_CONFIG } from '../../config/constants'
 
 const iconMap = {
   Home,
@@ -79,6 +80,7 @@ const iconMap = {
 const Sidebar = () => {
   const { menus, checkPermission } = useMenu()
   const { user, allowedMenuKeys } = useAuth()
+  const [avatarError, setAvatarError] = useState(false)
 
   const location = useLocation()
   const [expandedMenus, setExpandedMenus] = useState(() => {
@@ -140,6 +142,11 @@ const Sidebar = () => {
     })
   }, [location.pathname, menus, allowedMenuKeys, user])
 
+  // Reset error ketika path foto berubah
+  useEffect(() => {
+    setAvatarError(false)
+  }, [user?.profile])
+
   const hasPicAccess = (menu) => {
     const picKey = menu?.picKey
     // Item default yang selalu boleh untuk role admin/divisi/tim tanpa picKey
@@ -154,7 +161,13 @@ const Sidebar = () => {
     if (user?.role === 'admin') {
       // Selain whitelist, admin wajib memiliki picKey yang diizinkan
       if (!picKey) return false
-      return Array.isArray(allowedMenuKeys) && allowedMenuKeys.includes(picKey)
+      // Kompatibilitas sementara rename key: AdminSopAturan -> AdminAturan
+      const legacyMap = {
+        AdminAturan: ['AdminSopAturan'],
+      }
+      const hasDirect = Array.isArray(allowedMenuKeys) && allowedMenuKeys.includes(picKey)
+      const hasLegacy = Array.isArray(allowedMenuKeys) && Array.isArray(legacyMap[picKey]) && legacyMap[picKey].some(k => allowedMenuKeys.includes(k))
+      return hasDirect || hasLegacy
     }
     // Role selain admin tidak dibatasi PIC (bisa diubah nanti jika diperlukan)
     return true
@@ -247,17 +260,36 @@ const Sidebar = () => {
     <div className="w-full lg:w-64 bg-red-800 border-r border-red-700 h-full flex flex-col">
       {/* User Info */}
       <div className="p-4 border-b border-red-700 flex-shrink-0 sticky top-0 z-10 bg-red-800">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center">
-            <User className="h-6 w-6 text-white" />
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="w-20 h-20 bg-red-600 rounded-full overflow-hidden flex items-center justify-center">
+            {user?.profile && !avatarError ? (
+              (() => {
+                const path = user.profile
+                const isAbsolute = /^https?:\/\//i.test(path)
+                const src = isAbsolute ? path : `${API_CONFIG.BASE_HOST}${path}`
+                return (
+                  <img
+                    src={src}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    onError={() => setAvatarError(true)}
+                  />
+                )
+              })()
+            ) : (
+              <User className="h-10 w-10 text-white" />
+            )}
           </div>
-          <div className="ml-3">
-            <p className="text-sm font-medium text-white">
-              {user?.nama || user?.username}
-            </p>
-            <p className="text-xs text-white capitalize">
-              {user?.role || 'User'}
-            </p>
+          <p className="text-sm font-medium text-white">
+            {user?.nama || user?.username}
+          </p>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 text-white capitalize">
+              {user?.role || 'user'}
+            </span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${user?.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+              {user?.status || 'unknown'}
+            </span>
           </div>
         </div>
       </div>

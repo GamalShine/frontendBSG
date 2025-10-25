@@ -1145,7 +1145,7 @@ const AdminMedsos = () => {
       </div>
 
       {/* Last Updated Info */}
-      <div className="bg-gray-200 px-4 py-2 text-sm text-gray-600">
+      <div className="bg-gray-200 px-4 py-2 text-sm text-gray-900">
         Data terakhir diupdate: {format(new Date(), 'dd MMMM yyyy \'pukul\' HH:mm', { locale: id })}
       </div>
 

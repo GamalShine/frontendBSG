@@ -56,11 +56,11 @@ const ProfilePassword = () => {
 
     try {
       setLoading(true)
-      const response = await userService.changePassword(user.id, {
-        current_password: formData.currentPassword,
-        new_password: formData.newPassword,
-        confirm_password: formData.confirmPassword
-      })
+      const response = await userService.changePassword({
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword
+      }, user?.role)
       
       if (response.success) {
         toast.success('Password berhasil diubah')

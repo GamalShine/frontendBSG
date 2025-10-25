@@ -243,7 +243,7 @@ const AdminDaftarKomplain = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
           <div>
             {(() => {

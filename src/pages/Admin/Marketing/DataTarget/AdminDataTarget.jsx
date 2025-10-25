@@ -323,14 +323,14 @@ const AdminDataTarget = () => {
           )}
         </div>
       </div>
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600 -mt-1">Terakhir diupdate: {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900 -mt-1">Terakhir diupdate: {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {(lastUpdated ? new Date(lastUpdated) : new Date()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
       <div className="pt-2 pb-4">
         {/* Years as accordion (with expand and month summaries) */}
         {view === 'years' && (
           <div className="px-0 md:px-0 mt-2">
             {loading && (
-              <div className="text-sm text-gray-600">Memuat daftar tahun...</div>
+              <div className="text-sm text-gray-900">Memuat daftar tahun...</div>
             )}
             {!loading && displayYears.length === 0 && (
               <div className="text-sm text-gray-600">Belum ada data</div>
@@ -426,8 +426,8 @@ const AdminDataTarget = () => {
                   <table className="min-w-full table-fixed">
                     <thead className="sticky top-0 bg-[#E3E5EA] z-10 shadow">
                       <tr>
-                        <th className="w-10 pl-4 pr-2 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
-                          <input type="checkbox" checked={selectedItems.length === items.length && items.length>0} onChange={handleSelectAll} className="rounded border-gray-600 text-red-600 focus:ring-red-500" />
+                        <th className="w-10 pl-4 sm:pl-6 pr-0 py-1.5 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
+                          <input type="checkbox" checked={selectedItems.length === items.length && items.length>0} onChange={handleSelectAll} className="rounded border-gray-300 text-red-600 focus:ring-red-500" />
                         </th>
                         <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">No</th>
                         <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Tanggal</th>

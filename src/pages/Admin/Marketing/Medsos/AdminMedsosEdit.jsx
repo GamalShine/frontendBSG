@@ -275,6 +275,8 @@ const AdminMedsosEdit = () => {
                 onFilesChange={(files) => setSelectedImages(files)}
                 placeholder="Masukkan isi laporan media sosial..."
                 rows={12}
+                hideAlign={true}
+                hideImage={true}
               />
             </div>
           </form>
