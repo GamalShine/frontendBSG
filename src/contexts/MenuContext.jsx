@@ -141,7 +141,7 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'sop-aturan',
-              title: 'S.O.P dan Aturan',
+              title: 'ATURAN & SOP',
               path: '/owner/sdm/sop-aturan',
               permissions: ['read']
             },
@@ -365,10 +365,10 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'sop-aturan',
-              title: 'S.O.P dan Aturan',
+              title: 'ATURAN & SOP',
               path: '/admin/sdm/sop-aturan',
               permissions: ['read'],
-              picKey: 'AdminSopAturan'
+              picKey: 'AdminAturan'
             },
             {
               id: 'data-tim',
@@ -517,7 +517,7 @@ export const MenuProvider = ({ children }) => {
         // Flatten menu Leader: setiap item jadi top-level, judul UPPERCASE
         baseMenus.push(
           { id: 'leader-struktur-jobdesk', title: 'STRUKTUR DAN JOBDESK', path: '/leader/sdm/struktur-jobdesk', icon: 'Users2', permissions: ['read'] },
-          { id: 'leader-sop-aturan', title: 'SOP DAN ATURAN', path: '/leader/sdm/sop-aturan', icon: 'FileText', permissions: ['read'] },
+          { id: 'leader-sop-aturan', title: 'ATURAN & SOP', path: '/leader/sdm/sop-aturan', icon: 'FileText', permissions: ['read'] },
           { id: 'leader-jobdesk-saya', title: 'JOBDESK SAYA APA?', path: '/leader/sdm/jobdesk-saya', icon: 'ClipboardList', permissions: ['read'] },
           { id: 'leader-tugas-saya', title: 'TUGAS SAYA APA?', path: '/leader/tugas-saya', icon: 'CheckSquare', permissions: ['read'] },
           { id: 'leader-kpi-saya', title: 'KPI SAYA', path: '/leader/sdm/kpi-saya', icon: 'TrendingUp', permissions: ['read'] },
@@ -566,7 +566,7 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'sop-aturan',
-              title: 'S.O.P dan Aturan',
+              title: 'ATURAN & SOP',
               path: '/divisi/sdm/sop-aturan',
               permissions: ['read']
             }

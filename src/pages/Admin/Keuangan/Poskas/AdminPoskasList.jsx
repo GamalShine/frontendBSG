@@ -454,7 +454,7 @@ const AdminPoskasList = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">

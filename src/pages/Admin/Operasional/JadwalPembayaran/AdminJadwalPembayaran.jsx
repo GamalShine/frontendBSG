@@ -209,7 +209,7 @@ const AdminJadwalPembayaran = () => {
 
       {/* Last updated */}
       <div className="px-4 py-2 bg-gray-200">
-        <div className="text-sm text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+        <div className="text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
       </div>
 
       {/* Form Pencarian (selalu tampil) */}

@@ -570,7 +570,7 @@ const AdminDataAset = () => {
       </div>
 
       {/* Info bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
       <div className="px-0 py-4">

@@ -914,6 +914,8 @@ const AdminLaporanKeuanganForm = () => {
                   }}
                   placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
                   rows={12}
+                  hideAlign={true}
+                  hideImage={true}
                 />
               </div>
             </div>

@@ -128,7 +128,7 @@ const AdminDataTarget = () => {
       </div>
 
       {/* Subheader timestamp */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric'})} pukul {new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit'})}</div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 mb-6">

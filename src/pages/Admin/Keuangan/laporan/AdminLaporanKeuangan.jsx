@@ -524,7 +524,7 @@ const AdminLaporanKeuangan = () => {
           )}
         </div>
       </div>
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600 mb-4">
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900 mb-4">
         Terakhir diupdate: {lastUpdated ? new Date(lastUpdated).toLocaleString('id-ID', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' }) : '-'}
       </div>
 

@@ -1347,6 +1347,8 @@ const AdminPoskasEdit = () => {
               }}
               placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
               rows={12}
+              hideAlign={true}
+              hideImage={true}
             />
             
             

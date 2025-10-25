@@ -310,7 +310,7 @@ const AdminDaftarSaran = () => {
           </div>
         </div>
       </div>
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
       <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">

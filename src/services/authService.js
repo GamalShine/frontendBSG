@@ -132,11 +132,39 @@ export const authService = {
         }
     },
 
-    // Change password
+    // Change password (auto-route by role)
     async changePassword(passwordData) {
         try {
-            const response = await api.put('/auth/change-password', passwordData)
-            return response.data
+            // Tentukan endpoint berdasarkan role user
+            let role
+            try {
+                const stored = this.getStoredUser?.()
+                role = stored?.role
+            } catch {}
+
+            let endpoint = '/profile/change-password' // default (generic)
+            if (role === 'admin') endpoint = '/admin/change-password'
+            else if (role === 'leader') endpoint = '/leader/change-password'
+            // owner/divisi akan coba generic '/profile/change-password'
+
+            try {
+                const response = await api.put(endpoint, passwordData)
+                return response.data
+            } catch (err) {
+                // Jika generic gagal (mis. 404), coba fallback lain bila masuk akal
+                if (endpoint === '/profile/change-password' && err?.response?.status === 404) {
+                    // Coba admin/leader sebagai fallback konservatif bila role terdeteksi
+                    if (role === 'admin') {
+                        const response = await api.put('/admin/change-password', passwordData)
+                        return response.data
+                    }
+                    if (role === 'leader') {
+                        const response = await api.put('/leader/change-password', passwordData)
+                        return response.data
+                    }
+                }
+                throw err
+            }
         } catch (error) {
             throw error.response?.data || error.message
         }

@@ -320,7 +320,7 @@ const AdminAnekaGrafikList = () => {
 
       {/* Last Update Info */}
       <div className="bg-gray-200 px-6 py-2">
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-900">
           Terakhir diupdate: {lastUpdatedText}
         </p>
       </div>

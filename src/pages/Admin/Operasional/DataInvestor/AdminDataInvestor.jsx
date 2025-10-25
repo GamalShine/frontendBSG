@@ -348,7 +348,7 @@ const AdminDataInvestor = () => {
       </div>
 
       {/* Info Update Bar - Abu-abu Muda */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">
         Terakhir diupdate: {lastUpdatedText}
       </div>
 
@@ -474,7 +474,7 @@ const AdminDataInvestor = () => {
                       </div>
                       <div className="grid grid-cols-[130px,1fr] items-center gap-2 leading-5">
                         <span className="text-gray-600">Investasi</span>
-                        <span className="text-gray-800">{investor.investasi_di_outlet ? `Rp ${parseFloat(investor.investasi_di_outlet).toLocaleString('id-ID')}` : '-'}</span>
+                        <span className="text-gray-900">{investor.investasi_di_outlet ? `Rp ${parseFloat(investor.investasi_di_outlet).toLocaleString('id-ID')}` : '-'}</span>
                       </div>
                     </div>
 

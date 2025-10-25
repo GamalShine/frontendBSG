@@ -271,7 +271,7 @@ const AdminDataSupplier = () => {
       </div>
       
       {/* Info Bar */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">
+      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">
         Terakhir diupdate: {lastUpdatedText}
       </div>
 

@@ -92,10 +92,17 @@ export const userService = {
         }
     },
 
-    // Change user password
-    async changePassword(passwordData) {
+    // Change user password (current authenticated user)
+    // Akan memilih endpoint berdasarkan role agar kompatibel dengan server produksi
+    async changePassword(passwordData, role) {
         try {
-            const response = await api.put('/users/change-password', passwordData)
+            const roleKey = String(role || '').toLowerCase()
+            let endpoint = '/profile/change-password'
+            if (roleKey === 'admin') endpoint = '/admin/change-password'
+            else if (roleKey === 'leader') endpoint = '/leader/change-password'
+            // catatan: role owner/divisi/tim akan menggunakan endpoint umum /profile/change-password jika tersedia
+
+            const response = await api.put(endpoint, passwordData)
             return response.data
         } catch (error) {
             throw error.response?.data || error.message

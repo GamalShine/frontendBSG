@@ -75,7 +75,7 @@ import OwnerTimMerahBiruForm from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahB
 import OwnerTimMerahBiruEdit from './pages/Owner/SDM/TimMerahBiru/OwnerTimMerahBiruEdit'
 // SDM SOP & Aturan Pages
 import OwnerSopAturan from './pages/Owner/SDM/SopAturan/OwnerSopAturan'
-import AdminSopAturan from './pages/Admin/SDM/SopAturan/AdminSopAturan'
+import AdminAturan from './pages/Admin/SDM/SopAturan/AdminSopAturan'
 import DivisiSopAturan from './pages/Divisi/SDM/SopAturan/DivisiSopAturan'
 import TimSopAturan from './pages/Tim/SDM/SopAturan/TimSopAturan'
 
@@ -753,7 +753,7 @@ const ModalSwitch = () => {
               <Route path="/admin/sdm/sop-aturan" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
-                    <AdminSopAturan />
+                    <AdminAturan />
                   </Layout>
                 </ProtectedRoute>
               } />
