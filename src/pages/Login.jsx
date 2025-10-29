@@ -45,7 +45,11 @@ const Login = () => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Username atau password salah');
+      if (error?.code === 'ONLY_ADMIN_ALLOWED' || (typeof error?.message === 'string' && error.message.includes('ONLY_ADMIN_ALLOWED'))) {
+        toast.error('Hanya Admin yang diizinkan login.');
+      } else {
+        toast.error('Username atau password salah');
+      }
     } finally {
       setIsLoading(false);
     }
