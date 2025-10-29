@@ -150,7 +150,11 @@ const Sidebar = () => {
   const hasPicAccess = (menu) => {
     const picKey = menu?.picKey
     // Item default yang selalu boleh untuk role admin/divisi/tim tanpa picKey
-    const defaultWhitelistIds = new Set(['dashboard', 'daftar-tugas', 'profile', 'settings'])
+    const defaultWhitelistIds = new Set([
+      'dashboard', 'daftar-tugas', 'profile', 'settings',
+      // Personal admin menus
+      'tugas-saya', 'sop-terkait', 'aturan', 'kpi-saya', 'slip-gaji-saya'
+    ])
     const whitelistRoles = new Set(['admin', 'divisi', 'tim'])
 
     // Jika role termasuk whitelistRoles dan menu termasuk default whitelist, izinkan
@@ -174,6 +178,10 @@ const Sidebar = () => {
   }
 
   const renderMenuItem = (menu) => {
+    // Sembunyikan menu Settings secara paksa
+    if ((menu?.id || '').toLowerCase() === 'settings' || (menu?.title || '').toLowerCase() === 'settings') {
+      return null
+    }
     const IconComponent = iconMap[menu.icon] || Home
     const isActive = menu.path ? isMenuActive(menu.path) : false
     const hasChildren = menu.children && menu.children.length > 0
@@ -283,6 +291,11 @@ const Sidebar = () => {
           <p className="text-sm font-medium text-white">
             {user?.nama || user?.username}
           </p>
+          {user?.email && (
+            <p className="text-xs text-white/80 -mt-1 mb-2 break-all">
+              {user.email}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 text-white capitalize">
               {user?.role || 'user'}

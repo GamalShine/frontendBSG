@@ -15,7 +15,8 @@ import {
   FileText,
   MessageSquare
 } from 'lucide-react'
-import { tugasService } from '../../../services/tugasService'
+import { tugasService, adminTugasService } from '../../../services/tugasService'
+import { uploadService } from '../../../services/uploadService'
 import { userService } from '../../../services/userService'
 import toast from 'react-hot-toast'
 import { MENU_CODES } from '@/config/menuCodes'
@@ -26,6 +27,7 @@ const AdminTugasDetail = () => {
   const [tugas, setTugas] = useState(null)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -36,7 +38,8 @@ const AdminTugasDetail = () => {
   const loadTugas = async () => {
     try {
       setLoading(true)
-      const response = await tugasService.getTugasById(id)
+      // Gunakan endpoint admin agar include relasi user dan field dibersihkan sesuai backend
+      const response = await adminTugasService.getAdminTugasById(id)
       if (response.success) {
         setTugas(response.data)
       } else {
@@ -49,6 +52,49 @@ const AdminTugasDetail = () => {
       navigate('/admin/tugas')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Upload lampiran (fitur Tindak)
+  const handleUploadLampiran = async (event) => {
+    const files = Array.from(event?.target?.files || [])
+    if (files.length === 0) return
+    try {
+      setUploading(true)
+      const res = await uploadService.uploadMultipleFiles(files, 'document')
+
+      // Ekstrak nama file yang terupload dari berbagai bentuk response
+      let uploadedNames = []
+      const candidate = res?.files || res?.data || res
+      if (Array.isArray(candidate)) {
+        uploadedNames = candidate
+          .map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || ''))
+          .filter(Boolean)
+      } else if (candidate && typeof candidate === 'object') {
+        const arr = candidate.files || candidate.data || []
+        if (Array.isArray(arr)) {
+          uploadedNames = arr
+            .map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || ''))
+            .filter(Boolean)
+        }
+      }
+
+      const existing = Array.isArray(tugas?.lampiran) ? tugas.lampiran : []
+      const merged = [...existing, ...uploadedNames]
+
+      const upd = await adminTugasService.updateTugasByAdmin(id, { lampiran: merged })
+      if (upd?.success || upd?.data) {
+        toast.success('Lampiran berhasil diupload')
+        await loadTugas()
+      } else {
+        toast.error('Gagal menyimpan lampiran tugas')
+      }
+    } catch (e) {
+      console.error('Upload lampiran error:', e)
+      toast.error(e?.message || 'Gagal upload lampiran')
+    } finally {
+      setUploading(false)
+      if (event?.target) event.target.value = ''
     }
   }
 
@@ -70,7 +116,8 @@ const AdminTugasDetail = () => {
 
     try {
       setDeleting(true)
-      await tugasService.deleteTugas(id)
+      // Hapus via admin endpoint agar konsisten
+      await adminTugasService.deleteTugasByAdmin(id)
           toast.success('Tugas berhasil dihapus')
           navigate('/admin/tugas')
       } catch (error) {
@@ -207,16 +254,16 @@ const AdminTugasDetail = () => {
                 <h1 className="text-2xl font-bold text-gray-900">{tugas.judul_tugas}</h1>
                 <p className="text-gray-600">Detail informasi tugas</p>
               </div>
-              <div className="flex space-x-3">
-            <Link
-              to={`/admin/tugas/${id}/edit`}
+              <div className="flex space-x-3 items-center">
+                <Link
+                  to={`/admin/tugas/${id}/edit`}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-            >
+                >
                   <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-            <button
-              onClick={handleDelete}
+                  Edit
+                </Link>
+                <button
+                  onClick={handleDelete}
                   disabled={deleting}
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center"
                 >
@@ -228,13 +275,13 @@ const AdminTugasDetail = () => {
                   ) : (
                     <>
                       <Trash2 className="h-4 w-4 mr-2" />
-              Hapus
+                      Hapus
                     </>
                   )}
-            </button>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
           {/* Task Information */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

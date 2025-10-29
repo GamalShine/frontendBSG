@@ -6,7 +6,7 @@ import Button from '@/components/UI/Button'
 import Input from '@/components/UI/Input'
 import Table, { TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/UI/Table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog'
-import { Search, Filter, Plus, Edit, Trash2, Eye, Calendar, TrendingUp, DollarSign, RefreshCw, MoreVertical, Copy as CopyIcon, Share2 } from 'lucide-react'
+import { Search, Filter, Plus, Edit, Trash2, Eye, Calendar, TrendingUp, DollarSign, MoreVertical, Copy as CopyIcon, Share2 } from 'lucide-react'
 import { MENU_CODES } from '@/config/menuCodes'
 
 const AdminDaftarSaran = () => {
@@ -22,7 +22,7 @@ const AdminDaftarSaran = () => {
   const [current, setCurrent] = useState(null)
   const [formData, setFormData] = useState({ saran: '', deskripsi_saran: '' })
   const [submitting, setSubmitting] = useState(false)
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
   const [selectedItems, setSelectedItems] = useState([])
   const [showBulkMenu, setShowBulkMenu] = useState(false)
 
@@ -279,41 +279,30 @@ const AdminDaftarSaran = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header - Poskas style */}
-      <div className="bg-red-800 text-white px-6 py-4">
+      {/* Header - match Komplain style */}
+      <div className="bg-red-800 text-white px-6 py-5 md:py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.daftarSaran}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR SARAN</h1>
-              <p className="text-sm text-red-100">Kelola saran dari outlet/pegawai</p>
+              {false && (<p className="text-sm text-red-100">Kelola saran dari outlet/pegawai</p>)}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilters(v => !v)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white bg-transparent"
-            >
-              PENCARIAN
-            </button>
-            <button
-              onClick={() => { fetchData() }}
-              className="px-4 py-2 rounded-full border border-white/60 text-white bg-transparent inline-flex items-center gap-2"
-              title="Refresh"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <Button className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent" onClick={openCreate}>
-              <Plus className="w-4 h-4" />
-              <span className="font-semibold">Tambah</span>
-            </Button>
+            {false && (
+              <Button className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent" onClick={openCreate}>
+                <Plus className="w-4 h-4" />
+                <span className="font-semibold">Tambah</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
-      <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
+      <div className="bg-gray-200 px-3 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
-      {/* Stats Cards */}
-      <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Stats Cards - jarak disesuaikan */}
+      <div className="mt-1 mb-0 px-0 py-3 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -349,9 +338,9 @@ const AdminDaftarSaran = () => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters - rapat kiri kanan */}
       {showFilters && (
-      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-2 mb-3">
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -397,115 +386,79 @@ const AdminDaftarSaran = () => {
       </div>
       )}
 
-      {/* Table - Omset style */}
-      <Card>
-        <CardHeader className="px-6 py-3 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Daftar Saran</h2>
-            <div className="flex items-center gap-3">
-              {selectedItems.length > 0 && (
-                <>
-                  <span className="text-sm text-gray-600 hidden sm:inline">{selectedItems.length} item dipilih</span>
-                  <Button onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700 text-white">
-                    <Trash2 className="w-4 h-4 mr-2" /> Hapus ({selectedItems.length})
-                  </Button>
-                </>
-              )}
-              <div className="relative">
-                <button
-                  onClick={() => setShowBulkMenu(v => !v)}
-                  aria-label="Aksi massal"
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </button>
-                {showBulkMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-100 z-20">
-                    <div className="py-1">
-                      <button onClick={handleBulkCopy} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Copy (ceklist)</button>
-                      <button onClick={handleBulkDownload} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Download (ceklist)</button>
-                      <button onClick={handleBulkShare} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50">Share (ceklist)</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardBody className="p-0">
-          <div className="relative overflow-x-auto max-h-[60vh] overflow-y-auto">
-            <Table>
-              <TableHeader className="sticky top-0 bg-red-700 z-10">
-                <TableRow>
-                  <TableHead className="pl-6 pr-0 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">
+      {/* Daftar Saran - Tabel bergaya Komplain */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-1">
+        <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Daftar Saran</h2>
+          {selectedItems.length > 0 && (
+            <Button onClick={handleBulkDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              <Trash2 className="w-4 h-4 mr-2" /> Hapus ({selectedItems.length})
+            </Button>
+          )}
+        </div>
+
+        <div className="relative overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="sticky top-0 bg-red-700 z-10">
+              <tr>
+                <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">
+                  <input
+                    type="checkbox"
+                    checked={filteredItems.length > 0 && selectedItems.length === filteredItems.length}
+                    onChange={handleSelectAll}
+                    className="rounded border-white text-white focus:ring-white"
+                    aria-label="Pilih semua"
+                  />
+                </th>
+                <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">No</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Saran</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Deskripsi</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Nama</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {filteredItems.map((item, idx) => (
+                <tr key={item.id} className="hover:bg-gray-50/80">
+                  <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 align-middle">
                     <input
                       type="checkbox"
-                      onChange={handleSelectAll}
-                      checked={filteredItems.length > 0 && selectedItems.length === filteredItems.length}
-                      className="rounded border-white text-white focus:ring-white"
+                      checked={selectedItems.includes(item.id)}
+                      onChange={() => handleCheckboxChange(item.id)}
+                      className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                      aria-label={`Pilih baris ${idx + 1}`}
                     />
-                  </TableHead>
-                  <TableHead className="pl-0 pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</TableHead>
-                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</TableHead>
-                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Saran</TableHead>
-                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Deskripsi</TableHead>
-                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Nama</TableHead>
-                  <TableHead className="px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredItems.map((item, idx) => (
-                  <TableRow key={item.id} className="hover:bg-gray-50/80">
-                    <TableCell className="pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => handleCheckboxChange(item.id)}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </TableCell>
-                    <TableCell className="pl-0 pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{idx + 1}</TableCell>
-                    <TableCell className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase() : '-'}
-                    </TableCell>
-                    <TableCell className="px-12 py-4 text-sm text-gray-900">
-                      <div className="md:truncate max-w-[14rem] md:max-w-md" title={item.saran || '-'}>
-                        {item.saran || '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-12 py-4 text-sm text-gray-900">
-                      <div className="md:truncate max-w-[14rem] md:max-w-md" title={item.deskripsi_saran || '-'}>
-                        {item.deskripsi_saran || '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">{item.nama || '-'}</TableCell>
-                    <TableCell className="px-12 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => openDetail(item)} className="text-blue-600 hover:text-blue-900" title="Lihat">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => openEdit(item)} className="text-green-600 hover:text-green-900" title="Edit">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleDelete(item)} className="text-red-600 hover:text-red-900" title="Hapus">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredItems.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500 py-6">
-                      Tidak ada data
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardBody>
-      </Card>
+                  </td>
+                  <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 py-3 text-sm text-gray-900">{idx + 1}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900 font-semibold">
+                    {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase() : '-'}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-[22rem]" title={item.saran || '-'}>{item.saran || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-gray-700">
+                    <div className="truncate max-w-[16rem]" title={item.deskripsi_saran || '-' }>
+                      {item.deskripsi_saran || '-'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700">{item.nama || '-'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <button title="Lihat" onClick={() => openDetail(item)} className="p-2 rounded hover:bg-gray-100 text-blue-600"><Eye className="h-4 w-4"/></button>
+                      <button title="Edit" onClick={() => openEdit(item)} className="p-2 rounded hover:bg-gray-100 text-amber-600"><Edit className="h-4 w-4"/></button>
+                      <button title="Hapus" onClick={() => handleDelete(item)} className="p-2 rounded hover:bg-gray-100 text-red-600"><Trash2 className="h-4 w-4"/></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filteredItems.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="text-center text-gray-500 py-5">Tidak ada data</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Dialog Form Create/Edit */}
       <Dialog open={showForm} onOpenChange={setShowForm}>

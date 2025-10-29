@@ -41,7 +41,7 @@ const Login = () => {
       });
       if (success) {
         toast.success('Login berhasil!');
-        navigate('/dashboard');
+        navigate('/admin/dashboard');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -76,7 +76,6 @@ const Login = () => {
           <div className="px-6 sm:px-8 pt-6 pb-4">
             {/* Title card */}
             <div className="text-center mb-4">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">Masuk</h2>
               <p className="text-gray-500 text-sm md:text-base mt-1">Masuk ke akun Anda untuk melanjutkan</p>
             </div>
 

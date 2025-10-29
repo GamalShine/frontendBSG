@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { tugasService } from '../../../services/tugasService'
+import { tugasService, adminTugasService } from '../../../services/tugasService'
+import { uploadService } from '../../../services/uploadService'
 import { userService } from '../../../services/userService'
 import { 
   Search, 
@@ -13,17 +14,21 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  X,
   User,
   Calendar,
   Filter,
-  
+  RefreshCw,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { MENU_CODES } from '@/config/menuCodes'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog'
+import { API_CONFIG } from '@/config/constants'
 
 const AdminDaftarTugas = () => {
   const [tugas, setTugas] = useState([])
   const [users, setUsers] = useState([])
+  const [userLookup, setUserLookup] = useState({}) // { [id]: displayName }
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -32,6 +37,339 @@ const AdminDaftarTugas = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
+  const [uploadingTaskId, setUploadingTaskId] = useState(null)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [targetTask, setTargetTask] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState([])
+  const [filePreviews, setFilePreviews] = useState([]) // [{name,type,size,url,isImage,isVideo}]
+  const [showDetail, setShowDetail] = useState(false)
+  const [detailItem, setDetailItem] = useState(null)
+  // Modal Revisi states
+  const [showRevisiModal, setShowRevisiModal] = useState(false)
+  const [revisiItem, setRevisiItem] = useState(null)
+  const [revisiFiles, setRevisiFiles] = useState([])
+  const [revisiPreviews, setRevisiPreviews] = useState([])
+  const [revisiNote, setRevisiNote] = useState('')
+
+  // Modal Upload handlers (diletakkan di awal agar jelas terdefinisi sebelum dipakai di JSX)
+  const openUploadModal = (task) => {
+    setTargetTask(task)
+    setSelectedFiles([])
+    setShowUploadModal(true)
+  }
+
+  // Render aksi pada modal Detail (versi full-width button/label)
+  const renderDetailAction = (item) => {
+    const s = String(item?.status || '').toLowerCase()
+    if (s === 'belum') {
+      return (
+        <button
+          type="button"
+          onClick={() => { const it = item; closeDetail(); if (it) openUploadModal(it) }}
+          className="w-full py-2 bg-red-700 text-white font-medium hover:bg-red-800 transition-colors rounded-lg"
+        >
+          Tindak
+        </button>
+      )
+    }
+    if (s === 'proses') {
+      return (
+        <span className="w-full inline-flex items-center justify-center py-2 rounded-lg bg-blue-100 text-blue-800 text-sm font-medium select-none">
+          Proses
+        </span>
+      )
+    }
+    if (s === 'selesai') {
+      return (
+        <span className="w-full inline-flex items-center justify-center gap-2 py-2 rounded-lg bg-green-100 text-green-800 text-sm font-medium select-none">
+          <CheckCircle className="h-4 w-4" />
+          Selesai
+        </span>
+      )
+    }
+    if (s === 'revisi') {
+      return (
+        <button
+          type="button"
+          onClick={() => { const it = item; closeDetail(); if (it) openRevisiModal(it) }}
+          className="w-full py-2 bg-red-700 text-white font-medium hover:bg-red-800 transition-colors rounded-lg"
+        >
+          Revisi
+        </button>
+      )
+    }
+    // default fallback
+    return (
+      <button
+        type="button"
+        onClick={() => { const it = item; closeDetail(); if (it) openUploadModal(it) }}
+        className="w-full py-2 bg-red-700 text-white font-medium hover:bg-red-800 transition-colors rounded-lg"
+      >
+        Tindak
+      </button>
+    )
+  }
+
+  // Modal Revisi handlers
+  const openRevisiModal = (task) => {
+    setRevisiItem(task)
+    setRevisiFiles([])
+    setRevisiPreviews([])
+    setRevisiNote('')
+    setShowRevisiModal(true)
+  }
+  const closeRevisiModal = () => {
+    setShowRevisiModal(false)
+    try { revisiPreviews.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) }) } catch {}
+    setRevisiItem(null)
+    setRevisiFiles([])
+    setRevisiPreviews([])
+    setRevisiNote('')
+  }
+
+  // Kelola preview Revisi saat file berubah
+  useEffect(() => {
+    try { revisiPreviews.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) }) } catch {}
+    const arr = Array.from(revisiFiles || [])
+    const next = arr.map(f => ({
+      name: f.name,
+      type: f.type,
+      size: f.size,
+      url: URL.createObjectURL(f),
+      isImage: (f.type || '').startsWith('image/'),
+      isVideo: (f.type || '').startsWith('video/'),
+    }))
+    setRevisiPreviews(next)
+    return () => {
+      try { next.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) }) } catch {}
+    }
+  }, [revisiFiles])
+
+  const handleConfirmRevisi = async () => {
+    if (!revisiItem?.id) return
+    const files = Array.from(revisiFiles || [])
+    if (files.length === 0 && !revisiNote.trim()) {
+      toast.error('Tambahkan catatan atau pilih minimal satu file revisi')
+      return
+    }
+    try {
+      setUploadingTaskId(revisiItem.id)
+      let uploadedNames = []
+      if (files.length > 0) {
+        const res = await uploadService.uploadMultipleFiles(files, 'document')
+        const candidate = res?.files || res?.data || res
+        if (Array.isArray(candidate)) {
+          uploadedNames = candidate.map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || '')).filter(Boolean)
+        }
+      }
+      const existing = Array.isArray(revisiItem?.lampiran) ? revisiItem.lampiran : []
+      const merged = uploadedNames.length > 0 ? [...existing, ...uploadedNames] : existing
+      const payload = { lampiran: merged, status: 'proses' }
+      if (revisiNote.trim()) payload.catatan_revisi = revisiNote.trim()
+      const upd = await adminTugasService.updateTugasByAdmin(revisiItem.id, payload)
+      if (upd?.success || upd?.data) {
+        toast.success('Revisi berhasil dikirim')
+        closeRevisiModal()
+        await loadTugas()
+      } else {
+        toast.error('Gagal menyimpan revisi tugas')
+      }
+    } catch (e) {
+      console.error('Revisi error:', e)
+      toast.error(e?.message || 'Gagal mengirim revisi')
+    } finally {
+      setUploadingTaskId(null)
+    }
+  }
+
+  // Helper file URL dan tipe
+  const toFileUrl = (p) => {
+    if (!p) return '#'
+    const raw = String(p)
+    // Sudah absolute URL
+    if (/^https?:\/\//i.test(raw)) return raw
+    // Hilangkan leading slash
+    const clean = raw.replace(/^\/+/, '')
+    const base = API_CONFIG?.BASE_HOST || ''
+    // Jika sudah diawali uploads/, gabung langsung
+    if (clean.startsWith('uploads/')) return encodeURI(`${base}/${clean}`)
+    // Jika path memiliki slash (subfolder lain), gabung apa adanya
+    if (clean.includes('/')) return encodeURI(`${base}/${clean}`)
+    // Jika hanya nama file (tanpa folder), tentukan subfolder berdasarkan ekstensi
+    const ext = getExt(clean)
+    const imageExts = ['jpg','jpeg','png','gif','bmp','webp','svg']
+    const videoExts = ['mp4','webm','ogg','mov','mkv']
+    const docExts = ['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','csv','md','log','json']
+    let sub = 'general'
+    if (imageExts.includes(ext)) sub = 'images'
+    else if (videoExts.includes(ext)) sub = 'videos'
+    else if (docExts.includes(ext)) sub = 'documents'
+    return encodeURI(`${base}/uploads/data-pengajuan/${sub}/${clean}`)
+  }
+  const getExt = (name) => String(name || '').split('.').pop()?.toLowerCase() || ''
+  const isImageExt = (ext) => ['jpg','jpeg','png','gif','bmp','webp','svg'].includes(String(ext).toLowerCase())
+  const isVideoExt = (ext) => ['mp4','webm','ogg','mov','mkv'].includes(String(ext).toLowerCase())
+
+  // Render tombol/aksi berdasarkan status
+  const renderAction = (tugasItem) => {
+    const s = String(tugasItem?.status || '').toLowerCase()
+    if (s === 'belum') {
+      return (
+        <button
+          onClick={(e) => { e.stopPropagation(); openUploadModal(tugasItem) }}
+          className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700`}
+          disabled={!!uploadingTaskId}
+        >
+          Tindak
+        </button>
+      )
+    }
+    if (s === 'proses') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 select-none">
+          Proses
+        </span>
+      )
+    }
+    if (s === 'selesai') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 select-none">
+          <CheckCircle className="h-4 w-4" />
+          Selesai
+        </span>
+      )
+    }
+    if (s === 'revisi') {
+      return (
+        <button
+          onClick={(e) => { e.stopPropagation(); openRevisiModal(tugasItem) }}
+          className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700`}
+          disabled={!!uploadingTaskId}
+        >
+          Revisi
+        </button>
+      )
+    }
+    // default fallback
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); openUploadModal(tugasItem) }}
+        className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700`}
+        disabled={!!uploadingTaskId}
+      >
+        Tindak
+      </button>
+    )
+  }
+
+  // Detail modal handlers
+  const openDetail = (item) => { setDetailItem(item); setShowDetail(true) }
+  const closeDetail = () => { setShowDetail(false); setDetailItem(null) }
+
+  // Kelola pembuatan URL preview saat files berubah
+  useEffect(() => {
+    // Bersihkan URL lama
+    try { filePreviews.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) }) } catch {}
+    const arr = Array.from(selectedFiles || [])
+    const next = arr.map(f => ({
+      name: f.name,
+      type: f.type,
+      size: f.size,
+      url: URL.createObjectURL(f),
+      isImage: String(f.type || '').startsWith('image/'),
+      isVideo: String(f.type || '').startsWith('video/'),
+    }))
+    setFilePreviews(next)
+    // Cleanup ketika unmount
+    return () => {
+      try { next.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) }) } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFiles])
+
+  const closeUploadModal = () => {
+    if (uploadingTaskId) return // prevent closing while uploading
+    setShowUploadModal(false)
+    setTargetTask(null)
+    setSelectedFiles([])
+    // Bersihkan preview URLs
+    try {
+      filePreviews.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) })
+    } catch {}
+    setFilePreviews([])
+  }
+
+  const handleConfirmUpload = async () => {
+    if (!targetTask?.id) return
+    const files = Array.from(selectedFiles || [])
+    if (files.length === 0) {
+      toast.error('Pilih minimal satu file foto/video')
+      return
+    }
+    try {
+      setUploadingTaskId(targetTask.id)
+
+      // Merge dengan lampiran lama dari state
+      const currentItem = tugas.find(t => t.id === targetTask.id)
+      const existing = Array.isArray(currentItem?.lampiran) ? currentItem.lampiran : []
+      const merged = [...existing, ...uploadedNames]
+
+      const upd = await adminTugasService.updateTugasByAdmin(targetTask.id, { lampiran: merged, status: 'proses' })
+      if (upd?.success || upd?.data) {
+        toast.success('Lampiran berhasil diupload')
+        setShowUploadModal(false)
+        setTargetTask(null)
+        setSelectedFiles([])
+        try { filePreviews.forEach(p => { if (p.url) URL.revokeObjectURL(p.url) }) } catch {}
+        setFilePreviews([])
+        await loadTugas()
+      } else {
+        toast.error('Gagal menyimpan lampiran tugas')
+      }
+    } catch (e) {
+      console.error('Upload lampiran (modal) error:', e)
+      toast.error(e?.message || 'Gagal upload lampiran')
+    } finally {
+      setUploadingTaskId(null)
+    }
+  }
+
+  // Stats prioritas dari data yang sedang ditampilkan
+  const priorityStats = useMemo(() => {
+    const rows = Array.isArray(tugas) ? tugas : []
+    const count = { mendesak: 0, penting: 0, berproses: 0 }
+    rows.forEach((t) => {
+      const p = String(t?.skala_prioritas || '').toLowerCase()
+      if (p === 'mendesak') count.mendesak += 1
+      else if (p === 'penting') count.penting += 1
+      else if (p === 'berproses') count.berproses += 1
+    })
+    return count
+  }, [tugas])
+
+  // Last updated text from latest of updated_at/created_at among tugas
+  const lastUpdatedText = useMemo(() => {
+    try {
+      const rows = Array.isArray(tugas) ? tugas : []
+      if (!rows.length) return '-'
+      const toTime = (it) => {
+        const d = it?.updated_at || it?.updatedAt || it?.updated || it?.created_at || it?.createdAt || it?.created
+        const t = d ? new Date(d).getTime() : NaN
+        return Number.isFinite(t) ? t : NaN
+      }
+      const maxTime = rows.reduce((m, it) => {
+        const t = toTime(it)
+        return Number.isFinite(t) ? Math.max(m, t) : m
+      }, -Infinity)
+      if (!Number.isFinite(maxTime)) return '-'
+      const dt = new Date(maxTime)
+      return dt.toLocaleString('id-ID', {
+        day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+    } catch {
+      return '-'
+    }
+  }, [tugas])
 
   useEffect(() => {
     loadTugas()
@@ -49,8 +387,49 @@ const AdminDaftarTugas = () => {
         priority: priorityFilter,
         assignee: assigneeFilter
       }
+
+  // Upload lampiran langsung dari baris (fitur Tindak di list)
+  const handleUploadLampiranRow = async (taskId, event) => {
+    const files = Array.from(event?.target?.files || [])
+    if (files.length === 0) return
+    try {
+      setUploadingTaskId(taskId)
+      const res = await uploadService.uploadMultipleFiles(files, 'document')
+      // Normalisasi nama file
+      let uploadedNames = []
+      const candidate = res?.files || res?.data || res
+      if (Array.isArray(candidate)) {
+        uploadedNames = candidate.map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || '')).filter(Boolean)
+      } else if (candidate && typeof candidate === 'object') {
+        const arr = candidate.files || candidate.data || []
+        if (Array.isArray(arr)) {
+          uploadedNames = arr.map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || '')).filter(Boolean)
+        }
+      }
+
+      // Ambil item tugas saat ini untuk merge lampiran lama jika tersedia di state
+      const currentItem = tugas.find(t => t.id === taskId)
+      const existing = Array.isArray(currentItem?.lampiran) ? currentItem.lampiran : []
+      const merged = [...existing, ...uploadedNames]
+
+      const upd = await adminTugasService.updateTugasByAdmin(taskId, { lampiran: merged })
+      if (upd?.success || upd?.data) {
+        toast.success('Lampiran berhasil diupload')
+        await loadTugas()
+      } else {
+        toast.error('Gagal menyimpan lampiran tugas')
+      }
+    } catch (e) {
+      console.error('Upload lampiran row error:', e)
+      toast.error(e?.message || 'Gagal upload lampiran')
+    } finally {
+      setUploadingTaskId(null)
+      if (event?.target) event.target.value = ''
+    }
+  }
       
-      const response = await tugasService.getTugas(params)
+      // Gunakan endpoint khusus admin agar relasi user ikut ter-join
+      const response = await adminTugasService.getAdminTugas(params)
       console.log('🔍 Admin Tugas response:', response)
       
       if (response.success) {
@@ -75,11 +454,29 @@ const AdminDaftarTugas = () => {
   const loadUsers = async () => {
     try {
       const response = await userService.getUsers()
-      if (response.success) {
-        setUsers(response.data)
-      }
+      // Normalisasi berbagai bentuk response
+      const rows = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+          ? response.data
+          : Array.isArray(response?.rows)
+            ? response.rows
+            : Array.isArray(response?.data?.rows)
+              ? response.data.rows
+              : (response?.success && Array.isArray(response?.data))
+                ? response.data
+                : []
+
+      setUsers(rows)
+      // Bangun lookup id -> display name
+      const toName = (u) => u?.nama || u?.name || u?.nama_lengkap || u?.full_name || u?.username || u?.email || `User ${u?.id || ''}`
+      const map = {}
+      rows.forEach(u => { if (u && u.id != null) map[u.id] = toName(u) })
+      setUserLookup(map)
     } catch (error) {
       console.error('Error loading users:', error)
+      setUsers([])
+      setUserLookup({})
     }
   }
 
@@ -170,82 +567,107 @@ const AdminDaftarTugas = () => {
   }
 
   const getUserName = (userId) => {
-    const user = users.find(u => u.id === userId)
-    return user ? user.nama : 'Unknown User'
+    if (!userId && userId !== 0) return 'Unknown'
+    if (userLookup[userId]) return userLookup[userId]
+    const user = users.find(u => u?.id === userId)
+    if (user) {
+      const name = user?.nama || user?.name || user?.nama_lengkap || user?.full_name || user?.username || user?.email
+      return name || 'Unknown'
+    }
+    return 'Unknown'
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header - Dark Red (WhatsApp-like) */}
-      <div className="bg-red-800 text-white px-6 py-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header - mengikuti gaya Struktur & Jobdesk */}
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.daftarTugas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DAFTAR TUGAS</h1>
-              <p className="text-sm text-red-100">Kelola daftar tugas</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Last Update Info */}
-      <div className="bg-gray-200 px-6 py-2">
-        <p className="text-sm text-gray-600">
-          Data terakhir diupdate: {new Date().toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })} pukul {new Date().toLocaleTimeString('id-ID', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          })}
-        </p>
+      {/* Subheader: Terakhir diupdate */}
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">
+        Terakhir diupdate: {lastUpdatedText}
       </div>
 
       {/* Main Content */}
-      <div className="p-6">
+      <div className="px-0 pt-0 pb-6">
         {/* Page Header */}
-        <div className="mb-6">
+        <div className="mb-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Manajemen Tugas</h1>
-              <p className="text-gray-600">Kelola semua tugas dalam sistem</p>
-            </div>
-            <Link
-              to="/admin/tugas/new"
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Tambah Tugas
-            </Link>
+            <div></div>
+            {/* Tombol Tambah disembunyikan sesuai permintaan */}
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Cari</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <input
-                  type="text"
-                  placeholder="Cari tugas..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
+        {/* Priority Stats Cards */}
+        <div className="mt-0 mb-0 px-0 py-2 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-red-50 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Mendesak</p>
+                <p className="text-xl font-bold text-gray-900">{priorityStats.mendesak}</p>
               </div>
             </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-yellow-50 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Penting</p>
+                <p className="text-xl font-bold text-gray-900">{priorityStats.penting}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
+                <Clock className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">Berproses</p>
+                <p className="text-xl font-bold text-gray-900">{priorityStats.berproses}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters - bergaya seperti Admin Saran */}
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-2 mb-3">
+          <div className="px-6 py-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Cari tugas..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSearch() }}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Semua Status</option>
                 <option value="belum">Belum</option>
@@ -256,11 +678,11 @@ const AdminDaftarTugas = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Prioritas</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Prioritas</label>
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Semua Prioritas</option>
                 <option value="mendesak">Mendesak</option>
@@ -269,100 +691,88 @@ const AdminDaftarTugas = () => {
               </select>
             </div>
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Penerima</label>
-              <select
-                value={assigneeFilter}
-                onChange={(e) => setAssigneFilter(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Semua Penerima</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.nama}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
             <div className="flex items-end">
               <button
-                onClick={handleSearch}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
+                onClick={() => { setSearchTerm(''); setStatusFilter(''); setPriorityFilter(''); setAssigneeFilter(''); setCurrentPage(1); loadTugas(); }}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
               >
-                <Search className="h-4 w-4 mr-2" />
-                Cari
+                <RefreshCw className="h-4 w-4" />
+                <span className="font-semibold">Reset</span>
               </button>
+            </div>
             </div>
           </div>
         </div>
 
-        {/* Tugas List */}
-        <div className="bg-white rounded-lg shadow-sm border">
-          <div className="overflow-x-auto">
+        {/* Tugas List - bergaya seperti Admin Saran */}
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-1">
+          <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-900">Daftar Tugas</h2>
+          </div>
+          <div className="relative overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="sticky top-0 bg-red-700 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tugas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pemberi
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Penerima
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Prioritas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Target Selesai
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aksi
-                  </th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">No</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Tugas</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Pemberi</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Penerima</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Prioritas</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Target Selesai</th>
+                  <th className="px-6 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-gray-100">
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
                       Memuat data...
                     </td>
                   </tr>
                 ) : tugas.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
                       Tidak ada tugas ditemukan
                     </td>
                   </tr>
                 ) : (
-                  tugas.map((tugasItem) => (
-                    <tr key={tugasItem.id} className="hover:bg-gray-50">
+                  tugas.map((tugasItem, idx) => (
+                    <tr
+                      key={tugasItem.id}
+                      className="hover:bg-gray-50/80 cursor-pointer"
+                      onClick={() => openDetail(tugasItem)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{(currentPage - 1) * 10 + idx + 1}</td>
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
                             {tugasItem.judul_tugas}
                           </div>
                           <div className="text-sm text-gray-500 truncate max-w-xs">
-                            {tugasItem.keterangan_tugas?.substring(0, 100)}...
+                            {(() => {
+                              const text = String(tugasItem.keterangan_tugas || '').trim()
+                              if (!text) return '-'
+                              const words = text.split(/\s+/)
+                              const preview = words.slice(0, 3).join(' ')
+                              return preview + (words.length > 3 ? '...' : '')
+                            })()}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getUserName(tugasItem.pemberi_tugas)}
+                        {tugasItem?.pemberiTugas?.nama || getUserName(tugasItem.pemberi_tugas)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {getUserName(tugasItem.penerima_tugas)}
+                        {tugasItem?.penerimaTugas?.nama || getUserName(tugasItem.penerima_tugas)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(tugasItem.status)}`}>
-                          {getStatusIcon(tugasItem.status)}
-                          <span className="ml-1">{tugasItem.status}</span>
-                        </span>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm align-middle">
+                        <div className="pt-0.5">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(tugasItem.status)}`}>
+                            {getStatusIcon(tugasItem.status)}
+                            <span className="ml-1">{tugasItem.status}</span>
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(tugasItem.skala_prioritas)}`}>
@@ -373,32 +783,14 @@ const AdminDaftarTugas = () => {
                         {formatDate(tugasItem.target_selesai)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Link
-                            to={`/admin/tugas/${tugasItem.id}`}
-                            className="text-blue-600 hover:text-blue-900 p-1"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                          <Link
-                            to={`/admin/tugas/${tugasItem.id}/edit`}
-                            className="text-indigo-600 hover:text-indigo-900 p-1"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(tugasItem.id)}
-                            className="text-red-600 hover:text-red-900 p-1"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                        {renderAction(tugasItem)}
                       </td>
                     </tr>
                   ))
                 )}
               </tbody>
-            </table>
+              <tfoot></tfoot>
+          </table>
           </div>
 
           {/* Pagination */}
@@ -464,6 +856,416 @@ const AdminDaftarTugas = () => {
               </div>
             </div>
           )}
+
+          {/* Modal Upload (Dialog) dengan desain ala Data Aset */}
+          <Dialog open={showUploadModal} onOpenChange={(o) => { if (!o) closeUploadModal() }}>
+            <DialogContent className="p-0 max-w-sm sm:max-w-md md:max-w-md lg:max-w-lg overflow-hidden overflow-y-hidden">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col scrollbar-hide">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+                  <div>
+                    <h2 className="text-lg font-bold leading-tight">Upload Lampiran Tugas</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeUploadModal}
+                    className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                    aria-label="Tutup"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-hide">
+                  <div className="space-y-3 text-[13px]">
+                    <div>
+                      <p className="text-xs font-bold text-gray-700">Lampiran*</p>
+                    </div>
+
+                    {/* Picker ala Data Aset */}
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*,video/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const picked = Array.from(e.target.files || [])
+                            const key = (f) => `${f.name}|${f.size}|${f.lastModified}`
+                            const existingMap = new Map(Array.from(selectedFiles || []).map(f => [key(f), f]))
+                            for (const f of picked) {
+                              const k = key(f)
+                              if (!existingMap.has(k)) existingMap.set(k, f)
+                            }
+                            const merged = Array.from(existingMap.values())
+                            setSelectedFiles(merged)
+                          }}
+                          disabled={!!uploadingTaskId}
+                        />
+                        <span>Pilih File</span>
+                      </label>
+                      {selectedFiles && selectedFiles.length > 0 && (
+                        <span className="text-[11px] text-gray-600">{selectedFiles.length} file dipilih</span>
+                      )}
+                    </div>
+
+                    {/* Previews ala Data Aset */}
+                    {(filePreviews && filePreviews.length > 0) && (
+                      <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {filePreviews.map((fp, idx) => (
+                          <div key={idx} className="relative border rounded p-1 text-[11px] text-gray-700 bg-white group">
+                            {/* Remove */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // remove by index
+                                setSelectedFiles(prev => prev.filter((_, i) => i !== idx))
+                                // revoke preview url
+                                try { if (filePreviews[idx]?.url) URL.revokeObjectURL(filePreviews[idx].url) } catch {}
+                                setFilePreviews(prev => prev.filter((_, i) => i !== idx))
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block"
+                              title="Hapus file ini"
+                            >
+                              ×
+                            </button>
+
+                            {fp.isImage ? (
+                              <img src={fp.url} alt={fp.name} className="w-full h-20 object-cover rounded" />
+                            ) : fp.isVideo ? (
+                              <video src={fp.url} className="w-full h-20 object-cover rounded" muted controls />
+                            ) : (
+                              <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                <span className="font-semibold truncate px-1" title={fp.name}>{(fp.name.split('.').pop() || 'FILE').toUpperCase()}</span>
+                              </div>
+                            )}
+                            <div className="mt-1 truncate text-[11px]" title={fp.name}>{fp.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-[11px] text-gray-500 mt-1">Format didukung: Gambar (semua), Video (semua).</p>
+
+                    {/* Lampiran Lama (khusus status revisi) */}
+                    {String(targetTask?.status || '').toLowerCase() === 'revisi' && Array.isArray(targetTask?.lampiran) && (
+                      <div className="mt-3">
+                        <div className="text-xs font-semibold text-gray-700 mb-2">Lampiran Lama (dianggap salah)</div>
+                        {targetTask.lampiran.length === 0 ? (
+                          <div className="text-xs text-gray-500">Tidak ada lampiran lama.</div>
+                        ) : (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {targetTask.lampiran.map((f, idx) => {
+                              const path = typeof f === 'string' ? f : (f?.path || f?.url || f?.filename || '')
+                              const url = toFileUrl(path)
+                              const name = typeof f === 'string' ? (f.split('/').pop() || f) : (f?.originalname || f?.filename || path.split('/').pop() || `file-${idx}`)
+                              const ext = getExt(name)
+                              const isImg = isImageExt(ext) || String(f?.mimetype || '').startsWith('image/')
+                              const isVid = isVideoExt(ext) || String(f?.mimetype || '').startsWith('video/')
+                              return (
+                                <div key={idx} className="relative border rounded p-1 text-[11px] text-gray-700 bg-white">
+                                  {isImg ? (
+                                    <a href={url} target="_blank" rel="noreferrer">
+                                      <img src={url} alt={name} className="w-full h-20 object-cover rounded" />
+                                    </a>
+                                  ) : isVid ? (
+                                    <a href={url} target="_blank" rel="noreferrer" className="block">
+                                      <video src={url} className="w-full h-20 object-cover rounded" muted />
+                                    </a>
+                                  ) : (
+                                    <a href={url} target="_blank" rel="noreferrer" className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                      <span className="font-semibold truncate px-1" title={name}>{(ext || 'FILE').toUpperCase()}</span>
+                                    </a>
+                                  )}
+                                  <div className="mt-1 truncate" title={name}>{name}</div>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-0 border-t bg-white">
+                  <div className="grid grid-cols-2 gap-2 px-2 pt-2 pb-2">
+                    <button
+                      type="button"
+                      onClick={closeUploadModal}
+                      className="w-full py-1.5 bg-red-700 text-white font-medium hover:bg-red-800 transition-colors rounded-lg flex items-center justify-center text-sm"
+                      disabled={!!uploadingTaskId}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmUpload}
+                      className="w-full py-1.5 bg-red-700 text-white font-medium hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center text-sm"
+                      disabled={!!uploadingTaskId}
+                    >
+                      {uploadingTaskId ? 'Mengunggah...' : 'Upload'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal Revisi Tugas */}
+          <Dialog open={showRevisiModal} onOpenChange={(o) => { if (!o) closeRevisiModal() }}>
+            <DialogContent className="p-0 max-w-sm sm:max-w-md md:max-w-md lg:max-w-lg overflow-hidden overflow-y-hidden">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+                  <div>
+                    <h2 className="text-lg font-bold leading-tight">Revisi Tugas</h2>
+                  </div>
+                  <button type="button" onClick={closeRevisiModal} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-hide">
+                  {/* Lampiran Lama */}
+                  {revisiItem && (
+                    <div className="mb-4">
+                      <div className="text-xs font-semibold text-gray-700 mb-2">Lampiran Lama (dianggap salah)</div>
+                      {Array.isArray(revisiItem.lampiran) && revisiItem.lampiran.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          {revisiItem.lampiran.map((f, idx) => {
+                            const path = typeof f === 'string' ? f : (f?.path || f?.url || f?.filename || '')
+                            const url = toFileUrl(path)
+                            const name = typeof f === 'string' ? (f.split('/').pop() || f) : (f?.originalname || f?.filename || path.split('/').pop() || `file-${idx}`)
+                            const ext = getExt(name)
+                            const isImg = isImageExt(ext) || String(f?.mimetype || '').startsWith('image/')
+                            const isVid = isVideoExt(ext) || String(f?.mimetype || '').startsWith('video/')
+                            return (
+                              <div key={idx} className="relative border rounded p-1 text-[11px] text-gray-700 bg-white group">
+                                {/* Tombol hapus lampiran lama */}
+                                <button
+                                  type="button"
+                                  title="Hapus lampiran ini"
+                                  className="absolute -top-2 -right-2 bg-red-700 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block"
+                                  onClick={async () => {
+                                    if (!revisiItem?.id) return;
+                                    if (!window.confirm('Hapus lampiran lama ini?')) return;
+                                    try {
+                                      const nextLampiran = (Array.isArray(revisiItem?.lampiran) ? revisiItem.lampiran : []).filter((_, i) => i !== idx)
+                                      const upd = await adminTugasService.updateTugasByAdmin(revisiItem.id, { lampiran: nextLampiran })
+                                      if (upd?.success || upd?.data) {
+                                        toast.success('Lampiran lama dihapus')
+                                        setRevisiItem(prev => ({ ...prev, lampiran: nextLampiran }))
+                                        await loadTugas()
+                                      } else {
+                                        toast.error('Gagal menghapus lampiran')
+                                      }
+                                    } catch (err) {
+                                      console.error('Hapus lampiran revisi error:', err)
+                                      toast.error(err?.message || 'Gagal menghapus lampiran')
+                                    }
+                                  }}
+                                >
+                                  ×
+                                </button>
+                                {isImg ? (
+                                  <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} className="w-full h-20 object-cover rounded" /></a>
+                                ) : isVid ? (
+                                  <a href={url} target="_blank" rel="noreferrer" className="block"><video src={url} className="w-full h-20 object-cover rounded" muted /></a>
+                                ) : (
+                                  <a href={url} target="_blank" rel="noreferrer" className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border"><span className="font-semibold truncate px-1" title={name}>{(ext || 'FILE').toUpperCase()}</span></a>
+                                )}
+                                <div className="mt-1 truncate" title={name}>{name}</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-gray-500">Tidak ada lampiran lama.</div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Catatan Revisi */}
+                  <div className="mb-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Catatan Revisi</label>
+                    <textarea value={revisiNote} onChange={(e) => setRevisiNote(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Jelaskan apa yang perlu direvisi" />
+                  </div>
+
+                  {/* Upload File Revisi */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Upload Lampiran Revisi (opsional)</label>
+                    <div className="flex items-center gap-3">
+                      <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-xs cursor-pointer hover:bg-gray-50">
+                        <input type="file" multiple accept="image/*,video/*" className="hidden" onChange={(e) => setRevisiFiles(Array.from(e.target.files || []))} />
+                        <span>Pilih File</span>
+                      </label>
+                      {revisiFiles && revisiFiles.length > 0 && (
+                        <span className="text-[11px] text-gray-600">{revisiFiles.length} file dipilih</span>
+                      )}
+                    </div>
+                    {revisiPreviews.length > 0 && (
+                      <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                        {revisiPreviews.map((fp, idx) => (
+                          <div key={idx} className="relative border rounded p-1 text-[11px] text-gray-700 bg-white group">
+                            <button type="button" onClick={() => { setRevisiFiles(prev => prev.filter((_, i) => i !== idx)); try { if (revisiPreviews[idx]?.url) URL.revokeObjectURL(revisiPreviews[idx].url) } catch {} setRevisiPreviews(prev => prev.filter((_, i) => i !== idx)) }} className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block" title="Hapus file ini">×</button>
+                            {fp.isImage ? (
+                              <img src={fp.url} alt={fp.name} className="w-full h-20 object-cover rounded" />
+                            ) : fp.isVideo ? (
+                              <video src={fp.url} className="w-full h-20 object-cover rounded" muted controls />
+                            ) : (
+                              <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border"><span className="font-semibold truncate px-1" title={fp.name}>{(fp.name.split('.').pop() || 'FILE').toUpperCase()}</span></div>
+                            )}
+                            <div className="mt-1 truncate" title={fp.name}>{fp.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="p-0 border-t bg-white">
+                  <div className="grid grid-cols-2 gap-2 px-2 pt-2 pb-2">
+                    <button type="button" onClick={closeRevisiModal} className="w-full py-1.5 bg-red-700 text-white font-medium hover:bg-red-800 transition-colors rounded-lg flex items-center justify-center text-sm">Tutup</button>
+                    <button type="button" onClick={handleConfirmRevisi} disabled={!!uploadingTaskId} className="w-full py-1.5 bg-red-700 text-white font-medium hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center text-sm">Kirim Revisi</button>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Modal Detail Tugas */}
+          <Dialog open={showDetail} onOpenChange={(o) => { if (!o) closeDetail() }}>
+            <DialogContent className="p-0 max-w-lg overflow-hidden overflow-y-hidden">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between px-6 py-3 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+                  <div>
+                    <h2 className="text-lg font-bold leading-tight">Detail Tugas</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeDetail}
+                    className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                    aria-label="Tutup"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Body */}
+                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-hide">
+                  {detailItem && (
+                    <div className="space-y-4 text-sm">
+                      {/* Judul & Deskripsi */}
+                      <div className="rounded-xl border bg-white">
+                        <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                          <div className="text-sm font-semibold text-gray-700">Informasi Tugas</div>
+                        </div>
+                        <div className="p-4 space-y-2">
+                          <div>
+                            <div className="text-xs text-gray-600">Judul</div>
+                            <div className="text-base font-semibold text-gray-900">{detailItem.judul_tugas || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600">Keterangan</div>
+                            <div className="text-gray-800 whitespace-pre-wrap">{detailItem.keterangan_tugas || '-'}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Grid Info */}
+                      <div className="rounded-xl border bg-white">
+                        <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                          <div className="text-sm font-semibold text-gray-700">Detail</div>
+                        </div>
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <div className="text-xs text-gray-600">Pemberi</div>
+                            <div className="text-gray-900">{detailItem?.pemberiTugas?.nama || getUserName(detailItem.pemberi_tugas)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600">Penerima</div>
+                            <div className="text-gray-900">{detailItem?.penerimaTugas?.nama || getUserName(detailItem.penerima_tugas)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600">Status</div>
+                            <div className="text-gray-900 capitalize">{detailItem.status || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600">Prioritas</div>
+                            <div className="text-gray-900 capitalize">{detailItem.skala_prioritas || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600">Target Selesai</div>
+                            <div className="text-gray-900">{formatDate(detailItem.target_selesai)}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-600">Terakhir Diubah</div>
+                            <div className="text-gray-900">{formatDate(detailItem.updated_at || detailItem.created_at)}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lampiran */}
+                      <div className="rounded-xl border bg-white">
+                        <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+                          <div className="text-sm font-semibold text-gray-700">Lampiran</div>
+                        </div>
+                        <div className="p-4 space-y-1">
+                          {!(Array.isArray(detailItem?.lampiran) && detailItem.lampiran.length > 0) ? (
+                            <div className="text-sm text-gray-500">Belum ada lampiran.</div>
+                          ) : (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {detailItem.lampiran.map((f, idx) => {
+                                const path = typeof f === 'string' ? f : (f?.path || f?.url || f?.filename || '')
+                                const url = toFileUrl(path)
+                                const name = typeof f === 'string' ? (f.split('/').pop() || f) : (f?.originalname || f?.filename || path.split('/').pop() || `file-${idx}`)
+                                const ext = getExt(name)
+                                const isImg = isImageExt(ext) || String(f?.mimetype || '').startsWith('image/')
+                                return (
+                                  <div key={idx} className="border rounded-md p-1 flex flex-col gap-1">
+                                    {isImg ? (
+                                      <a href={url} target="_blank" rel="noreferrer" className="block" title={name}>
+                                        <img src={url} alt={name} className="w-full h-20 object-cover rounded" />
+                                      </a>
+                                    ) : (
+                                      <a href={url} target="_blank" rel="noreferrer" className="text-[11px] text-blue-600 truncate text-left hover:underline" title={name}>
+                                        {name}
+                                      </a>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                <div className="p-0 border-t bg-white">
+                  <div className="px-2 py-2 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={closeDetail}
+                      className="w-full py-2 bg-red-700 text-white font-medium hover:bg-red-800 transition-colors rounded-lg"
+                    >
+                      Tutup
+                    </button>
+                    {renderDetailAction(detailItem)}
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>

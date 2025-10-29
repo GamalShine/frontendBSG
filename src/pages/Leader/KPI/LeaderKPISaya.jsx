@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { MENU_CODES } from '@/config/menuCodes'
 import { useAuth } from '../../../contexts/AuthContext'
 import api from '../../../services/api'
 import { API_CONFIG } from '../../../config/constants'
@@ -45,8 +46,8 @@ const LeaderKPISaya = () => {
     } catch (e) {
       const status = e?.response?.status
       const msg = e?.response?.data?.message || e?.message
-      if (status === 404) {
-        console.warn('[LeaderKPISaya] Data divisi leader tidak ditemukan, fallback ke KPI kategori leader umum.')
+      const doFallbackToLeaderCategory = async () => {
+        console.warn('[LeaderKPISaya] Fallback ke /kpi/category/leader karena status:', status, 'msg:', msg)
         try {
           const alt = await api.get('/kpi/category/leader')
           const arr = Array.isArray(alt?.data?.data) ? alt.data.data : (Array.isArray(alt?.data) ? alt.data : [])
@@ -69,14 +70,17 @@ const LeaderKPISaya = () => {
           setKpiData({ divisi: [], leader: [], individu: [] })
           setSelectedItem(null)
         }
+      }
+
+      if (status === 404) {
+        await doFallbackToLeaderCategory()
       } else if (status === 401) {
         setError('Tidak terotorisasi. Silakan login ulang atau periksa token akses Anda.')
         setKpiData({ divisi: [], leader: [], individu: [] })
         setSelectedItem(null)
       } else {
-        setError(msg || 'Gagal memuat KPI saya')
-        setKpiData({ divisi: [], leader: [], individu: [] })
-        setSelectedItem(null)
+        // Untuk kasus 500 atau error lain, coba fallback dulu
+        await doFallbackToLeaderCategory()
       }
     } finally {
       setLoading(false)
@@ -144,23 +148,22 @@ const LeaderKPISaya = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header - gaya Owner/Admin */}
-      <div className="bg-red-800 text-white px-6 py-4">
+    <div className="min-h-screen bg-gray-50">
+      {/* Header - konsisten dengan Admin */}
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">LEADER</span>
+            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.kpi}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">KPI SAYA</h1>
-              <p className="text-sm text-red-100">Daftar KPI berdasarkan Divisi yang Anda pimpin</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Last Update Info */}
-      <div className="bg-gray-200 px-6 py-2">
-        <p className="text-sm text-gray-600">Data terakhir diupdate: {lastUpdatedText}</p>
+      <div className="bg-gray-200 px-4 sm:px-6 py-2">
+        <p className="text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</p>
       </div>
 
       {/* Tidak ada tabs: halaman ini khusus kategori Leader */}

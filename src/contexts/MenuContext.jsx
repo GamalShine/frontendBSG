@@ -47,14 +47,8 @@ export const MenuProvider = ({ children }) => {
     // Menu Chat dihilangkan untuk semua role
     switch(role) {
       case 'admin':
-        // Menu Daftar Tugas untuk Admin
-        baseMenus.push({
-          id: 'daftar-tugas',
-          title: 'DAFTAR TUGAS',
-          icon: 'CheckSquare',
-          path: '/admin/tugas',
-          permissions: ['read', 'create', 'update', 'delete']
-        });
+        // Menu Daftar Tugas untuk Admin DISSEMBUNYIKAN sesuai permintaan
+        // (tidak menambahkan item 'DAFTAR TUGAS' ke sidebar)
         break;
       case 'owner':
         // Menu Daftar Tugas untuk Owner
@@ -126,6 +120,15 @@ export const MenuProvider = ({ children }) => {
           ]
         });
         
+        // Menu STRUKTUR & JOBDESK sebagai top-level untuk Owner
+        baseMenus.push({
+          id: 'struktur-jobdesk',
+          title: 'STRUKTUR & JOBDESK',
+          path: '/owner/sdm/struktur-jobdesk',
+          icon: 'Users2',
+          permissions: ['read']
+        });
+
         // Menu SDM untuk Owner
         baseMenus.push({
           id: 'sdm',
@@ -133,12 +136,6 @@ export const MenuProvider = ({ children }) => {
           icon: 'Users2',
           permissions: ['read'],
           children: [
-            {
-              id: 'struktur-jobdesk',
-              title: 'STRUKTUR & JOBDESK',
-              path: '/owner/sdm/struktur-jobdesk',
-              permissions: ['read']
-            },
             {
               id: 'sop-aturan',
               title: 'ATURAN & SOP',
@@ -349,6 +346,8 @@ export const MenuProvider = ({ children }) => {
           ]
         });
         
+        // Menu STRUKTUR & JOBDESK DISSEMBUNYIKAN
+
         // Menu SDM untuk Admin
         baseMenus.push({
           id: 'sdm',
@@ -356,13 +355,6 @@ export const MenuProvider = ({ children }) => {
           icon: 'Users2',
           permissions: ['read'],
           children: [
-            {
-              id: 'struktur-jobdesk',
-              title: 'STRUKTUR & JOBDESK',
-              path: '/admin/sdm/struktur-jobdesk',
-              permissions: ['read'],
-              picKey: 'AdminSdmStrukturJobdesk'
-            },
             {
               id: 'sop-aturan',
               title: 'ATURAN & SOP',
@@ -444,20 +436,6 @@ export const MenuProvider = ({ children }) => {
               picKey: 'AdminDataInvestor'
             },
             {
-              id: 'daftar-saran',
-              title: 'DAFTAR SARAN',
-              path: '/admin/operasional/saran',
-              permissions: ['read'],
-              picKey: 'AdminDaftarSaran'
-            },
-            {
-              id: 'daftar-komplain',
-              title: 'DAFTAR KOMPLAIN',
-              path: '/admin/operasional/komplain',
-              permissions: ['read'],
-              picKey: 'AdminDaftarKomplain'
-            },
-            {
               id: 'data-bina-lingkungan',
               title: 'DATA BINA LINGKUNGAN',
               path: '/admin/operasional/bina-lingkungan',
@@ -466,6 +444,10 @@ export const MenuProvider = ({ children }) => {
             }
           ]
         });
+
+        // Menu DAFTAR SARAN & DAFTAR KOMPLAIN DISSEMBUNYIKAN
+
+        // Menu personal (TUGAS SAYA APA?, SOP TERKAIT, KPI SAYA, SLIP GAJI SAYA) DISSEMBUNYIKAN
         
         // Menu Marketing untuk Admin
         baseMenus.push({
@@ -551,6 +533,15 @@ export const MenuProvider = ({ children }) => {
             }
           ]
         });
+        // Menu STRUKTUR & JOBDESK sebagai top-level untuk Divisi
+        baseMenus.push({
+          id: 'struktur-jobdesk',
+          title: 'STRUKTUR & JOBDESK',
+          path: '/divisi/sdm/struktur-jobdesk',
+          icon: 'Users2',
+          permissions: ['read']
+        });
+
         // Menu SDM untuk Divisi
         baseMenus.push({
           id: 'sdm',
@@ -558,12 +549,6 @@ export const MenuProvider = ({ children }) => {
           icon: 'Users2',
           permissions: ['read'],
           children: [
-            {
-              id: 'struktur-jobdesk',
-              title: 'STRUKTUR & JOBDESK',
-              path: '/divisi/sdm/struktur-jobdesk',
-              permissions: ['read']
-            },
             {
               id: 'sop-aturan',
               title: 'ATURAN & SOP',
@@ -593,7 +578,35 @@ export const MenuProvider = ({ children }) => {
         break;
     }
     
-    // Profile menu for all users
+    // Urutkan khusus role admin sesuai preferensi
+    if (role === 'admin') {
+      const desiredOrder = [
+        'dashboard',
+        'daftar-tugas',
+        'daftar-saran',
+        'struktur-jobdesk',
+        'tugas-saya',
+        'daftar-komplain',
+        'sop-terkait',
+        'kpi-saya',
+        'slip-gaji-saya',
+        'keuangan',
+        'sdm',
+        'operasional',
+        'marketing',
+        // Item lain (jika ada) akan mengikuti setelah ini
+        'settings',
+        'video-library'
+      ]
+      const pos = new Map(desiredOrder.map((id, idx) => [id, idx]))
+      baseMenus.sort((a, b) => {
+        const ai = pos.has(a.id) ? pos.get(a.id) : Number.MAX_SAFE_INTEGER
+        const bi = pos.has(b.id) ? pos.get(b.id) : Number.MAX_SAFE_INTEGER
+        return ai - bi
+      })
+    }
+
+    // Profile menu: selalu ditampilkan untuk semua role (termasuk admin)
     baseMenus.push({
       id: 'profile',
       title: 'Profile',
