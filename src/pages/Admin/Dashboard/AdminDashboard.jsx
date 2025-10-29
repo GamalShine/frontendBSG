@@ -1,127 +1,234 @@
-import React, { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
-import Card, { CardHeader, CardBody } from '../../../components/UI/Card'
-import Button from '../../../components/UI/Button'
-import Badge from '../../../components/UI/Badge'
-import toast from 'react-hot-toast'
+import Card, { CardBody } from '../../../components/UI/Card'
 import { videoManageService } from '../../../services/videoManageService'
+import { API_CONFIG } from '../../../config/constants'
+import { SkipBack, Play, Pause, SkipForward, Volume2, VolumeX, Users2, ClipboardList, AlertTriangle, FileText, ChevronRight } from 'lucide-react'
 
 const AdminDashboard = () => {
   const { user } = useAuth()
   const [videoUrl, setVideoUrl] = useState('')
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [loading, setLoading] = useState(false)
   const [targetRole, setTargetRole] = useState('admin') // admin | leader
-  const navigate = useNavigate()
+  const [videoError, setVideoError] = useState('')
+  const [list, setList] = useState([])
+  const [currentIdx, setCurrentIdx] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const videoRef = useRef(null)
 
-  // Load current video from backend (berdasarkan targetRole)
+  const toAbsoluteUrl = (path) => {
+    if (!path) return ''
+    if (/^https?:\/\//i.test(path)) return path
+    const base = API_CONFIG?.BASE_HOST || ''
+    return `${base}${path.startsWith('/') ? path : '/' + path}`
+  }
+
+  // Load daftar video dan tentukan aktif/default
   useEffect(() => {
     const load = async () => {
       if (!(user?.role === 'admin' || user?.role === 'owner')) return
       try {
-        const res = await videoManageService.getCurrent(targetRole)
-        const url = res?.data?.url || ''
+        // Ambil list video untuk role target
+        const res = await videoManageService.list(targetRole)
+        const items = res?.data || []
+        // Normalisasi url absolut
+        const normalized = items.map(v => ({ ...v, url: toAbsoluteUrl(v?.url || '') }))
+        setList(normalized)
+
+        // Tentukan index aktif atau fallback ke index 0
+        const activeIndex = normalized.findIndex(v => v.active)
+        const idx = activeIndex >= 0 ? activeIndex : 0
+        const url = normalized[idx]?.url || ''
+        setCurrentIdx(idx)
         setVideoUrl(url)
+        setVideoError('')
+
+        // Jika list kosong untuk role saat ini, fallback ke role lain
+        if (!url) {
+          const altRole = targetRole === 'admin' ? 'leader' : 'admin'
+          try {
+            const altRes = await videoManageService.list(altRole)
+            const altItems = (altRes?.data || []).map(v => ({ ...v, url: toAbsoluteUrl(v?.url || '') }))
+            if (altItems.length > 0) {
+              setList(altItems)
+              setCurrentIdx(0)
+              setTargetRole(altRole)
+              setVideoUrl(altItems[0].url)
+              setVideoError('')
+            }
+          } catch (altErr) {
+            console.warn('[AdminDashboard] Fallback gagal untuk list role lain', altErr)
+          }
+        }
       } catch (e) {
         console.error('Gagal memuat video admin:', e)
       }
     }
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.role, targetRole])
 
-  const goToVideoLibrary = () => {
-    navigate('/admin/video-library')
+  // Sinkronkan play/pause dan mute pada element video
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    el.muted = muted
+    if (isPlaying) {
+      el.play().catch(() => setIsPlaying(false))
+    } else {
+      el.pause()
+    }
+  }, [isPlaying, muted, videoUrl])
+
+  const handlePrev = () => {
+    if (!list.length) return
+    const nextIdx = (currentIdx - 1 + list.length) % list.length
+    setCurrentIdx(nextIdx)
+    setVideoUrl(list[nextIdx].url)
+    setIsPlaying(true)
   }
 
-  const handleUpload = async () => {
-    if (!selectedFile) return toast.error('Pilih file video terlebih dahulu')
-    try {
-      setLoading(true)
-      const res = await videoManageService.upload(targetRole, selectedFile)
-      setVideoUrl(res?.data?.url || '')
-      setSelectedFile(null)
-      toast.success('Video berhasil diunggah')
-    } catch (e) {
-      console.error(e)
-      toast.error(e?.message || 'Gagal mengunggah video')
-    } finally {
-      setLoading(false)
-    }
+  const handleNext = () => {
+    if (!list.length) return
+    const nextIdx = (currentIdx + 1) % list.length
+    setCurrentIdx(nextIdx)
+    setVideoUrl(list[nextIdx].url)
+    setIsPlaying(true)
   }
+
+  const togglePlay = () => setIsPlaying(v => !v)
+  const toggleMute = () => setMuted(v => !v)
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
-          <p className="text-gray-600 mt-2">Selamat datang di dashboard Admin.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="success">Administrator</Badge>
+    <div className="pt-1 -mx-0 sm:-mx-1">
+      {(user?.role === 'admin' || user?.role === 'owner') && (
+            <div className="aspect-[21/9] w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg">
+              {videoUrl && !videoError ? (
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  src={videoUrl}
+                  onEnded={handleNext}
+                  onCanPlay={() => isPlaying && videoRef.current?.play()}
+                  onError={() => {
+                    console.warn('[AdminDashboard] Gagal memuat file video:', videoUrl)
+                    setVideoError('Gagal memuat file video (500).')
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  {videoError || 'Tidak ada video'}
+                </div>
+              )}
+
+              {/* Kontrol kustom: bar merah */}
+              <div className="absolute bottom-0 left-0 right-0 bg-red-700/95 text-white">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label="Sebelumnya"
+                    >
+                      <SkipBack className="w-6 h-6" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label={isPlaying ? 'Jeda' : 'Putar'}
+                    >
+                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label="Berikutnya"
+                    >
+                      <SkipForward className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="text-sm opacity-90">
+                    {list.length > 0 ? `${currentIdx + 1} / ${list.length}` : '0 / 0'}
+                  </div>
+
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={toggleMute}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label={muted ? 'Unmute' : 'Mute'}
+                    >
+                      {muted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+      )}
+      {/* Fitur Dashboard (versi website) */}
+      {false && (
+      <div className="mt-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Fitur Dashboard</h2>
+        <div className="space-y-3">
+          {/* Struktur & Jobdesk */}
+          <Link to="/admin/struktur-jobdesk" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <Users2 className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">Struktur & Jobdesk</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+
+          {/* Tugas Saya Apa? */}
+          <Link to="/admin/tugas-saya" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">Tugas Saya Apa?</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+
+          {/* Daftar Komplain */}
+          <Link to="/admin/komplain" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">Daftar Komplain</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+
+          {/* SOP Terkait */}
+          <Link to="/admin/sop-terkait" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">SOP Terkait</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
         </div>
       </div>
-
-      {/* Video Section: tampil untuk admin dan owner */}
-      {(user?.role === 'admin' || user?.role === 'owner') && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-gray-900">Video Pembuka</h3>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">Target Role</label>
-                <select
-                  value={targetRole}
-                  onChange={(e) => setTargetRole(e.target.value)}
-                  className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="admin">Admin</option>
-                  <option value="leader">Leader</option>
-                </select>
-                <Button variant="ghost" onClick={goToVideoLibrary}>Semua Video</Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
-                {videoUrl ? (
-                  <div className="aspect-video w-full bg-black/5 rounded-lg overflow-hidden">
-                    <video className="w-full h-full" src={videoUrl} controls />
-                  </div>
-                ) : (
-                  <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                    Tidak ada video. Unggah file video untuk role {targetRole}.
-                  </div>
-                )}
-              </div>
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">Unggah Video (mp4, webm, dll.)</label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <div className="flex gap-2">
-                  <Button onClick={handleUpload} disabled={loading}>{loading ? 'Menyimpan...' : 'Simpan'}</Button>
-                  <Button variant="ghost" onClick={() => setSelectedFile(null)}>Reset</Button>
-                </div>
-                <p className="text-xs text-gray-500">File akan disimpan ke backend dan ditampilkan otomatis untuk role {targetRole}.</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
       )}
-
-      {/* Placeholder konten admin lama */}
-      <Card>
-        <CardBody>
-          <p className="text-gray-600">Tambahkan widget dan ringkasan khusus admin di sini.</p>
-        </CardBody>
-      </Card>
-
     </div>
   )
 }

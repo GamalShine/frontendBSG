@@ -13,7 +13,7 @@ const LeaderTugasSaya = () => {
   const [limit, setLimit] = useState(10)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ tugas_saya: '', id_user: '' })
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
   const [users, setUsers] = useState([])
 
   const fetchData = async () => {
@@ -64,48 +64,52 @@ const LeaderTugasSaya = () => {
   }, [rows])
 
   return (
-    <div className="p-0 bg-gray-100 min-h-screen">
-      {/* Header Merah */}
-      <div className="bg-red-800 text-white px-6 py-4">
+    <div className="p-0 bg-gray-50 min-h-screen">
+      {/* Header - mengikuti gaya Admin Saran */}
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.daftarTugas}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TUGAS SAYA</h1>
-              <p className="text-sm text-red-100">Daftar tugas yang tercatat untuk Anda</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowFilters(v => !v)} className="px-4 py-2 rounded-full border border-white/60 text-white bg-transparent">PENCARIAN</button>
-            <button onClick={() => fetchData()} className="px-4 py-2 rounded-full border border-white/60 text-white bg-transparent inline-flex items-center gap-2" title="Refresh">
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white bg-transparent" onClick={()=>setShowForm(true)}>
-              <span>＋</span>
-              <span>Tambah</span>
-            </button>
+            {/* Tombol Refresh dan Tambah disembunyikan sesuai permintaan */}
           </div>
         </div>
       </div>
 
-      {/* Strip Terakhir Diupdate */}
-      <div className="bg-gray-200 px-6 py-2 text-xs text-gray-600">Terakhir diupdate: {lastUpdatedText}</div>
+      {/* Subheader: Terakhir diupdate */}
+      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Panel Filter (Toggle) */}
       {showFilters && (
-        <div className="bg-white rounded-none shadow-sm border border-gray-100 my-4">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-6 mb-3">
           <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Cari tugas saya" className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                  <input
+                    type="text"
+                    value={q}
+                    onChange={e=>setQ(e.target.value)}
+                    onKeyDown={(e)=>{ if(e.key==='Enter'){ setPage(1); fetchData(); } }}
+                    placeholder="Cari tugas saya..."
+                    className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
                 </div>
               </div>
-              <div className="md:col-span-2 flex items-end gap-2">
-                <button className="rounded bg-red-600 text-white px-4 py-2 hover:bg-red-700" onClick={()=>{setPage(1);fetchData()}}>Terapkan</button>
-                <button className="rounded border px-4 py-2" onClick={()=>{setQ('');setPage(1);fetchData()}}>Reset</button>
+              <div className="flex items-end">
+                <button
+                  onClick={()=>{ setQ(''); setPage(1); fetchData(); }}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="font-semibold">Reset</span>
+                </button>
               </div>
             </div>
           </div>
@@ -173,21 +177,24 @@ const LeaderTugasSaya = () => {
         </div>
       )}
 
-      <div className="rounded-lg border bg-white overflow-hidden mx-0 md:mx-6 mt-4 md:mt-6">
-        <div className="relative overflow-x-auto max-h-[60vh] overflow-y-auto">
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-6">
+        <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Daftar Tugas Saya</h2>
+        </div>
+        <div className="relative overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="sticky top-0 bg-red-700 z-10">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">NO</th>
-                <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">TUGAS SAYA</th>
-                <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">DIBUAT OLEH</th>
-                <th className="px-4 py-3 text-left text-xs font-extrabold text-white uppercase tracking-wider">DITUGASKAN KE</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">No</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Tugas Saya</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Dibuat Oleh</th>
+                <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Ditugaskan Ke</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="bg-white divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-100">Memuat data…</td>
+                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">Memuat data…</td>
                 </tr>
               ) : data.length === 0 ? (
                 <tr>

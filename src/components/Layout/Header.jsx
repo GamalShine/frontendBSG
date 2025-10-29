@@ -7,7 +7,7 @@ import {
   User, 
   Settings, 
   LogOut,
-  
+  Lock,
 } from 'lucide-react'
 import { getInitials } from '../../utils/helpers'
 import Breadcrumb from './Breadcrumb'
@@ -75,16 +75,10 @@ const Header = ({ onMenuClick, unreadCount }) => {
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center space-x-3 p-2 rounded-md hover:bg-gray-100"
+              className="flex items-center p-2 rounded-md hover:bg-gray-100"
               disabled={loggingOut}
             >
-              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                {getInitials(user?.nama || user?.username || 'U')}
-              </div>
-              <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900">{user?.nama || user?.username || 'User'}</p>
-                <p className="text-xs text-gray-500">{user?.role || 'Member'}</p>
-              </div>
+              <Settings className="h-6 w-6 text-gray-700" />
             </button>
 
             {/* User dropdown */}
@@ -97,6 +91,14 @@ const Header = ({ onMenuClick, unreadCount }) => {
                 >
                   <User className="h-4 w-4 mr-3" />
                   Profile
+                </Link>
+                <Link
+                  to="/profile/password"
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <Lock className="h-4 w-4 mr-3" />
+                  Password
                 </Link>
                 <button
                   onClick={handleLogout}

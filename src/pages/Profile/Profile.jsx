@@ -272,7 +272,7 @@ const Profile = () => {
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
               <div className="text-gray-900 font-semibold text-base md:text-lg mb-5">Support & Help</div>
               <div className="divide-y divide-gray-200">
-                <Link to="#" className="flex items-center justify-between py-3 hover:bg-gray-50 rounded-lg">
+                <Link to="/help-center" className="flex items-center justify-between py-3 hover:bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center"><HelpCircle className="h-5 w-5"/></div>
                     <div>
@@ -282,7 +282,7 @@ const Profile = () => {
                   </div>
                   <div className="text-gray-300">›</div>
                 </Link>
-                <Link to="#" className="flex items-center justify-between py-3 hover:bg-gray-50 rounded-lg">
+                <Link to="/contact-support" className="flex items-center justify-between py-3 hover:bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center"><MessageCircle className="h-5 w-5"/></div>
                     <div>

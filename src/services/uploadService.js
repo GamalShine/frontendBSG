@@ -9,7 +9,7 @@ export const uploadService = {
             formData.append('file', file)
             formData.append('type', type)
 
-            const response = await api.post(API_ENDPOINTS.UPLOAD.GENERAL, formData, {
+            const response = await api.post(`${API_ENDPOINTS.UPLOAD.GENERAL}/files`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
@@ -25,12 +25,13 @@ export const uploadService = {
     async uploadMultipleFiles(files, type = 'general') {
         try {
             const formData = new FormData()
-            files.forEach((file, index) => {
-                formData.append(`files[${index}]`, file)
+            files.forEach((file) => {
+                // Backend expects repeated 'files' fields: upload.array('files')
+                formData.append('files', file)
             })
             formData.append('type', type)
 
-            const response = await api.post(API_ENDPOINTS.UPLOAD.GENERAL, formData, {
+            const response = await api.post(`${API_ENDPOINTS.UPLOAD.GENERAL}/files`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },

@@ -309,67 +309,73 @@ const AdminKomplainList = () => {
         </Card>
       </div>
 
-      {/* List as Cards */}
+      {/* List as Table */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="px-4 py-3 border-b">
           <h2 className="text-2xl font-bold text-gray-900">Daftar Komplain</h2>
         </div>
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {komplain.map((item) => (
-              <div key={item.id} className="relative border rounded-lg p-4 hover:shadow-md transition-shadow">
-                {/* Actions */}
-                <div className="absolute top-2 right-2 flex items-center gap-1">
-                  <button
-                    type="button"
-                    title="Lihat"
-                    onClick={() => handleViewDetail(item)}
-                    className="p-2 rounded hover:bg-gray-100 text-gray-700"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Edit"
-                    onClick={() => handleEdit(item.id)}
-                    className="p-2 rounded hover:bg-gray-100 text-amber-600"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    title="Hapus"
-                    onClick={() => handleDelete(item.id)}
-                    className="p-2 rounded hover:bg-gray-100 text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="pr-16">
-                  <h3 className="text-base font-semibold text-gray-900 mb-1">{item.judul_komplain}</h3>
-                  <div className="flex flex-wrap gap-2 text-xs mb-2">
-                    {getKategoriBadge(item.kategori)}
-                    {getPrioritasBadge(item.prioritas)}
-                    {getStatusBadge(item.status)}
-                  </div>
-                  <div className="text-sm text-gray-700 space-y-1">
-                    <div>
-                      <span className="text-gray-500">Pelapor:</span>{' '}
-                      <span className="font-medium">{item.pelapor.nama}</span>
-                      <span className="text-gray-500"> • {item.pelapor.email}</span>
+        <div className="relative overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="pl-4 sm:pl-6 pr-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">No</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Judul</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Kategori</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Prioritas</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Pelapor</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Tgl Lapor</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Target Selesai</th>
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {komplain.map((item, idx) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="pl-4 sm:pl-6 pr-2 py-3 text-sm text-gray-900">{idx + 1 + (currentPage - 1) * 10}</td>
+                  <td className="px-3 py-3 text-sm font-medium text-gray-900 max-w-[18rem] truncate" title={item.judul_komplain}>{item.judul_komplain}</td>
+                  <td className="px-3 py-3 text-sm">{getKategoriBadge(item.kategori)}</td>
+                  <td className="px-3 py-3 text-sm">{getPrioritasBadge(item.prioritas)}</td>
+                  <td className="px-3 py-3 text-sm">{getStatusBadge(item.status)}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">
+                    <div className="truncate max-w-[14rem]" title={`${item.pelapor.nama} • ${item.pelapor.email}`}>
+                      {item.pelapor.nama} <span className="text-gray-400">•</span> {item.pelapor.email}
                     </div>
-                    <div className="text-gray-500">
-                      Tgl Lapor: {format(new Date(item.tanggal_pelaporan), 'dd MMM yyyy', { locale: id })}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{format(new Date(item.tanggal_pelaporan), 'dd MMM yyyy', { locale: id })}</td>
+                  <td className="px-3 py-3 text-sm text-gray-700">{item.target_selesai ? format(new Date(item.target_selesai), 'dd MMM yyyy', { locale: id }) : '-'}</td>
+                  <td className="px-3 py-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        title="Lihat"
+                        onClick={() => handleViewDetail(item)}
+                        className="p-2 rounded hover:bg-gray-100 text-gray-700"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Edit"
+                        onClick={() => handleEdit(item.id)}
+                        className="p-2 rounded hover:bg-gray-100 text-amber-600"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Hapus"
+                        onClick={() => handleDelete(item.id)}
+                        className="p-2 rounded hover:bg-gray-100 text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                    <div className="text-gray-500">
-                      Target Selesai: {item.target_selesai ? format(new Date(item.target_selesai), 'dd MMM yyyy', { locale: id }) : '-'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

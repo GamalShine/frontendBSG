@@ -142,5 +142,39 @@ export const adminKomplainService = {
         } catch (error) {
             throw error.response?.data || error.message
         }
+    },
+
+    // Upload lampiran komplain (hanya untuk admin/penerima)
+    // Backend route: POST /admin/komplain/:id/upload (multer field: 'lampiran') dan membutuhkan catatan_admin
+    async uploadLampiran(komplainId, files = [], catatan_admin = '') {
+        try {
+            const fd = new FormData()
+            for (const f of files) fd.append('lampiran', f)
+            if (typeof catatan_admin === 'string') fd.append('catatan_admin', catatan_admin)
+            const response = await api.post(`/admin/komplain/${komplainId}/upload`, fd, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
+    },
+
+    // Hapus lampiran berdasarkan index
+    async deleteLampiran(komplainId, index) {
+        // PERINGATAN: Endpoint hapus lampiran spesifik belum tersedia di backend adminKomplain.js
+        // Fungsi ini akan menghasilkan 404 jika dipanggil.
+        // Pertimbangkan untuk membuat endpoint backend terlebih dahulu sebelum menggunakan fungsi ini.
+        throw new Error('Endpoint hapus lampiran belum tersedia di backend')
+    },
+
+    // Update catatan admin tanpa upload
+    async updateCatatan(komplainId, catatan_admin) {
+        try {
+            const response = await api.put(`/admin/komplain/${komplainId}/catatan`, { catatan_admin })
+            return response.data
+        } catch (error) {
+            throw error.response?.data || error.message
+        }
     }
-} 
+}

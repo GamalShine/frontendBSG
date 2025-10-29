@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { adminKomplainService, komplainService } from '@/services/komplainService';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { API_CONFIG } from '@/config/constants';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
 import {
   Plus,
@@ -20,6 +22,7 @@ import {
 
 const AdminDaftarKomplain = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,7 +37,23 @@ const AdminDaftarKomplain = () => {
   const [editData, setEditData] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
-  
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [catatanAdmin, setCatatanAdmin] = useState('');
+
+  // File URL helper (mirip Data Aset)
+  const toFileUrl = (p) => {
+    try {
+      if (!p) return '#';
+      const raw = String(p);
+      if (/^https?:\/\//i.test(raw)) return raw;
+      const clean = raw.replace(/^\/+/, '');
+      const base = API_CONFIG?.BASE_HOST || '';
+      return encodeURI(`${base}/${clean}`);
+    } catch {
+      return '#';
+    }
+  };
+
 
   useEffect(() => {
     loadData();
@@ -221,7 +240,7 @@ const AdminDaftarKomplain = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-red-800 text-white px-6 py-4">
+      <div className="bg-red-800 text-white px-6 py-5 md:py-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">O01-C1</span>
@@ -230,14 +249,16 @@ const AdminDaftarKomplain = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => { setEditData(null); setShowForm(true); }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="font-semibold">Tambah</span>
-            </button>
+            {false && (
+              <button
+                type="button"
+                onClick={() => { setEditData(null); setShowForm(true); }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="font-semibold">Tambah</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -335,7 +356,7 @@ const AdminDaftarKomplain = () => {
         </div>
       </div>
 
-      {/* Daftar Komplain - Grid Cards */}
+      {/* Daftar Komplain - Tabel */}
       <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-3">
         <div className="px-6 py-3 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Daftar Komplain</h2>
@@ -348,40 +369,77 @@ const AdminDaftarKomplain = () => {
             <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</h3>
             <p className="text-gray-500 mb-4">Belum ada komplain yang tersedia</p>
-            <Link
-              to="/admin/operasional/komplain/new"
-              className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tambah Komplain</span>
-            </Link>
+            {false && (
+              <Link
+                to="/admin/operasional/komplain/new"
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Tambah Komplain</span>
+              </Link>
+            )}
           </div>
         ) : (
           <>
-            <div className="p-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
-                {paginatedItems.map((row, idx) => {
-                  const pelapor = row?.Pelapor || row?.pelapor || {};
-                  return (
-                    <div key={row.id} className="relative bg-white border border-gray-100 rounded-md p-3 hover:shadow-md transition-shadow text-xs" onClick={() => { setDetailItem(row); setShowDetail(true); }}>
-                      {/* Actions (no eye/copy) */}
-                      <div className="absolute top-2 right-2 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                        <button title="Edit" onClick={() => { setEditData(row); setShowForm(true); }} className="p-2 rounded hover:bg-gray-100 text-amber-600"><Edit className="h-4 w-4"/></button>
-                        <button title="Hapus" onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-gray-100 text-red-600"><Trash2 className="h-4 w-4"/></button>
-                      </div>
-                      <div className="pr-16">
-                        <div className="text-[10px] text-gray-500">{formatDate(row?.created_at || row?.tanggal_pelaporan)}</div>
-                        <h3 className="text-sm font-semibold text-gray-900 mt-0.5">{row?.judul_komplain || '-'}</h3>
-                        <p className="text-xs text-gray-700 mt-1 line-clamp-2">{truncateText(row?.deskripsi_komplain, 140)}</p>
-                        <div className="mt-2 text-xs text-gray-700 space-y-1">
-                          <div><span className="text-gray-500">Pelapor:</span> <span className="font-medium">{pelapor?.username || pelapor?.nama || '-'}</span></div>
-                          <div className="capitalize"><span className="text-gray-500">Status:</span> {row?.status || '-'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="relative overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="sticky top-0 bg-red-700 z-10">
+                  <tr>
+                    <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.length === paginatedItems.length && paginatedItems.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-white text-white focus:ring-white"
+                        aria-label="Pilih semua"
+                      />
+                    </th>
+                    <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">No</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Judul</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Pelapor</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-extrabold text-white uppercase tracking-wider">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {paginatedItems.map((row, idx) => {
+                    const pelapor = row?.Pelapor || row?.pelapor || {};
+                    return (
+                      <tr
+                        key={row.id}
+                        className="hover:bg-gray-50/80 cursor-pointer"
+                        onClick={() => { setDetailItem(row); setShowDetail(true); }}
+                      >
+                        <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(row.id)}
+                            onChange={() => handleCheckboxChange(row.id)}
+                            className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+                            aria-label={`Pilih baris ${((currentPage - 1) * pageSize) + (idx + 1)}`}
+                          />
+                        </td>
+                        <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 py-3 text-sm text-gray-900">{(currentPage - 1) * pageSize + (idx + 1)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 font-semibold">{formatDate(row?.created_at || row?.tanggal_pelaporan).toUpperCase()}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-[22rem]" title={row?.judul_komplain || '-'}>{row?.judul_komplain || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                          <div className="truncate max-w-[16rem]" title={`${pelapor?.username || pelapor?.nama || '-'}`}>
+                            {pelapor?.username || pelapor?.nama || '-'}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 capitalize">{row?.status || '-'}</td>
+                        <td className="px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <button title="Edit" onClick={() => { setEditData(row); setShowForm(true); }} className="p-2 rounded hover:bg-gray-100 text-amber-600"><Edit className="h-4 w-4"/></button>
+                            <button title="Hapus" onClick={() => handleDelete(row.id)} className="p-2 rounded hover:bg-gray-100 text-red-600"><Trash2 className="h-4 w-4"/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {/* Pagination */}
@@ -436,24 +494,44 @@ const AdminDaftarKomplain = () => {
             <form onSubmit={async (e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
-              const payload = {
+              // Saat edit, kita tidak mengubah judul/deskripsi sesuai permintaan (field disembunyikan)
+              // Saat tambah (editData null), kita tetap ambil dari form
+              const isEdit = !!editData?.id;
+              const payload = !isEdit ? {
                 judul_komplain: (fd.get('judul_komplain') || '').toString().trim(),
                 deskripsi_komplain: (fd.get('deskripsi_komplain') || '').toString().trim(),
-                kategori: (fd.get('kategori') || 'lainnya').toString(),
-                prioritas: (fd.get('prioritas') || 'berproses').toString(),
-                status: (fd.get('status') || 'menunggu').toString()
-              };
-              if (!payload.judul_komplain || !payload.deskripsi_komplain) return toast.error('Judul dan deskripsi wajib diisi');
+              } : {};
+              if (!isEdit) {
+                if (!payload.judul_komplain || !payload.deskripsi_komplain) return toast.error('Judul dan deskripsi wajib diisi');
+              }
               try {
-                if (editData?.id) {
-                  await adminKomplainService.updateKomplainStatus(editData.id, payload.status);
-                  await komplainService.updateKomplain(editData.id, payload);
+                if (isEdit) {
+                  // Tidak update judul/deskripsi di mode edit
+                  // Jika penerima dan memilih file, upload lampiran
+                  if (selectedFiles.length > 0) {
+                    try {
+                      const loadingT = toast.loading('Mengunggah lampiran...');
+                      await adminKomplainService.uploadLampiran(editData.id, selectedFiles, catatanAdmin || '');
+                      toast.dismiss(loadingT);
+                      toast.success('Lampiran diunggah');
+                    } catch (upErr) {
+                      toast.error('Gagal mengunggah lampiran');
+                    }
+                  } else if ((catatanAdmin || '').trim().length > 0) {
+                    // Simpan catatan tanpa upload jika ada
+                    try {
+                      await adminKomplainService.updateCatatan(editData.id, catatanAdmin.trim());
+                      toast.success('Catatan admin disimpan');
+                    } catch (catErr) {
+                      toast.error('Gagal menyimpan catatan admin');
+                    }
+                  }
                   toast.success('Komplain diperbarui');
                 } else {
                   await komplainService.createKomplain(payload);
                   toast.success('Komplain ditambahkan');
                 }
-                setShowForm(false); setEditData(null); await loadData();
+                setShowForm(false); setEditData(null); setSelectedFiles([]); setCatatanAdmin(''); await loadData();
               } catch (err) {
                 toast.error(typeof err === 'string' ? err : err?.message || 'Gagal menyimpan komplain');
               }
@@ -464,40 +542,119 @@ const AdminDaftarKomplain = () => {
                     <div className="text-sm font-semibold text-gray-700">Data Komplain</div>
                   </div>
                   <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Judul Komplain<span className="text-red-500">*</span></label>
-                      <input name="judul_komplain" defaultValue={editData?.judul_komplain || ''} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Masukkan judul" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Deskripsi Komplain<span className="text-red-500">*</span></label>
-                      <textarea name="deskripsi_komplain" defaultValue={editData?.deskripsi_komplain || ''} rows={5} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Jelaskan komplain" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Kategori</label>
-                      <select name="kategori" defaultValue={editData?.kategori || 'lainnya'} className="w-full px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                        <option value="sistem">Sistem</option>
-                        <option value="layanan">Layanan</option>
-                        <option value="produk">Produk</option>
-                        <option value="lainnya">Lainnya</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Prioritas</label>
-                      <select name="prioritas" defaultValue={editData?.prioritas || 'berproses'} className="w-full px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                        <option value="mendesak">Mendesak</option>
-                        <option value="penting">Penting</option>
-                        <option value="berproses">Berproses</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                      <select name="status" defaultValue={editData?.status || 'menunggu'} className="w-full px-3 py-2 border rounded-lg bg-white focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                        <option value="menunggu">Menunggu</option>
-                        <option value="diproses">Diproses</option>
-                        <option value="selesai">Selesai</option>
-                        <option value="ditolak">Ditolak</option>
-                      </select>
-                    </div>
+                    {!editData && (
+                      <>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Judul Komplain<span className="text-red-500">*</span></label>
+                          <input name="judul_komplain" defaultValue={''} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Masukkan judul" />
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Deskripsi Komplain<span className="text-red-500">*</span></label>
+                          <textarea name="deskripsi_komplain" defaultValue={''} rows={5} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Jelaskan komplain" />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Upload Lampiran - hanya untuk penerima komplain */}
+                    {(() => {
+                      const penerimaId = (editData?.PenerimaKomplain?.id) || (editData?.penerima?.id) || editData?.penerima_id || editData?.penerima_komplain_id;
+                      const isRecipient = user?.id && penerimaId && String(user.id) === String(penerimaId);
+                      const isAdmin = (user?.role || '').toLowerCase() === 'admin';
+                      // Backend mengharuskan role admin untuk endpoint upload
+                      if (!(isRecipient && isAdmin)) return null;
+                      return (
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Upload Lampiran (foto/dokumen) - bisa lebih dari 1</label>
+                          <div className="flex items-center gap-3">
+                            <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm cursor-pointer hover:bg-gray-50">
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                  const picked = Array.from(e.target.files || [])
+                                  const key = (f) => `${f.name}|${f.size}|${f.lastModified}`
+                                  const existingMap = new Map(selectedFiles.map(f => [key(f), f]))
+                                  for (const f of picked) {
+                                    const k = key(f)
+                                    if (!existingMap.has(k)) existingMap.set(k, f)
+                                  }
+                                  setSelectedFiles(Array.from(existingMap.values()))
+                                }}
+                              />
+                              <span>Pilih File</span>
+                            </label>
+                            {selectedFiles.length > 0 && (
+                              <span className="text-xs text-gray-600">{selectedFiles.length} file dipilih</span>
+                            )}
+                          </div>
+                          {selectedFiles.length > 0 && (
+                            <div className="mt-2 grid grid-cols-4 gap-2">
+                              {selectedFiles.map((f, idx) => {
+                                const isImage = (f.type || '').startsWith('image/')
+                                const ext = (f.name.split('.').pop() || '').toUpperCase()
+                                return (
+                                  <div key={idx} className="relative border rounded p-1 text-xs text-gray-700 bg-white group">
+                                    <button type="button" onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block" title="Hapus file ini">×</button>
+                                    {isImage ? (
+                                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-full h-20 object-cover rounded" />
+                                    ) : (
+                                      <div className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border">
+                                        <span className="font-semibold">{ext || 'FILE'}</span>
+                                      </div>
+                                    )}
+                                    <div className="mt-1 truncate" title={f.name}>{f.name}</div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {/* Catatan Admin (wajib oleh backend saat upload) */}
+                          <div className="mt-3">
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Catatan Admin (wajib saat upload)</label>
+                            <textarea
+                              value={catatanAdmin}
+                              onChange={(e) => setCatatanAdmin(e.target.value)}
+                              rows={3}
+                              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              placeholder="Tuliskan catatan admin terkait penyelesaian komplain"
+                            />
+                          </div>
+
+                          {/* Lampiran tersimpan */}
+                          {editData && Array.isArray(editData.lampiran) && (
+                            <div className="mt-3">
+                              <div className="text-xs font-semibold text-gray-700 mb-2">Lampiran Tersimpan</div>
+                              {editData.lampiran.length === 0 ? (
+                                <div className="text-xs text-gray-500">Belum ada lampiran.</div>
+                              ) : (
+                                <div className="grid grid-cols-4 gap-2">
+                                  {editData.lampiran.map((file, idx) => {
+                                    const isImage = String(file.mimetype || '').startsWith('image/');
+                                    const url = toFileUrl(file.path);
+                                    const name = file.originalname || file.filename || `file-${idx}`;
+                                    return (
+                                      <div key={idx} className="relative border rounded p-1 text-xs text-gray-700 bg-white group">
+                                        {isImage ? (
+                                          <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} className="w-full h-20 object-cover rounded" /></a>
+                                        ) : (
+                                          <a href={url} target="_blank" rel="noreferrer" className="w-full h-20 flex items-center justify-center bg-gray-50 rounded border"><span className="font-semibold truncate px-1" title={name}>{(name.split('.').pop() || 'FILE').toUpperCase()}</span></a>
+                                        )}
+                                        <div className="mt-1 truncate" title={name}>{name}</div>
+                                        {false && (
+                                          <button type="button" className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full w-6 h-6 text-[11px] leading-6 text-center shadow hidden group-hover:block" title="Hapus lampiran">×</button>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

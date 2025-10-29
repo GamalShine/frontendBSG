@@ -292,6 +292,9 @@ import AdminProfile from './pages/Admin/Profile/AdminProfile'
 // Profile Pages
 import Profile from './pages/Profile/Profile'
 import ProfilePassword from './pages/Profile/ProfilePassword'
+// Help Center Page
+import HelpCenter from './pages/Help/HelpCenter'
+import ContactSupport from './pages/Help/ContactSupport'
 
 // Settings Pages
 import Settings from './pages/Settings/Settings'
@@ -412,6 +415,24 @@ const ModalSwitch = () => {
                 </ProtectedRoute>
               } />
 
+              {/* Help Center */}
+              <Route path="/help-center" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <HelpCenter />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Contact Support */}
+              <Route path="/contact-support" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ContactSupport />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
               {/* Role-specific Dashboards */}
               <Route path="/admin/dashboard" element={
                 <ProtectedRoute>
@@ -497,6 +518,48 @@ const ModalSwitch = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+              {/* Admin - SOP TERKAIT (gunakan komponen Leader untuk konsumsi endpoint /api/sop/user-divisi) */}
+              <Route path="/admin/sop-terkait" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderSOPAturan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              {/* Admin - ATURAN */}
+              <Route path="/admin/aturan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminAturan">
+                    <Layout>
+                      <AdminAturan />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+              {/* Admin - KPI SAYA (reuse komponen LeaderKPISaya) */}
+              <Route path="/admin/kpi-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderKPISaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              {/* Admin - SLIP GAJI SAYA (reuse komponen LeaderSlipGajiSaya) */}
+              <Route path="/admin/slip-gaji-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderSlipGajiSaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              {/* Admin - TUGAS SAYA (gunakan komponen Leader untuk konsumsi endpoint leader) */}
+              <Route path="/admin/tugas-saya" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <LeaderTugasSaya />
+                  </Layout>
+                </ProtectedRoute>
+              } />
               <Route path="/leader/tugas-saya" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
@@ -564,8 +627,10 @@ const ModalSwitch = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Admin Operasional - Saran */}
-              <Route path="/admin/operasional/saran" element={
+              {/* Admin Saran - path baru */}
+              {/* Redirect dari path lama */}
+              <Route path="/admin/operasional/saran" element={<Navigate to="/admin/saran" replace />} />
+              <Route path="/admin/saran" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDaftarSaran">
                     <Layout>
@@ -820,41 +885,14 @@ const ModalSwitch = () => {
                 </ProtectedRoute>
               } />
 
-              {/* Admin Komplain Routes */}
-              <Route path="/admin/komplain" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminKomplainList />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/komplain/new" element={
-                <ProtectedRoute requiredPermissions={['create']}>
-                  <Layout>
-                    <AdminKomplainForm />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/komplain/:id" element={
-                <ProtectedRoute requiredPermissions={['read']}>
-                  <Layout>
-                    <AdminKomplainDetail />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/komplain/:id/edit" element={
-                <ProtectedRoute requiredPermissions={['update']}>
-                  <Layout>
-                    <AdminKomplainEdit />
-                  </Layout>
-                </ProtectedRoute>
-              } />
 
               {/* Admin Operasional Komplain Routes (new namespace) */}
-              <Route path="/admin/operasional/komplain" element={
+              <Route path="/admin/operasional/komplain" element={<Navigate to="/admin/komplain" replace />} />
+              <Route path="/admin/operasional/komplain/new" element={<Navigate to="/admin/komplain/new" replace />} />
+              <Route path="/admin/operasional/komplain/:id" element={<Navigate to="/admin/komplain/:id" replace />} />
+              <Route path="/admin/operasional/komplain/:id/edit" element={<Navigate to="/admin/komplain/:id/edit" replace />} />
+
+              <Route path="/admin/komplain" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDaftarKomplain">
                     <Layout>
@@ -863,8 +901,7 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
-
-              <Route path="/admin/operasional/komplain/new" element={
+              <Route path="/admin/komplain/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <RequireMenuKey requiredKey="AdminDaftarKomplain">
                     <Layout>
@@ -873,8 +910,7 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
-
-              <Route path="/admin/operasional/komplain/:id" element={
+              <Route path="/admin/komplain/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDaftarKomplain">
                     <Layout>
@@ -883,8 +919,7 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
-
-              <Route path="/admin/operasional/komplain/:id/edit" element={
+              <Route path="/admin/komplain/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <RequireMenuKey requiredKey="AdminDaftarKomplain">
                     <Layout>
@@ -1097,12 +1132,12 @@ const ModalSwitch = () => {
               
               {/* Admin SDM Routes */}
               {/* Backward compatibility: redirect old path to new */}
-              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
-              <Route path="/admin/sdm/struktur-jobdesk-sop" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/struktur-jobdesk-sop" element={<Navigate to="/admin/struktur-jobdesk" replace />} />
               {/* Legacy path redirect: jabatan -> struktur-jobdesk */}
-              <Route path="/admin/sdm/jabatan" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/jabatan" element={<Navigate to="/admin/struktur-jobdesk" replace />} />
 
-              <Route path="/admin/sdm/struktur-jobdesk" element={
+              <Route path="/admin/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey={["AdminSdmStrukturJobdesk", "AdminSdmStrukturSop"]}>
                     <Layout>
