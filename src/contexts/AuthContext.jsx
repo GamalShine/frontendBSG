@@ -52,9 +52,16 @@ export const AuthProvider = ({ children }) => {
             try {
               const isValid = await authService.isTokenValid()
               if (isValid) {
-                setUser(storedUser)
-                await loadAllowedMenuKeys(storedUser.id)
-                console.log('✅ Token is valid, user session restored')
+                // Hanya izinkan admin
+                if ((storedUser?.role || '').toLowerCase() !== 'admin') {
+                  console.warn('⛔ Non-admin session detected. Logging out...')
+                  await authService.logout()
+                  setUser(null)
+                } else {
+                  setUser(storedUser)
+                  await loadAllowedMenuKeys(storedUser.id)
+                  console.log('✅ Token is valid, admin session restored')
+                }
               } else {
                 console.log('❌ Token expired, clearing session')
                 await authService.logout()
@@ -71,9 +78,15 @@ export const AuthProvider = ({ children }) => {
               // Try to get current user from server
               const currentUser = await authService.getCurrentUser()
               console.log('👤 Fetched current user:', currentUser)
-              setUser(currentUser)
-              localStorage.setItem('user', JSON.stringify(currentUser))
-              await loadAllowedMenuKeys(currentUser?.id)
+              if ((currentUser?.role || '').toLowerCase() !== 'admin') {
+                console.warn('⛔ Non-admin current user. Logging out...')
+                await authService.logout()
+                setUser(null)
+              } else {
+                setUser(currentUser)
+                localStorage.setItem('user', JSON.stringify(currentUser))
+                await loadAllowedMenuKeys(currentUser?.id)
+              }
             } catch (error) {
               console.warn('❌ Failed to get current user, clearing stored data:', error)
               await authService.logout()
@@ -130,6 +143,14 @@ export const AuthProvider = ({ children }) => {
       }
       
       console.log('👤 Processed user data:', loggedInUser)
+      // Validasi: hanya admin yang boleh login
+      if ((loggedInUser?.role || '').toLowerCase() !== 'admin') {
+        try { await authService.logout() } catch {}
+        setUser(null)
+        const err = new Error('ONLY_ADMIN_ALLOWED')
+        err.code = 'ONLY_ADMIN_ALLOWED'
+        throw err
+      }
       setUser(loggedInUser)
       try { await loadAllowedMenuKeys(loggedInUser?.id) } catch {}
       return loggedInUser
