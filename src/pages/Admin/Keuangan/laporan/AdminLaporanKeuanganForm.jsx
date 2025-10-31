@@ -827,7 +827,7 @@ const AdminLaporanKeuanganForm = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
-                <span className="md:hidden">{isEditMode ? 'EDIT LAP KEU' : 'TAMBAH LAP KEU'}</span>
+                <span className="md:hidden">{isEditMode ? 'EDIT LAP KEUANGAN' : 'TAMBAH LAP KEUANGAN'}</span>
                 <span className="hidden md:inline">{isEditMode ? 'EDIT LAPORAN KEUANGAN' : 'TAMBAH LAPORAN KEUANGAN'}</span>
               </h1>
             </div>

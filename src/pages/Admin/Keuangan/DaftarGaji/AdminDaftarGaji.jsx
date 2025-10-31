@@ -48,6 +48,7 @@ const AdminDaftarGaji = () => {
     pph21: '',
     user_id: '',
   })
+  const [expandedEmployees, setExpandedEmployees] = useState({})
 
   const onChange = (e) => {
     const { name, value } = e.target
@@ -71,6 +72,8 @@ const AdminDaftarGaji = () => {
   const branches = Array.isArray(data?.branches) ? data.branches : []
   const filteredBranches = branches.filter((b) => {
     const matchesBranch = branchFilter === 'all' || String(b.id) === String(branchFilter) || (b.name || '') === branchFilter
+    // Saat pencarian nama aktif, jangan filter berdasarkan teks pada cabang/divisi
+    if ((searchTerm || '').trim()) return matchesBranch
     const q = (searchTerm || '').toLowerCase()
     const matchesSearch = !q
       || (b.name || '').toLowerCase().includes(q)
@@ -279,8 +282,18 @@ const AdminDaftarGaji = () => {
   }
 
   const toggleBranch = (branchId) => {
-    const next = expandedBranch === branchId ? null : branchId
+    const isClosing = expandedBranch === branchId
+    const next = isClosing ? null : branchId
     setExpandedBranch(next)
+    if (isClosing) {
+      // Jika branch ditutup dan selectedDept berada di dalam branch tsb, kosongkan pilihan dan tutup daftar nama
+      const branch = (data?.branches || []).find(b => String(b.id) === String(branchId))
+      const deptIds = (branch?.departments || []).map(d => String(d.id))
+      if (selectedDept && deptIds.includes(String(selectedDept))) {
+        setSelectedDept(null)
+        setExpandedEmployees({})
+      }
+    }
   }
 
   const handleSelectDept = async (deptId) => {
@@ -376,6 +389,7 @@ const AdminDaftarGaji = () => {
   const earningTotal = breakdown?.totalsFromBackend?.totalGaji ?? earningTotalComputed
   const deductionTotal = breakdown?.totalsFromBackend?.totalPotongan ?? deductionTotalComputed
   const takeHomePay = breakdown?.totalsFromBackend?.totalGajiDibayarkan ?? (earningTotalComputed - deductionTotalComputed)
+  const isGlobalSearch = (searchTerm || '').trim().length > 0
 
   // Helper: hitung jumlah orang per branch dan per department dari hierarchy
   const deptEmployeeCount = (deptId) => {
@@ -416,6 +430,28 @@ const AdminDaftarGaji = () => {
     return out
   }
 
+  // Key unik untuk setiap karyawan (sinkron dengan strategi dedupe)
+  const getEmployeeKey = (e) => {
+    const namaNorm = (e?.nama || e?.name || '').toString().trim().toLowerCase()
+    const jabatanNorm = (e?.jabatan?.nama_jabatan || '').toString().trim().toLowerCase()
+    const tglJoin = (e?.tanggal_bergabung || '').toString().slice(0, 10)
+    const keyCandidate =
+      (e?.user_id != null) ? `user:${e.user_id}` :
+      (e?.karyawan_id != null) ? `karyawan:${e.karyawan_id}` :
+      (e?.pegawai_id != null) ? `pegawai:${e.pegawai_id}` :
+      (e?.nik != null) ? `nik:${e.nik}` :
+      (e?.id != null) ? `id:${e.id}` :
+      `name:${namaNorm}|pos:${jabatanNorm}|join:${tglJoin}`
+    return keyCandidate
+  }
+
+  const toggleEmployee = (empKey) => {
+    setExpandedEmployees(prev => ({
+      ...prev,
+      [empKey]: !prev[empKey]
+    }))
+  }
+
   const employeesOfDept = (deptId) => {
     for (const div of hierarchy) {
       for (const jab of (div.children || [])) {
@@ -424,6 +460,45 @@ const AdminDaftarGaji = () => {
     }
     return []
   }
+
+  // Ambil seluruh karyawan dari semua divisi (flatten) untuk pencarian global nama
+  const allEmployees = () => {
+    const collected = []
+    for (const div of (hierarchy || [])) {
+      for (const jab of (div.children || [])) {
+        for (const emp of (jab.children || [])) {
+          collected.push(emp)
+        }
+      }
+    }
+    return dedupeEmployees(collected)
+  }
+
+  // Filter karyawan sesuai teks pencarian (tanpa useMemo untuk menghindari mismatch hooks saat early return)
+  const filteredEmployees = (() => {
+    // Jika ada pencarian global (berdasarkan nama), gunakan seluruh karyawan
+    const isGlobalSearch = (searchTerm || '').trim().length > 0
+    if (isGlobalSearch && !selectedDept) {
+      const q = (searchTerm || '').trim().toLowerCase()
+      const list = allEmployees()
+      return list.filter((emp) => {
+        const nama = String(emp?.nama || '').toLowerCase()
+        const posisi = String(emp?.jabatan?.nama_jabatan || '').toLowerCase()
+        const divisi = String(emp?.jabatan?.divisi?.nama_divisi || '').toLowerCase()
+        return nama.includes(q) || posisi.includes(q) || divisi.includes(q)
+      })
+    }
+    if (!selectedDept) return []
+    const q = (searchTerm || '').trim().toLowerCase()
+    const list = employeesOfDept(selectedDept)
+    if (!q) return list
+    return list.filter((emp) => {
+      const nama = String(emp?.nama || '').toLowerCase()
+      const posisi = String(emp?.jabatan?.nama_jabatan || '').toLowerCase()
+      const divisi = String(emp?.jabatan?.divisi?.nama_divisi || '').toLowerCase()
+      return nama.includes(q) || posisi.includes(q) || divisi.includes(q)
+    })
+  })()
 
   // Helper hitung lama bekerja (bulan)
   const calcLamaBekerjaBulan = (emp) => {
@@ -445,62 +520,75 @@ const AdminDaftarGaji = () => {
     const totalGaji = emp.total_gaji ?? ((emp.gaji_pokok||0)+(emp.tunjangan_kinerja||0)+(emp.tunjangan_posisi||0)+(emp.uang_makan||0)+(emp.lembur||0)+(emp.bonus||0))
     const totalPotongan = emp.total_potongan ?? ((emp.potongan||0)+(emp.bpjstk||0)+(emp.bpjs_kesehatan||0)+(emp.bpjs_kes_penambahan||0)+(emp.sp_1_2||0)+(emp.pinjaman_karyawan||0)+(emp.pph21||0))
     const takeHome = emp.total_gaji_dibayarkan ?? (totalGaji - totalPotongan)
+    const empKey = getEmployeeKey(emp)
+    const isOpen = !!expandedEmployees[empKey]
     return (
-      <div key={emp.id} className="border border-gray-300 rounded-md overflow-hidden">
-        <div className="px-4 py-3 bg-red-50 text-red-800 font-semibold border-b border-gray-200">{emp.nama}</div>
-        <div className="grid grid-cols-2">
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">NAMA</div>
-          <div className="border-b border-gray-300 p-2 text-sm">{emp.nama}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">DIVISI</div>
-          <div className="border-b border-gray-300 p-2 text-sm">{emp.jabatan?.divisi?.nama_divisi || '-'}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POSISI</div>
-          <div className="border-b border-gray-300 p-2 text-sm">{emp.jabatan?.nama_jabatan || '-'}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LAMA BEKERJA</div>
-          <div className="border-b border-gray-300 p-2 text-sm">{lamaBekerjaBulan} bulan</div>
+      <div key={empKey} className="border border-gray-300 rounded-md overflow-hidden">
+        <button
+          type="button"
+          onClick={() => toggleEmployee(empKey)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50"
+        >
+          <div>
+            <div className="text-sm font-semibold text-gray-900">{emp.nama || '—'}</div>
+          </div>
+          {isOpen ? <ChevronUp className="h-4 w-4 text-gray-600" /> : <ChevronDown className="h-4 w-4 text-gray-600" />}
+        </button>
+        {isOpen && (
+          <div className="grid grid-cols-2">
+            <div className="border-t border-b border-r border-gray-300 p-2 text-sm font-semibold">NAMA</div>
+            <div className="border-t border-b border-gray-300 p-2 text-sm">{emp.nama}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">DIVISI</div>
+            <div className="border-b border-gray-300 p-2 text-sm">{emp.jabatan?.divisi?.nama_divisi || '-'}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POSISI</div>
+            <div className="border-b border-gray-300 p-2 text-sm">{emp.jabatan?.nama_jabatan || '-'}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LAMA BEKERJA</div>
+            <div className="border-b border-gray-300 p-2 text-sm">{lamaBekerjaBulan} bulan</div>
 
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">GAJI POKOK</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.gaji_pokok)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN KINERJA</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.tunjangan_kinerja)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN POSISI</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.tunjangan_posisi)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">UANG MAKAN</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.uang_makan)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LEMBUR</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.lembur)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BONUS</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bonus)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL GAJI</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(totalGaji)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">GAJI POKOK</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.gaji_pokok)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN KINERJA</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.tunjangan_kinerja)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TUNJANGAN POSISI</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.tunjangan_posisi)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">UANG MAKAN</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.uang_makan)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">LEMBUR</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.lembur)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BONUS</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bonus)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL GAJI</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(totalGaji)}</div>
 
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POTONGAN</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.potongan)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJSTK</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bpjstk)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KESEHATAN</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bpjs_kesehatan)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KES PENAMBAHAN</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bpjs_kes_penambahan)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">SP 1/2</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.sp_1_2)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PINJAMAN KARYAWAN</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.pinjaman_karyawan)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PPH21</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.pph21)}</div>
-          <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL POTONGAN</div>
-          <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(totalPotongan)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">POTONGAN</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.potongan)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJSTK</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bpjstk)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KESEHATAN</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bpjs_kesehatan)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">BPJS KES PENAMBAHAN</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.bpjs_kes_penambahan)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">SP 1/2</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.sp_1_2)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PINJAMAN KARYAWAN</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.pinjaman_karyawan)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">PPH21</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono">{currency(emp.pph21)}</div>
+            <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">TOTAL POTONGAN</div>
+            <div className="border-b border-gray-300 p-2 text-sm font-mono font-bold">{currency(totalPotongan)}</div>
 
-          <div className="col-span-2 p-2 text-sm font-semibold text-center">TOTAL GAJI DIBAYARKAN</div>
-          <div className="col-span-2 border-t border-gray-300 p-3 text-center text-lg font-bold font-mono">{currency(takeHome)}</div>
-        </div>
+            <div className="col-span-2 p-2 text-sm font-semibold text-center">TOTAL GAJI DIBAYARKAN</div>
+            <div className="col-span-2 border-t border-gray-300 p-3 text-center text-lg font-bold font-mono">{currency(takeHome)}</div>
+          </div>
+        )}
       </div>
     )
   }
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header (konsisten dengan halaman lain) */}
-      <div className="bg-red-800 text-white px-6 py-5">
+      {/* Header (disamakan dengan Poskas) */}
+      <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.daftarGaji}</span>
@@ -527,18 +615,18 @@ const AdminDaftarGaji = () => {
       {/* ... rest of the code remains the same ... */}
       <div className="mt-4">
         {/* Form Pencarian */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-3">
-          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-2">
+          <div className="px-6 py-2 grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cari</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Daftar Gaji</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Cari cabang / divisi ..."
+                  placeholder="Cari daftar gaji... (nama karyawan / divisi / cabang)"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="pl-10 pr-3 py-1.5 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -546,36 +634,49 @@ const AdminDaftarGaji = () => {
           </div>
         </div>
 
-        {/* Daftar Cabang */}
-        <div className="space-y-3 mt-4">
-          {filteredBranches.map((branch) => (
-            <div key={branch.id} className="border border-gray-200 rounded-md overflow-hidden min-h-[48px]">
-              <button
-                type="button"
-                onClick={() => toggleBranch(branch.id)}
-                className="w-full flex items-center justify-between px-4 py-2 bg-red-700 text-white"
-              >
-                <span className="font-semibold">{branch.name}</span>
-                <span className="text-sm opacity-90">{branchEmployeeCount(branch.id)} orang {expandedBranch === branch.id ? <ChevronUp className="inline h-4 w-4 ml-2"/> : <ChevronDown className="inline h-4 w-4 ml-2"/>}</span>
-              </button>
-              {expandedBranch === branch.id && (
-                <div className="bg-white">
-                  {(branch.departments || []).map((dept) => (
-                    <button
-                      key={dept.id}
-                      type="button"
-                      onClick={() => handleSelectDept(dept.id)}
-                      className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-gray-100 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
-                    >
-                      <span className="text-sm font-semibold text-gray-800">{dept.name}</span>
-                      <span className="text-xs text-gray-600">{deptEmployeeCount(dept.id)} orang</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        {/* Daftar Cabang - disembunyikan saat pencarian global (nama) aktif dan belum memilih divisi */}
+        {!(isGlobalSearch && !selectedDept) && (
+          <div className="space-y-3 mt-4">
+            {filteredBranches.map((branch) => (
+              <div key={branch.id} className="border border-gray-200 rounded-md overflow-hidden min-h-[48px]">
+                <button
+                  type="button"
+                  onClick={() => toggleBranch(branch.id)}
+                  className="w-full flex items-center justify-between px-4 py-2 bg-red-700 text-white"
+                >
+                  <span className="font-semibold">{branch.name}</span>
+                  <span className="text-sm opacity-90">{branchEmployeeCount(branch.id)} orang {expandedBranch === branch.id ? <ChevronUp className="inline h-4 w-4 ml-2"/> : <ChevronDown className="inline h-4 w-4 ml-2"/>}</span>
+                </button>
+                {expandedBranch === branch.id && (
+                  <div className="bg-white">
+                    {(branch.departments || []).map((dept) => (
+                      <button
+                        key={dept.id}
+                        type="button"
+                        onClick={() => handleSelectDept(dept.id)}
+                        className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-gray-100 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                      >
+                        <span className="text-sm font-semibold text-gray-800">{dept.name}</span>
+                        <span className="text-xs text-gray-600">{deptEmployeeCount(dept.id)} orang</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Hasil pencarian global nama karyawan (saat belum memilih divisi) */}
+        {isGlobalSearch && !selectedDept && (
+          <div className="mt-3 space-y-3">
+            {filteredEmployees.length === 0 ? (
+              <div className="text-center text-sm text-gray-500 py-6">Tidak ada karyawan yang cocok</div>
+            ) : (
+              filteredEmployees.map(renderEmployeeRow)
+            )}
+          </div>
+        )}
 
         {/* Ringkasan per divisi di-nonaktifkan; hanya daftar per karyawan yang ditampilkan */}
         {false && (
@@ -644,7 +745,7 @@ const AdminDaftarGaji = () => {
         {/* Daftar karyawan berderet ke bawah */}
         {selectedDept && !loadingSummary && (
           <div className="mt-3 space-y-3">
-            {employeesOfDept(selectedDept).map(renderEmployeeRow)}
+            {filteredEmployees.map(renderEmployeeRow)}
           </div>
         )}
       </div>

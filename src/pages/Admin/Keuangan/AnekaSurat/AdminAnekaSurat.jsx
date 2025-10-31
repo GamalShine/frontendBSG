@@ -69,6 +69,17 @@ const AdminAnekaSurat = () => {
   const lastPosRef = React.useRef({ x: 0, y: 0 });
   const [previewText, setPreviewText] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  // Ekspansi per dokumen (mobile)
+  const [expandedDocs, setExpandedDocs] = useState(new Set());
+
+  const toggleDoc = (id) => {
+    setExpandedDocs(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const documentTypes = [
     'PERJANJIAN KERJA',
@@ -653,7 +664,7 @@ const AdminAnekaSurat = () => {
 
       {/* Content */}
       <div className="px-0 pt-2 pb-4">
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-transparent rounded-none shadow-none border-0">
           {Object.keys(groupedData).length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -662,13 +673,12 @@ const AdminAnekaSurat = () => {
           ) : (
             <div className="space-y-4">
               {Object.entries(groupedData).map(([jenis, documents]) => (
-                <div key={jenis} className="bg-white rounded-none md:rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div key={jenis} className="bg-white rounded-t-md rounded-b-none md:rounded-t-lg md:rounded-b-none shadow-sm border border-gray-100 overflow-hidden my-2 md:my-4">
                   <button
                     onClick={() => toggleCategory(jenis)}
-                    className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+                    className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors rounded-t-md rounded-b-none md:rounded-t-lg md:rounded-b-none"
                   >
-                    <div className="flex items-center space-x-3">
-                      <FileText className="w-6 h-6" />
+                    <div className="flex items-center space-x-2">
                       <span className="text-lg font-semibold">{jenis}</span>
                       <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
                         {documents.length}
@@ -682,51 +692,76 @@ const AdminAnekaSurat = () => {
                   </button>
 
                   {expandedCategories.has(jenis) && (
-                    <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
+                    <div className="pt-0 px-0 pb-0 md:p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
                       {documents.map((doc) => (
-                        <div key={doc.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow h-full flex flex-col text-sm overflow-hidden">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex-1 space-y-1 text-sm">
-                              <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
-                                <span className="text-gray-700">Judul</span>
-                                <span className="text-gray-900 font-semibold truncate">{doc.judul_dokumen}</span>
-                              </div>
-                              <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
-                                <span className="text-gray-700">Tanggal</span>
-                                <span className="text-gray-900">{format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}</span>
-                              </div>
-                              <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
-                                <span className="text-gray-700">Dibuat Oleh</span>
-                                <span className="text-gray-900">{doc.user_nama || 'Admin'}</span>
+                        <div key={doc.id} className="bg-white rounded-none md:rounded-md shadow-sm border border-gray-200 p-0 md:p-3 md:hover:shadow-md transition-shadow h-full flex flex-col text-xs overflow-hidden">
+                          <div className="flex items-center md:items-start justify-between md:mb-2 border-t first:border-t-0 border-gray-200">
+                            {/* Header Mobile (judul + chevron) */}
+                            <button
+                              type="button"
+                              onClick={() => toggleDoc(doc.id)}
+                              className="flex md:hidden items-center gap-2 text-left flex-1 bg-gray-100 rounded-none px-4 py-4"
+                              aria-expanded={expandedDocs.has(doc.id)}
+                            >
+                              <span className="text-gray-900 font-semibold truncate text-base">{doc.judul_dokumen}</span>
+                              {expandedDocs.has(doc.id) ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                              )}
+                            </button>
+
+                            
+
+                            {/* Detail Desktop (selalu tampil) */}
+                            <div className="hidden md:block flex-1">
+                              <div className="space-y-2">
+                                <div className="py-2 border-b border-gray-200 md:-mx-3 md:px-3 md:-mt-3 md:pt-3 bg-gray-200">
+                                  <div className="text-gray-900 font-semibold truncate text-sm md:text-base">{doc.judul_dokumen}</div>
+                                </div>
+                                <div className="space-y-1 text-sm">
+                                  <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
+                                    <span className="text-gray-700">Tanggal</span>
+                                    <span className="text-gray-900">{format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}</span>
+                                  </div>
+                                  <div className="grid grid-cols-[120px,1fr] items-center gap-2 leading-5">
+                                    <span className="text-gray-700">Dibuat Oleh</span>
+                                    <span className="text-gray-900">{doc.user_nama || 'Admin'}</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex space-x-2 flex-shrink-0">
-                              <button
-                                onClick={() => openEditModal(doc)}
-                                className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => openDeleteModal(doc)}
-                                className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+
                           </div>
 
+                          {/* Detail Mobile: tampil saat expanded */}
+                          {expandedDocs.has(doc.id) && (
+                            <div className="md:hidden mt-2 px-4">
+                              <div className="space-y-1 text-sm">
+                                <div className="grid grid-cols-[100px,1fr] items-center gap-2 leading-5">
+                                  <span className="text-gray-700">Tanggal</span>
+                                  <span className="text-gray-900">{format(new Date(doc.created_at), 'dd MMMM yyyy', { locale: id })}</span>
+                                </div>
+                                <div className="grid grid-cols-[100px,1fr] items-center gap-2 leading-5">
+                                  <span className="text-gray-700">Dibuat Oleh</span>
+                                  <span className="text-gray-900">{doc.user_nama || 'Admin'}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Lampiran: desktop selalu tampil, mobile hanya saat expanded */}
                           {doc.lampiran && (
-                            <div className="mt-3">
+                            <div className={`${expandedDocs.has(doc.id) ? 'block' : 'hidden'} md:block mt-3 mb-4 px-4 md:px-0`}>
                               <div className="flex items-center mb-1">
                                 <span className="text-[11px] font-semibold text-gray-700">Lampiran</span>
                               </div>
                               {(Array.isArray(doc.lampiran) ? doc.lampiran : []).length === 0 ? (
                                 <p className="text-[11px] text-gray-500">Belum ada lampiran</p>
                               ) : (
-                                <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-3 gap-1">
                                   {doc.lampiran.map((file, index) => (
-                                    <div key={index} className="border rounded-md p-2 flex items-center justify-between gap-2">
+                                    <div key={index} className="border rounded-md p-1 flex items-center justify-between gap-2">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -745,7 +780,7 @@ const AdminAnekaSurat = () => {
                                           const name = file.file_name || file.name || (url.split('/').pop() || 'file');
                                           downloadFile(url, name);
                                         }}
-                                        className="inline-flex items-center justify-center h-7 w-7 p-0 text-blue-600 hover:bg-blue-100 rounded-md flex-shrink-0"
+                                        className="inline-flex items-center justify-center h-6 w-6 p-0 text-blue-600 hover:bg-blue-100 rounded-md flex-shrink-0"
                                         title="Download"
                                       >
                                         <Download className="w-4 h-4" />
@@ -756,6 +791,56 @@ const AdminAnekaSurat = () => {
                               )}
                             </div>
                           )}
+
+                          {/* Action bar (mobile): bawah lampiran, di dalam card; tampil hanya saat expanded */}
+                          <div className={`${expandedDocs.has(doc.id) ? 'flex' : 'hidden'} md:hidden mt-0 border-t border-gray-200 pt-0 px-4 pb-0 justify-between items-center gap-0`}>
+                            <div className="text-[11px] text-gray-600 py-2">
+                              {format(new Date(doc.created_at), "dd MMMM yyyy 'Pukul' HH.mm", { locale: id })}
+                            </div>
+                            <div className="flex items-center -space-x-4">
+                              <button
+                                onClick={() => openEditModal(doc)}
+                                className="inline-flex items-center justify-center text-green-600 hover:text-green-700 active:opacity-80 leading-none p-0"
+                                title="Edit"
+                                aria-label="Edit"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(doc)}
+                                className="inline-flex items-center justify-center text-red-600 hover:text-red-700 active:opacity-80 leading-none p-0"
+                                title="Hapus"
+                                aria-label="Hapus"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Action bar Desktop: pindah ke kanan bawah card, dengan tanggal di kiri */}
+                          <div className="hidden md:flex justify-between items-center gap-2 mt-auto border-t border-gray-200 pt-2 md:-mx-3 md:px-3">
+                            <div className="text-xs text-gray-600">
+                              {format(new Date(doc.created_at), "dd MMMM yyyy 'pukul' HH.mm", { locale: id })}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => openEditModal(doc)}
+                                className="inline-flex items-center justify-center text-green-600 hover:text-green-700 p-0"
+                                title="Edit"
+                                aria-label="Edit"
+                              >
+                                <Edit className="w-5 h-5" />
+                              </button>
+                              <button
+                                onClick={() => openDeleteModal(doc)}
+                                className="inline-flex items-center justify-center text-red-600 hover:text-red-700 p-0"
+                                title="Hapus"
+                                aria-label="Hapus"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

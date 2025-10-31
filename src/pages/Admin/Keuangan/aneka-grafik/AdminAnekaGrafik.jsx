@@ -256,53 +256,34 @@ const AdminAnekaGrafik = () => {
         </div>
       </div>
 
-      {/* Search and Filter Section */}
-      <div className="bg-white rounded-lg shadow-sm border mb-6">
-        <div className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 md:hidden">
+      {/* Pencarian (Desktop & Mobile) - gaya seperti Aneka Surat */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-6">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Aneka Grafik</label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Cari aneka grafik..."
+                  placeholder="Cari isi atau tanggal grafik..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
-
-            {/* Date Filter */}
-            <div className="flex items-center space-x-2 md:hidden">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Add Button (Desktop only) */}
+          </div>
+          {/* Add Button (Desktop only) */}
+          <div className="mt-3 hidden md:flex items-center justify-end">
             <button
               onClick={openAddModal}
-              className="hidden md:flex items-center space-x-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               title="Tambah Grafik"
             >
               <Plus className="h-4 w-4" />
               <span>Tambah Grafik</span>
             </button>
-            {/* Target tersembunyi untuk FAB (Mobile) */}
-            <button
-              type="button"
-              data-add
-              onClick={openAddModal}
-              className="block md:hidden absolute w-px h-px -left-[9999px] opacity-0"
-              aria-hidden="true"
-              tabIndex={-1}
-            >Tambah</button>
           </div>
         </div>
       </div>

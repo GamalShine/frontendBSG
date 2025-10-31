@@ -604,14 +604,14 @@ const AdminLaporanKeuangan = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header + Badge Code */}
-      <div className="bg-red-800 text-white px-6 py-4 mb-0 z-0 lg:relative lg:z-[100]">
+      {/* Header + Badge Code (extra compact on mobile) */}
+      <div className="bg-red-800 text-white px-6 py-1.5 md:py-4 mb-0 z-0 lg:relative lg:z-[100]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
+          <div className="flex items-center gap-3 md:gap-4">
+            <span className="text-[11px] md:text-sm font-semibold bg-white/10 rounded px-1.5 py-0.5 md:px-2 md:py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
-                <span className="md:hidden">LAP KEU</span>
+              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight">
+                <span className="md:hidden">LAP KEUANGAN</span>
                 <span className="hidden md:inline">LAPORAN KEUANGAN</span>
               </h1>
             </div>
@@ -620,20 +620,20 @@ const AdminLaporanKeuangan = () => {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddYear(); }}
-              className="relative z-30 inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm pointer-events-auto"
+              className="relative z-30 inline-flex items-center gap-2 px-3 py-0 h-6 md:px-4 md:py-2 md:h-auto bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm pointer-events-auto whitespace-nowrap"
               title="Tambah Tahun"
               aria-label="Tambah Tahun"
               data-add
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
-              <span className="md:hidden font-semibold">Thn</span>
+              <span className="md:hidden font-semibold leading-none">Thn</span>
               <span className="hidden md:inline font-semibold">Tahun</span>
             </button>
           ) : monthsView === 'monthContent' ? (
             <div className="flex items-center gap-2">
               <button
                 onClick={backToMonths}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
                 aria-label="Kembali"
                 title="Kembali"
               >
