@@ -103,12 +103,16 @@ const AdminDashboard = () => {
   return (
     <div className="pt-1 -mx-0 sm:-mx-1">
       {(user?.role === 'admin' || user?.role === 'owner') && (
-            <div className="aspect-[21/9] w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg">
+            <div className="w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg aspect-auto h-[calc(100vh-140px)] sm:h-[420px] lg:aspect-[21/9] lg:h-auto">
               {videoUrl && !videoError ? (
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover"
                   src={videoUrl}
+                  playsInline
+                  preload="metadata"
+                  disablePictureInPicture
+                  controlsList="nofullscreen"
                   onEnded={handleNext}
                   onCanPlay={() => isPlaying && videoRef.current?.play()}
                   onError={() => {

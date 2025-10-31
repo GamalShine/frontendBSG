@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Sidebar from './Sidebar'
 import Header from './Header'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 
 const Layout = ({ children }) => {
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const [fabSignal, setFabSignal] = useState({ lapkeu: false, month: '' })
 
   // Tutup sidebar saat menekan ESC
   useEffect(() => {
@@ -17,6 +18,24 @@ const Layout = ({ children }) => {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Amati perubahan atribut pada body untuk sinyal FAB (lapkeu month)
+  useEffect(() => {
+    const readSignals = () => {
+      try {
+        const lap = typeof document !== 'undefined' && document.body.getAttribute('data-lapkeu-month') === 'true'
+        const m = typeof document !== 'undefined' ? (document.body.getAttribute('data-month-filter') || '') : ''
+        setFabSignal({ lapkeu: !!lap, month: m })
+      } catch {}
+    }
+    readSignals()
+    let mo
+    try {
+      mo = new MutationObserver(readSignals)
+      mo.observe(document.body, { attributes: true, attributeFilter: ['data-lapkeu-month', 'data-month-filter', 'data-hide-fab'] })
+    } catch {}
+    return () => { try { mo && mo.disconnect() } catch {} }
   }, [])
 
   return (
@@ -63,7 +82,49 @@ const Layout = ({ children }) => {
           </main>
 
           {/* Floating Add Button khusus mobile */}
-          <MobileFloatingAdd key={location.pathname} />
+          {(() => {
+            // Tampilkan FAB di:
+            // - Poskas (kecuali detail/edit)
+            // - Omset Harian (kecuali detail/edit)
+            // - Laporan Keuangan hanya saat berada di folder bulan (ada ?month=YYYY-MM)
+            // - Aneka Grafik (kecuali detail/edit)
+            const isPoskasPath = /^\/admin\/keuangan\/poskas\b/.test(location.pathname)
+            const isPoskasDetailOrEdit = /^\/admin\/keuangan\/poskas\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
+            const isOmsetPath = /^\/admin\/keuangan\/omset-harian\b/.test(location.pathname)
+            const isOmsetDetailOrEdit = /^\/admin\/keuangan\/omset-harian\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
+            const isLapkeuPath = /^\/admin\/keuangan\/laporan\b/.test(location.pathname)
+            const isAnekaPath = /^\/admin\/keuangan\/aneka-grafik\b/.test(location.pathname)
+            const isAnekaDetailOrEdit = /^\/admin\/keuangan\/aneka-grafik\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
+            const hasMonthParam = (() => {
+              try {
+                const sp = new URLSearchParams(location.search)
+                return !!sp.get('month')
+              } catch { return false }
+            })()
+            const bodySaysLapkeuMonth = fabSignal.lapkeu
+            // Izinkan FAB di Poskas/Omset kecuali di detail/edit
+            const allowFabPoskas = isPoskasPath && !isPoskasDetailOrEdit
+            const allowFabOmset = isOmsetPath && !isOmsetDetailOrEdit
+            // Izinkan FAB di Laporan Keuangan hanya saat berada di folder bulan (ada query month)
+            const allowFabLapkeu = isLapkeuPath && (hasMonthParam || bodySaysLapkeuMonth)
+            // Izinkan FAB di Aneka Grafik (hanya list)
+            const allowFabAneka = isAnekaPath && !isAnekaDetailOrEdit
+            const allowFab = allowFabPoskas || allowFabOmset || allowFabLapkeu || allowFabAneka
+
+            const globalHideFab = (() => {
+              try {
+                if (typeof document !== 'undefined') {
+                  return document.body.getAttribute('data-hide-fab') === 'true'
+                }
+              } catch {}
+              return false
+            })()
+            // Saat di Lapkeu bulan, tampilkan FAB meski ada data-hide-fab (race condition saat mount)
+            const shouldShowFab = (allowFabLapkeu && allowFab) || (allowFab && !globalHideFab)
+            return shouldShowFab ? (
+              <MobileFloatingAdd key={`${location.pathname}${location.search}`} fabSignal={fabSignal} />
+            ) : null
+          })()}
         </div>
       </div>
   )
@@ -72,8 +133,11 @@ const Layout = ({ children }) => {
 export default Layout
 
 // Komponen: FAB yang mencari tombol "Tambah" di halaman dan memicunya saat ditekan (mobile only)
-const MobileFloatingAdd = () => {
+const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
   const [targetBtn, setTargetBtn] = useState(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const fs = fabSignalProp || { lapkeu: false, month: '' }
 
   const isMobile = useMemo(() => {
     if (typeof window === 'undefined') return false
@@ -118,16 +182,63 @@ const MobileFloatingAdd = () => {
     return () => mo.disconnect()
   }, [isMobile])
 
-  if (!isMobile || !targetBtn) return null
+  // Jangan hentikan render berdasarkan isMobile, biarkan CSS (lg:hidden) yang kontrol visibilitas
+
+  const isOnPoskasMain = /^\/admin\/keuangan\/poskas\/?$/.test(location.pathname)
+  const isOnOmsetMain = /^\/admin\/keuangan\/omset-harian\/?$/.test(location.pathname)
+  const isOnAnekaMain = /^\/admin\/keuangan\/aneka-grafik\/?$/.test(location.pathname)
+  const isOnLapkeuMonth = (() => {
+    if (!/^\/admin\/keuangan\/laporan\b/.test(location.pathname)) return false
+    try {
+      const hasQuery = !!(new URLSearchParams(location.search)).get('month')
+      const hasBody = fabSignal.lapkeu
+      return hasQuery || hasBody
+    } catch { return false }
+  })()
+  if (!isOnPoskasMain && !isOnOmsetMain && !isOnLapkeuMonth && !isOnAnekaMain && !targetBtn) return null
 
   return (
     <div className="lg:hidden">
       <button
         type="button"
-        aria-label="Tambah"
-        title="Tambah"
-        onClick={() => targetBtn?.click()}
-        className="fixed right-4 bottom-4 z-50 h-14 w-14 rounded-full bg-red-600 text-white shadow-lg shadow-red-300/40 flex items-center justify-center active:scale-95 transition-transform"
+        aria-label={
+          isOnPoskasMain ? 'Tambah Poskas' : (
+          isOnOmsetMain ? 'Tambah Omset' : (
+          isOnLapkeuMonth ? 'Tambah Lap Keu' : (
+          isOnAnekaMain ? 'Tambah Aneka Grafik' : 'Tambah')))}
+        title={
+          isOnPoskasMain ? 'Tambah Poskas' : (
+          isOnOmsetMain ? 'Tambah Omset' : (
+          isOnLapkeuMonth ? 'Tambah Lap Keu' : (
+          isOnAnekaMain ? 'Tambah Aneka Grafik' : 'Tambah')))}
+        onClick={() => {
+          // Prioritaskan navigasi eksplisit sesuai halaman
+          if (isOnPoskasMain) {
+            navigate('/admin/keuangan/poskas/new')
+          } else if (isOnOmsetMain) {
+            navigate('/admin/keuangan/omset-harian/new')
+          } else {
+            // Deteksi lapkeu month secara defensif: berdasarkan path + (query month atau sinyal body)
+            const onLapkeuPath = /^\/admin\/keuangan\/laporan\b/.test(location.pathname)
+            let lapkeuMonthActive = false
+            if (onLapkeuPath) {
+              try {
+                const m = new URLSearchParams(location.search).get('month')
+                lapkeuMonthActive = !!m || !!fs.lapkeu
+              } catch {
+                lapkeuMonthActive = !!fs.lapkeu
+              }
+            }
+            if (lapkeuMonthActive) {
+              // Selalu ke halaman tambah Lap Keu (tanpa query), sesuai permintaan
+              navigate('/admin/keuangan/laporan/new')
+              return
+            }
+            // Fallback umum: picu tombol 'Tambah' yang terdeteksi
+            targetBtn?.click()
+          }
+        }}
+        className="fixed right-4 bottom-4 z-[9999] h-14 w-14 rounded-full bg-red-600 text-white shadow-lg shadow-red-300/40 flex items-center justify-center active:scale-95 transition-transform pointer-events-auto"
         style={{ envSafeAreaInsetBottom: 'constant(safe-area-inset-bottom)' }}
       >
         <Plus className="w-7 h-7" />

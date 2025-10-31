@@ -268,45 +268,41 @@ const AdminPoskasList = () => {
 
   const loadStats = async () => {
     try {
-      console.log('📊 Loading stats for user:', user.id)
-      const response = await poskasService.getPoskasByUser(user.id, { limit: 1000 })
-      console.log('📈 Stats response:', response)
-      
-      if (response.success || response.data) {
-        const data = response.data || response
-        const poskasData = Array.isArray(data) ? data : (data.rows || data || [])
-        console.log('📊 Stats data:', poskasData)
-        
-        const now = new Date()
-        const thisMonth = now.getMonth()
-        const thisYear = now.getFullYear()
-        
-        const thisMonthPoskas = poskasData.filter(item => {
-          const itemDate = new Date(item.tanggal_poskas)
-          return itemDate.getMonth() === thisMonth && itemDate.getFullYear() === thisYear
-        })
-        
-        const thisYearPoskas = poskasData.filter(item => {
-          const itemDate = new Date(item.tanggal_poskas)
-          return itemDate.getFullYear() === thisYear
-        })
-        
-        const statsData = {
-          totalPoskas: poskasData.length,
-          totalThisMonth: thisMonthPoskas.length,
-          totalThisYear: thisYearPoskas.length
-        }
-        
-        console.log('📊 Calculated stats:', statsData)
-        setStats(statsData)
-      } else {
-        console.warn('⚠️ Stats response not successful:', response)
-        setStats({
-          totalPoskas: 0,
-          totalThisMonth: 0,
-          totalThisYear: 0
-        })
+      console.log('📊 Loading stats (all poskas for admin view)')
+      // Ambil SELURUH data poskas untuk perhitungan kartu statistik admin
+      const response = await poskasService.getPoskas()
+      console.log('📈 Stats response (all):', response)
+
+      // Normalisasi respons dari service -> array of items
+      const dataRoot = (response && typeof response === 'object' && 'data' in response) ? response.data : response
+      const poskasData = Array.isArray(dataRoot)
+        ? dataRoot
+        : (dataRoot?.poskas || dataRoot?.items || dataRoot?.rows || dataRoot?.data || [])
+
+      console.log('📊 Stats data (normalized):', poskasData)
+
+      const now = new Date()
+      const thisMonth = now.getMonth()
+      const thisYear = now.getFullYear()
+
+      const thisMonthPoskas = poskasData.filter(item => {
+        const itemDate = new Date(item.tanggal_poskas)
+        return itemDate.getMonth() === thisMonth && itemDate.getFullYear() === thisYear
+      })
+
+      const thisYearPoskas = poskasData.filter(item => {
+        const itemDate = new Date(item.tanggal_poskas)
+        return itemDate.getFullYear() === thisYear
+      })
+
+      const statsData = {
+        totalPoskas: poskasData.length,
+        totalThisMonth: thisMonthPoskas.length,
+        totalThisYear: thisYearPoskas.length
       }
+
+      console.log('📊 Calculated stats (admin):', statsData)
+      setStats(statsData)
     } catch (error) {
       console.error('❌ Error loading stats:', error)
       setStats({
@@ -323,6 +319,16 @@ const AdminPoskasList = () => {
     setCurrentPage(1)
     loadPoskas()
   }
+
+  // Pencarian otomatis (tanpa klik tombol) dengan debounce
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setCurrentPage(1)
+      loadPoskas()
+    }, 400) // debounce 400ms agar tidak memanggil API di tiap keystroke
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm])
 
   const formatDate = (dateString) => {
     if (!dateString) return '-'
@@ -444,7 +450,7 @@ const AdminPoskasList = () => {
           <div className="flex items-center gap-2">
             <Link
               to="/admin/keuangan/poskas/new"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
@@ -457,7 +463,7 @@ const AdminPoskasList = () => {
       <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 my-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -524,14 +530,8 @@ const AdminPoskasList = () => {
                 />
               </div>
             </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleSearch}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-              >
-                <Search className="h-4 w-4" />
-                <span className="font-semibold">Pencarian</span>
-              </button>
+            <div className="hidden">
+              {/* Tombol pencarian disembunyikan karena pencarian otomatis */}
             </div>
           </div>
         </div>
@@ -604,19 +604,13 @@ const AdminPoskasList = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="sticky top-0 bg-red-700 z-10">
                   <tr>
-                    <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.length === poskas.length && poskas.length > 0}
-                        onChange={handleSelectAll}
-                        className="rounded border-white text-white focus:ring-white"
-                        aria-label="Pilih semua"
-                      />
+                    <th className="hidden">
+                      {/* Checkbox select-all disembunyikan */}
                     </th>
-                    <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
-                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
-                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
-                    <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
+                    <th className="w-12 sm:w-16 pl-6 sm:pl-8 pr-2 sm:pr-8 md:pr-12 py-3 md:py-2.5 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">No</th>
+                    <th className="px-2 sm:px-8 md:px-12 py-3 md:py-2.5 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Tanggal</th>
+                    <th className="px-2 sm:px-8 md:px-12 py-3 md:py-2.5 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Keterangan</th>
+                    <th className="px-2 sm:px-8 md:px-12 py-3 md:py-2.5 text-left text-sm md:text-base font-extrabold text-white uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
@@ -626,18 +620,11 @@ const AdminPoskasList = () => {
                       className="hover:bg-gray-50/80 cursor-pointer"
                       onClick={() => navigate(`/admin/keuangan/poskas/${poskasItem.id}`)}
                     >
-                      <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-4 whitespace-nowrap text-sm text-gray-900 align-middle">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(poskasItem.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={() => handleCheckboxChange(poskasItem.id)}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                          aria-label={`Pilih baris ${((currentPage - 1) * PAGE_SIZE) + (idx + 1)}`}
-                        />
+                      <td className="hidden">
+                        {/* Checkbox per baris disembunyikan */}
                       </td>
-                      <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-4 whitespace-nowrap text-sm text-gray-900">{(currentPage - 1) * PAGE_SIZE + (idx + 1)}</td>
-                      <td className="px-4 sm:px-8 md:px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="w-12 sm:w-16 pl-6 sm:pl-8 pr-2 sm:pr-8 md:pr-12 py-2 md:py-3 whitespace-nowrap text-sm text-gray-900">{(currentPage - 1) * PAGE_SIZE + (idx + 1)}</td>
+                      <td className="px-2 sm:px-8 md:px-12 py-2 md:py-3 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold">{formatDate(poskasItem.tanggal_poskas).toUpperCase()}</span>
                           {(() => {
@@ -650,7 +637,7 @@ const AdminPoskasList = () => {
                           })()}
                         </div>
                       </td>
-                      <td className="px-4 sm:px-8 md:px-12 py-4 text-sm text-gray-900">
+                      <td className="px-2 sm:px-8 md:px-12 py-2 md:py-3 text-sm text-gray-900">
                         {poskasItem.isi_poskas ? (
                           <div
                             className="truncate max-w-[14rem] md:max-w-md"
@@ -658,7 +645,7 @@ const AdminPoskasList = () => {
                           />
                         ) : '-'}
                       </td>
-                      <td className="px-4 sm:px-8 md:px-12 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-2 sm:px-8 md:px-12 py-1 md:py-3 whitespace-nowrap text-sm text-gray-900">
                         <div className="flex items-center gap-3">
                           {false && (
                             <Link

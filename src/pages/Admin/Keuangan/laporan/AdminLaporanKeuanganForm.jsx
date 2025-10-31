@@ -826,14 +826,17 @@ const AdminLaporanKeuanganForm = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{isEditMode ? 'EDIT LAPORAN KEUANGAN' : 'TAMBAH LAPORAN KEUANGAN'}</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
+                <span className="md:hidden">{isEditMode ? 'EDIT LAP KEU' : 'TAMBAH LAP KEU'}</span>
+                <span className="hidden md:inline">{isEditMode ? 'EDIT LAPORAN KEUANGAN' : 'TAMBAH LAPORAN KEUANGAN'}</span>
+              </h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => backMonth ? navigate(`/admin/keuangan/laporan?month=${encodeURIComponent(backMonth)}`) : navigate(-1)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
               title="Batal"
             >
               <X className="h-4 w-4" />
@@ -843,7 +846,7 @@ const AdminLaporanKeuanganForm = () => {
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+              className="hidden lg:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
             >
               {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               <span>{isEditMode ? (isSubmitting ? 'Menyimpan...' : 'Perbarui') : (isSubmitting ? 'Menyimpan...' : 'Simpan')}</span>
@@ -917,6 +920,28 @@ const AdminLaporanKeuanganForm = () => {
                   hideAlign={true}
                   hideImage={true}
                 />
+                {/* Mobile action bar under editor */}
+                <div className="mt-4 lg:hidden flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => backMonth ? navigate(`/admin/keuangan/laporan?month=${encodeURIComponent(backMonth)}`) : navigate(-1)}
+                    aria-label="Batal"
+                    title="Batal"
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-gray-300 text-gray-700 bg-white active:scale-95 transition"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    aria-label={isEditMode ? 'Perbarui' : 'Simpan'}
+                    title={isEditMode ? 'Perbarui' : 'Simpan'}
+                    disabled={isSubmitting}
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-600 text-white shadow active:scale-95 transition disabled:opacity-60"
+                  >
+                    {isSubmitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

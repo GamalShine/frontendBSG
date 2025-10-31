@@ -354,33 +354,42 @@ const AdminDataTim = () => {
 
       {/* Ringkasan jumlah */}
       <div className="px-0 mt-3">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
             <div>
               <div className="text-xs uppercase tracking-wide text-gray-500">Jumlah Karyawan</div>
-              <div className="text-2xl font-extrabold text-gray-900">{stats.karyawan}</div>
+              <div className="text-2xl font-extrabold text-gray-900 hidden lg:block">{stats.karyawan}</div>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">
-              <Users className="h-5 w-5" />
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="text-xl font-extrabold text-gray-900 lg:hidden">{stats.karyawan}</div>
+              <span className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">
+                <Users className="h-5 w-5" />
+              </span>
+            </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
             <div>
               <div className="text-xs uppercase tracking-wide text-gray-500">Jumlah Divisi</div>
-              <div className="text-2xl font-extrabold text-gray-900">{stats.divisi}</div>
+              <div className="text-2xl font-extrabold text-gray-900 hidden lg:block">{stats.divisi}</div>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-              <Building2 className="h-5 w-5" />
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="text-xl font-extrabold text-gray-900 lg:hidden">{stats.divisi}</div>
+              <span className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                <Building2 className="h-5 w-5" />
+              </span>
+            </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
             <div>
               <div className="text-xs uppercase tracking-wide text-gray-500">Jumlah Jabatan</div>
-              <div className="text-2xl font-extrabold text-gray-900">{stats.jabatan}</div>
+              <div className="text-2xl font-extrabold text-gray-900 hidden lg:block">{stats.jabatan}</div>
             </div>
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-              <Briefcase className="h-5 w-5" />
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="text-xl font-extrabold text-gray-900 lg:hidden">{stats.jabatan}</div>
+              <span className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <Briefcase className="h-5 w-5" />
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -543,8 +552,8 @@ const AdminDataTim = () => {
         <div className="px-0 pb-8 pt-0">
           <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
             <div className="px-6 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-800">Daftar Jabatan per Divisi</div>
-              <button onClick={() => { setShowAddJabatan(true); setJabatanForm({ nama_jabatan: '', divisi_id: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">Tambah Jabatan</button>
+              <div className="text-sm font-semibold text-gray-800">Daftar Jabatan</div>
+              <button onClick={() => { setShowAddJabatan(true); setJabatanForm({ nama_jabatan: '', divisi_id: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">+ Jabatan</button>
             </div>
             <div className="divide-y">
               {(hierarchy || []).map(div => {

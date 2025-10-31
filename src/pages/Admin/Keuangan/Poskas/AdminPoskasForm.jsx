@@ -572,24 +572,28 @@ const AdminPoskasForm = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/keuangan/poskas')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
-              title="Batal"
-            >
-              <X className="h-4 w-4" />
-              <span>Batal</span>
-            </button>
-            <button
-              form="poskas-form"
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
-            >
-              {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
-            </button>
+            {isEditMode && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/keuangan/poskas')}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                  title="Batal"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Batal</span>
+                </button>
+                <button
+                  form="poskas-form"
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+                >
+                  {isSubmitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  <span>{isSubmitting ? 'Menyimpan...' : 'Perbarui'}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -648,28 +652,30 @@ const AdminPoskasForm = () => {
                </div>
               </div>
 
-          {/* Submit Buttons hidden (moved to header) */}
-          {false && (
-            <div className="flex space-x-4 p-6">
-              <button
-                type="button"
-                onClick={() => navigate('/admin/keuangan/poskas')}
-                className="px-6 py-3 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex items-center space-x-2 px-6 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                <span>{isSubmitting ? 'Menyimpan...' : (isEditMode ? 'Perbarui' : 'Simpan')}</span>
-              </button>
+          {/* Tombol aksi (mode tambah): pindah ke bawah editor, ikon saja di sisi kanan */}
+          {!isEditMode && (
+            <div className="p-6">
+              <div className="flex justify-end items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/keuangan/poskas')}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  title="Batal"
+                  aria-label="Batal"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <button
+                  type="submit"
+                  form="poskas-form"
+                  disabled={isSubmitting}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                  title="Simpan"
+                  aria-label="Simpan"
+                >
+                  {isSubmitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
           )}
           </form>

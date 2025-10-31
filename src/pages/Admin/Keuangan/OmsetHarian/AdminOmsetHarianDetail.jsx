@@ -495,21 +495,39 @@ const AdminOmsetHarianDetail = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.omsetHarian}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">OMSET HARIAN</h1>
-              <p className="text-sm text-red-100">Detail isi Omset Harian</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile: tombol EDIT ikon saja, Desktop: tombol KEMBALI */}
+            <button
+              onClick={() => navigate(`/admin/keuangan/omset-harian/${id}/edit`)}
+              className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white hover:bg-white/10"
+              aria-label="Edit"
+              title="Edit"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
             <button
               onClick={() => navigate('/admin/keuangan/omset-harian')}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              className="hidden lg:inline-flex px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
             >
               KEMBALI
             </button>
-            <div className="relative">
+            <div className="relative flex items-center gap-2">
+              {/* Mobile: X untuk menutup halaman detail */}
+              <button
+                onClick={() => navigate('/admin/keuangan/omset-harian')}
+                aria-label="Tutup"
+                title="Tutup"
+                className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white/90 hover:bg-white/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              {/* Desktop: kebab untuk toggle menu aksi */}
               <button
                 onClick={() => setShowActionMenu(v => !v)}
                 aria-label="Aksi"
-                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white/90 hover:bg-white/10"
+                className="hidden lg:inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white/90 hover:bg-white/10"
               >
                 <MoreVertical className="h-4 w-4" />
               </button>

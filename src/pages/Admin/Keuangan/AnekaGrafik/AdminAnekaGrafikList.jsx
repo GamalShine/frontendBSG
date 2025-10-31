@@ -28,6 +28,7 @@ import {
   MoreHorizontal,
   ChevronDown,
   ChevronUp,
+  Maximize2,
   Target
 } from 'lucide-react';
 import AdminAnekaGrafikForm from './AdminAnekaGrafikForm';
@@ -37,6 +38,7 @@ const AdminAnekaGrafikList = () => {
   const { user } = useAuth();
   
   const [anekaGrafik, setAnekaGrafik] = useState([]);
+  const [rawAnekaGrafik, setRawAnekaGrafik] = useState([]); // data mentah (flattened) untuk mobile accordion
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -45,6 +47,9 @@ const AdminAnekaGrafikList = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [stats, setStats] = useState({});
   const [selectedItems, setSelectedItems] = useState([]);
+  const [mobileExpanded, setMobileExpanded] = useState({}); // {kategori: true}
+  const [mobileOpenItems, setMobileOpenItems] = useState({}); // {id: true}
+  const [previewUrl, setPreviewUrl] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
   const [activeTab, setActiveTab] = useState('omzet');
   const [showForm, setShowForm] = useState(false);
@@ -68,42 +73,31 @@ const AdminAnekaGrafikList = () => {
       );
       
       if (response.success) {
-        // Filter data berdasarkan activeTab
-        let filteredData = [];
+        // Flatten hierarchical data terlebih dahulu, simpan sebagai raw untuk mobile
+        let flattenedData = [];
         if (response.data && Array.isArray(response.data)) {
-          // Flatten hierarchical data first
-          const flattenedData = [];
           response.data.forEach(parent => {
-            flattenedData.push(parent); // Add parent
+            flattenedData.push(parent);
             if (parent.children && parent.children.length > 0) {
-              flattenedData.push(...parent.children); // Add children
+              flattenedData.push(...parent.children);
             }
           });
-          
-          console.log('📊 Total data after flattening:', flattenedData.length);
-          console.log('🏷️ Active tab:', activeTab);
-          console.log('📋 Sample categories:', flattenedData.slice(0, 5).map(item => item.category));
-          
-          // Filter berdasarkan kategori yang dipilih
-          if (activeTab && activeTab !== 'all') {
-            filteredData = flattenedData.filter(item => {
-              if (!item.category) return false;
-              
-              // Normalize category names for comparison
-              const itemCategory = item.category.toLowerCase().replace(/[_\s]/g, '');
-              const activeCategory = activeTab.toLowerCase().replace(/[_\s]/g, '');
-              
-              return itemCategory === activeCategory;
-            });
-            
-            console.log('🔍 Filtered data count:', filteredData.length);
-            console.log('🔍 Filter criteria:', { activeTab, activeCategory: activeTab.toLowerCase().replace(/[_\s]/g, '') });
-          } else {
-            filteredData = flattenedData;
-            console.log('📋 Showing all data (no filter)');
-          }
         }
-        
+        setRawAnekaGrafik(flattenedData);
+
+        // Filter data berdasarkan activeTab untuk tampilan desktop (list kiri)
+        let filteredData = [];
+        if (activeTab && activeTab !== 'all') {
+          filteredData = flattenedData.filter(item => {
+            if (!item.category) return false;
+            const itemCategory = item.category.toLowerCase().replace(/[_\s]/g, '');
+            const activeCategory = activeTab.toLowerCase().replace(/[_\s]/g, '');
+            return itemCategory === activeCategory;
+          });
+        } else {
+          filteredData = flattenedData;
+        }
+
         setAnekaGrafik(filteredData);
         setTotalPages(response.pagination?.totalPages || 1);
         setTotalItems(filteredData.length);
@@ -189,6 +183,23 @@ const AdminAnekaGrafikList = () => {
     const dt = latest?.created_at || latest?.tanggal_grafik;
     return formatDateTime(dt);
   }, [anekaGrafik]);
+
+  // Group data by category for mobile accordion
+  const groupedByCategory = useMemo(() => {
+    const out = {};
+    (rawAnekaGrafik || []).forEach(item => {
+      const cat = (item.category || 'LAINNYA').toUpperCase().replace(/[_\s]+/g, ' ');
+      if (!out[cat]) out[cat] = [];
+      out[cat].push(item);
+    });
+    return out;
+  }, [rawAnekaGrafik]);
+
+  const toggleMobileCat = (cat) => {
+    setMobileExpanded(prev => ({ ...prev, [cat]: !prev[cat] }));
+  };
+
+  const normalizeCat = (c) => (c || 'LAINNYA').toUpperCase().replace(/[_\s]+/g, ' ');
 
   const handleAdd = () => {
     setEditingItem(null);
@@ -307,26 +318,38 @@ const AdminAnekaGrafikList = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Tombol Tambah: disembunyikan di mobile, tetap ada di desktop */}
             <button
               onClick={handleAdd}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
             </button>
+            {/* Target tersembunyi untuk FAB (mobile) */}
+            {!showForm && (
+              <button
+                type="button"
+                data-add
+                onClick={handleAdd}
+                className="block md:hidden absolute w-px h-px -left-[9999px] opacity-0"
+                aria-hidden="true"
+                tabIndex={-1}
+              >Tambah</button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Last Update Info */}
-      <div className="bg-gray-200 px-6 py-2">
+      <div className="bg-gray-200 px-6 py-2 mb-2 lg:mb-0">
         <p className="text-sm text-gray-900">
           Terakhir diupdate: {lastUpdatedText}
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+      {/* Filters - desktop only */}
+      <div className="hidden bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -367,8 +390,8 @@ const AdminAnekaGrafikList = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="bg-white px-6 py-3 border-b border-gray-200">
+      {/* Navigation Tabs - desktop only */}
+      <div className="hidden lg:block bg-white px-6 py-3 border-b border-gray-200">
         <div className="flex space-x-2">
           {['all', 'omzet', 'bahan_baku', 'gaji_bonus_ops', 'gaji', 'bonus', 'operasional'].map((tab) => (
             <button
@@ -391,26 +414,91 @@ const AdminAnekaGrafikList = () => {
         </div>
       </div>
 
-      {/* Main Content - Side by Side */}
-      <div className="flex gap-6 p-6 h-[calc(100vh-280px)]">
+      {/* Mobile Accordion (only) */}
+      <div className="lg:hidden px-0 py-2 space-y-2">
+        {Object.keys(groupedByCategory).map((cat) => (
+          <div key={cat} className="border-y border-gray-200 rounded-none overflow-visible bg-white">
+            {/* Header merah */}
+            <button
+              type="button"
+              onClick={() => toggleMobileCat(cat)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-red-700 text-white rounded-none"
+            >
+              <span className="font-extrabold tracking-wide">{cat} - {groupedByCategory[cat]?.length || 0} item</span>
+              <span className="opacity-90">{mobileExpanded[cat] ? '▴' : '▾'}</span>
+            </button>
+            {/* Body */}
+            {mobileExpanded[cat] && (
+              <div className="px-0 py-0 space-y-0 bg-gray-100">
+                {/* Daftar judul item dalam kategori */}
+                <div className="divide-y divide-gray-200 rounded-none border-y border-gray-200 overflow-hidden bg-gray-100">
+                  {groupedByCategory[cat].map((item) => (
+                    <div key={item.id} className="bg-gray-100">
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 flex items-center justify-between bg-gray-100"
+                        onClick={() => setMobileOpenItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                      >
+                        <span className="truncate pr-3 font-medium text-gray-900">{item.name || 'Aneka Grafik'}</span>
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      </button>
+                      {mobileOpenItems[item.id] && (
+                        <div className="border-t border-gray-200">
+                          <div className="border-y border-gray-200 rounded-none overflow-hidden">
+                            <img
+                              src={getPhotoUrl(item)}
+                              alt={item.name || 'Aneka Grafik'}
+                              className="w-full h-52 object-cover"
+                              onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/400x300?text=No+Image'; }}
+                            />
+                            <div className="pl-3 pr-0 py-0.5 flex items-center justify-between text-xs text-gray-600 bg-white">
+                              <span>{formatDateTime(item.created_at || item.tanggal_grafik)}</span>
+                              <div className="flex items-center gap-0 pr-0">
+                                <button
+                                  className="text-green-600 hover:text-green-700 mr-0 pr-0"
+                                  title="Edit"
+                                  type="button"
+                                  onClick={() => handleEdit(item)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  className="text-red-600 hover:text-red-700 ml-0 pl-0 mr-0 pr-0"
+                                  title="Hapus"
+                                  type="button"
+                                  onClick={() => handleDelete(item.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Main Content - Responsive (desktop only) */}
+      <div className="hidden lg:flex lg:gap-6 lg:p-6 lg:h-[calc(100vh-280px)] space-y-4 lg:space-y-0">
         {/* Aneka Grafik List - Left Side */}
-        <div className="w-1/2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="w-full lg:w-1/2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900 flex items-center">
                 <BarChart3 className="w-5 h-5 mr-2 text-red-600" />
                 Daftar Aneka Grafik
               </h3>
-              <button
-                onClick={handleAdd}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center"
-              >
-                <span className="mr-1">+</span> Tambah Grafik
-              </button>
+              {/* Tombol "+ Tambah Grafik" dihilangkan (mobile & desktop) sesuai permintaan */}
             </div>
           </div>
           
-          <div className="p-4 overflow-y-auto max-h-[calc(100vh-400px)]">
+          <div className="p-4 overflow-y-auto max-h-96 lg:max-h-[calc(100vh-400px)]">
             <div className="space-y-3">
               {loading ? (
                 <div className="text-center py-8">
@@ -475,7 +563,7 @@ const AdminAnekaGrafikList = () => {
         </div>
 
         {/* Photo Display - Right Side */}
-        <div className="w-1/2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="w-full lg:w-1/2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h3 className="text-lg font-bold text-gray-900 flex items-center">
               <Target className="w-5 h-5 mr-2 text-red-600" />
@@ -486,7 +574,8 @@ const AdminAnekaGrafikList = () => {
           <div className="p-4 h-full">
             {selectedItem ? (
               <div className="h-full flex flex-col">
-                <div className="mb-4">
+                {/* Sembunyikan nama & kategori di mobile; tampilkan di desktop */}
+                <div className="mb-4 hidden lg:block">
                   <h4 className="text-xl font-bold text-gray-900 mb-2">
                     {selectedItem.name}
                   </h4>

@@ -239,7 +239,7 @@ const AdminAnekaGrafikList = () => {
         <div className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
-            <div className="flex-1">
+            <div className="flex-1 md:hidden">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -253,7 +253,7 @@ const AdminAnekaGrafikList = () => {
             </div>
 
             {/* Date Filter */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 md:hidden">
               <Calendar className="h-4 w-4 text-gray-400" />
               <input
                 type="date"
