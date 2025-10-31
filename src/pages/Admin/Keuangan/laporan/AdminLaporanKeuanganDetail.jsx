@@ -274,23 +274,48 @@ const AdminLaporanKeuanganDetail = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">LAPORAN KEUANGAN</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
+                <span className="md:hidden">LAP KEUANGAN</span>
+                <span className="hidden md:inline">LAPORAN KEUANGAN</span>
+              </h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/admin/keuangan/laporan')}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              KEMBALI
-            </button>
-            <button
-              onClick={() => navigate(`/admin/keuangan/laporan/${id}/edit`)}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 inline-flex items-center gap-2"
-            >
-              <Edit className="h-4 w-4" />
-              <span>Edit</span>
-            </button>
+            {/* Mobile: icon-only buttons */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button
+                onClick={() => navigate('/admin/keuangan/laporan')}
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white hover:bg-white/10"
+                aria-label="Kembali"
+                title="Kembali"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => navigate(`/admin/keuangan/laporan/${id}/edit`)}
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white hover:bg-white/10"
+                aria-label="Edit"
+                title="Edit"
+              >
+                <Edit className="h-5 w-5" />
+              </button>
+            </div>
+            {/* Desktop: text buttons remain */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                onClick={() => navigate('/admin/keuangan/laporan')}
+                className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              >
+                KEMBALI
+              </button>
+              <button
+                onClick={() => navigate(`/admin/keuangan/laporan/${id}/edit`)}
+                className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 inline-flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                <span>Edit</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

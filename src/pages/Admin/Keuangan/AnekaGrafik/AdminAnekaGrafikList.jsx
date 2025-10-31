@@ -73,7 +73,7 @@ const AdminAnekaGrafikList = () => {
       );
       
       if (response.success) {
-        // Flatten hierarchical data terlebih dahulu, simpan sebagai raw untuk mobile
+        // Flatten hierarchical data terlebih dahulu
         let flattenedData = [];
         if (response.data && Array.isArray(response.data)) {
           response.data.forEach(parent => {
@@ -83,19 +83,46 @@ const AdminAnekaGrafikList = () => {
             }
           });
         }
-        setRawAnekaGrafik(flattenedData);
+
+        // Client-side text filter (seperti AnekaSurat): cocokkan judul/nama atau kategori
+        const q = (searchTerm || '').trim().toLowerCase();
+        const textMatches = (item) => {
+          if (!q) return true;
+          const name = String(item.name || '').toLowerCase();
+          const cat = String(item.category || '').toLowerCase();
+          const isi = String(item.isi_grafik || '').toLowerCase();
+          const userNama = String(item.user_nama || '').toLowerCase();
+          const tanggalStr = item.tanggal_grafik
+            ? new Date(item.tanggal_grafik).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).toLowerCase()
+            : '';
+          const createdStr = item.created_at
+            ? new Date(item.created_at).toLocaleString('id-ID', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }).toLowerCase()
+            : '';
+          return (
+            name.includes(q) ||
+            cat.includes(q) ||
+            isi.includes(q) ||
+            userNama.includes(q) ||
+            tanggalStr.includes(q) ||
+            createdStr.includes(q)
+          );
+        };
+        const flattenedFiltered = flattenedData.filter(textMatches);
+
+        // Simpan untuk mobile accordion (pakai data yang sudah difilter)
+        setRawAnekaGrafik(flattenedFiltered);
 
         // Filter data berdasarkan activeTab untuk tampilan desktop (list kiri)
         let filteredData = [];
         if (activeTab && activeTab !== 'all') {
-          filteredData = flattenedData.filter(item => {
+          filteredData = flattenedFiltered.filter(item => {
             if (!item.category) return false;
             const itemCategory = item.category.toLowerCase().replace(/[_\s]/g, '');
             const activeCategory = activeTab.toLowerCase().replace(/[_\s]/g, '');
             return itemCategory === activeCategory;
           });
         } else {
-          filteredData = flattenedData;
+          filteredData = flattenedFiltered;
         }
 
         setAnekaGrafik(filteredData);
@@ -346,6 +373,27 @@ const AdminAnekaGrafikList = () => {
         <p className="text-sm text-gray-900">
           Terakhir diupdate: {lastUpdatedText}
         </p>
+      </div>
+
+      {/* Pencarian - gaya seperti Aneka Surat */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-2">
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Aneka Grafik</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cari judul atau kategori grafik..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filters - desktop only */}

@@ -266,11 +266,11 @@ const AdminOmsetHarianList = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      {/* Header - match POSKAS style */}
-      <div className="bg-red-800 text-white px-6 py-5">
+      {/* Header - match POSKAS style (compact mobile, comfortable desktop) */}
+      <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.omsetHarian}</span>
+            <span className="text-[11px] md:text-sm font-semibold bg-white/10 rounded px-1.5 py-0.5 md:px-2 md:py-1">{MENU_CODES.keuangan.omsetHarian}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">OMSET HARIAN</h1>
             </div>
