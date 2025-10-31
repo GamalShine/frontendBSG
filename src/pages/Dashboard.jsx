@@ -349,8 +349,8 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-2">
                     {videoUrl ? (
-                      <div className="aspect-video w-full bg-black/5 rounded-lg overflow-hidden">
-                        <video className="w-full h-full" src={videoUrl} controls />
+                      <div className="w-full bg-black/5 rounded-lg overflow-hidden aspect-auto h-[calc(100vh-220px)] sm:h-[360px] lg:aspect-video lg:h-auto">
+                        <video className="w-full h-full object-cover" src={videoUrl} controls />
                       </div>
                     ) : (
                       <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
@@ -584,8 +584,8 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
                 {videoUrl ? (
-                  <div className="aspect-video w-full bg-black/5 rounded-lg overflow-hidden">
-                    <video className="w-full h-full" src={videoUrl} controls />
+                  <div className="w-full bg-black/5 rounded-lg overflow-hidden aspect-auto h-[calc(100vh-220px)] sm:h-[360px] lg:aspect-video lg:h-auto">
+                    <video className="w-full h-full object-cover" src={videoUrl} controls />
                   </div>
                 ) : (
                   <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">

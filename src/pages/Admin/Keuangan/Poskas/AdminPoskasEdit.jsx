@@ -1133,19 +1133,21 @@ const AdminPoskasEdit = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Desktop: dengan teks (mobile disembunyikan) */}
             <button
               type="button"
               onClick={() => navigate('/admin/keuangan/poskas')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+              className="hidden lg:inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
               title="Batal"
             >
               <X className="h-4 w-4" />
               <span>Batal</span>
             </button>
+            {/* Desktop: dengan teks (mobile disembunyikan) */}
             <button
               form="poskas-edit-form"
               type="submit"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden lg:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm"
             >
               <Save className="h-4 w-4" />
               <span>Perbarui</span>
@@ -1350,8 +1352,27 @@ const AdminPoskasEdit = () => {
               hideAlign={true}
               hideImage={true}
             />
-            
-            
+            {/* Mobile action bar under editor */}
+            <div className="mt-4 lg:hidden flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/keuangan/poskas')}
+                aria-label="Batal"
+                title="Batal"
+                className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-gray-300 text-gray-700 bg-white active:scale-95 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <button
+                form="poskas-edit-form"
+                type="submit"
+                aria-label="Perbarui"
+                title="Perbarui"
+                className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-600 text-white shadow active:scale-95 transition"
+              >
+                <Save className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           {/* Hidden sections for existing images and upload */}

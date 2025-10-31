@@ -509,10 +509,11 @@ const AdminDaftarGaji = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Tombol Tambah: disembunyikan di mobile, tetap tampil di desktop */}
             <button
               type="button"
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
@@ -527,7 +528,7 @@ const AdminDaftarGaji = () => {
       <div className="mt-4">
         {/* Form Pencarian */}
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-3">
-          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cari</label>
               <div className="relative">
@@ -541,28 +542,7 @@ const AdminDaftarGaji = () => {
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cabang</label>
-              <select
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="all">Semua Cabang</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => { setSearchTerm(''); setBranchFilter('all'); }}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-              >
-                Reset
-              </button>
-            </div>
+            <div className="flex items-end"></div>
           </div>
         </div>
 
@@ -681,19 +661,19 @@ const AdminDaftarGaji = () => {
             tabIndex={-1}
           />
 
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] lg:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+            <div className="flex items-center justify-between px-6 py-2 lg:py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
               <div>
                 <h3 className="text-xl font-bold leading-tight">Tambah Daftar Gaji</h3>
               </div>
-              <button onClick={() => setShowForm(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+              <button onClick={() => setShowForm(false)} className="p-1 lg:p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
                 ✕
               </button>
             </div>
 
             {/* Body */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 lg:py-5 scrollbar-hide">
               <form id="gajiForm" onSubmit={handleSubmit} className="space-y-4">
                 {/* Info Karyawan */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -783,11 +763,11 @@ const AdminDaftarGaji = () => {
 
             {/* Footer */}
             <div className="p-0 border-t bg-white">
-              <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <div className="grid grid-cols-2 gap-2 pl-2 pr-4 py-2">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                  className="w-full py-1 md:py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
                 >
                   Batal
                 </button>
@@ -795,7 +775,7 @@ const AdminDaftarGaji = () => {
                   type="submit"
                   form="gajiForm"
                   disabled={submitting}
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
+                  className="w-full py-1 md:py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
                 >
                   {submitting ? 'Menyimpan...' : 'Simpan'}
                 </button>
@@ -803,6 +783,18 @@ const AdminDaftarGaji = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* FAB Tambah (mobile only) - disembunyikan saat modal terbuka */}
+      {!showForm && (
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+          aria-label="Tambah Data Gaji"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
       )}
     </div>
   )

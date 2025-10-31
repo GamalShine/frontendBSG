@@ -102,7 +102,7 @@ const Login = () => {
 
             {/* Field Password */}
             <label className="block text-xs font-medium text-gray-600 mt-4 mb-2">Password</label>
-            <div className="w-full rounded-xl bg-gray-100/90 border border-gray-200 px-3 md:px-4 h-10 md:h-12 grid grid-cols-[auto,1fr,auto] items-center gap-2 md:gap-3">
+            <div className="w-full relative rounded-xl bg-gray-100/90 border border-gray-200 pl-3 md:pl-4 pr-10 md:pr-12 h-10 md:h-12 flex items-center gap-2 md:gap-3">
               <Lock className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -116,7 +116,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="justify-self-end w-6 h-6 flex items-center justify-center rounded-md text-red-400 hover:text-red-600"
+                className="absolute right-3 md:right-4 w-6 h-6 flex items-center justify-center rounded-md text-red-400 hover:text-red-600"
                 aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
               >
                 {showPassword ? (

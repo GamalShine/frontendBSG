@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
 import { toast } from 'react-hot-toast';
@@ -13,13 +13,15 @@ import {
   TrendingUp,
   RefreshCw,
   DollarSign,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from 'lucide-react';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminLaporanKeuangan = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   
   const [laporanKeuangan, setLaporanKeuangan] = useState([]);
@@ -40,6 +42,74 @@ const AdminLaporanKeuangan = () => {
   const [availableMonths, setAvailableMonths] = useState([]); // [{year, month}]
   const [lastUpdated, setLastUpdated] = useState('');
   
+  // State terkait tampilan tahun/bulan harus dideklarasikan sebelum dipakai di efek
+  const [extraYears, setExtraYears] = useState([]); // tambahan manual dari tombol Tambah Tahun
+  const [hiddenYears, setHiddenYears] = useState([]); // tahun disembunyikan via hapus UI
+  const [expandedYears, setExpandedYears] = useState({}); // {2024: true}
+  const [monthSummaries, setMonthSummaries] = useState({}); // {'YYYY-MM': {count, lastUpdated}}
+  // Helper: daftar 12 bulan untuk suatu tahun
+  const getMonthsForYear = (year) => Array.from({ length: 12 }, (_, idx) => ({ year, month: idx + 1 }));
+
+
+  // Sinkronkan state tampilan dengan query URL (?month=YYYY-MM)
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(location.search || '');
+      const m = sp.get('month');
+      if (m) {
+        // Masuk tampilan isi bulan
+        if (monthsView !== 'monthContent' || monthFilter !== m) {
+          setMonthFilter(m);
+          setMonthsView('monthContent');
+          setCurrentPage(1);
+        }
+      } else {
+        // Kembali ke tampilan years
+        if (monthsView !== 'years') {
+          setMonthsView('years');
+          setMonthFilter('');
+          setLaporanKeuangan([]);
+          setCurrentPage(1);
+        }
+      }
+    } catch {}
+  }, [location.search]);
+
+
+  // Sinyal ke Layout: sembunyikan/tampilkan FAB sesuai tampilan
+  useEffect(() => {
+    try {
+      if (typeof document !== 'undefined') {
+        if (monthsView === 'years') {
+          document.body.setAttribute('data-hide-fab', 'true');
+          document.body.removeAttribute('data-lapkeu-month');
+          document.body.removeAttribute('data-month-filter');
+        } else {
+          document.body.removeAttribute('data-hide-fab');
+          // Beri sinyal kalau sedang di tampilan bulan (tanpa bergantung query URL)
+          document.body.setAttribute('data-lapkeu-month', 'true');
+          if (monthFilter) {
+            document.body.setAttribute('data-month-filter', monthFilter);
+          }
+        }
+      }
+    } catch {}
+    return () => {
+      try {
+        if (document?.body) {
+          document.body.removeAttribute('data-hide-fab');
+          document.body.removeAttribute('data-lapkeu-month');
+          document.body.removeAttribute('data-month-filter');
+        }
+      } catch {}
+    };
+
+  // Reset ke halaman pertama saat search atau dateFilter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, dateFilter]);
+  }, [monthsView, monthFilter]);
+
 
   useEffect(() => {
     if (user) {
@@ -51,7 +121,7 @@ const AdminLaporanKeuangan = () => {
       }
       loadStats();
     }
-  }, [user, monthsView, currentPage, monthFilter]);
+  }, [user, monthsView, currentPage, monthFilter, searchTerm, dateFilter]);
 
   // Load latest report for 'Terakhir diupdate'
   const loadLastUpdated = async () => {
@@ -115,6 +185,50 @@ const AdminLaporanKeuangan = () => {
     } catch {}
   }, []);
 
+  // Sync across tabs/windows: listen to storage and visibilitychange
+  useEffect(() => {
+    const reloadFromLocal = () => {
+      try {
+        const savedYears = JSON.parse(localStorage.getItem('laporan_extra_years') || '[]');
+        const savedHidden = JSON.parse(localStorage.getItem('laporan_hidden_years') || '[]');
+        const savedExpanded = JSON.parse(localStorage.getItem('laporan_expanded_years') || '{}');
+        if (Array.isArray(savedYears)) setExtraYears(savedYears); else setExtraYears([]);
+        if (Array.isArray(savedHidden)) setHiddenYears(savedHidden); else setHiddenYears([]);
+        if (savedExpanded && typeof savedExpanded === 'object') {
+          setExpandedYears(savedExpanded);
+          Object.keys(savedExpanded).forEach((y) => {
+            if (savedExpanded[y]) {
+              const yearNum = Number(y);
+              const sampleKey = `${yearNum}-01`;
+              if (!monthSummaries[sampleKey]) fetchMonthSummariesForYear(yearNum);
+            }
+          });
+        } else {
+          setExpandedYears({});
+        }
+      } catch {}
+    };
+    const onStorage = (e) => {
+      if (!e) return;
+      if (
+        e.key === 'laporan_extra_years' ||
+        e.key === 'laporan_hidden_years' ||
+        e.key === 'laporan_expanded_years'
+      ) {
+        reloadFromLocal();
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') reloadFromLocal();
+    };
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [monthSummaries]);
+
   // Fetch month summaries for a year (latest item + total count)
   const fetchMonthSummariesForYear = async (year) => {
     try {
@@ -146,8 +260,6 @@ const AdminLaporanKeuangan = () => {
 
   // Build list of years from availableMonths; fallback to current year
   const currentYear = new Date().getFullYear();
-  const [extraYears, setExtraYears] = useState([]); // tambahan manual dari tombol Tambah Tahun
-  const [hiddenYears, setHiddenYears] = useState([]); // tahun disembunyikan via hapus UI
   const yearOptions = useMemo(() => {
     const ys = Array.isArray(availableMonths) ? Array.from(new Set(availableMonths.map(m => m.year))) : [];
     const merged = Array.from(new Set([...ys, ...extraYears]))
@@ -155,9 +267,19 @@ const AdminLaporanKeuangan = () => {
       .sort((a,b)=>b-a);
     return merged.length ? merged : [currentYear];
   }, [availableMonths, currentYear, extraYears, hiddenYears]);
-  const getMonthsForYear = (year) => Array.from({ length: 12 }, (_, idx) => ({ year, month: idx + 1 }));
-  const [expandedYears, setExpandedYears] = useState({}); // {2024: true}
-  const [monthSummaries, setMonthSummaries] = useState({}); // {'YYYY-MM': {count, lastUpdated}}
+  // Range tanggal untuk month view (min/max date input)
+  const monthRange = useMemo(() => {
+    if (!monthFilter) return { min: '', max: '' };
+    const [y, m] = monthFilter.split('-').map(Number);
+    if (!y || !m) return { min: '', max: '' };
+    const first = new Date(y, m - 1, 1);
+    const last = new Date(y, m, 0);
+    const toISO = (d) => {
+      const tzOff = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() - tzOff).toISOString().split('T')[0];
+    };
+    return { min: toISO(first), max: toISO(last) };
+  }, [monthFilter]);
 
   const loadLaporanKeuangan = async () => {
     try {
@@ -165,8 +287,8 @@ const AdminLaporanKeuangan = () => {
       const response = await laporanKeuanganService.getAllLaporanKeuangan(
         currentPage,
         10,
-        '',
-        '',
+        searchTerm || '',
+        dateFilter || '',
         monthFilter
       );
       
@@ -483,37 +605,51 @@ const AdminLaporanKeuangan = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header + Badge Code */}
-      <div className="bg-red-800 text-white px-6 py-4 mb-0">
+      <div className="bg-red-800 text-white px-6 py-4 mb-0 z-0 lg:relative lg:z-[100]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">LAPORAN KEUANGAN</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
+                <span className="md:hidden">LAP KEU</span>
+                <span className="hidden md:inline">LAPORAN KEUANGAN</span>
+              </h1>
             </div>
           </div>
           {monthsView === 'years' ? (
             <button
-              onClick={handleAddYear}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddYear(); }}
+              className="relative z-30 inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm pointer-events-auto"
+              title="Tambah Tahun"
+              aria-label="Tambah Tahun"
+              data-add
             >
               <Plus className="h-4 w-4" strokeWidth={2.5} />
-              <span className="hidden sm:inline font-semibold">Tahun</span>
+              <span className="md:hidden font-semibold">Thn</span>
+              <span className="hidden md:inline font-semibold">Tahun</span>
             </button>
           ) : monthsView === 'monthContent' ? (
             <div className="flex items-center gap-2">
               <button
                 onClick={backToMonths}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                aria-label="Kembali"
+                title="Kembali"
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline font-semibold">Kembali</span>
+                {/* Mobile: X, Desktop: ArrowLeft + teks */}
+                <span className="md:hidden"><X className="h-4 w-4" /></span>
+                <span className="hidden md:inline-flex items-center gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="font-semibold">Kembali</span>
+                </span>
               </button>
               <button
                 onClick={() => navigate(`/admin/keuangan/laporan/new?month=${encodeURIComponent(monthFilter || '')}`)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+                className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
-                <span className="hidden sm:inline font-semibold">Tambah</span>
+                <span className="font-semibold">Tambah</span>
               </button>
             </div>
           ) : (
@@ -547,26 +683,20 @@ const AdminLaporanKeuangan = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
-                    type="month"
-                    value={monthFilter}
-                    onChange={(e) => { setMonthFilter(e.target.value); setMonthsView('monthContent'); setCurrentPage(1); }}
+                    type="date"
+                    value={dateFilter}
+                    min={monthRange.min}
+                    max={monthRange.max}
+                    onChange={(e) => { setDateFilter(e.target.value); setCurrentPage(1); }}
                     className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
               </div>
-              <div className="flex items-end">
-                <button
-                  onClick={() => { setSearchTerm(''); setDateFilter(''); setMonthFilter(''); setMonthsView('months'); setCurrentPage(1); }}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="font-semibold">Reset</span>
-                </button>
-              </div>
+              <div className="flex items-end" />
             </div>
           </div>
         </div>
@@ -638,8 +768,8 @@ const AdminLaporanKeuangan = () => {
 
       {/* Month Content Table */}
       {monthsView === 'monthContent' && (
-      <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-        <div className="bg-red-800 text-white px-4 md:px-6 py-2 md:py-3">
+      <div className="bg-white shadow-sm border rounded-b-lg overflow-hidden">
+        <div className="bg-red-800 text-white px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <h2 className="text-lg font-extrabold leading-tight">{(formatMonthHeader(monthFilter) || '').toUpperCase()}</h2>
@@ -654,25 +784,18 @@ const AdminLaporanKeuangan = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="sticky top-0 bg-[#e5e7eb] z-10 shadow">
               <tr>
-                <th className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.length === laporanKeuangan.length && laporanKeuangan.length > 0}
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-600 text-red-600 focus:ring-red-500"
-                  />
-                </th>
-                <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">No</th>
-                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Tanggal</th>
-                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Judul</th>
-                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Keterangan</th>
-                <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Aksi</th>
+                <th className="hidden"></th>
+                <th className="w-12 sm:w-16 pl-4 md:pl-6 pr-4 md:pr-12 py-2 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">No</th>
+                <th className="px-4 sm:px-8 md:px-12 py-2 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Tanggal</th>
+                <th className="px-4 sm:px-8 md:px-12 py-2 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Judul</th>
+                <th className="px-4 sm:px-8 md:px-12 py-2 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Keterangan</th>
+                <th className="px-4 sm:px-8 md:px-12 py-2 text-left text-[0.9rem] font-extrabold text-gray-900 uppercase tracking-wider">Aksi</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {filteredLaporan.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-16 text-center text-gray-500 align-middle">
+                  <td colSpan="5" className="px-6 py-16 text-center text-gray-500 align-middle">
                     <div className="flex flex-col items-center justify-center min-h-[12rem]">
                       <DollarSign className="h-12 w-12 text-gray-300 mb-4" />
                       <p className="text-lg font-medium text-gray-900 mb-2">Tidak ada data</p>
@@ -683,34 +806,25 @@ const AdminLaporanKeuangan = () => {
               ) : (
                 filteredLaporan.map((item, idx) => (
                   <tr key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/keuangan/laporan/${item.id}`)}>
-                    <td className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-1.5 whitespace-nowrap text-sm text-gray-900" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => handleCheckboxChange(item.id)}
-                        className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                    </td>
-                    <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-1.5 whitespace-nowrap text-sm text-gray-900">
+                    <td className="hidden" />
+                    <td className="w-12 sm:w-16 pl-4 md:pl-6 pr-4 md:pr-12 py-1 whitespace-nowrap text-sm text-gray-900">
                       {(currentPage - 1) * 10 + idx + 1}
                     </td>
-                    <td className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-normal md:whitespace-nowrap text-sm text-gray-900 font-semibold">
+                    <td className="px-4 sm:px-8 md:px-12 py-1 whitespace-nowrap text-sm text-gray-900 font-semibold">
                       {(formatDate(item.tanggal_laporan) || '').toUpperCase()}
                     </td>
-                    <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900">
-                      <div className="max-w-[14rem] md:max-w-md break-anywhere md:truncate">
+                    <td className="px-4 sm:px-8 md:px-12 py-1 text-sm text-gray-900 whitespace-nowrap truncate max-w-[14rem] md:max-w-md">
+                      <div className="truncate">
                         {item.judul_laporan && item.judul_laporan.trim() !== ''
                           ? item.judul_laporan
                           : extractTitle(item.isi_laporan)}
                       </div>
                     </td>
-                    <td className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-nowrap text-sm text-gray-700">
-                      <div className="max-w-[16rem] md:max-w-lg overflow-hidden text-ellipsis whitespace-nowrap">
-                        {truncateContent(item.isi_laporan || '', 60)}
-                      </div>
+                    <td className="px-4 sm:px-8 md:px-12 py-1 whitespace-nowrap text-sm text-gray-700 truncate max-w-[16rem] md:max-w-lg">
+                      <div className="truncate">{truncateContent(item.isi_laporan || '', 60)}</div>
                     </td>
-                    <td className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-2">
+                    <td className="px-4 sm:px-8 md:px-12 py-1 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2 truncate">
                         <Link
                           to={`/admin/keuangan/laporan/${item.id}/edit`}
                           className="inline-flex items-center justify-center h-8 w-8 rounded-md text-green-600 hover:bg-green-50"

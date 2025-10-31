@@ -592,20 +592,20 @@ const AdminAnekaSurat = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header - samakan dengan Owner */}
-      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-4 sm:py-4">
+        <div className="flex items-center justify-between gap-2 md:gap-3">
           <div className="flex items-center gap-4 min-w-0">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.anekaSurat}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">ANEKA SURAT</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end"></div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end">
+          {/* Sembunyikan container aksi di mobile agar tidak menambah tinggi header */}
+          <div className="hidden md:flex items-center gap-2 mt-0 flex-wrap w-full md:w-auto justify-end">
             <button
               onClick={() => { resetForm(); setShowAddModal(true); }}
               aria-label="Tambah Aneka Surat"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden md:inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline font-semibold">Tambah</span>
@@ -613,6 +613,17 @@ const AdminAnekaSurat = () => {
           </div>
         </div>
       </div>
+
+      {/* FAB Tambah (mobile only) - sembunyikan saat modal terbuka */}
+      {!(showAddModal || showEditModal || showDeleteModal) && (
+        <button
+          onClick={() => { resetForm(); setShowAddModal(true); }}
+          aria-label="Tambah Aneka Surat"
+          className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Info Bar Abu-abu */}
       <div className="bg-gray-200 px-4 sm:px-6 py-2">
@@ -622,7 +633,7 @@ const AdminAnekaSurat = () => {
       {/* Pencarian & Filter - gaya Data Sewa */}
       <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-2">
         <div className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cari Dokumen</label>
               <div className="relative">
@@ -635,27 +646,6 @@ const AdminAnekaSurat = () => {
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Jenis Dokumen</label>
-              <select
-                value={jenisFilter}
-                onChange={(e) => setJenisFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="all">Semua Jenis Dokumen</option>
-                {documentTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => { setSearchTerm(''); setJenisFilter('all'); setDateFilter(''); setStatusFilter(''); }}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-              >
-                Reset
-              </button>
             </div>
           </div>
         </div>
@@ -861,98 +851,62 @@ const AdminAnekaSurat = () => {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl ring-1 ring-black/5">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold">Tambah Aneka Surat</h2>
-                <button
-                  onClick={() => setShowAddModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
+        <div className="fixed inset-0 z-[9999] bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4">
+          <div className="w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl overflow-hidden shadow-lg">
+            {/* Header */}
+            <div className="px-4 py-3 border-b flex items-center justify-between">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">Tambah Aneka Surat</h3>
+              <button onClick={() => setShowAddModal(false)} className="text-gray-500 hover:text-gray-700" aria-label="Tutup">✕</button>
+            </div>
+            {/* Body */}
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jenis Dokumen</label>
+                <select
+                  value={formData.jenis_dokumen}
+                  onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <X className="w-5 h-5" />
-                </button>
+                  <option value="">Pilih jenis dokumen</option>
+                  {documentTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
               </div>
-              
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Jenis Dokumen *
-                  </label>
-                  <select
-                    value={formData.jenis_dokumen}
-                    onChange={(e) => setFormData(prev => ({ ...prev, jenis_dokumen: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  >
-                    <option value="">Pilih jenis dokumen</option>
-                    {documentTypes.map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Judul Dokumen *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Masukkan judul dokumen"
-                    value={formData.judul_dokumen}
-                    onChange={(e) => setFormData(prev => ({ ...prev, judul_dokumen: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Upload Lampiran *
-                  </label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors bg-gray-50">
-                    <input
-                      type="file"
-                      multiple
-                      onChange={handleFileUpload}
-                      className="hidden"
-                      id="file-upload"
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt"
-                    />
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <div className="text-sm text-gray-700 font-medium">Pilih file dokumen</div>
-                      <div className="text-xs text-gray-500 mt-1">Bisa pilih lebih dari 1 file</div>
-                    </label>
-                  </div>
-                  
-                  {formData.files.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {formData.files.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="w-4 h-4 text-gray-600" />
-                            <span className="text-sm text-gray-900">{file.name}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeFile(index)}
-                            className="p-1 text-red-600 hover:bg-red-100 rounded"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={uploading}
-                  className="w-full bg-red-600 text-white py-3.5 px-4 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                >
-                  {uploading ? 'Menyimpan...' : 'Simpan Aneka Surat'}
-                </button>
-              </form>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Judul Dokumen</label>
+                <input
+                  type="text"
+                  value={formData.judul_dokumen}
+                  onChange={(e) => setFormData(prev => ({ ...prev, judul_dokumen: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Masukkan judul dokumen"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Lampiran</label>
+                <input
+                  type="file"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="block w-full text-sm"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt"
+                />
+                {formData.files.length > 0 && (
+                  <div className="mt-2 text-xs text-gray-600">{formData.files.length} file dipilih</div>
+                )}
+              </div>
+            </div>
+            {/* Footer */}
+            <div className="p-4 border-t flex items-center justify-end gap-2">
+              <button onClick={() => setShowAddModal(false)} className="px-4 py-2 rounded-lg border border-gray-300">Batal</button>
+              <button
+                disabled={uploading}
+                onClick={handleSubmit}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 lg:bg-blue-600 lg:hover:bg-blue-700 text-white disabled:opacity-50"
+              >
+                {uploading ? 'Menyimpan...' : 'Simpan'}
+              </button>
             </div>
           </div>
         </div>
@@ -961,7 +915,7 @@ const AdminAnekaSurat = () => {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl ring-1 ring-black/5">
+          <div className="bg-white rounded-lg w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-xl ring-1 ring-black/5">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold">Edit Aneka Surat</h2>

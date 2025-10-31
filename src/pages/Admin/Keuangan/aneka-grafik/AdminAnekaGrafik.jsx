@@ -32,6 +32,10 @@ const AdminAnekaGrafik = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [stats, setStats] = useState({});
   const [selectedItems, setSelectedItems] = useState([]);
+  // Modal Tambah (mobile)
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ tanggal_grafik: new Date().toISOString().split('T')[0], isi_grafik: '' });
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -62,6 +66,38 @@ const AdminAnekaGrafik = () => {
       toast.error('Gagal memuat data aneka grafik');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openAddModal = () => {
+    setAddForm({ tanggal_grafik: new Date().toISOString().split('T')[0], isi_grafik: '' });
+    setShowAddModal(true);
+  };
+  const closeAddModal = () => setShowAddModal(false);
+  const handleAddSubmit = async (e) => {
+    e?.preventDefault?.();
+    if (!addForm.tanggal_grafik || !addForm.isi_grafik || addForm.isi_grafik.trim().length < 10) {
+      toast.error('Tanggal wajib dan isi minimal 10 karakter');
+      return;
+    }
+    try {
+      setAdding(true);
+      const payload = { tanggal_grafik: addForm.tanggal_grafik, isi_grafik: addForm.isi_grafik, images: [] };
+      const res = await anekaGrafikService.createAnekaGrafik(payload);
+      if (res?.success) {
+        toast.success('Aneka grafik berhasil ditambahkan');
+        setShowAddModal(false);
+        // reload list dan stats
+        loadAnekaGrafik();
+        loadStats();
+      } else {
+        toast.error(res?.message || 'Gagal menambahkan aneka grafik');
+      }
+    } catch (err) {
+      console.error('Add Aneka Grafik error:', err);
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -179,7 +215,7 @@ const AdminAnekaGrafik = () => {
     );
   }
 
-  return (
+  return (<>
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header Section */}
       <div className="bg-white rounded-lg shadow-sm border mb-6">
@@ -225,7 +261,7 @@ const AdminAnekaGrafik = () => {
         <div className="p-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
-            <div className="flex-1">
+            <div className="flex-1 md:hidden">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -239,7 +275,7 @@ const AdminAnekaGrafik = () => {
             </div>
 
             {/* Date Filter */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 md:hidden">
               <Calendar className="h-4 w-4 text-gray-400" />
               <input
                 type="date"
@@ -249,14 +285,24 @@ const AdminAnekaGrafik = () => {
               />
             </div>
 
-            {/* Add Button */}
+            {/* Add Button (Desktop only) */}
             <button
-              onClick={() => navigate('/admin/keuangan/aneka-grafik/new')}
-              className="flex items-center space-x-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              onClick={openAddModal}
+              className="hidden md:flex items-center space-x-2 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              title="Tambah Grafik"
             >
               <Plus className="h-4 w-4" />
               <span>Tambah Grafik</span>
             </button>
+            {/* Target tersembunyi untuk FAB (Mobile) */}
+            <button
+              type="button"
+              data-add
+              onClick={openAddModal}
+              className="block md:hidden absolute w-px h-px -left-[9999px] opacity-0"
+              aria-hidden="true"
+              tabIndex={-1}
+            >Tambah</button>
           </div>
         </div>
       </div>
@@ -450,7 +496,56 @@ const AdminAnekaGrafik = () => {
         )}
       </div>
     </div>
-  );
+
+    {/* Modal Tambah Aneka Grafik */}
+    {showAddModal && (
+      <div className="fixed inset-0 z-[1000] flex items-end md:items-center justify-center bg-black/40">
+        <div className="w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="px-4 py-3 border-b flex items-center justify-between">
+            <h3 className="font-semibold">Tambah Aneka Grafik</h3>
+            <button onClick={closeAddModal} className="text-gray-500 hover:text-gray-700">✕</button>
+          </div>
+          {/* Body */}
+          <form onSubmit={handleAddSubmit}>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Grafik</label>
+                <input
+                  type="date"
+                  value={addForm.tanggal_grafik}
+                  onChange={(e) => setAddForm(prev => ({ ...prev, tanggal_grafik: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Isi Grafik</label>
+                <textarea
+                  rows={5}
+                  value={addForm.isi_grafik}
+                  onChange={(e) => setAddForm(prev => ({ ...prev, isi_grafik: e.target.value }))}
+                  placeholder="Tulis isi grafik..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Minimal 10 karakter.</p>
+              </div>
+            </div>
+            {/* Footer actions */}
+            <div className="p-4 border-t flex items-center justify-end gap-2">
+              <button type="button" onClick={closeAddModal} className="px-4 py-2 rounded-lg border border-gray-300">Batal</button>
+              <button type="submit" disabled={adding} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">
+                {adding ? 'Menyimpan...' : 'Simpan'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+  </>
+);
+
 };
 
 export default AdminAnekaGrafik;

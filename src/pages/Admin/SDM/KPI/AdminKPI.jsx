@@ -43,6 +43,9 @@ const AdminKPI = () => {
   // Divisions dropdown state
   const [divisions, setDivisions] = useState([]);
   const [loadingDivisions, setLoadingDivisions] = useState(false);
+  // Mobile accordion state
+  const [mobileExpanded, setMobileExpanded] = useState({}); // {CAT: true}
+  const [mobileOpenItems, setMobileOpenItems] = useState({}); // {id: true}
 
   // Fetch KPI data from API (reusable)
   const fetchKPIData = useCallback(async () => {
@@ -167,6 +170,24 @@ const AdminKPI = () => {
   const getCurrentData = () => {
     if (loading) return [];
     return kpiData[activeTab] || [];
+  };
+
+  // Grouped data for mobile accordion similar to AnekaGrafikList
+  const groupedByCategory = React.useMemo(() => {
+    const out = {};
+    const pushItem = (it) => {
+      const cat = String(it.category || '').trim().toUpperCase() || 'LAINNYA';
+      if (!out[cat]) out[cat] = [];
+      out[cat].push(it);
+    };
+    (Array.isArray(kpiData.divisi) ? kpiData.divisi : []).forEach(pushItem);
+    (Array.isArray(kpiData.leader) ? kpiData.leader : []).forEach(pushItem);
+    (Array.isArray(kpiData.individu) ? kpiData.individu : []).forEach(pushItem);
+    return out;
+  }, [kpiData]);
+
+  const toggleMobileCat = (cat) => {
+    setMobileExpanded(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
   // Fungsi untuk mendapatkan URL foto (aman terhadap BASE_URL tidak valid)
@@ -393,6 +414,17 @@ const AdminKPI = () => {
         </div>
       </div>
 
+      {/* FAB Tambah (mobile only) - sembunyikan saat modal terbuka */}
+      {!isModalOpen && (
+        <button
+          onClick={openCreateModal}
+          aria-label="Tambah KPI"
+          className="lg:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+        >
+          <span className="text-2xl leading-none">+</span>
+        </button>
+      )}
+
       {/* Last Update Info */}
       <div className="bg-gray-200 px-6 py-2">
         <p className="text-sm text-gray-600">
@@ -419,81 +451,150 @@ const AdminKPI = () => {
           </div>
         </div>
 
-        {/* Main Content - Side by Side */}
-      <div className="flex gap-6 p-6 h-[calc(100vh-280px)]">
-          {/* KPI List - Left Side */}
-        <div className="w-1/2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900 flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2 text-red-600" />
-              Daftar KPI
-            </h3>
+        {/* Mobile Accordion (only) */}
+        <div className="lg:hidden px-0 py-2 space-y-2">
+          {Object.keys(groupedByCategory).map((cat) => (
+            <div key={cat} className="border-y border-gray-200 rounded-none overflow-visible bg-white">
+              {/* Header merah */}
               <button
-                onClick={openCreateModal}
-                className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center"
+                type="button"
+                onClick={() => toggleMobileCat(cat)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-red-700 text-white rounded-none"
               >
-                <span className="mr-1">+</span> Tambah KPI
+              <span className="font-extrabold tracking-wide">{cat} - {groupedByCategory[cat]?.length || 0} item</span>
+              <span className="opacity-90">{mobileExpanded[cat] ? '▴' : '▾'}</span>
               </button>
-            </div>
-          </div>
-          
-          <div className="p-4 overflow-y-auto max-h-[calc(100vh-400px)]">
-            <div className="space-y-3">
-              {getCurrentData().map((item, index) => (
-                <div
-                  key={index}
-                  onClick={() => setSelectedItem(item)}
-                  className={`p-4 rounded-lg cursor-pointer transition-all duration-200 border ${
-                    selectedItem === item
-                      ? 'bg-red-600 text-white border-red-600 shadow-lg'
-                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-sm">
-                      {typeof item === 'string' ? item : item?.name}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      {typeof item === 'object' && (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
-                            className={`p-1.5 rounded border transition-colors ${
-                              selectedItem === item 
-                                ? 'border-white text-white hover:bg-red-500' 
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                            }`}
-                            title="Edit"
-                          >
-                            <Edit3 className="w-3 h-3" />
-                          </button>
-                          <button
-                            onClick={(e) => handleDelete(item, e)}
-                            className={`p-1.5 rounded border transition-colors ${
-                              selectedItem === item 
-                                ? 'border-white text-white hover:bg-red-500' 
-                                : 'border-red-300 text-red-600 hover:bg-red-50'
-                            }`}
-                            title="Hapus"
-                            disabled={deletingId === item.id}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
-                      <div className={`transition-transform ${selectedItem === item ? 'rotate-90' : ''}`}>
-                        {selectedItem === item ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
+              {/* Body */}
+              {mobileExpanded[cat] && (
+                <div className="px-0 py-0 space-y-0 bg-gray-100">
+                  {/* Daftar judul item dalam kategori */}
+                  <div className="divide-y divide-gray-200 rounded-none border-y border-gray-200 overflow-hidden bg-gray-100">
+                    {groupedByCategory[cat].map((item) => (
+                      <div key={item.id} className="bg-gray-100">
+                        <button
+                          type="button"
+                          className="w-full text-left px-3 py-2 flex items-center justify-between bg-gray-100"
+                          onClick={() => setMobileOpenItems(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                        >
+                          <span className="truncate pr-3 font-medium text-gray-900">{item.name || 'KPI'}</span>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
+                        {mobileOpenItems[item.id] && (
+                          <div className="border-t border-gray-200">
+                            <div className="border-y border-gray-200 rounded-none overflow-hidden">
+                              <img
+                                src={getPhotoUrl(item)}
+                                alt={item.name || 'KPI'}
+                                className="w-full h-52 object-cover"
+                                onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/400x300?text=No+Image'; }}
+                              />
+                              <div className="pl-3 pr-0 py-0.5 flex items-center justify-between text-xs text-gray-600 bg-white">
+                                <span>{/* No datetime available reliably; keep simple label */}{item.category}</span>
+                                <div className="flex items-center gap-0 pr-0">
+                                  <button
+                                    className="text-gray-700 hover:text-gray-900 mr-0 pr-0"
+                                    title="Edit"
+                                    type="button"
+                                    onClick={() => openEditModal(item)}
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    className="text-red-600 hover:text-red-700 ml-2"
+                                    title="Hapus"
+                                    type="button"
+                                    onClick={(e) => handleDelete(item, e)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Main Content - Side by Side */}
+        <div className="hidden lg:flex gap-6 p-6 h-[calc(100vh-280px)]">
+          {/* KPI List - Left Side */}
+          <div className="w-1/2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2 text-red-600" />
+                  Daftar KPI
+                </h3>
+                <button
+                  onClick={openCreateModal}
+                  className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center"
+                >
+                  <span className="mr-1">+</span> Tambah KPI
+                </button>
+              </div>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[calc(100vh-400px)]">
+              <div className="space-y-3">
+                {getCurrentData().map((item, index) => (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedItem(item)}
+                    className={`p-4 rounded-lg cursor-pointer transition-all duration-200 border ${
+                      selectedItem === item
+                        ? 'bg-red-600 text-white border-red-600 shadow-lg'
+                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-sm">
+                        {typeof item === 'string' ? item : item?.name}
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        {typeof item === 'object' && (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+                              className={`p-1.5 rounded border transition-colors ${
+                                selectedItem === item 
+                                  ? 'border-white text-white hover:bg-red-500' 
+                                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                              }`}
+                              title="Edit"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDelete(item, e)}
+                              className={`p-1.5 rounded border transition-colors ${
+                                selectedItem === item 
+                                  ? 'border-white text-white hover:bg-red-500' 
+                                  : 'border-red-300 text-red-600 hover:bg-red-50'
+                              }`}
+                              title="Hapus"
+                              disabled={deletingId === item.id}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </>
+                        )}
+                        <div className={`transition-transform ${selectedItem === item ? 'rotate-90' : ''}`}>
+                          {selectedItem === item ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -547,115 +648,116 @@ const AdminKPI = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-xl border border-gray-100">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="fixed inset-0 z-[1000] flex items-end md:items-center justify-center bg-black/40">
+          <div className="w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl shadow-lg overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 border-b flex items-center justify-between">
               <h4 className="font-semibold">{modalMode === 'create' ? 'Tambah KPI' : 'Edit KPI'}</h4>
-              <button onClick={closeModal} className="p-1 rounded hover:bg-gray-100">
-                <X className="h-4 w-4" />
-              </button>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
-            <form onSubmit={handleSubmit} className="p-4 space-y-3">
-              <div>
-                <label className="block text-sm mb-1 text-gray-700">Nama KPI</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleFormChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm mb-1 text-gray-700">Untuk User</label>
-                <select
-                  name="id_user"
-                  value={formData.id_user}
-                  onChange={handleFormChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  disabled={loadingUsers}
-                >
-                  <option value="">— Pilih User (opsional) —</option>
-                  {users.map(u => {
-                    const role = (u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
-                    const roleStr = role ? ` - ${String(role)}` : ''
-                    const label = `${u.nama || u.username || `User #${u.id}`}${roleStr}`
-                    return (
-                      <option key={u.id} value={u.id}>
-                        {label}
-                      </option>
-                    )
-                  })}
-                </select>
-                <p className="mt-1 text-xs text-gray-500">Isi jika KPI ini ditujukan untuk user tertentu (Leader/Individu).</p>
-              </div>
-              <div>
-                <label className="block text-sm mb-1 text-gray-700">Kategori</label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleFormChange}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  required
-                >
-                  <option value="divisi">Divisi</option>
-                  <option value="leader">Leader</option>
-                  <option value="individu">Individu</option>
-                </select>
-              </div>
-              {String(formData.category || '').toLowerCase() === 'divisi' && (
+            {/* Body */}
+            <form onSubmit={handleSubmit}>
+              <div className="p-4 space-y-4">
                 <div>
-                  <label className="block text-sm mb-1 text-gray-700">Divisi</label>
-                  <select
-                    name="divisi_id"
-                    value={formData.divisi_id || ''}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama KPI</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
                     onChange={handleFormChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    disabled={loadingDivisions}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Untuk User</label>
+                  <select
+                    name="id_user"
+                    value={formData.id_user}
+                    onChange={handleFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={loadingUsers}
+                  >
+                    <option value="">— Pilih User (opsional) —</option>
+                    {users.map(u => {
+                      const role = (u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
+                      const roleStr = role ? ` - ${String(role)}` : ''
+                      const label = `${u.nama || u.username || `User #${u.id}`}${roleStr}`
+                      return (
+                        <option key={u.id} value={u.id}>
+                          {label}
+                        </option>
+                      )
+                    })}
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">Isi jika KPI ini ditujukan untuk user tertentu (Leader/Individu).</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={handleFormChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
                   >
-                    <option value="">— Pilih Divisi —</option>
-                    {divisions.map(d => (
-                      <option key={d.id} value={d.id}>{d.nama_divisi || d.name || `Divisi #${d.id}`}</option>
-                    ))}
+                    <option value="divisi">Divisi</option>
+                    <option value="leader">Leader</option>
+                    <option value="individu">Individu</option>
                   </select>
                 </div>
-              )}
-              <div>
-                <label className="block text-sm mb-1 text-gray-700">Upload Foto KPI</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                {previewUrl && (
-                  <div className="mt-2">
-                    <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover rounded border" />
+                {String(formData.category || '').toLowerCase() === 'divisi' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Divisi</label>
+                    <select
+                      name="divisi_id"
+                      value={formData.divisi_id || ''}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={loadingDivisions}
+                      required
+                    >
+                      <option value="">— Pilih Divisi —</option>
+                      {divisions.map(d => (
+                        <option key={d.id} value={d.id}>{d.nama_divisi || d.name || `Divisi #${d.id}`}</option>
+                      ))}
+                    </select>
                   </div>
                 )}
-                {modalMode === 'edit' && formData.photo_url && !photoFile && (
-                  <p className="mt-1 text-xs text-gray-500">Foto saat ini akan dipertahankan jika tidak memilih file baru.</p>
-                )}
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="mt-2">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-red-600 h-2 rounded-full transition-all"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Foto KPI</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {previewUrl && (
+                    <div className="mt-2">
+                      <img src={previewUrl} alt="Preview" className="w-full h-40 object-cover rounded border" />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Mengunggah: {uploadProgress}%</p>
-                  </div>
-                )}
+                  )}
+                  {modalMode === 'edit' && formData.photo_url && !photoFile && (
+                    <p className="mt-1 text-xs text-gray-500">Foto saat ini akan dipertahankan jika tidak memilih file baru.</p>
+                  )}
+                  {uploadProgress > 0 && uploadProgress < 100 && (
+                    <div className="mt-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Mengunggah: {uploadProgress}%</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="pt-2 flex justify-end gap-2">
-                <button type="button" onClick={closeModal} className="px-3 py-2 text-sm rounded border border-gray-300 hover:bg-gray-50" disabled={isSaving}>
-                  Batal
-                </button>
-                <button type="submit" className="px-3 py-2 text-sm rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60" disabled={isSaving}>
-                  {isSaving ? 'Menyimpan...' : modalMode === 'create' ? 'Simpan' : 'Update'}
+              {/* Footer actions */}
+              <div className="p-4 border-t flex items-center justify-end gap-2">
+                <button type="button" onClick={closeModal} className="px-4 py-2 rounded-lg border border-gray-300">Batal</button>
+                <button type="submit" disabled={isSaving} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 lg:bg-blue-600 lg:hover:bg-blue-700 text-white disabled:opacity-60">
+                  {isSaving ? 'Menyimpan...' : (modalMode === 'create' ? 'Simpan' : 'Update')}
                 </button>
               </div>
             </form>
