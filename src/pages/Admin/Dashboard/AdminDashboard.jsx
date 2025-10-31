@@ -4,7 +4,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import Card, { CardBody } from '../../../components/UI/Card'
 import { videoManageService } from '../../../services/videoManageService'
 import { API_CONFIG } from '../../../config/constants'
-import { SkipBack, Play, Pause, SkipForward, Volume2, VolumeX, Users2, ClipboardList, AlertTriangle, FileText, ChevronRight } from 'lucide-react'
+import { SkipBack, Play, Pause, SkipForward, Volume2, VolumeX, Users2, ClipboardList, AlertTriangle, FileText, ChevronRight, Expand, Minimize } from 'lucide-react'
 
 const AdminDashboard = () => {
   const { user } = useAuth()
@@ -16,6 +16,11 @@ const AdminDashboard = () => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [muted, setMuted] = useState(false)
   const videoRef = useRef(null)
+  const containerRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [wasPlayingBeforeFs, setWasPlayingBeforeFs] = useState(false)
+  const [posterUrl, setPosterUrl] = useState('')
+  const [posterCaptured, setPosterCaptured] = useState(false)
 
   const toAbsoluteUrl = (path) => {
     if (!path) return ''
@@ -81,6 +86,194 @@ const AdminDashboard = () => {
     }
   }, [isPlaying, muted, videoUrl])
 
+  // Buat poster otomatis dari frame awal (seek ke ~0.1s untuk hindari frame gelap/putih)
+  useEffect(() => {
+    setPosterUrl('')
+    setVideoError('')
+    setPosterCaptured(false)
+    const el = videoRef.current
+    if (!el) return
+    let cancelled = false
+    const drawFrame = () => {
+      try {
+        if (cancelled || !videoRef.current) return
+        const v = videoRef.current
+        const w = v.videoWidth || 0
+        const h = v.videoHeight || 0
+        if (!w || !h) return
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(v, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.86)
+        if (dataUrl) {
+          setPosterUrl(dataUrl)
+          setPosterCaptured(true)
+        }
+      } catch (e) {
+        console.warn('Gagal membuat poster video:', e)
+      }
+    }
+
+    const handleLoadedMeta = () => {
+      if (cancelled) return
+      const v = videoRef.current
+      if (!v) return
+      const prevPaused = v.paused
+      const prevTime = v.currentTime
+      const targetTime = Math.min((v.duration || 1) > 0 ? 0.1 : 0, (v.duration || 0))
+
+      const onSeeked = () => {
+        // Tunggu satu frame render agar tidak putih
+        const tryDraw = () => {
+          if (cancelled) return
+          if (v.readyState >= 2) {
+            requestAnimationFrame(() => {
+              drawFrame()
+              // Kembalikan ke waktu semula
+              try {
+                if (!cancelled && videoRef.current) {
+                  videoRef.current.currentTime = prevTime
+                  if (!prevPaused) {
+                    videoRef.current.play().catch(() => {})
+                  }
+                }
+              } finally {
+                v.removeEventListener('seeked', onSeeked)
+              }
+            })
+          } else {
+            // Jika belum siap, coba lagi sedikit
+            setTimeout(tryDraw, 30)
+          }
+        }
+        tryDraw()
+      }
+
+      v.addEventListener('seeked', onSeeked)
+      // Pause sementara untuk akurasi draw
+      try { v.pause() } catch {}
+      try { v.currentTime = targetTime } catch {
+        // Jika gagal seek, coba langsung draw
+        v.removeEventListener('seeked', onSeeked)
+        requestAnimationFrame(drawFrame)
+        // resume jika tadinya play
+        if (!prevPaused) v.play().catch(() => {})
+      }
+
+      // Fallback: jika setelah 600ms poster belum tercapture, lakukan autoplay muted sebentar
+      setTimeout(() => {
+        if (cancelled || posterCaptured || !videoRef.current) return
+        const vv = videoRef.current
+        const wasPaused = vv.paused
+        const prevT = vv.currentTime
+        const resumeIfNeeded = () => {
+          try {
+            vv.pause()
+            vv.currentTime = prevT
+            if (!wasPaused) vv.play().catch(() => {})
+          } catch {}
+        }
+        try {
+          vv.muted = true
+          vv.play().then(() => {
+            setTimeout(() => {
+              if (!posterCaptured) {
+                requestAnimationFrame(drawFrame)
+              }
+              resumeIfNeeded()
+            }, 220)
+          }).catch(() => {})
+        } catch {
+          // abaikan
+        }
+      }, 600)
+    }
+
+    el.addEventListener('loadedmetadata', handleLoadedMeta)
+    el.addEventListener('loadeddata', handleLoadedMeta)
+
+    return () => {
+      cancelled = true
+      el.removeEventListener('loadedmetadata', handleLoadedMeta)
+      el.removeEventListener('loadeddata', handleLoadedMeta)
+    }
+  }, [videoUrl])
+
+  // Pantau perubahan fullscreen untuk sinkronkan UI tombol dan auto-resume bila perlu
+  useEffect(() => {
+    const onFsChange = () => {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement
+      const entering = !!fsEl
+      setIsFullscreen(entering)
+      // Jika baru saja keluar fullscreen dan sebelumnya video playing, lanjutkan play
+      if (!entering && wasPlayingBeforeFs && videoRef.current) {
+        videoRef.current.play().catch(() => {})
+        setIsPlaying(true)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    // vendor prefixes (beberapa browser lama)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    document.addEventListener('mozfullscreenchange', onFsChange)
+    document.addEventListener('MSFullscreenChange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+      document.removeEventListener('mozfullscreenchange', onFsChange)
+      document.removeEventListener('MSFullscreenChange', onFsChange)
+    }
+  }, [wasPlayingBeforeFs, setIsPlaying])
+
+  // iOS Safari: setelah keluar dari native fullscreen, event khusus dipicu
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    const onWebkitEndFs = () => {
+      if (wasPlayingBeforeFs) {
+        el.play().catch(() => {})
+        setIsPlaying(true)
+      }
+    }
+    el.addEventListener('webkitendfullscreen', onWebkitEndFs)
+    return () => {
+      el.removeEventListener('webkitendfullscreen', onWebkitEndFs)
+    }
+  }, [wasPlayingBeforeFs, setIsPlaying])
+
+  const toggleFullscreen = () => {
+    try {
+      // Jika sedang fullscreen -> exit
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement
+      if (fsEl) {
+        if (document.exitFullscreen) return document.exitFullscreen()
+        if (document.webkitExitFullscreen) return document.webkitExitFullscreen()
+        if (document.mozCancelFullScreen) return document.mozCancelFullScreen()
+        if (document.msExitFullscreen) return document.msExitFullscreen()
+      }
+      // Masuk fullscreen pada container (fallback ke video)
+      const target = containerRef.current || videoRef.current
+      if (!target) return
+      // Catat apakah video sedang playing sebelum masuk fullscreen
+      try {
+        const playing = videoRef.current && !videoRef.current.paused
+        setWasPlayingBeforeFs(!!playing)
+      } catch {}
+      if (target.requestFullscreen) return target.requestFullscreen()
+      if (target.webkitRequestFullscreen) return target.webkitRequestFullscreen()
+      if (target.mozRequestFullScreen) return target.mozRequestFullScreen()
+      if (target.msRequestFullscreen) return target.msRequestFullscreen()
+      // iOS Safari khusus: gunakan webkitEnterFullscreen pada video element
+      if (videoRef.current && videoRef.current.webkitEnterFullscreen) {
+        return videoRef.current.webkitEnterFullscreen()
+      }
+    } catch (e) {
+      console.warn('Gagal mengubah mode fullscreen:', e)
+    }
+  }
+
   const handlePrev = () => {
     if (!list.length) return
     const nextIdx = (currentIdx - 1 + list.length) % list.length
@@ -97,23 +290,57 @@ const AdminDashboard = () => {
     setIsPlaying(true)
   }
 
-  const togglePlay = () => setIsPlaying(v => !v)
+  const togglePlay = () => {
+    const el = videoRef.current
+    if (!el) return
+    try {
+      if (el.paused) {
+        el.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))
+      } else {
+        el.pause()
+        setIsPlaying(false)
+      }
+    } catch {
+      // fallback toggle state jika dibutuhkan
+      setIsPlaying(v => !v)
+    }
+  }
   const toggleMute = () => setMuted(v => !v)
 
   return (
     <div className="pt-1 -mx-0 sm:-mx-1">
       {(user?.role === 'admin' || user?.role === 'owner') && (
-            <div className="w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg aspect-auto h-[calc(100vh-140px)] sm:h-[420px] lg:aspect-[21/9] lg:h-auto">
+            <div ref={containerRef} className="w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg aspect-auto h-[calc(100vh-140px)] sm:h-[420px] lg:h-[640px]">
+              {/* Tombol Fullscreen (pojok kanan atas) */}
+              <div className="absolute top-2 right-1 z-10">
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="w-8 h-8 flex items-center justify-center rounded-md bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm border border-white/20"
+                  aria-label={isFullscreen ? 'Keluar Fullscreen' : 'Masuk Fullscreen'}
+                  title={isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-5 h-5" />
+                  ) : (
+                    <Expand className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
               {videoUrl && !videoError ? (
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover"
                   src={videoUrl}
+                  poster={posterUrl || undefined}
+                  crossOrigin="anonymous"
                   playsInline
                   preload="metadata"
                   disablePictureInPicture
                   controlsList="nofullscreen"
                   onEnded={handleNext}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
                   onCanPlay={() => isPlaying && videoRef.current?.play()}
                   onError={() => {
                     console.warn('[AdminDashboard] Gagal memuat file video:', videoUrl)
