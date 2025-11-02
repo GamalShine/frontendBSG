@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { targetHarianService } from '@/services/targetHarianService';
 import LoadingSpinner from '@/components/UI/LoadingSpinner';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, X, ArrowLeft } from 'lucide-react';
 import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminDataTarget = () => {
@@ -11,6 +11,7 @@ const AdminDataTarget = () => {
   const [years, setYears] = useState([]); // [{year: 2024}, ...]
   const [selectedYear, setSelectedYear] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null); // 1-12
+  const [dateFilter, setDateFilter] = useState(''); // YYYY-MM-DD
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0 });
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,22 @@ const AdminDataTarget = () => {
       loadItems(selectedYear, pagination.currentPage);
     }
   }, [view, selectedYear, pagination.currentPage]);
+
+  // Sinyal ke Layout: tampilkan FAB saat berada di monthContent Data Target (mobile)
+  useEffect(() => {
+    try {
+      if (typeof document !== 'undefined') {
+        if (view === 'monthContent') {
+          document.body.setAttribute('data-datatarget-month', 'true');
+        } else {
+          document.body.removeAttribute('data-datatarget-month');
+        }
+      }
+    } catch {}
+    return () => {
+      try { document?.body?.removeAttribute('data-datatarget-month'); } catch {}
+    };
+  }, [view]);
 
   // Hydrate localStorage for years state
   useEffect(() => {
@@ -304,21 +321,51 @@ const AdminDataTarget = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header ala Medsos */}
-      <div className="bg-red-800 text-white px-6 py-5 mb-0">
+      {/* Header */}
+      <div className="bg-red-800 text-white px-6 py-2 md:py-4 mb-0 z-0 lg:relative lg:z-[100]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.dataTarget}</span>
+          <div className="flex items-center gap-3 md:gap-4">
+            <span className="text-[11px] md:text-sm font-semibold bg-white/10 rounded px-1.5 py-0.5 md:px-2 md:py-1">{MENU_CODES.marketing.dataTarget}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TARGET</h1>
+              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight">DATA TARGET</h1>
             </div>
           </div>
           {view === 'years' ? (
-            <button onClick={handleAddYear} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">+ <span className="hidden sm:inline font-semibold">Tahun</span></button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddYear(); }}
+              className="relative z-30 inline-flex items-center gap-2 px-3 py-0 h-8 md:px-4 md:py-2 md:h-auto bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm pointer-events-auto whitespace-nowrap"
+              title="Tambah Tahun"
+              aria-label="Tambah Tahun"
+              data-add
+            >
+              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              <span className="md:hidden font-semibold leading-none">Thn</span>
+              <span className="hidden md:inline font-semibold">Tahun</span>
+            </button>
           ) : (
             <div className="flex items-center gap-2">
-              <button onClick={backToYears} className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors">← <span className="hidden sm:inline font-semibold">Kembali</span></button>
-              <Link to="/admin/marketing/data-target/new" className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">+ <span className="hidden sm:inline font-semibold">Tambah</span></Link>
+              <button
+                onClick={backToYears}
+                className="inline-flex items-center justify-center md:justify-start gap-2 px-0 py-0 h-8 w-8 md:px-4 md:py-2 md:h-auto md:w-auto rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                aria-label="Kembali"
+                title="Kembali"
+              >
+                {/* Mobile: X, Desktop: ArrowLeft + teks */}
+                <span className="md:hidden flex items-center justify-center"><X className="h-4 w-4" /></span>
+                <span className="hidden md:inline-flex items-center gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  <span className="font-semibold">Kembali</span>
+                </span>
+              </button>
+              {/* Tampilkan tombol tambah di header khusus desktop */}
+              <Link
+                to="/admin/marketing/data-target/new"
+                className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+                <span className="font-semibold">Tambah</span>
+              </Link>
             </div>
           )}
         </div>
@@ -404,19 +451,17 @@ const AdminDataTarget = () => {
                     <input type="text" placeholder="Cari target harian..." value={searchTerm} onChange={(e)=>setSearchTerm(e.target.value)} className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
-                    <input type="month" value={`${String(selectedYear||'').padStart(4,'0')}-${String((selectedMonth||1)).padStart(2,'0')}`} onChange={(e)=>{ const val=e.target.value; if(!val) return; const [y,m]=val.split('-').map(Number); setSelectedYear(y); openMonth(m); }} className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
+                    <input type="date" value={dateFilter} onChange={(e)=> setDateFilter(e.target.value)} className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
                   </div>
-                  <div className="flex items-end">
-                    <button onClick={()=>{ setSearchTerm(''); }} className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors">Reset</button>
-                  </div>
+                  {/* Tombol Reset dihilangkan */}
                 </div>
               </div>
             </div>
 
-            {/* Card konten bulan + Tabel */}
-            <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-              <div className="bg-red-800 text-white px-4 md:px-6 py-2 md:py-3">
+            {/* Card konten bulan + Tabel (tanpa radius atas) */}
+            <div className="bg-white shadow-sm border rounded-b-lg overflow-hidden">
+              <div className="bg-red-800 text-white px-4 md:px-6 py-3 md:py-4">
                 <h2 className="text-lg font-extrabold leading-tight">{(MONTH_NAMES[(selectedMonth||1)-1] + ' ' + selectedYear).toUpperCase()}</h2>
               </div>
               {loading ? (
@@ -426,13 +471,10 @@ const AdminDataTarget = () => {
                   <table className="min-w-full table-fixed">
                     <thead className="sticky top-0 bg-[#E3E5EA] z-10 shadow">
                       <tr>
-                        <th className="w-10 pl-4 sm:pl-6 pr-0 py-1.5 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider">
-                          <input type="checkbox" checked={selectedItems.length === items.length && items.length>0} onChange={handleSelectAll} className="rounded border-gray-300 text-red-600 focus:ring-red-500" />
-                        </th>
-                        <th className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">No</th>
-                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Tanggal</th>
-                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Keterangan</th>
-                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm font-black text-gray-900 uppercase tracking-wider">Aksi</th>
+                        <th className="w-12 sm:w-16 pl-4 sm:pl-6 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[0.9rem] md:text-sm font-extrabold text-gray-900 uppercase tracking-wider">No</th>
+                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] md:text-sm font-extrabold text-gray-900 uppercase tracking-wider">Tanggal</th>
+                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] md:text-sm font-extrabold text-gray-900 uppercase tracking-wider">Keterangan</th>
+                        <th className="px-4 sm:px-8 md:px-12 py-3 text-left text-[0.9rem] md:text-sm font-extrabold text-gray-900 uppercase tracking-wider">Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -440,17 +482,15 @@ const AdminDataTarget = () => {
                         .filter(it => {
                           const m = new Date(it.tanggal_target).getMonth()+1;
                           if (m !== selectedMonth) return false;
+                          if (dateFilter && !String(it.tanggal_target || '').startsWith(dateFilter)) return false;
                           if (!searchTerm) return true;
                           return stripHtml(it.isi_target||'').toLowerCase().includes(searchTerm.toLowerCase());
                         })
                         .map((it, idx) => (
                           <tr key={it.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/marketing/data-target/${it.id}`)}>
-                            <td className="w-10 pl-4 sm:pl-6 pr-0 py-1.5 text-sm text-gray-900 whitespace-nowrap" onClick={(e)=>e.stopPropagation()}>
-                              <input type="checkbox" checked={selectedItems.includes(it.id)} onChange={()=>handleCheckRow(it.id)} className="rounded border-gray-300 text-red-600 focus:ring-red-500" />
-                            </td>
-                            <td className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-1.5 text-sm text-gray-900 whitespace-nowrap">{idx+1}</td>
-                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900 whitespace-nowrap font-semibold">{new Date(it.tanggal_target).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }).toUpperCase()}</td>
-                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900">
+                            <td className="w-12 sm:w-16 pl-4 sm:pl-6 pr-4 sm:pr-8 md:pr-12 py-1.5 text-[0.95rem] md:text-sm text-gray-900 whitespace-nowrap">{idx+1}</td>
+                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-[0.95rem] md:text-sm text-gray-900 whitespace-nowrap font-semibold">{new Date(it.tanggal_target).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }).toUpperCase()}</td>
+                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-[0.95rem] md:text-sm text-gray-900">
                               <div className="max-w-[14rem] md:max-w-md overflow-hidden text-ellipsis whitespace-nowrap">
                                 {(() => {
                                   const plain = stripHtml(it.isi_target||'');
@@ -458,7 +498,7 @@ const AdminDataTarget = () => {
                                 })()}
                               </div>
                             </td>
-                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-sm text-gray-900 whitespace-nowrap" onClick={(e)=>e.stopPropagation()}>
+                            <td className="px-4 sm:px-8 md:px-12 py-1.5 text-[0.95rem] md:text-sm text-gray-900 whitespace-nowrap" onClick={(e)=>e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => navigate(`/admin/marketing/data-target/${it.id}/edit`)}
@@ -480,7 +520,7 @@ const AdminDataTarget = () => {
                         ))}
                       {(!items || items.filter(it => new Date(it.tanggal_target).getMonth()+1 === selectedMonth).length === 0) && (
                         <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-sm text-gray-600">Belum ada data</td>
+                          <td colSpan={4} className="px-4 py-6 text-center text-sm text-gray-600">Belum ada data</td>
                         </tr>
                       )}
                     </tbody>

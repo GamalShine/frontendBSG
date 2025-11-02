@@ -160,49 +160,49 @@ const AdminDataTargetDetail = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header - samakan badge dengan halaman lain */}
-      <div className="bg-red-800 text-white px-6 py-4 mb-4 relative">
+      <div className="bg-red-800 text-white px-6 py-2 md:py-4 mb-4 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.dataTarget}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DETAIL TAGET HARIAN</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA TARGET</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/admin/marketing/data-target')}
-              className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
-            >
-              KEMBALI
-            </button>
-            <div className="relative">
+            {/* Mobile: icon-only buttons */}
+            <div className="flex items-center gap-2 md:hidden">
               <button
-                onClick={() => setShowActionMenu(v => !v)}
-                aria-label="Aksi"
-                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white/90 hover:bg-white/10"
+                onClick={() => navigate('/admin/marketing/data-target')}
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white hover:bg-white/10"
+                aria-label="Kembali"
+                title="Kembali"
               >
-                <MoreVertical className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
-              {showActionMenu && (
-                <div className="absolute right-0 mt-2 w-44 bg-white text-gray-800 rounded-lg shadow-lg border border-gray-200 z-20">
-                  <div className="py-1">
-                    <button
-                      onClick={() => { setShowActionMenu(false); navigate(`/admin/marketing/data-target/${id}/edit`); }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
-                    >
-                      <Edit className="h-4 w-4 text-blue-600" />
-                      <span>Edit</span>
-                    </button>
-                    <button
-                      onClick={() => { setShowActionMenu(false); handleDelete(); }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span>Hapus</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => navigate(`/admin/marketing/data-target/${id}/edit`)}
+                className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white hover:bg-white/10"
+                aria-label="Edit"
+                title="Edit"
+              >
+                <Edit className="h-5 w-5" />
+              </button>
+            </div>
+            {/* Desktop: text buttons */}
+            <div className="hidden md:flex items-center gap-2">
+              <button
+                onClick={() => navigate('/admin/marketing/data-target')}
+                className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
+              >
+                KEMBALI
+              </button>
+              <button
+                onClick={() => navigate(`/admin/marketing/data-target/${id}/edit`)}
+                className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 inline-flex items-center gap-2"
+              >
+                <Edit className="h-4 w-4" />
+                <span>Edit</span>
+              </button>
             </div>
           </div>
         </div>

@@ -211,10 +211,10 @@ const AdminDataTargetEdit = () => {
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.marketing.dataTarget}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">EDIT TAGET HARIAN</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">EDIT DATA TARGET</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate('/admin/marketing/data-target')}
@@ -229,6 +229,7 @@ const AdminDataTargetEdit = () => {
               type="submit"
               disabled={saving}
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm disabled:opacity-60"
+              title="Simpan"
             >
               {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               <span>{saving ? 'Menyimpan...' : 'Perbarui'}</span>
@@ -278,6 +279,28 @@ const AdminDataTargetEdit = () => {
                   hideImage={true}
                 />
                 {/* Preview/grid gambar disembunyikan sesuai permintaan */}
+                {/* Action buttons (icon-only) under editor, mobile only */}
+                <div className="mt-4 flex items-center justify-end gap-3 md:hidden">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/marketing/data-target')}
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-red-600 text-red-700 hover:bg-red-50 active:scale-95 transition"
+                    aria-label="Batal"
+                    title="Batal"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                  <button
+                    form="taget-edit-form"
+                    type="submit"
+                    disabled={saving}
+                    className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-600 text-white hover:bg-red-700 active:scale-95 transition disabled:opacity-60"
+                    aria-label="Simpan"
+                    title="Simpan"
+                  >
+                    {saving ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                  </button>
+                </div>
               </div>
             </>
           )}
