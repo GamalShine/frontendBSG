@@ -269,13 +269,13 @@ const AdminLaporanKeuanganDetail = () => {
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
       {/* Header - match list/detail style like Omset Harian */}
-      <div className="bg-red-800 text-white px-6 py-4 mb-0 relative">
+      <div className="bg-red-800 text-white px-6 py-2 md:py-4 mb-0 relative">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.keuangan.laporanKeuangan}</span>
             <div>
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">
-                <span className="md:hidden">LAP KEUANGAN</span>
+                <span className="md:hidden">LAP KEU</span>
                 <span className="hidden md:inline">LAPORAN KEUANGAN</span>
               </h1>
             </div>

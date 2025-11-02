@@ -9,7 +9,7 @@ const Layout = ({ children }) => {
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
-  const [fabSignal, setFabSignal] = useState({ lapkeu: false, month: '' })
+  const [fabSignal, setFabSignal] = useState({ lapkeu: false, month: '', datatarget: false })
 
   // Tutup sidebar saat menekan ESC
   useEffect(() => {
@@ -26,14 +26,15 @@ const Layout = ({ children }) => {
       try {
         const lap = typeof document !== 'undefined' && document.body.getAttribute('data-lapkeu-month') === 'true'
         const m = typeof document !== 'undefined' ? (document.body.getAttribute('data-month-filter') || '') : ''
-        setFabSignal({ lapkeu: !!lap, month: m })
+        const dt = typeof document !== 'undefined' && document.body.getAttribute('data-datatarget-month') === 'true'
+        setFabSignal({ lapkeu: !!lap, month: m, datatarget: !!dt })
       } catch {}
     }
     readSignals()
     let mo
     try {
       mo = new MutationObserver(readSignals)
-      mo.observe(document.body, { attributes: true, attributeFilter: ['data-lapkeu-month', 'data-month-filter', 'data-hide-fab'] })
+      mo.observe(document.body, { attributes: true, attributeFilter: ['data-lapkeu-month', 'data-month-filter', 'data-hide-fab', 'data-datatarget-month'] })
     } catch {}
     return () => { try { mo && mo.disconnect() } catch {} }
   }, [])
@@ -94,6 +95,7 @@ const Layout = ({ children }) => {
             const isOmsetDetailOrEdit = /^\/admin\/keuangan\/omset-harian\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
             const isLapkeuPath = /^\/admin\/keuangan\/laporan\b/.test(location.pathname)
             const isAnekaPath = /^\/admin\/keuangan\/aneka-grafik\b/.test(location.pathname)
+            const isDataTargetPath = /^\/admin\/marketing\/data-target\b/.test(location.pathname)
             const isAnekaDetailOrEdit = /^\/admin\/keuangan\/aneka-grafik\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
             const hasMonthParam = (() => {
               try {
@@ -102,6 +104,7 @@ const Layout = ({ children }) => {
               } catch { return false }
             })()
             const bodySaysLapkeuMonth = fabSignal.lapkeu
+            const bodySaysDataTargetMonth = fabSignal.datatarget
             // Izinkan FAB di Poskas/Omset kecuali di detail/edit
             const allowFabPoskas = isPoskasPath && !isPoskasDetailOrEdit
             const allowFabOmset = isOmsetPath && !isOmsetDetailOrEdit
@@ -109,7 +112,9 @@ const Layout = ({ children }) => {
             const allowFabLapkeu = isLapkeuPath && (hasMonthParam || bodySaysLapkeuMonth)
             // Izinkan FAB di Aneka Grafik (hanya list)
             const allowFabAneka = isAnekaPath && !isAnekaDetailOrEdit
-            const allowFab = allowFabPoskas || allowFabOmset || allowFabLapkeu || allowFabAneka
+            // Izinkan FAB di Data Target hanya saat monthContent aktif (sinyal body)
+            const allowFabDataTarget = isDataTargetPath && bodySaysDataTargetMonth
+            const allowFab = allowFabPoskas || allowFabOmset || allowFabLapkeu || allowFabAneka || allowFabDataTarget
 
             const globalHideFab = (() => {
               try {
@@ -137,7 +142,7 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
   const [targetBtn, setTargetBtn] = useState(null)
   const location = useLocation()
   const navigate = useNavigate()
-  const fs = fabSignalProp || { lapkeu: false, month: '' }
+  const fs = fabSignalProp || { lapkeu: false, month: '', datatarget: false }
 
   const isMobile = useMemo(() => {
     if (typeof window === 'undefined') return false
@@ -187,15 +192,17 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
   const isOnPoskasMain = /^\/admin\/keuangan\/poskas\/?$/.test(location.pathname)
   const isOnOmsetMain = /^\/admin\/keuangan\/omset-harian\/?$/.test(location.pathname)
   const isOnAnekaMain = /^\/admin\/keuangan\/aneka-grafik\/?$/.test(location.pathname)
+  const isOnDataTargetPath = /^\/admin\/marketing\/data-target\b/.test(location.pathname)
   const isOnLapkeuMonth = (() => {
     if (!/^\/admin\/keuangan\/laporan\b/.test(location.pathname)) return false
     try {
       const hasQuery = !!(new URLSearchParams(location.search)).get('month')
-      const hasBody = fabSignal.lapkeu
+      const hasBody = fs.lapkeu
       return hasQuery || hasBody
     } catch { return false }
   })()
-  if (!isOnPoskasMain && !isOnOmsetMain && !isOnLapkeuMonth && !isOnAnekaMain && !targetBtn) return null
+  const isOnDataTargetMonth = isOnDataTargetPath && !!(fs.datatarget)
+  if (!isOnPoskasMain && !isOnOmsetMain && !isOnLapkeuMonth && !isOnAnekaMain && !isOnDataTargetMonth && !targetBtn) return null
 
   return (
     <div className="lg:hidden">
@@ -205,18 +212,22 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
           isOnPoskasMain ? 'Tambah Poskas' : (
           isOnOmsetMain ? 'Tambah Omset' : (
           isOnLapkeuMonth ? 'Tambah Lap Keu' : (
-          isOnAnekaMain ? 'Tambah Aneka Grafik' : 'Tambah')))}
+          isOnAnekaMain ? 'Tambah Aneka Grafik' : (
+          isOnDataTargetMonth ? 'Tambah Data Target' : 'Tambah'))))}
         title={
           isOnPoskasMain ? 'Tambah Poskas' : (
           isOnOmsetMain ? 'Tambah Omset' : (
           isOnLapkeuMonth ? 'Tambah Lap Keu' : (
-          isOnAnekaMain ? 'Tambah Aneka Grafik' : 'Tambah')))}
+          isOnAnekaMain ? 'Tambah Aneka Grafik' : (
+          isOnDataTargetMonth ? 'Tambah Data Target' : 'Tambah'))))}
         onClick={() => {
           // Prioritaskan navigasi eksplisit sesuai halaman
           if (isOnPoskasMain) {
             navigate('/admin/keuangan/poskas/new')
           } else if (isOnOmsetMain) {
             navigate('/admin/keuangan/omset-harian/new')
+          } else if (isOnDataTargetMonth) {
+            navigate('/admin/marketing/data-target/new')
           } else {
             // Deteksi lapkeu month secara defensif: berdasarkan path + (query month atau sinyal body)
             const onLapkeuPath = /^\/admin\/keuangan\/laporan\b/.test(location.pathname)

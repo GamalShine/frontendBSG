@@ -633,12 +633,12 @@ const AdminLaporanKeuangan = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={backToMonths}
-                className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                className="inline-flex items-center justify-center md:justify-start gap-2 px-0 py-0 h-8 w-8 md:px-4 md:py-2 md:h-auto md:w-auto rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
                 aria-label="Kembali"
                 title="Kembali"
               >
                 {/* Mobile: X, Desktop: ArrowLeft + teks */}
-                <span className="md:hidden"><X className="h-4 w-4" /></span>
+                <span className="md:hidden flex items-center justify-center"><X className="h-4 w-4" /></span>
                 <span className="hidden md:inline-flex items-center gap-2">
                   <ArrowLeft className="h-4 w-4" />
                   <span className="font-semibold">Kembali</span>
