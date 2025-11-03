@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
@@ -23,6 +23,20 @@ const Login = () => {
       [e.target.name]: e.target.value
     });
   };
+
+  // Paksa background halaman menjadi merah khusus halaman login
+  useEffect(() => {
+    try {
+      document.body.classList.add('login-bg')
+      document.documentElement.classList.add('login-bg')
+    } catch {}
+    return () => {
+      try {
+        document.body.classList.remove('login-bg')
+        document.documentElement.classList.remove('login-bg')
+      } catch {}
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,7 +70,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-red-700 flex flex-col">
+    <div className="min-h-[100lvh] bg-red-700 flex flex-col overflow-hidden md:overflow-auto">
       {/* Top brand section (di area merah) */}
       <div className="flex flex-col items-center justify-end pt-6 pb-4">
         {/* Logo bergaya app icon */}
@@ -74,7 +88,7 @@ const Login = () => {
       </div>
 
       {/* Wrapper untuk card + bottom content */}
-      <div className="flex-1 flex flex-col items-center px-4 pb-6">
+      <div className="flex-1 flex flex-col items-center px-4 pb-3 md:pb-6">
         {/* Card Form Login */}
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-red-100/40">
           <div className="px-6 sm:px-8 pt-6 pb-4">
@@ -146,7 +160,7 @@ const Login = () => {
         </div>
 
         {/* Bottom content di area merah */}
-        <div className="w-full max-w-md mt-6 text-white">
+        <div className="w-full max-w-md mt-4 md:mt-6 text-white">
           {/* Kotak gelap semi-transparan (selebar card di atasnya) */}
           <div className="w-full bg-black/10 rounded-md px-4 py-3">
             <h3 className="text-sm md:text-base font-semibold">3 Hal Penting</h3>
@@ -162,7 +176,7 @@ const Login = () => {
       </div>
 
       {/* Footer copyright di paling bawah */}
-      <footer className="text-center text-white/90 text-[11px] md:text-xs py-2">
+      <footer className="text-center text-white/90 text-[11px] md:text-xs py-1 md:py-2 fixed inset-x-0 bottom-0 md:static bg-red-700 pb-[max(env(safe-area-inset-bottom),4px)] z-10">
         © 2025 Bosgil Group
       </footer>
     </div>
