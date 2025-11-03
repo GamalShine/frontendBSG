@@ -10,6 +10,7 @@ const Input = ({
   error, 
   icon: Icon,
   className = '',
+  inputClassName = '',
   ...props 
 }) => {
   return (
@@ -38,7 +39,7 @@ const Input = ({
             error 
               ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
               : 'border-gray-300'
-          }`}
+          } ${inputClassName}`}
           {...props}
         />
       </div>

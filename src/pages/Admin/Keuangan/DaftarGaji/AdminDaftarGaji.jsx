@@ -752,7 +752,9 @@ const AdminDaftarGaji = () => {
 
       {/* Modal Tambah Daftar Gaji */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-2 md:p-4"
+        >
           {/* Backdrop click to close */}
           <button
             type="button"
@@ -762,7 +764,7 @@ const AdminDaftarGaji = () => {
             tabIndex={-1}
           />
 
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[85vh] lg:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[92vw] sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-h-[78dvh] md:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative mt-24 md:mt-0">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-2 lg:py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
               <div>
@@ -834,27 +836,27 @@ const AdminDaftarGaji = () => {
                 {/* Komponen Penghasilan */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Komponen Penghasilan</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input label="Gaji Pokok (Rp)" name="gaji_pokok" value={form.gaji_pokok} onChange={onChange} {...numberProps} />
-                    <Input label="Tunjangan Kinerja (Rp)" name="tunjangan_kinerja" value={form.tunjangan_kinerja} onChange={onChange} {...numberProps} />
-                    <Input label="Tunjangan Posisi (Rp)" name="tunjangan_posisi" value={form.tunjangan_posisi} onChange={onChange} {...numberProps} />
-                    <Input label="Uang Makan (Rp)" name="uang_makan" value={form.uang_makan} onChange={onChange} {...numberProps} />
-                    <Input label="Lembur (Rp)" name="lembur" value={form.lembur} onChange={onChange} {...numberProps} />
-                    <Input label="Bonus (Rp)" name="bonus" value={form.bonus} onChange={onChange} {...numberProps} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                    <Input label="Gaji Pokok (Rp)" name="gaji_pokok" value={form.gaji_pokok} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="Tunjangan Kinerja (Rp)" name="tunjangan_kinerja" value={form.tunjangan_kinerja} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="Tunjangan Posisi (Rp)" name="tunjangan_posisi" value={form.tunjangan_posisi} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="Uang Makan (Rp)" name="uang_makan" value={form.uang_makan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="Lembur (Rp)" name="lembur" value={form.lembur} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="Bonus (Rp)" name="bonus" value={form.bonus} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
                   </div>
                 </div>
 
                 {/* Komponen Potongan */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Komponen Potongan</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Input label="Potongan (Rp)" name="potongan" value={form.potongan} onChange={onChange} {...numberProps} />
-                    <Input label="BPJSTK (Rp)" name="bpjstk" value={form.bpjstk} onChange={onChange} {...numberProps} />
-                    <Input label="BPJS Kesehatan (Rp)" name="bpjs_kesehatan" value={form.bpjs_kesehatan} onChange={onChange} {...numberProps} />
-                    <Input label="BPJS Kes Penambahan (Rp)" name="bpjs_kes_penambahan" value={form.bpjs_kes_penambahan} onChange={onChange} {...numberProps} />
-                    <Input label="SP 1/2 (Rp)" name="sp_1_2" value={form.sp_1_2} onChange={onChange} {...numberProps} />
-                    <Input label="Pinjaman Karyawan (Rp)" name="pinjaman_karyawan" value={form.pinjaman_karyawan} onChange={onChange} {...numberProps} />
-                    <Input label="PPH21 (Rp)" name="pph21" value={form.pph21} onChange={onChange} {...numberProps} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                    <Input label="Potongan (Rp)" name="potongan" value={form.potongan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="BPJSTK (Rp)" name="bpjstk" value={form.bpjstk} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="BPJS Kesehatan (Rp)" name="bpjs_kesehatan" value={form.bpjs_kesehatan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="BPJS Kes Penambahan (Rp)" name="bpjs_kes_penambahan" value={form.bpjs_kes_penambahan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="SP 1/2 (Rp)" name="sp_1_2" value={form.sp_1_2} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="Pinjaman Karyawan (Rp)" name="pinjaman_karyawan" value={form.pinjaman_karyawan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                    <Input label="PPH21 (Rp)" name="pph21" value={form.pph21} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
                   </div>
                 </div>
 

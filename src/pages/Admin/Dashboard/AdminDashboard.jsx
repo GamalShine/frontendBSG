@@ -21,6 +21,7 @@ const AdminDashboard = () => {
   const [wasPlayingBeforeFs, setWasPlayingBeforeFs] = useState(false)
   const [posterUrl, setPosterUrl] = useState('')
   const [posterCaptured, setPosterCaptured] = useState(false)
+  const suppressEventsRef = useRef(false)
 
   const toAbsoluteUrl = (path) => {
     if (!path) return ''
@@ -178,12 +179,16 @@ const AdminDashboard = () => {
         }
         try {
           vv.muted = true
+          // suppress onPlay/onPause agar UI tidak flicker saat autoplay singkat untuk poster
+          suppressEventsRef.current = true
           vv.play().then(() => {
             setTimeout(() => {
               if (!posterCaptured) {
                 requestAnimationFrame(drawFrame)
               }
               resumeIfNeeded()
+              // lepas suppress setelah resume
+              suppressEventsRef.current = false
             }, 220)
           }).catch(() => {})
         } catch {
@@ -339,8 +344,8 @@ const AdminDashboard = () => {
                   disablePictureInPicture
                   controlsList="nofullscreen"
                   onEnded={handleNext}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
+                  onPlay={() => { if (suppressEventsRef.current) return; setIsPlaying(true) }}
+                  onPause={() => { if (suppressEventsRef.current) return; setIsPlaying(false) }}
                   onCanPlay={() => isPlaying && videoRef.current?.play()}
                   onError={() => {
                     console.warn('[AdminDashboard] Gagal memuat file video:', videoUrl)

@@ -8,6 +8,7 @@ import { Plus } from 'lucide-react'
 const Layout = ({ children }) => {
   const { user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [headerHeight, setHeaderHeight] = useState(0)
   const location = useLocation()
   const [fabSignal, setFabSignal] = useState({ lapkeu: false, month: '', datatarget: false })
 
@@ -18,6 +19,31 @@ const Layout = ({ children }) => {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Hitung tinggi header aktual (termasuk breadcrumb mobile) agar spacer akurat
+  useEffect(() => {
+    const measure = () => {
+      try {
+        const el = document.querySelector('header')
+        if (el) {
+          const h = el.getBoundingClientRect().height || 0
+          setHeaderHeight(h)
+        }
+      } catch {}
+    }
+    measure()
+    let ro
+    try {
+      ro = new ResizeObserver(measure)
+      const el = document.querySelector('header')
+      if (el) ro.observe(el)
+    } catch {}
+    window.addEventListener('resize', measure)
+    return () => {
+      try { ro && ro.disconnect() } catch {}
+      window.removeEventListener('resize', measure)
+    }
   }, [])
 
   // Amati perubahan atribut pada body untuk sinyal FAB (lapkeu month)
@@ -40,7 +66,7 @@ const Layout = ({ children }) => {
   }, [])
 
   return (
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex min-h-[100dvh] bg-gray-100 min-h-0">
         {/* Sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
           <Sidebar />
@@ -74,11 +100,19 @@ const Layout = ({ children }) => {
         </>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <Header onMenuClick={() => setSidebarOpen(true)} />
+          {/* Spacer to offset fixed header + mobile breadcrumb height (mobile only, dynamic) */}
+          <div className="lg:hidden" style={{ height: headerHeight ? `${headerHeight}px` : undefined }}></div>
           
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
+          <main
+            className="flex-1 overflow-y-auto overscroll-contain bg-gray-50 p-4 sm:p-6 pb-32 lg:pb-0 min-h-0"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)'
+            }}
+          >
             {children}
           </main>
 
