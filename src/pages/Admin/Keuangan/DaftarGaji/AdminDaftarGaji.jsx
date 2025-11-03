@@ -638,26 +638,26 @@ const AdminDaftarGaji = () => {
         {!(isGlobalSearch && !selectedDept) && (
           <div className="space-y-3 mt-4">
             {filteredBranches.map((branch) => (
-              <div key={branch.id} className="border border-gray-200 rounded-md overflow-hidden min-h-[48px]">
+              <div key={branch.id} className="rounded-md overflow-hidden bg-red-700 text-white border border-red-700">
                 <button
                   type="button"
                   onClick={() => toggleBranch(branch.id)}
-                  className="w-full flex items-center justify-between px-4 py-2 bg-red-700 text-white"
+                  className="w-full h-10 md:h-11 flex items-center justify-between px-4 py-0 bg-red-700 text-white"
                 >
-                  <span className="font-semibold">{branch.name}</span>
-                  <span className="text-sm opacity-90">{branchEmployeeCount(branch.id)} orang {expandedBranch === branch.id ? <ChevronUp className="inline h-4 w-4 ml-2"/> : <ChevronDown className="inline h-4 w-4 ml-2"/>}</span>
+                  <span className="font-semibold leading-none">{branch.name}</span>
+                  <span className="text-sm opacity-90 leading-none flex items-center">{branchEmployeeCount(branch.id)} orang {expandedBranch === branch.id ? <ChevronUp className="inline h-4 w-4 ml-2"/> : <ChevronDown className="inline h-4 w-4 ml-2"/>}</span>
                 </button>
                 {expandedBranch === branch.id && (
-                  <div className="bg-white">
+                  <div className="bg-red-700">
                     {(branch.departments || []).map((dept) => (
                       <button
                         key={dept.id}
                         type="button"
                         onClick={() => handleSelectDept(dept.id)}
-                        className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-gray-100 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                        className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-red-800 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
                       >
-                        <span className="text-sm font-semibold text-gray-800">{dept.name}</span>
-                        <span className="text-xs text-gray-600">{deptEmployeeCount(dept.id)} orang</span>
+                        <span className="text-sm font-semibold text-gray-900">{dept.name}</span>
+                        <span className="text-xs text-gray-700">{deptEmployeeCount(dept.id)} orang</span>
                       </button>
                     ))}
                   </div>
