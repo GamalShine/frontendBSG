@@ -66,9 +66,9 @@ const Layout = ({ children }) => {
   }, [])
 
   return (
-      <div className="flex min-h-[100dvh] bg-gray-100 min-h-0">
+      <div className="flex h-[100dvh] bg-gray-100 min-h-0 overflow-hidden">
         {/* Sidebar */}
-        <div className="hidden lg:flex lg:flex-shrink-0">
+        <div className="hidden lg:flex lg:sticky lg:top-0 lg:h-[100dvh] lg:flex-shrink-0">
           <Sidebar />
         </div>
 

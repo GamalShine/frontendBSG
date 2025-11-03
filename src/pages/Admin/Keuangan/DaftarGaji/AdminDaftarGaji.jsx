@@ -764,9 +764,9 @@ const AdminDaftarGaji = () => {
             tabIndex={-1}
           />
 
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[92vw] sm:max-w-lg md:max-w-2xl lg:max-w-4xl max-h-[78dvh] md:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative mt-24 md:mt-0">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[92vw] sm:max-w-lg md:max-w-2xl lg:max-w-2xl max-h-[78dvh] md:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative mt-24 md:mt-0">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-2 lg:py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+            <div className="flex items-center justify-between px-6 py-2 lg:py-2 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
               <div>
                 <h3 className="text-xl font-bold leading-tight">Tambah Daftar Gaji</h3>
               </div>
@@ -783,11 +783,11 @@ const AdminDaftarGaji = () => {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-gray-900">Informasi Karyawan</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Pilih User (Nama Karyawan) <span className="text-red-600">*</span></label>
                       <select
-                        className="w-full border rounded-md px-3 py-2"
+                        className="w-full border rounded-md px-3 py-2 md:py-1"
                         value={form.user_id || ''}
                         onChange={(e) => {
                           const selectedId = e.target.value
@@ -805,7 +805,7 @@ const AdminDaftarGaji = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Divisi <span className="text-red-600">*</span></label>
                       <select
-                        className="w-full border rounded-md px-3 py-2"
+                        className="w-full border rounded-md px-3 py-2 md:py-1"
                         value={selectedDivisiId}
                         onChange={(e) => { setSelectedDivisiId(e.target.value); setForm((p)=>({ ...p, jabatan_id: '' })) }}
                       >
@@ -818,7 +818,7 @@ const AdminDaftarGaji = () => {
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan <span className="text-red-600">*</span></label>
                       <select
-                        className="w-full border rounded-md px-3 py-2"
+                        className="w-full border rounded-md px-3 py-2 md:py-1"
                         name="jabatan_id"
                         value={form.jabatan_id}
                         onChange={onChange}
@@ -836,27 +836,27 @@ const AdminDaftarGaji = () => {
                 {/* Komponen Penghasilan */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Komponen Penghasilan</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                    <Input label="Gaji Pokok (Rp)" name="gaji_pokok" value={form.gaji_pokok} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="Tunjangan Kinerja (Rp)" name="tunjangan_kinerja" value={form.tunjangan_kinerja} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="Tunjangan Posisi (Rp)" name="tunjangan_posisi" value={form.tunjangan_posisi} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="Uang Makan (Rp)" name="uang_makan" value={form.uang_makan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="Lembur (Rp)" name="lembur" value={form.lembur} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="Bonus (Rp)" name="bonus" value={form.bonus} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <Input label="Gaji Pokok (Rp)" name="gaji_pokok" value={form.gaji_pokok} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="Tunjangan Kinerja (Rp)" name="tunjangan_kinerja" value={form.tunjangan_kinerja} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="Tunjangan Posisi (Rp)" name="tunjangan_posisi" value={form.tunjangan_posisi} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="Uang Makan (Rp)" name="uang_makan" value={form.uang_makan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="Lembur (Rp)" name="lembur" value={form.lembur} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="Bonus (Rp)" name="bonus" value={form.bonus} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
                   </div>
                 </div>
 
                 {/* Komponen Potongan */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Komponen Potongan</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-                    <Input label="Potongan (Rp)" name="potongan" value={form.potongan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="BPJSTK (Rp)" name="bpjstk" value={form.bpjstk} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="BPJS Kesehatan (Rp)" name="bpjs_kesehatan" value={form.bpjs_kesehatan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="BPJS Kes Penambahan (Rp)" name="bpjs_kes_penambahan" value={form.bpjs_kes_penambahan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="SP 1/2 (Rp)" name="sp_1_2" value={form.sp_1_2} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="Pinjaman Karyawan (Rp)" name="pinjaman_karyawan" value={form.pinjaman_karyawan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
-                    <Input label="PPH21 (Rp)" name="pph21" value={form.pph21} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-3 md:text-base" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                    <Input label="Potongan (Rp)" name="potongan" value={form.potongan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="BPJSTK (Rp)" name="bpjstk" value={form.bpjstk} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="BPJS Kesehatan (Rp)" name="bpjs_kesehatan" value={form.bpjs_kesehatan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="BPJS Kes Penambahan (Rp)" name="bpjs_kes_penambahan" value={form.bpjs_kes_penambahan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="SP 1/2 (Rp)" name="sp_1_2" value={form.sp_1_2} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="Pinjaman Karyawan (Rp)" name="pinjaman_karyawan" value={form.pinjaman_karyawan} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
+                    <Input label="PPH21 (Rp)" name="pph21" value={form.pph21} onChange={onChange} {...numberProps} inputClassName="py-1.5 text-sm md:py-1 md:text-base" />
                   </div>
                 </div>
 
@@ -870,7 +870,7 @@ const AdminDaftarGaji = () => {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="w-full py-1 md:py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                  className="w-full py-1 md:py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
                 >
                   Batal
                 </button>
@@ -878,7 +878,7 @@ const AdminDaftarGaji = () => {
                   type="submit"
                   form="gajiForm"
                   disabled={submitting}
-                  className="w-full py-1 md:py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
+                  className="w-full py-1 md:py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
                 >
                   {submitting ? 'Menyimpan...' : 'Simpan'}
                 </button>

@@ -21,140 +21,164 @@ const KebijakanPrivasi = () => {
         {/* Content */}
         <div className="px-6 py-8 sm:px-10 space-y-8">
           
-          {/* Ringkasan Singkat */}
+          {/* Pendahuluan */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Ringkasan Singkat
+              1. Pendahuluan
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              Dengan mengunduh atau menggunakan Aplikasi ini, kamu setuju pada syarat & ketentuan berlaku. Bacalah dengan teliti. Hak kekayaan intelektual milik Penyedia Layanan. Dilarang menyalin, memodifikasi, mengekstrak kode sumber, atau membuat turunan tanpa izin.
+              Selamat datang di aplikasi Sistem Bosgil Group. Kami menghormati privasi Anda dan berkomitmen 
+              untuk melindungi data pribadi Anda. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, 
+              menggunakan, dan melindungi informasi Anda saat menggunakan aplikasi kami.
             </p>
           </section>
 
-          {/* Persetujuan Pengguna */}
+          {/* Informasi yang Dikumpulkan */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Persetujuan Pengguna
+              2. Informasi yang Kami Kumpulkan
             </h2>
             <div className="space-y-3 text-gray-700">
               <p className="leading-relaxed">
-                Dengan mengunduh atau memakai Aplikasi, kamu otomatis menyetujui syarat ini. Beberapa hal penting:
+                Kami dapat mengumpulkan informasi berikut:
               </p>
               <ul className="list-disc pl-6 space-y-2">
-                <li>Tidak boleh menyalin, memodifikasi, atau menggunakan merek dagang tanpa izin.</li>
-                <li>Tidak boleh mencoba mengekstrak kode sumber, menerjemahkan untuk distribusi, atau membuat versi turunan.</li>
-                <li>Semua hak cipta dan hak kekayaan intelektual tetap milik Penyedia Layanan.</li>
+                <li>Informasi akun (nama, email, nomor telepon)</li>
+                <li>Data profil pengguna</li>
+                <li>Informasi pekerjaan dan divisi</li>
+                <li>Data aktivitas dalam aplikasi</li>
+                <li>Informasi perangkat dan log akses</li>
               </ul>
             </div>
           </section>
 
-          {/* Hak Penyedia Layanan */}
+          {/* Penggunaan Informasi */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Hak Penyedia Layanan
-            </h2>
-            <p className="text-gray-700 leading-relaxed">
-              Penyedia Layanan berhak mengubah Aplikasi atau mengenakan biaya kapan saja. Jika dikenakan biaya, akan diberitahukan secara jelas.
-            </p>
-          </section>
-
-          {/* Data & Keamanan */}
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Data & Keamanan
+              3. Penggunaan Informasi
             </h2>
             <div className="space-y-3 text-gray-700">
               <p className="leading-relaxed">
-                Aplikasi menyimpan dan memproses data pribadi yang kamu berikan. Kamu bertanggung jawab menjaga keamanan perangkat dan akses ke Aplikasi.
+                Informasi yang kami kumpulkan digunakan untuk:
               </p>
-              <p className="leading-relaxed">
-                Penyedia Layanan tidak menyarankan jailbreak atau root karena dapat membahayakan keamanan perangkat dan membuat Aplikasi tidak berfungsi.
-              </p>
-            </div>
-          </section>
-
-          {/* Layanan Pihak Ketiga */}
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Layanan Pihak Ketiga
-            </h2>
-            <p className="text-gray-700 leading-relaxed">
-              Aplikasi menggunakan layanan pihak ketiga yang memiliki syarat sendiri. Contoh yang dipakai: <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Google Play Services</a>.
-            </p>
-          </section>
-
-          {/* Tanggung Jawab & Batasan */}
-          <section>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Tanggung Jawab & Batasan
-            </h2>
-            <div className="space-y-3 text-gray-700">
               <ul className="list-disc pl-6 space-y-2">
-                <li>Beberapa fitur memerlukan koneksi internet. Penyedia tidak bertanggung jawab jika Aplikasi tidak berjalan penuh karena tidak ada koneksi atau kuota habis.</li>
-                <li>Biaya data seluler atau roaming ditanggung pengguna.</li>
-                <li>Jika kamu bukan pemegang tagihan, diasumsikan sudah mendapat izin dari pemegang tagihan.</li>
-                <li>Penyedia tidak bertanggung jawab jika perangkat kehabisan baterai dan pengguna tidak dapat mengakses layanan.</li>
-                <li>Penyedia menggunakan data pihak ketiga; mereka tidak bertanggung jawab atas kerugian yang timbul akibat ketergantungan pada data tersebut.</li>
+                <li>Menyediakan dan meningkatkan layanan aplikasi</li>
+                <li>Mengelola akun pengguna</li>
+                <li>Memfasilitasi komunikasi internal perusahaan</li>
+                <li>Mengelola tugas, komplain, dan pengumuman</li>
+                <li>Analisis kinerja dan pelaporan</li>
+                <li>Keamanan dan pencegahan fraud</li>
               </ul>
             </div>
           </section>
 
-          {/* Pembaruan & Penghentian */}
+          {/* Keamanan Data */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Pembaruan & Penghentian
+              4. Keamanan Data
+            </h2>
+            <p className="text-gray-700 leading-relaxed">
+              Kami menerapkan langkah-langkah keamanan yang sesuai untuk melindungi informasi pribadi Anda 
+              dari akses, penggunaan, atau pengungkapan yang tidak sah. Data Anda disimpan di server yang aman 
+              dan hanya dapat diakses oleh personel yang berwenang.
+            </p>
+          </section>
+
+          {/* Pembagian Informasi */}
+          <section>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              5. Pembagian Informasi
             </h2>
             <div className="space-y-3 text-gray-700">
               <p className="leading-relaxed">
-                Penyedia dapat memperbarui Aplikasi kapan saja. Sistem operasi dapat berubah sehingga kamu perlu mengunduh pembaruan agar tetap dapat menggunakan Aplikasi. Kamu setuju untuk menerima pembaruan ketika ditawarkan.
+                Kami tidak menjual atau menyewakan informasi pribadi Anda kepada pihak ketiga. 
+                Informasi Anda hanya dibagikan dalam kondisi berikut:
               </p>
-              <p className="leading-relaxed">
-                Penyedia bisa menghentikan layanan kapan saja tanpa pemberitahuan. Jika dihentikan, hak dan lisensi akan berakhir dan kamu harus menghentikan penggunaan serta menghapus Aplikasi bila diperlukan.
-              </p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>Dengan anggota tim internal yang memerlukan akses untuk menjalankan tugas</li>
+                <li>Ketika diwajibkan oleh hukum atau peraturan yang berlaku</li>
+                <li>Untuk melindungi hak, properti, atau keamanan perusahaan</li>
+              </ul>
             </div>
           </section>
 
-          {/* Perubahan Syarat & Ketentuan */}
+          {/* Hak Pengguna */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Perubahan Syarat & Ketentuan
+              6. Hak Pengguna
+            </h2>
+            <div className="space-y-3 text-gray-700">
+              <p className="leading-relaxed">
+                Anda memiliki hak untuk:
+              </p>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>Mengakses informasi pribadi Anda</li>
+                <li>Memperbarui atau mengoreksi data Anda</li>
+                <li>Meminta penghapusan data (sesuai ketentuan perusahaan)</li>
+                <li>Menarik persetujuan penggunaan data tertentu</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Cookies dan Teknologi Pelacakan */}
+          <section>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              7. Cookies dan Teknologi Pelacakan
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              Penyedia berhak memperbarui syarat ini dari waktu ke waktu. Disarankan untuk memeriksa halaman ini secara berkala. Perubahan akan dipublikasikan di halaman ini.
+              Aplikasi kami menggunakan cookies dan teknologi pelacakan serupa untuk meningkatkan pengalaman 
+              pengguna, menganalisis penggunaan aplikasi, dan menyimpan preferensi Anda. Anda dapat mengatur 
+              browser atau perangkat Anda untuk menolak cookies, tetapi beberapa fitur aplikasi mungkin tidak 
+              berfungsi dengan baik.
+            </p>
+          </section>
+
+          {/* Penyimpanan Data */}
+          <section>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              8. Penyimpanan Data
+            </h2>
+            <p className="text-gray-700 leading-relaxed">
+              Data pribadi Anda akan disimpan selama Anda masih menjadi pengguna aktif aplikasi atau 
+              selama diperlukan untuk tujuan bisnis yang sah. Data yang tidak lagi diperlukan akan dihapus 
+              secara aman sesuai dengan kebijakan retensi data kami.
             </p>
           </section>
 
           {/* Perubahan Kebijakan */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              9. Perubahan Kebijakan
+              9. Perubahan Kebijakan Privasi
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              Kebijakan ini dapat diperbarui dari waktu ke waktu dan akan diinformasikan melalui aplikasi. Penggunaan setelah perubahan berarti kamu menyetujui kebijakan yang diperbarui.
+              Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Perubahan akan diberitahukan 
+              melalui aplikasi atau email. Penggunaan aplikasi setelah perubahan berarti Anda menerima 
+              kebijakan yang diperbarui.
             </p>
           </section>
 
-          {/* Persetujuan (opsional) */}
+          {/* Persetujuan */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
               10. Persetujuan
             </h2>
             <p className="text-gray-700 leading-relaxed">
-              Dengan terus menggunakan Aplikasi, kamu setuju pada seluruh ketentuan yang berlaku pada halaman ini.
+              Dengan menggunakan aplikasi Sistem Bosgil Group, Anda menyetujui pengumpulan dan penggunaan 
+              informasi sesuai dengan Kebijakan Privasi ini.
             </p>
           </section>
 
           {/* Kontak */}
           <section>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              Kontak
+              11. Hubungi Kami
             </h2>
             <div className="text-gray-700 leading-relaxed space-y-2">
               <p>
-                Jika ada pertanyaan atau saran, silakan hubungi kami:
+                Jika Anda memiliki pertanyaan tentang Kebijakan Privasi ini, silakan hubungi kami:
               </p>
               <div className="bg-gray-50 p-4 rounded-lg mt-3">
-                <p><strong>Email:</strong> gamalmusthofa@gmail.com</p>
+                <p><strong>Email:</strong> privacy@bosgilgroup.com</p>
                 <p><strong>Perusahaan:</strong> Bosgil Group</p>
               </div>
             </div>
