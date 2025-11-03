@@ -329,6 +329,62 @@
    (tanpa mengubah desktop)
    ============================ */
 @media (max-width: 768px) {
+  /* — React Hot Toast (mobile compact) — */
+  .app-toaster-container {
+    padding: 6px; /* lebih rapat */
+  }
+  /* Wrapper toast */
+  .app-toast {
+    max-width: 70vw !important; /* lebih sempit */
+    padding: 4px 6px !important; /* lebih tipis */
+    font-size: 0.9375rem !important; /* ~15px agar lebih terbaca */
+    line-height: 1.35 !important; /* sedikit lebih longgar untuk keterbacaan */
+    border-radius: 0.625rem !important; /* 10px */
+  }
+  /* Khusus SUCCESS: buat lebih besar (lebar & tinggi) di mobile */
+  .app-toast-success {
+    max-width: 86vw !important; /* lebih lebar untuk success */
+    padding: 8px 12px !important; /* lebih tinggi/lebar */
+  }
+  /* Kurangi ikon dan jarak default toast */
+  /* Paksa struktur internal react-hot-toast menjadi rapat */
+  .app-toast > * {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .app-toast > div svg {
+    width: 13px !important;
+    height: 13px !important;
+    display: block; /* hilangkan extra whitespace inline */
+    margin-right: 0 !important; /* rapatkan ke teks */
+  }
+  .app-toast > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 2px !important; /* lebih dekat antara ikon dan teks */
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* Tambah jarak di sisi kanan teks */
+  .app-toast > div:last-child {
+    padding-right: 8px !important;
+  }
+  .app-toast > div > * {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* Pastikan tombol ikon tidak memberi padding ekstra */
+  .app-toast button {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 16px !important;
+    height: 16px !important;
+    line-height: 1 !important;
+  }
+  /* Posisi lebih turun sedikit supaya tidak mentok status bar */
+  .app-toaster-container[data-y="top"] {
+    top: 6px !important;
+  }
   /* — Font & Teks — */
   html {
     /* Sedikit kecil namun tetap terbaca */

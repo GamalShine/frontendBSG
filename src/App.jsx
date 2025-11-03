@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, toast } from 'react-hot-toast'
+
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { MenuProvider, useMenu } from './contexts/MenuContext'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -2471,25 +2472,45 @@ const ModalSwitch = () => {
             </Routes>
           <Toaster 
             position="top-right"
+            containerClassName="app-toaster-container"
             toastOptions={{
               duration: 4000,
+              className: 'app-toast',
               style: {
                 background: '#363636',
                 color: '#fff',
               },
               success: {
                 duration: 3000,
+                className: 'app-toast-success',
                 iconTheme: {
                   primary: '#10B981',
                   secondary: '#fff',
                 },
+                closeButton: false,
               },
               error: {
                 duration: 5000,
                 iconTheme: {
                   primary: '#EF4444',
                   secondary: '#fff',
-                }
+                },
+                // Jangan tampilkan close button kanan; ikon kiri menjadi tombol tutup
+                closeButton: false,
+                icon: (
+                  <button
+                    onClick={() => toast.dismiss()}
+                    aria-label="Tutup notifikasi"
+                    title="Tutup"
+                    className="leading-none"
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="10" cy="10" r="10" fill="#EF4444" />
+                      <path d="M6.5 6.5L13.5 13.5M13.5 6.5L6.5 13.5" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                ),
               }
             }}
           />
