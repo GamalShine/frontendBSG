@@ -329,6 +329,16 @@
    (tanpa mengubah desktop)
    ============================ */
 @media (max-width: 768px) {
+  /* Halo: kunci background merah full-page khusus halaman login */
+  html.login-bg,
+  body.login-bg {
+    background-color: #b91c1c !important; /* Tailwind red-700 */
+    background-image: none !important;
+    min-height: 10lvh; /* large viewport height agar stabil saat keyboard muncul */
+  }
+  body.login-bg #root {
+    background-color: transparent !important; /* pastikan root tidak menimpa bg merah */
+  }
   /* — React Hot Toast (mobile compact) — */
   .app-toaster-container {
     padding: 6px; /* lebih rapat */
