@@ -1,1004 +1,472 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Calendar,
-  DollarSign,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  ArrowRight,
-  Award,
-  AlertCircle,
-  BarChart3,
-  CheckSquare,
-  User,
-  Bell,
-  Shield
-} from 'lucide-react';
-import LoadingSpinner from '../components/UI/LoadingSpinner';
-import { formatDate } from '../utils/helpers'
-import Card, { CardHeader, CardBody } from '../components/UI/Card'
-import Badge from '../components/UI/Badge'
-import Button from '../components/UI/Button'
-import toast from 'react-hot-toast'
-import { komplainService } from '../services/komplainService'
-import { tugasService } from '../services/tugasService'
-import { poskasService } from '../services/poskasService'
-import { userService } from '../services/userService'
- 
-import { timService } from '../services/timService'
+import React, { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import Card, { CardBody } from '../components/UI/Card'
 import { videoManageService } from '../services/videoManageService'
+import { API_CONFIG } from '../config/constants'
+import { SkipBack, Play, Pause, SkipForward, Volume2, VolumeX, Users2, ClipboardList, AlertTriangle, FileText, ChevronRight, Expand, Minimize } from 'lucide-react'
 
-const Dashboard = () => {
+const AdminDashboard = () => {
   const { user } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({
-    totalKomplain: 0,
-    totalTugas: 0,
-    totalPoskas: 0,
-    totalUsers: 0,
-    totalTimBiru: 0,
-    totalTimMerah: 0
-  })
-  const [recentKomplains, setRecentKomplains] = useState([])
-  const [recentTugas, setRecentTugas] = useState([])
-  // Video section state (per role)
   const [videoUrl, setVideoUrl] = useState('')
-  const [videoInput, setVideoInput] = useState('')
-  const [selectedVideoFile, setSelectedVideoFile] = useState(null)
-  const [videoSaving, setVideoSaving] = useState(false)
+  const [targetRole, setTargetRole] = useState('admin') // admin | leader
+  const [videoError, setVideoError] = useState('')
+  const [list, setList] = useState([])
+  const [currentIdx, setCurrentIdx] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const videoRef = useRef(null)
+  const containerRef = useRef(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [wasPlayingBeforeFs, setWasPlayingBeforeFs] = useState(false)
+  const [posterUrl, setPosterUrl] = useState('')
+  const [posterCaptured, setPosterCaptured] = useState(false)
+  const suppressEventsRef = useRef(false)
 
-  // Debug logging
-  console.log('🔍 Dashboard rendered')
-  console.log('👤 User data:', user)
-  console.log('🎭 User role:', user?.role)
-
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true)
-        console.log('🔄 Fetching dashboard data for user:', user?.role)
-        
-        // Fetch data based on user role
-        if (user?.role === 'owner' || user?.role === 'admin') {
-          // Fetch all data for admin/owner
-          await Promise.all([
-            fetchKomplainData(),
-            fetchTugasData(),
-            fetchPoskasData(),
-            fetchUsersData(),
-            fetchTimData()
-          ])
-        } else if (user?.role === 'leader') {
-          // Fetch leader-specific data
-          await Promise.all([
-            fetchKomplainData(),
-            fetchTugasData(),
-            fetchPoskasData(),
-            fetchTimData()
-          ])
-        } else {
-          // Fetch user-specific data
-          await Promise.all([
-            fetchUserKomplainData(),
-            fetchUserTugasData(),
-            fetchUserPoskasData()
-          ])
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-        toast.error('Gagal memuat data dashboard')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (user) {
-      fetchDashboardData()
-    }
-  }, [user])
-
-  // Helper: convert common video URLs to embeddable URL
-  const toEmbedUrl = (url) => {
-    try {
-      if (!url) return ''
-      const u = new URL(url)
-      // YouTube patterns
-      if (u.hostname.includes('youtube.com')) {
-        const v = u.searchParams.get('v')
-        if (v) return `https://www.youtube.com/embed/${v}`
-        // If already /embed/
-        if (u.pathname.includes('/embed/')) return url
-      }
-      if (u.hostname.includes('youtu.be')) {
-        const id = u.pathname.split('/')[1]
-        if (id) return `https://www.youtube.com/embed/${id}`
-      }
-      // Vimeo
-      if (u.hostname.includes('vimeo.com')) {
-        const id = u.pathname.split('/').filter(Boolean)[0]
-        if (id) return `https://player.vimeo.com/video/${id}`
-      }
-      // Default return original (assume already embeddable)
-      return url
-    } catch (e) {
-      return url
-    }
+  const toAbsoluteUrl = (path) => {
+    if (!path) return ''
+    if (/^https?:\/\//i.test(path)) return path
+    const base = API_CONFIG?.BASE_HOST || ''
+    return `${base}${path.startsWith('/') ? path : '/' + path}`
   }
 
-  // Load video dari backend
-  // - Admin: pakai video Admin
-  // - Leader: tampilkan video yang sama dengan Admin (bukan per-role terpisah)
-  // - Role lain: fallback localStorage seperti sebelumnya
+  // Load daftar video dan tentukan aktif/default
   useEffect(() => {
     const load = async () => {
-      if (!user?.role) return
-      if (user.role === 'admin' || user.role === 'leader') {
-        try {
-          // Untuk Leader kita ambil video Admin agar tampil sama seperti di Admin
-          const sourceRole = user.role === 'leader' ? 'admin' : 'admin'
-          const res = await videoManageService.getCurrent(sourceRole)
-          setVideoUrl(res?.data?.url || '')
-        } catch (e) {
-          console.error('Gagal memuat video dashboard:', e)
-          setVideoUrl('')
+      if (!(user?.role === 'admin' || user?.role === 'owner')) return
+      try {
+        // Ambil list video untuk role target
+        const res = await videoManageService.list(targetRole)
+        const items = res?.data || []
+        // Normalisasi url absolut
+        const normalized = items.map(v => ({ ...v, url: toAbsoluteUrl(v?.url || '') }))
+        setList(normalized)
+
+        // Tentukan index aktif atau fallback ke index 0
+        const activeIndex = normalized.findIndex(v => v.active)
+        const idx = activeIndex >= 0 ? activeIndex : 0
+        const url = normalized[idx]?.url || ''
+        setCurrentIdx(idx)
+        setVideoUrl(url)
+        setVideoError('')
+
+        // Jika list kosong untuk role saat ini, fallback ke role lain
+        if (!url) {
+          const altRole = targetRole === 'admin' ? 'leader' : 'admin'
+          try {
+            const altRes = await videoManageService.list(altRole)
+            const altItems = (altRes?.data || []).map(v => ({ ...v, url: toAbsoluteUrl(v?.url || '') }))
+            if (altItems.length > 0) {
+              setList(altItems)
+              setCurrentIdx(0)
+              setTargetRole(altRole)
+              setVideoUrl(altItems[0].url)
+              setVideoError('')
+            }
+          } catch (altErr) {
+            console.warn('[AdminDashboard] Fallback gagal untuk list role lain', altErr)
+          }
         }
-      } else {
-        const key = `dashboard_video_${user.role}`
-        const saved = localStorage.getItem(key)
-        if (saved) {
-          setVideoUrl(saved)
-          setVideoInput(saved)
-        } else {
-          setVideoUrl('')
-          setVideoInput('')
-        }
+      } catch (e) {
+        console.error('Gagal memuat video admin:', e)
       }
     }
     load()
-  }, [user?.role])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.role, targetRole])
 
-  const handleUploadVideo = async () => {
-    if (!selectedVideoFile) return toast.error('Pilih file video terlebih dahulu')
-    if (!(user?.role === 'admin' || user?.role === 'leader')) return
+  // Sinkronkan play/pause dan mute pada element video
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    el.muted = muted
+    if (isPlaying) {
+      el.play().catch(() => setIsPlaying(false))
+    } else {
+      el.pause()
+    }
+  }, [isPlaying, muted, videoUrl])
+
+  // Buat poster otomatis dari frame awal (seek ke ~0.1s untuk hindari frame gelap/putih)
+  useEffect(() => {
+    setPosterUrl('')
+    setVideoError('')
+    setPosterCaptured(false)
+    const el = videoRef.current
+    if (!el) return
+    let cancelled = false
+    const drawFrame = () => {
+      try {
+        if (cancelled || !videoRef.current) return
+        const v = videoRef.current
+        const w = v.videoWidth || 0
+        const h = v.videoHeight || 0
+        if (!w || !h) return
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.drawImage(v, 0, 0, w, h)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.86)
+        if (dataUrl) {
+          setPosterUrl(dataUrl)
+          setPosterCaptured(true)
+        }
+      } catch (e) {
+        console.warn('Gagal membuat poster video:', e)
+      }
+    }
+
+    const handleLoadedMeta = () => {
+      if (cancelled) return
+      const v = videoRef.current
+      if (!v) return
+      const prevPaused = v.paused
+      const prevTime = v.currentTime
+      const targetTime = Math.min((v.duration || 1) > 0 ? 0.1 : 0, (v.duration || 0))
+
+      const onSeeked = () => {
+        // Tunggu satu frame render agar tidak putih
+        const tryDraw = () => {
+          if (cancelled) return
+          if (v.readyState >= 2) {
+            requestAnimationFrame(() => {
+              drawFrame()
+              // Kembalikan ke waktu semula
+              try {
+                if (!cancelled && videoRef.current) {
+                  videoRef.current.currentTime = prevTime
+                  if (!prevPaused) {
+                    videoRef.current.play().catch(() => {})
+                  }
+                }
+              } finally {
+                v.removeEventListener('seeked', onSeeked)
+              }
+            })
+          } else {
+            // Jika belum siap, coba lagi sedikit
+            setTimeout(tryDraw, 30)
+          }
+        }
+        tryDraw()
+      }
+
+      v.addEventListener('seeked', onSeeked)
+      // Pause sementara untuk akurasi draw
+      try { v.pause() } catch {}
+      try { v.currentTime = targetTime } catch {
+        // Jika gagal seek, coba langsung draw
+        v.removeEventListener('seeked', onSeeked)
+        requestAnimationFrame(drawFrame)
+        // resume jika tadinya play
+        if (!prevPaused) v.play().catch(() => {})
+      }
+
+      // Fallback: jika setelah 600ms poster belum tercapture, lakukan autoplay muted sebentar
+      setTimeout(() => {
+        if (cancelled || posterCaptured || !videoRef.current) return
+        const vv = videoRef.current
+        const wasPaused = vv.paused
+        const prevT = vv.currentTime
+        const resumeIfNeeded = () => {
+          try {
+            vv.pause()
+            vv.currentTime = prevT
+            if (!wasPaused) vv.play().catch(() => {})
+          } catch {}
+        }
+        try {
+          vv.muted = true
+          // suppress onPlay/onPause agar UI tidak flicker saat autoplay singkat untuk poster
+          suppressEventsRef.current = true
+          vv.play().then(() => {
+            setTimeout(() => {
+              if (!posterCaptured) {
+                requestAnimationFrame(drawFrame)
+              }
+              resumeIfNeeded()
+              // lepas suppress setelah resume
+              suppressEventsRef.current = false
+            }, 220)
+          }).catch(() => {})
+        } catch {
+          // abaikan
+        }
+      }, 600)
+    }
+
+    el.addEventListener('loadedmetadata', handleLoadedMeta)
+    el.addEventListener('loadeddata', handleLoadedMeta)
+
+    return () => {
+      cancelled = true
+      el.removeEventListener('loadedmetadata', handleLoadedMeta)
+      el.removeEventListener('loadeddata', handleLoadedMeta)
+    }
+  }, [videoUrl])
+
+  // Pantau perubahan fullscreen untuk sinkronkan UI tombol dan auto-resume bila perlu
+  useEffect(() => {
+    const onFsChange = () => {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement
+      const entering = !!fsEl
+      setIsFullscreen(entering)
+      // Jika baru saja keluar fullscreen dan sebelumnya video playing, lanjutkan play
+      if (!entering && wasPlayingBeforeFs && videoRef.current) {
+        videoRef.current.play().catch(() => {})
+        setIsPlaying(true)
+      }
+    }
+    document.addEventListener('fullscreenchange', onFsChange)
+    // vendor prefixes (beberapa browser lama)
+    document.addEventListener('webkitfullscreenchange', onFsChange)
+    document.addEventListener('mozfullscreenchange', onFsChange)
+    document.addEventListener('MSFullscreenChange', onFsChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFsChange)
+      document.removeEventListener('webkitfullscreenchange', onFsChange)
+      document.removeEventListener('mozfullscreenchange', onFsChange)
+      document.removeEventListener('MSFullscreenChange', onFsChange)
+    }
+  }, [wasPlayingBeforeFs, setIsPlaying])
+
+  // iOS Safari: setelah keluar dari native fullscreen, event khusus dipicu
+  useEffect(() => {
+    const el = videoRef.current
+    if (!el) return
+    const onWebkitEndFs = () => {
+      if (wasPlayingBeforeFs) {
+        el.play().catch(() => {})
+        setIsPlaying(true)
+      }
+    }
+    el.addEventListener('webkitendfullscreen', onWebkitEndFs)
+    return () => {
+      el.removeEventListener('webkitendfullscreen', onWebkitEndFs)
+    }
+  }, [wasPlayingBeforeFs, setIsPlaying])
+
+  const toggleFullscreen = () => {
     try {
-      setVideoSaving(true)
-      const res = await videoManageService.upload(user.role, selectedVideoFile)
-      setVideoUrl(res?.data?.url || '')
-      setSelectedVideoFile(null)
-      toast.success('Video berhasil diunggah')
+      // Jika sedang fullscreen -> exit
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement
+      if (fsEl) {
+        if (document.exitFullscreen) return document.exitFullscreen()
+        if (document.webkitExitFullscreen) return document.webkitExitFullscreen()
+        if (document.mozCancelFullScreen) return document.mozCancelFullScreen()
+        if (document.msExitFullscreen) return document.msExitFullscreen()
+      }
+      // Masuk fullscreen pada container (fallback ke video)
+      const target = containerRef.current || videoRef.current
+      if (!target) return
+      // Catat apakah video sedang playing sebelum masuk fullscreen
+      try {
+        const playing = videoRef.current && !videoRef.current.paused
+        setWasPlayingBeforeFs(!!playing)
+      } catch {}
+      if (target.requestFullscreen) return target.requestFullscreen()
+      if (target.webkitRequestFullscreen) return target.webkitRequestFullscreen()
+      if (target.mozRequestFullScreen) return target.mozRequestFullScreen()
+      if (target.msRequestFullscreen) return target.msRequestFullscreen()
+      // iOS Safari khusus: gunakan webkitEnterFullscreen pada video element
+      if (videoRef.current && videoRef.current.webkitEnterFullscreen) {
+        return videoRef.current.webkitEnterFullscreen()
+      }
     } catch (e) {
-      console.error(e)
-      toast.error(e?.message || 'Gagal mengunggah video')
-    } finally {
-      setVideoSaving(false)
+      console.warn('Gagal mengubah mode fullscreen:', e)
     }
   }
 
-  const handleSaveVideo = () => {
-    const key = user?.role ? `dashboard_video_${user.role}` : null
-    if (!key) return
-    const embed = toEmbedUrl(videoInput.trim())
-    setVideoUrl(embed)
-    localStorage.setItem(key, embed)
-    toast.success('Video disimpan untuk dashboard ini')
+  const handlePrev = () => {
+    if (!list.length) return
+    const nextIdx = (currentIdx - 1 + list.length) % list.length
+    setCurrentIdx(nextIdx)
+    setVideoUrl(list[nextIdx].url)
+    setIsPlaying(true)
   }
 
-  // Fetch functions for admin/owner
-  const fetchKomplainData = async () => {
+  const handleNext = () => {
+    if (!list.length) return
+    const nextIdx = (currentIdx + 1) % list.length
+    setCurrentIdx(nextIdx)
+    setVideoUrl(list[nextIdx].url)
+    setIsPlaying(true)
+  }
+
+  const togglePlay = () => {
+    const el = videoRef.current
+    if (!el) return
     try {
-      const komplains = await komplainService.getKomplain({ limit: 5 })
-      console.log('✅ Komplains fetched:', komplains)
-      setRecentKomplains(komplains.data || komplains || [])
-      setStats(prev => ({ ...prev, totalKomplain: komplains.total || komplains.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching komplains:', error)
+      if (el.paused) {
+        el.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false))
+      } else {
+        el.pause()
+        setIsPlaying(false)
+      }
+    } catch {
+      // fallback toggle state jika dibutuhkan
+      setIsPlaying(v => !v)
     }
   }
+  const toggleMute = () => setMuted(v => !v)
 
-  const fetchTugasData = async () => {
-    try {
-      const tugas = await tugasService.getTugas({ limit: 5 })
-      console.log('✅ Tugas fetched:', tugas)
-      setRecentTugas(tugas.data || tugas || [])
-      setStats(prev => ({ ...prev, totalTugas: tugas.total || tugas.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching tugas:', error)
-    }
-  }
-
-  const fetchPoskasData = async () => {
-    try {
-      const poskas = await poskasService.getPoskas({ limit: 1 })
-      console.log('✅ Poskas fetched:', poskas)
-      setStats(prev => ({ ...prev, totalPoskas: poskas.total || poskas.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching poskas:', error)
-    }
-  }
-
-  const fetchUsersData = async () => {
-    try {
-      const users = await userService.getUsers({ limit: 1 })
-      console.log('✅ Users fetched:', users)
-      setStats(prev => ({ ...prev, totalUsers: users.total || users.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching users:', error)
-    }
-  }
-
-  const fetchTimData = async () => {
-    try {
-      const [timBiru, timMerah] = await Promise.all([
-        timService.getTimBiru({ limit: 1 }),
-        timService.getTimMerah({ limit: 1 })
-      ])
-      console.log('✅ Tim data fetched:', { timBiru, timMerah })
-      setStats(prev => ({ 
-        ...prev, 
-        totalTimBiru: timBiru.total || timBiru.length || 0,
-        totalTimMerah: timMerah.total || timMerah.length || 0
-      }))
-    } catch (error) {
-      console.error('Error fetching tim data:', error)
-    }
-  }
-
-  // Fetch functions for user-specific data
-  const fetchUserKomplainData = async () => {
-    try {
-      const userKomplains = await komplainService.getKomplainByUser(user.id, { limit: 5 })
-      console.log('✅ User komplains fetched:', userKomplains)
-      setRecentKomplains(userKomplains.data || userKomplains || [])
-      setStats(prev => ({ ...prev, totalKomplain: userKomplains.total || userKomplains.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching user komplains:', error)
-    }
-  }
-
-  const fetchUserTugasData = async () => {
-    try {
-      const userTugas = await tugasService.getTugasByUser(user.id, { limit: 5 })
-      console.log('✅ User tugas fetched:', userTugas)
-      setRecentTugas(userTugas.data || userTugas || [])
-      setStats(prev => ({ ...prev, totalTugas: userTugas.total || userTugas.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching user tugas:', error)
-    }
-  }
-
-  const fetchUserPoskasData = async () => {
-    try {
-      const userPoskas = await poskasService.getPoskasByUser(user.id, { limit: 1 })
-      console.log('✅ User poskas fetched:', userPoskas)
-      setStats(prev => ({ ...prev, totalPoskas: userPoskas.total || userPoskas.length || 0 }))
-    } catch (error) {
-      console.error('Error fetching user poskas:', error)
-    }
-  }
-
-  const getStatusBadge = (status) => {
-    const variants = {
-      menunggu: 'warning',
-      diproses: 'info',
-      selesai: 'success',
-      belum: 'danger',
-      proses: 'warning'
-    }
-    return <Badge variant={variants[status] || 'default'}>{status}</Badge>
-  }
-
-  const getRoleBadge = (role) => {
-    const variants = {
-      owner: 'danger',
-      admin: 'warning',
-      leader: 'info',
-      divisi: 'success'
-    }
-    return <Badge variant={variants[role] || 'default'}>{role}</Badge>
-  }
-
-  // Show loading if no user data
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="large" />
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="large" />
-      </div>
-    )
-  }
-
-  // Admin Dashboard
-  if (user?.role === 'admin' || user?.role === 'owner') {
-    console.log('🎯 Rendering Admin Dashboard')
   return (
-      <div className="space-y-6">
-      {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-600 mt-2">
-              Selamat datang, {user?.nama || user?.username}! Kelola seluruh sistem
-          </p>
-        </div>
-          <div className="flex items-center space-x-3">
-            {getRoleBadge(user?.role)}
-            <Badge variant="success">Administrator</Badge>
-          </div>
-        </div>
-
-        {user?.role === 'admin' && (
-          <>
-            {/* Video Section (Admin only) */}
-            <Card>
-              <CardHeader>
-                <h3 className="text-lg font-semibold text-gray-900">Video Pembuka</h3>
-              </CardHeader>
-              <CardBody>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2">
-                    {videoUrl ? (
-                      <div className="w-full bg-black/5 rounded-lg overflow-hidden aspect-auto h-[calc(100vh-220px)] sm:h-[360px] lg:aspect-video lg:h-auto">
-                        <video className="w-full h-full object-cover" src={videoUrl} controls />
-                      </div>
-                    ) : (
-                      <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                        Tidak ada video. Unggah file video.
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-gray-700">Unggah Video (mp4, webm, dll.)</label>
-                    <input
-                      type="file"
-                      accept="video/*"
-                      onChange={(e) => setSelectedVideoFile(e.target.files?.[0] || null)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="flex gap-2">
-                      <Button onClick={handleUploadVideo} disabled={videoSaving}>{videoSaving ? 'Menyimpan...' : 'Simpan'}</Button>
-                      <Button variant="ghost" onClick={() => setSelectedVideoFile(null)}>Reset</Button>
-                    </div>
-                    <p className="text-xs text-gray-500">File akan disimpan ke backend dan ditampilkan otomatis.</p>
-                  </div>
-                </div>
-              </CardBody>
-            </Card>
-          </>
-        )}
-        
-        {/* Pengumuman Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Pengumuman Terbaru</h3>
-              <div className="flex items-center space-x-2">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                </div>
-                <Link to="/pengumuman">
-                  <Button variant="ghost" size="sm">Lihat Semua</Button>
-                </Link>
+    <div className="pt-1 -mx-0 sm:-mx-1">
+      {(user?.role === 'admin' || user?.role === 'owner') && (
+            <div ref={containerRef} className="w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg aspect-auto h-[calc(100vh-140px)] sm:h-[420px] lg:h-[640px]">
+              {/* Tombol Fullscreen (pojok kanan atas) */}
+              <div className="absolute top-2 right-1 z-10">
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="w-8 h-8 flex items-center justify-center rounded-md bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm border border-white/20"
+                  aria-label={isFullscreen ? 'Keluar Fullscreen' : 'Masuk Fullscreen'}
+                  title={isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}
+                >
+                  {isFullscreen ? (
+                    <Minimize className="w-5 h-5" />
+                  ) : (
+                    <Expand className="w-5 h-5" />
+                  )}
+                </button>
               </div>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="relative">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Bell className="h-4 w-4 text-blue-600" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      Selamat Datang di Sistem Bosgil Group
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Sistem manajemen terintegrasi untuk mengelola komplain, tugas, keuangan, dan komunikasi tim.
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {formatDate(new Date())}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-        
-        {/* Admin Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <CheckSquare className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Tugas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Omset Harian</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <BarChart3 className="h-6 w-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Settings</p>
-                  <p className="text-2xl font-bold text-gray-900">-</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Recent Activities */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Komplain Terbaru</h3>
-                <Link to="/komplain">
-                  <Button variant="ghost" size="sm">Lihat Semua</Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                {recentKomplains && recentKomplains.length > 0 ? (
-                  recentKomplains.map((komplain) => (
-                    <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-red-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {komplain.judul_komplain}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(komplain.tanggal_pelaporan)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(komplain.status)}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Belum ada komplain</p>
-                  </div>
-                )}
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Tugas Terbaru</h3>
-                <Link to="/tugas">
-                  <Button variant="ghost" size="sm">Lihat Semua</Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <div className="space-y-4">
-                {recentTugas && recentTugas.length > 0 ? (
-                  recentTugas.map((tugas) => (
-                    <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <CheckSquare className="h-4 w-4 text-blue-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {tugas.judul_tugas}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Target: {formatDate(tugas.target_selesai)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(tugas.status)}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Belum ada tugas</p>
-                  </div>
-                )}
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  // Leader Dashboard
-  if (user?.role === 'leader') {
-    console.log('🎯 Rendering Leader Dashboard')
-    return (
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Leader Dashboard</h1>
-            <p className="text-gray-600 mt-2">
-              Selamat datang, {user?.nama || user?.username}! Kelola tim Anda
-            </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            {getRoleBadge(user?.role)}
-            <Badge variant="info">Team Leader</Badge>
-          </div>
-        </div>
-
-        {/* Video Section (Leader) */}
-        <Card>
-          <CardHeader>
-            <h3 className="text-lg font-semibold text-gray-900">Video Pembuka</h3>
-          </CardHeader>
-          <CardBody>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
-                {videoUrl ? (
-                  <div className="w-full bg-black/5 rounded-lg overflow-hidden aspect-auto h-[calc(100vh-220px)] sm:h-[360px] lg:aspect-video lg:h-auto">
-                    <video className="w-full h-full object-cover" src={videoUrl} controls />
-                  </div>
-                ) : (
-                  <div className="aspect-video w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
-                    Tidak ada video. Unggah file video.
-                  </div>
-                )}
-              </div>
-              {(user?.role === 'admin' || user?.role === 'owner') && (
-                <div className="space-y-3">
-                  <label className="block text-sm font-medium text-gray-700">Unggah Video (mp4, webm, dll.)</label>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => setSelectedVideoFile(e.target.files?.[0] || null)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={handleUploadVideo} disabled={videoSaving}>{videoSaving ? 'Menyimpan...' : 'Simpan'}</Button>
-                    <Button variant="ghost" onClick={() => setSelectedVideoFile(null)}>Reset</Button>
-                  </div>
-                  <p className="text-xs text-gray-500">File akan disimpan ke backend dan ditampilkan otomatis.</p>
-                </div>
-              )}
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Pengumuman Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Pengumuman Terbaru</h3>
-              <div className="flex items-center space-x-2">
-                <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                  <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                </div>
-                <Link to="/pengumuman">
-                  <Button variant="ghost" size="sm">Lihat Semua</Button>
-                </Link>
-              </div>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="relative">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Bell className="h-4 w-4 text-blue-600" />
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      Selamat Datang di Sistem Bosgil Group
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Sistem manajemen terintegrasi untuk mengelola komplain, tugas, keuangan, dan komunikasi tim.
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {formatDate(new Date())}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* Leader Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <CheckSquare className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Total Tugas</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-purple-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Omset Harian</p>
-                  <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardBody className="p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <BarChart3 className="h-6 w-6 text-orange-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Settings</p>
-                  <p className="text-2xl font-bold text-gray-900">-</p>
-                </div>
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-
-        {/* Recent Activities */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Komplain Tim</h3>
-              <Link to="/komplain">
-                <Button variant="ghost" size="sm">Lihat Semua</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardBody>
-              <div className="space-y-4">
-                {recentKomplains && recentKomplains.length > 0 ? (
-                  recentKomplains.map((komplain) => (
-                    <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                          <AlertTriangle className="h-4 w-4 text-orange-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {komplain.judul_komplain}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(komplain.tanggal_pelaporan)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(komplain.status)}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Belum ada komplain tim</p>
-                  </div>
-                )}
-              </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">Tugas Tim</h3>
-              <Link to="/tugas">
-                <Button variant="ghost" size="sm">Lihat Semua</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardBody>
-              <div className="space-y-4">
-                {recentTugas && recentTugas.length > 0 ? (
-                  recentTugas.map((tugas) => (
-                    <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <CheckSquare className="h-4 w-4 text-blue-600" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {tugas.judul_tugas}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Target: {formatDate(tugas.target_selesai)}
-                        </p>
-                      </div>
-                      <div className="flex-shrink-0">
-                        {getStatusBadge(tugas.status)}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">Belum ada tugas tim</p>
-                  </div>
-                )}
-              </div>
-            </CardBody>
-          </Card>
-        </div>
-      </div>
-    )
-  }
-
-  // Divisi Dashboard (Default)
-  console.log('🎯 Rendering Divisi Dashboard')
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Dashboard</h1>
-          <p className="text-gray-600 mt-2">
-            Selamat datang, {user?.nama || user?.username}! Kelola aktivitas Anda
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          {getRoleBadge(user?.role)}
-          <Badge variant="success">Staff</Badge>
-        </div>
-      </div>
-      
-      {/* Pengumuman Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Pengumuman Terbaru</h3>
-            <div className="flex items-center space-x-2">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-              </div>
-              <Link to="/pengumuman">
-                <Button variant="ghost" size="sm">Lihat Semua</Button>
-              </Link>
-            </div>
-          </div>
-        </CardHeader>
-        <CardBody>
-          <div className="relative">
-            <div className="space-y-4">
-              <div className="flex items-start space-x-3 p-4 bg-blue-50 rounded-lg">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Bell className="h-4 w-4 text-blue-600" />
-                  </div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
-                    Selamat Datang di Sistem Bosgil Group
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Sistem manajemen terintegrasi untuk mengelola komplain, tugas, keuangan, dan komunikasi tim.
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    {formatDate(new Date())}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Divisi Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <CheckSquare className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Tugas</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalTugas}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <MessageCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Chat</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.unreadMessages}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-purple-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Omset Harian</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalPoskas}</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardBody className="p-6">
-            <div className="flex items-center">
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Settings</p>
-                <p className="text-2xl font-bold text-gray-900">-</p>
-              </div>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* My Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Komplain Saya</h3>
-              <Link to="/komplain">
-                <Button variant="ghost" size="sm">Lihat Semua</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              {recentKomplains && recentKomplains.length > 0 ? (
-                recentKomplains.slice(0, 3).map((komplain) => (
-                  <div key={komplain.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                        <AlertTriangle className="h-4 w-4 text-orange-600" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {komplain.judul_komplain}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatDate(komplain.tanggal_pelaporan)}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {getStatusBadge(komplain.status)}
-                    </div>
-                  </div>
-                ))
+              {videoUrl && !videoError ? (
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  src={videoUrl}
+                  poster={posterUrl || undefined}
+                  crossOrigin="anonymous"
+                  playsInline
+                  preload="metadata"
+                  disablePictureInPicture
+                  controlsList="nofullscreen"
+                  onEnded={handleNext}
+                  onPlay={() => { if (suppressEventsRef.current) return; setIsPlaying(true) }}
+                  onPause={() => { if (suppressEventsRef.current) return; setIsPlaying(false) }}
+                  onCanPlay={() => isPlaying && videoRef.current?.play()}
+                  onError={() => {
+                    console.warn('[AdminDashboard] Gagal memuat file video:', videoUrl)
+                    setVideoError('Gagal memuat file video (500).')
+                  }}
+                />
               ) : (
-                <div className="text-center py-8">
-                  <AlertTriangle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Belum ada komplain</p>
+                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                  {videoError || 'Tidak ada video'}
                 </div>
               )}
-            </div>
-          </CardBody>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Tugas Saya</h3>
-              <Link to="/tugas">
-                <Button variant="ghost" size="sm">Lihat Semua</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="space-y-4">
-              {recentTugas && recentTugas.length > 0 ? (
-                recentTugas.slice(0, 3).map((tugas) => (
-                  <div key={tugas.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                    <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <CheckSquare className="h-4 w-4 text-blue-600" />
-                      </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {tugas.judul_tugas}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Target: {formatDate(tugas.target_selesai)}
-                      </p>
-                    </div>
-                    <div className="flex-shrink-0">
-                      {getStatusBadge(tugas.status)}
-                    </div>
+              {/* Kontrol kustom: bar merah */}
+              <div className="absolute bottom-0 left-0 right-0 bg-red-700/95 text-white">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-4">
+                    <button
+                      type="button"
+                      onClick={handlePrev}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label="Sebelumnya"
+                    >
+                      <SkipBack className="w-6 h-6" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={togglePlay}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label={isPlaying ? 'Jeda' : 'Putar'}
+                    >
+                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label="Berikutnya"
+                    >
+                      <SkipForward className="w-6 h-6" />
+                    </button>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <CheckSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">Belum ada tugas</p>
+
+                  <div className="text-sm opacity-90">
+                    {list.length > 0 ? `${currentIdx + 1} / ${list.length}` : '0 / 0'}
+                  </div>
+
+                  <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={toggleMute}
+                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                      aria-label={muted ? 'Unmute' : 'Mute'}
+                    >
+                      {muted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                    </button>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-          </CardBody>
-        </Card>
+      )}
+      {/* Fitur Dashboard (versi website) */}
+      {false && (
+      <div className="mt-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">Fitur Dashboard</h2>
+        <div className="space-y-3">
+          {/* Struktur & Jobdesk */}
+          <Link to="/admin/struktur-jobdesk" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <Users2 className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">Struktur & Jobdesk</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+
+          {/* Tugas Saya Apa? */}
+          <Link to="/admin/tugas-saya" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">Tugas Saya Apa?</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+
+          {/* Daftar Komplain */}
+          <Link to="/admin/komplain" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">Daftar Komplain</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+
+          {/* SOP Terkait */}
+          <Link to="/admin/sop-terkait" className="block bg-white rounded-xl border border-red-100/60 shadow-sm hover:shadow-md transition p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <span className="text-base sm:text-lg font-semibold text-gray-900">SOP Terkait</span>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </div>
+          </Link>
+        </div>
       </div>
+      )}
     </div>
   )
 }
 
-export default Dashboard 
+export default AdminDashboard

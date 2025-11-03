@@ -42,7 +42,7 @@ const Header = ({ onMenuClick, unreadCount }) => {
 
   return (
     <>
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30 lg:static">
+    <header className="bg-white shadow-sm border-b border-gray-200 fixed top-0 inset-x-0 z-30 lg:static">
       <div className="relative flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         {/* Left side - Hidden on desktop to make room for sidebar */}
         <div className="flex items-center lg:hidden">
