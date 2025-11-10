@@ -276,6 +276,17 @@ const AdminKPI = () => {
       }))
       return
     }
+    if (name === 'category') {
+      const newCat = String(value).toLowerCase()
+      // Saat kategori berubah, kosongkan field yang tidak relevan
+      setFormData(prev => ({
+        ...prev,
+        category: value,
+        id_user: newCat === 'divisi' ? '' : prev.id_user,
+        divisi_id: (newCat === 'leader' || newCat === 'individu') ? '' : prev.divisi_id
+      }))
+      return
+    }
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -670,29 +681,6 @@ const AdminKPI = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Untuk User</label>
-                  <select
-                    name="id_user"
-                    value={formData.id_user}
-                    onChange={handleFormChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={loadingUsers}
-                  >
-                    <option value="">— Pilih User (opsional) —</option>
-                    {users.map(u => {
-                      const role = (u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
-                      const roleStr = role ? ` - ${String(role)}` : ''
-                      const label = `${u.nama || u.username || `User #${u.id}`}${roleStr}`
-                      return (
-                        <option key={u.id} value={u.id}>
-                          {label}
-                        </option>
-                      )
-                    })}
-                  </select>
-                  <p className="mt-1 text-xs text-gray-500">Isi jika KPI ini ditujukan untuk user tertentu (Leader/Individu).</p>
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
                   <select
                     name="category"
@@ -722,6 +710,32 @@ const AdminKPI = () => {
                         <option key={d.id} value={d.id}>{d.nama_divisi || d.name || `Divisi #${d.id}`}</option>
                       ))}
                     </select>
+                  </div>
+                )}
+                {(String(formData.category || '').toLowerCase() === 'leader' || String(formData.category || '').toLowerCase() === 'individu') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Untuk User</label>
+                    <select
+                      name="id_user"
+                      value={formData.id_user}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={loadingUsers}
+                      required
+                    >
+                      <option value="">— Pilih User —</option>
+                      {users.map(u => {
+                        const role = (u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
+                        const roleStr = role ? ` - ${String(role)}` : ''
+                        const label = `${u.nama || u.username || `User #${u.id}`}${roleStr}`
+                        return (
+                          <option key={u.id} value={u.id}>
+                            {label}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <p className="mt-1 text-xs text-gray-500">Wajib diisi untuk kategori Leader/Individu.</p>
                   </div>
                 )}
                 <div>

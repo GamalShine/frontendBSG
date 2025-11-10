@@ -854,9 +854,18 @@ const AdminAnekaSurat = () => {
 
       {/* Preview Modal */}
       {preview.open && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-0 z-[60]" onClick={closePreview}>
-          <div className="relative max-w-[92vw] max-h=[92vh] w-auto h-auto" onClick={(e)=>e.stopPropagation()}>
-            {/* Actions: Download & Close */}
+        <div className="fixed inset-0 z-[9999]">
+          {/* Backdrop */}
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/90"
+            aria-label="Tutup pratinjau"
+            onClick={closePreview}
+          />
+          {/* Modal content */}
+          <div className="relative z-10 w-full h-full flex items-center justify-center p-0" onClick={(e)=>e.stopPropagation()}>
+            <div className="relative max-w-[92vw] max-h-[92vh] w-auto h-auto">
+              {/* Actions: Download & Close */}
             <div className="fixed top-4 right-4 z-[61] flex items-center gap-2">
               <a href={preview.url} download target="_blank" rel="noreferrer" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white shadow" title="Download" onClick={(e)=>e.stopPropagation()}>
                 <Download className="w-5 h-5" />
@@ -931,7 +940,10 @@ const AdminAnekaSurat = () => {
               </div>
             )}
           </div>
+          {/* Close modal content wrapper */}
         </div>
+        {/* Close fixed overlay wrapper */}
+      </div>
       )}
 
       {/* Add Modal */}
