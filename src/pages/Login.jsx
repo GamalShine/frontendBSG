@@ -74,17 +74,17 @@ const Login = () => {
       {/* Top brand section (di area merah) */}
       <div className="flex flex-col items-center justify-end pt-6 pb-4">
         {/* Logo bergaya app icon */}
-        <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/90 ring-1 ring-white/70 shadow-lg flex items-center justify-center">
-          <div className="w-[82%] h-[82%] rounded-2xl bg-white flex items-center justify-center overflow-hidden">
+        <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/90 ring-1 ring-white/70 shadow-lg flex items-center justify-center">
+          <div className="w-[78%] h-[78%] rounded-2xl bg-white flex items-center justify-center overflow-hidden">
             <img
               src="/Logo.png"
-              alt="Bosgil Group Logo"
+              alt="Bosgil Grup Logo"
               className="w-full h-full object-contain"
             />
           </div>
         </div>
-        <h1 className="mt-3 text-white text-lg md:text-xl font-extrabold tracking-wide uppercase">BOSGIL GROUP</h1>
-        <p className="text-white/90 text-sm md:text-base font-semibold mt-1">#KITAPASTIBISA</p>
+        <h1 className="mt-3 text-white text-lg md:text-xl font-extrabold tracking-wide uppercase">LOGIN BOSGIL GRUP</h1>
+        <p className="text-white/90 text-sm md:text-base mt-1">#KITAPASTIBISA</p>
       </div>
 
       {/* Wrapper untuk card + bottom content */}
@@ -92,15 +92,12 @@ const Login = () => {
         {/* Card Form Login */}
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl border border-red-100/40">
           <div className="px-6 sm:px-8 pt-6 pb-4">
-            {/* Title card */}
-            <div className="text-center mb-4">
-              <p className="text-gray-500 text-sm md:text-base mt-1">Masuk ke akun Anda untuk melanjutkan</p>
-            </div>
+            {/* Title card removed per request */}
 
             {/* Field Username */}
-            <label className="block text-xs font-medium text-gray-600 mb-2">Username</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">Usernam atau email*</label>
             <div className="w-full rounded-xl bg-gray-100/90 border border-gray-200 px-3 md:px-4 h-10 md:h-12 grid grid-cols-[auto,1fr,auto] items-center gap-2 md:gap-3">
-              <User className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
+              <User className="h-5 w-5 text-red-600 shrink-0" aria-hidden="true" />
               <input
                 type="text"
                 name="username"
@@ -115,9 +112,9 @@ const Login = () => {
             </div>
 
             {/* Field Password */}
-            <label className="block text-xs font-medium text-gray-600 mt-4 mb-2">Password</label>
+            <label className="block text-xs font-medium text-gray-600 mt-4 mb-2">Password*</label>
             <div className="w-full relative rounded-xl bg-gray-100/90 border border-gray-200 pl-3 md:pl-4 pr-10 md:pr-12 h-10 md:h-12 flex items-center gap-2 md:gap-3">
-              <Lock className="h-4 w-4 md:h-5 md:w-5 text-red-400" />
+              <Lock className="h-5 w-5 text-red-600 shrink-0" aria-hidden="true" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
@@ -130,7 +127,7 @@ const Login = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 md:right-4 w-6 h-6 flex items-center justify-center rounded-md text-red-400 hover:text-red-600"
+                className="absolute right-0 md:right-4 w-6 h-6 flex items-center justify-center rounded-md text-red-400 hover:text-red-600"
                 aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
               >
                 {showPassword ? (
@@ -171,14 +168,11 @@ const Login = () => {
             </ul>
           </div>
 
-          <p className="mt-6 text-center text-sm md:text-base font-semibold">CIPTAKAN KARYA BUKAN DRAMA</p>
+          <p className="mt-6 text-center text-sm md:text-base">CIPTAKAN KARYA BUKAN DRAMA</p>
         </div>
       </div>
 
-      {/* Footer copyright di paling bawah */}
-      <footer className="text-center text-white/90 text-[11px] md:text-xs py-1 md:py-2 fixed inset-x-0 bottom-0 md:static bg-red-700 pb-[max(env(safe-area-inset-bottom),4px)] z-10">
-        © 2025 Bosgil Group
-      </footer>
+      {/* Footer removed per request */}
     </div>
   );
 };
