@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { mediaSosialService } from '@/services/mediaSosialService';
 import { getEnvironmentConfig } from '@/config/environment';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Calendar, User, Clock, Edit, Trash2, MoreVertical, RefreshCw, Info } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Clock, Edit, Trash2, MoreVertical, RefreshCw, Info, X } from 'lucide-react';
 import { MENU_CODES } from '@/config/menuCodes';
 
 const AdminMedsosDetail = () => {
@@ -113,7 +113,8 @@ const AdminMedsosDetail = () => {
               <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">MEDIA SOSIAL</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {/* Desktop actions */}
+          <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => navigate('/admin/marketing/medsos')}
               className="px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10"
@@ -149,6 +150,24 @@ const AdminMedsosDetail = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Mobile actions: tombol kembali -> Edit, tombol tiga titik -> X (tutup) */}
+          <div className="flex items-center gap-2 md:hidden">
+            <button
+              onClick={() => navigate(`/admin/marketing/medsos/${id}/edit`)}
+              aria-label="Edit"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-white text-red-700 shadow-sm hover:bg-red-50"
+            >
+              <Edit className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => navigate('/admin/marketing/medsos')}
+              aria-label="Tutup"
+              className="inline-flex items-center justify-center h-9 w-9 rounded-full border border-white/60 text-white hover:bg-white/10"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>
