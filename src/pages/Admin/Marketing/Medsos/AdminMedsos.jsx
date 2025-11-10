@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { mediaSosialService } from '@/services/mediaSosialService';
 import { MENU_CODES } from '@/config/menuCodes';
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, Plus, X, ArrowLeft } from 'lucide-react';
 
 const AdminMedsos = () => {
   const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -19,6 +19,7 @@ const AdminMedsos = () => {
   const [monthsByYear, setMonthsByYear] = useState({}); // {2025: [1,2,3,...]}
   const [monthContent, setMonthContent] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
   const [expandedYears, setExpandedYears] = useState({}); // {2025: true}
   const [monthSummaries, setMonthSummaries] = useState({}); // {'YYYY-MM': { count, lastUpdated }}
   const [loading, setLoading] = useState({ years: false, months: false, content: false });
@@ -31,6 +32,21 @@ const AdminMedsos = () => {
 
 
   useEffect(() => { loadYears(); loadLastUpdated(); }, []);
+  // Sinyal ke Layout: tampilkan FAB saat berada di monthContent Medsos (mobile)
+  useEffect(() => {
+    try {
+      if (typeof document !== 'undefined') {
+        if (view === 'monthContent') {
+          document.body.setAttribute('data-medsos-month', 'true');
+        } else {
+          document.body.removeAttribute('data-medsos-month');
+        }
+      }
+    } catch {}
+    return () => {
+      try { document?.body?.removeAttribute('data-medsos-month'); } catch {}
+    };
+  }, [view]);
   // Hydrate extra/hidden/expanded from localStorage on mount
   useEffect(() => {
     try {
@@ -317,32 +333,52 @@ const AdminMedsos = () => {
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
-      <div className="bg-red-800 text-white px-6 py-4 mb-0">
+      <div className="bg-red-800 text-white px-6 py-2 md:py-4 mb-0 z-0 lg:relative lg:z-[100]">
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div>
               <div className="flex items-center gap-4">
                 <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.medsos}</span>
-                <h1 className="text-2xl font-bold">MEDIA SOSIAL</h1>
+                <h1 className="text-lg md:text-2xl font-extrabold tracking-tight">MEDIA SOSIAL</h1>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {view === 'years' ? (
-              <button onClick={handleAddYear} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
-                + <span className="hidden sm:inline font-semibold">Tahun</span>
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAddYear(); }}
+                className="relative z-30 inline-flex items-center gap-2 px-3 py-0 h-8 md:px-4 md:py-2 md:h-auto bg-white text-red-700 rounded-full hover:bg-red-50 transition-colors shadow-sm pointer-events-auto whitespace-nowrap"
+                title="Tambah Tahun"
+                aria-label="Tambah Tahun"
+                data-add
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+                <span className="md:hidden font-semibold leading-none">Thn</span>
+                <span className="hidden md:inline font-semibold">Tahun</span>
               </button>
             ) : (
               <div className="flex items-center gap-2">
                 <button
                   onClick={goBackToMonths}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                  className="inline-flex items-center justify-center md:justify-start gap-2 px-0 py-0 h-8 w-8 md:px-4 md:py-2 md:h-auto md:w-auto rounded-full border border-white/60 text-white hover:bg-white/10 transition-colors"
+                  aria-label="Kembali"
+                  title="Kembali"
                 >
-                  ← <span className="hidden sm:inline font-semibold">Kembali</span>
+                  <span className="md:hidden flex items-center justify-center"><X className="h-4 w-4" /></span>
+                  <span className="hidden md:inline-flex items-center gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    <span className="font-semibold">Kembali</span>
+                  </span>
                 </button>
-                <button onClick={goToCreatePage} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
-                  + <span className="hidden sm:inline font-semibold">Tambah</span>
-                </button>
+                {/* Tampilkan tombol tambah hanya di desktop; mobile pakai FAB */}
+                <Link
+                  to={`/admin/marketing/medsos/form${selectedYear?`?year=${selectedYear}&month=${(selectedMonthIndex??0)+1}`:''}`}
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                  <span className="font-semibold">Tambah</span>
+                </Link>
               </div>
             )}
           </div>
@@ -422,7 +458,7 @@ const AdminMedsos = () => {
         {view === 'monthContent' && (
           <>
             {/* Kartu filter terpisah */}
-            <div className="bg-white shadow-sm border rounded-lg overflow-hidden mb-4">
+            <div className="bg-white shadow-sm border rounded-none overflow-hidden mb-4">
               <div className="px-6 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -438,38 +474,23 @@ const AdminMedsos = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Bulan</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tanggal</label>
                     <div className="relative">
                       <input
-                        type="month"
-                        value={`${String(selectedYear||'').padStart(4,'0')}-${String((selectedMonthIndex??0)+1).padStart(2,'0')}`}
-                        onChange={(e)=>{
-                          const val = e.target.value; // YYYY-MM
-                          if(!val) return;
-                          const [y,m] = val.split('-').map(Number);
-                          setSelectedYear(y);
-                          setSelectedMonthIndex((m||1)-1);
-                          openMonth((m||1)-1);
-                        }}
+                        type="date"
+                        value={dateFilter}
+                        onChange={(e)=> setDateFilter(e.target.value)}
                         className="pl-3 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       />
                     </div>
-                  </div>
-                  <div className="flex items-end">
-                    <button
-                      onClick={() => { setSearchTerm(''); setView('years'); setSelectedMonthIndex(null); setMonthContent([]); }}
-                      className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-                    >
-                      Reset
-                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Kartu konten bulan terpisah */}
-            <div className="bg-white shadow-sm border rounded-lg overflow-hidden">
-              <div className="bg-red-800 text-white px-4 md:px-6 py-2 md:py-3">
+            <div className="bg-white shadow-sm border rounded-none overflow-hidden">
+              <div className="bg-red-800 text-white px-4 md:px-6 py-3 md:py-4">
                 <div className="flex items-center">
                   <h2 className="text-lg font-extrabold leading-tight">{(monthNames[selectedMonthIndex] + ' ' + selectedYear).toUpperCase()}</h2>
                 </div>
@@ -479,37 +500,28 @@ const AdminMedsos = () => {
                 <Table>
                   <TableHeader className="sticky top-0 bg-[#E3E5EA] z-10 shadow">
                     <TableRow className="bg-[#E3E5EA] cursor-default">
-                      <TableHead className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-3 text-left text-[11px] md:text-xs font-extrabold text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.length === monthContent.length && monthContent.length > 0}
-                          onChange={handleSelectAll}
-                          className="rounded border-gray-600 text-red-600 focus:ring-red-500"
-                        />
-                      </TableHead>
-                      <TableHead className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">No</span></TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Tanggal</span></TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Keterangan</span></TableHead>
-                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left text-[13px] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Aksi</span></TableHead>
+                      <TableHead className="w-12 sm:w-16 pl-4 sm:pl-6 pr-4 sm:pr-8 md:pr-12 py-3 text-left !text-[0.9rem] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">No</span></TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left !text-[0.9rem] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Tanggal</span></TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left !text-[0.9rem] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Keterangan</span></TableHead>
+                      <TableHead className="px-4 sm:px-8 md:px-12 py-3 text-left !text-[0.9rem] md:text-sm text-gray-900 uppercase tracking-wider cursor-default bg-[#E3E5EA] hover:bg-[#E3E5EA]"><span className="font-black">Aksi</span></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                   {!loading.content && !error.content && monthContent.length === 0 && (
-                    <TableRow><TableCell colSpan={5}><span className="text-sm text-gray-600">Belum ada data</span></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4}><span className="text-sm text-gray-600">Belum ada data</span></TableCell></TableRow>
                   )}
                   {!loading.content && !error.content && monthContent
-                    .filter(it => (String(it.keterangan||'').toLowerCase().includes(searchTerm.toLowerCase())))
+                    .filter(it => {
+                      const matchesSearch = String(it.keterangan||'').toLowerCase().includes(searchTerm.toLowerCase());
+                      if (!dateFilter) return matchesSearch;
+                      try {
+                        const iso = new Date(it.tanggal).toISOString().slice(0,10);
+                        return matchesSearch && iso === dateFilter;
+                      } catch { return matchesSearch; }
+                    })
                     .map((item, idx) => (
                     <TableRow key={item.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => goToDetailPage(item.id)}>
-                      <TableCell className="w-10 sm:w-12 pl-4 sm:pl-6 pr-0 py-1.5 whitespace-nowrap text-sm text-gray-900" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(item.id)}
-                          onChange={() => handleCheckboxChange(item.id)}
-                          className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-                        />
-                      </TableCell>
-                      <TableCell className="w-12 sm:w-16 pl-2 pr-4 sm:pr-8 md:pr-12 py-1.5 whitespace-nowrap text-sm text-gray-900">{idx + 1}</TableCell>
+                      <TableCell className="w-12 sm:w-16 pl-4 sm:pl-6 pr-4 sm:pr-8 md:pr-12 py-1.5 whitespace-nowrap text-sm text-gray-900">{idx + 1}</TableCell>
                       <TableCell className="px-4 sm:px-8 md:px-12 py-1.5 whitespace-nowrap text-sm text-gray-900 font-semibold">{formatDate(item.tanggal).toUpperCase()}</TableCell>
                       <TableCell className="px-4 sm:px-8 md:px-12 py-1.5">
                         <div className="max-w-[14rem] md:max-w-md overflow-hidden text-ellipsis whitespace-nowrap text-sm text-gray-800">{stripHtml(item.keterangan)}</div>
