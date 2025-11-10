@@ -195,7 +195,33 @@ const AdminMedsosEdit = () => {
       const usedIds = new Set(usedIdMatches.map(m => parseInt(m[1], 10)));
       const filteredImages = merged.filter(img => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
 
-      await mediaSosialService.update(id, { tanggal_laporan: form.tanggal_laporan, isi_laporan: isi, images: filteredImages });
+      // Pastikan URL yang dikirim relatif seperti sebelum edit
+      const relativizeUrl = (u) => {
+        try {
+          if (!u) return ''
+          const base = (env.API_BASE_URL || '').replace(/\/$/, '')
+          const baseNoApi = base.replace(/\/api\/?$/, '')
+          // Jika absolut (http/https), ambil pathname saja
+          if (/^https?:\/\//i.test(u)) {
+            const urlObj = new URL(u, baseNoApi)
+            return urlObj.pathname
+          }
+          // Jika sudah relatif tapi tanpa leading slash, tambahkan
+          return u.startsWith('/') ? u : `/${u}`
+        } catch {
+          return u
+        }
+      }
+      const imagesPayload = filteredImages.map(im => {
+        const rel = relativizeUrl(im.url || im.serverPath || im.path || '')
+        return {
+          ...im,
+          url: rel,
+          serverPath: im.serverPath || rel
+        }
+      })
+
+      await mediaSosialService.update(id, { tanggal_laporan: form.tanggal_laporan, isi_laporan: isi, images: imagesPayload });
       toast.success('Laporan medsos berhasil diperbarui');
       navigate(`/admin/marketing/medsos/${id}`);
     } catch (err) {

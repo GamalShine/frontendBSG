@@ -7,7 +7,7 @@ import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '@/config/environment';
 import RichTextEditor from '@/components/UI/RichTextEditor';
 import { MENU_CODES } from '@/config/menuCodes';
-import { X, Save, RefreshCw } from 'lucide-react';
+import { X, Save, RefreshCw, Calendar, FileText } from 'lucide-react';
 
 const AdminMedsosForm = () => {
   const navigate = useNavigate();
@@ -210,11 +210,11 @@ const AdminMedsosForm = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.medsos}</span>
-              <h1 className="text-2xl font-bold">TAMBAH LAP MEDSOS</h1>
+              <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1 select-none">{MENU_CODES.marketing.medsos}</span>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TAMBAH MEDSOS</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate('/admin/marketing/medsos')}
@@ -241,9 +241,9 @@ const AdminMedsosForm = () => {
         <form id="medsos-form" onSubmit={onSubmit}>
           {/* Tanggal Laporan */}
           <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3 mb-4">
+            <div className="flex items-center space-x-3 mb-2">
               <div className="p-2 bg-red-100 rounded-lg">
-                <span className="text-red-700 font-semibold">📅</span>
+                <Calendar className="h-5 w-5 text-red-600" />
               </div>
               <label className="text-lg font-semibold text-gray-900">
                 Tanggal Laporan
@@ -257,7 +257,6 @@ const AdminMedsosForm = () => {
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
-            <p className="text-sm text-gray-500 mt-2">Pilih tanggal untuk laporan medsos ini</p>
           </div>
 
           {/* Isi Laporan Editor */
@@ -265,7 +264,7 @@ const AdminMedsosForm = () => {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3 mb-4">
               <div className="p-2 bg-green-100 rounded-lg">
-                <span className="text-green-700 font-semibold">📝</span>
+                <FileText className="h-5 w-5 text-green-600" />
               </div>
               <label className="text-lg font-semibold text-gray-900">
                 Isi Laporan
@@ -282,10 +281,32 @@ const AdminMedsosForm = () => {
                 hideAlign={true}
                 hideImage={true}
               />
+              {/* Tombol aksi mobile: ikon saja, di kanan bawah editor */}
+              <div className="mt-4 flex items-center justify-end gap-3 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/marketing/medsos')}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-red-600 text-red-700 hover:bg-red-50 active:scale-95 transition"
+                  title="Batal"
+                  aria-label="Batal"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <button
+                  form="medsos-form"
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-600 text-white hover:bg-red-700 active:scale-95 transition disabled:opacity-60"
+                  title="Simpan"
+                  aria-label="Simpan"
+                >
+                  {saving ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Tombol Submit bawah dihilangkan agar fokus pada tombol header */}
+          {/* Tombol header khusus desktop; mobile tombol ada di bawah editor */}
         </form>
       </div>
     </div>

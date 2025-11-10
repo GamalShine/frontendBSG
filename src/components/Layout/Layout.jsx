@@ -10,7 +10,7 @@ const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [headerHeight, setHeaderHeight] = useState(0)
   const location = useLocation()
-  const [fabSignal, setFabSignal] = useState({ lapkeu: false, month: '', datatarget: false })
+  const [fabSignal, setFabSignal] = useState({ lapkeu: false, month: '', datatarget: false, medsos: false })
 
   // Tutup sidebar saat menekan ESC
   useEffect(() => {
@@ -53,14 +53,15 @@ const Layout = ({ children }) => {
         const lap = typeof document !== 'undefined' && document.body.getAttribute('data-lapkeu-month') === 'true'
         const m = typeof document !== 'undefined' ? (document.body.getAttribute('data-month-filter') || '') : ''
         const dt = typeof document !== 'undefined' && document.body.getAttribute('data-datatarget-month') === 'true'
-        setFabSignal({ lapkeu: !!lap, month: m, datatarget: !!dt })
+        const ms = typeof document !== 'undefined' && document.body.getAttribute('data-medsos-month') === 'true'
+        setFabSignal({ lapkeu: !!lap, month: m, datatarget: !!dt, medsos: !!ms })
       } catch {}
     }
     readSignals()
     let mo
     try {
       mo = new MutationObserver(readSignals)
-      mo.observe(document.body, { attributes: true, attributeFilter: ['data-lapkeu-month', 'data-month-filter', 'data-hide-fab', 'data-datatarget-month'] })
+      mo.observe(document.body, { attributes: true, attributeFilter: ['data-lapkeu-month', 'data-month-filter', 'data-hide-fab', 'data-datatarget-month', 'data-medsos-month'] })
     } catch {}
     return () => { try { mo && mo.disconnect() } catch {} }
   }, [])
@@ -129,6 +130,7 @@ const Layout = ({ children }) => {
             const isOmsetDetailOrEdit = /^\/admin\/keuangan\/omset-harian\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
             const isLapkeuPath = /^\/admin\/keuangan\/laporan\b/.test(location.pathname)
             const isAnekaPath = /^\/admin\/keuangan\/aneka-grafik\b/.test(location.pathname)
+            const isMedsosPath = /^\/admin\/marketing\/medsos\b/.test(location.pathname)
             const isDataTargetPath = /^\/admin\/marketing\/data-target\b/.test(location.pathname)
             const isAnekaDetailOrEdit = /^\/admin\/keuangan\/aneka-grafik\/[A-Za-z0-9_-]+(?:\/edit)?$/.test(location.pathname)
             const hasMonthParam = (() => {
@@ -139,6 +141,7 @@ const Layout = ({ children }) => {
             })()
             const bodySaysLapkeuMonth = fabSignal.lapkeu
             const bodySaysDataTargetMonth = fabSignal.datatarget
+            const bodySaysMedsosMonth = fabSignal.medsos
             // Izinkan FAB di Poskas/Omset kecuali di detail/edit
             const allowFabPoskas = isPoskasPath && !isPoskasDetailOrEdit
             const allowFabOmset = isOmsetPath && !isOmsetDetailOrEdit
@@ -148,7 +151,8 @@ const Layout = ({ children }) => {
             const allowFabAneka = isAnekaPath && !isAnekaDetailOrEdit
             // Izinkan FAB di Data Target hanya saat monthContent aktif (sinyal body)
             const allowFabDataTarget = isDataTargetPath && bodySaysDataTargetMonth
-            const allowFab = allowFabPoskas || allowFabOmset || allowFabLapkeu || allowFabAneka || allowFabDataTarget
+            const allowFabMedsos = isMedsosPath && bodySaysMedsosMonth
+            const allowFab = allowFabPoskas || allowFabOmset || allowFabLapkeu || allowFabAneka || allowFabDataTarget || allowFabMedsos
 
             const globalHideFab = (() => {
               try {
@@ -227,6 +231,7 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
   const isOnOmsetMain = /^\/admin\/keuangan\/omset-harian\/?$/.test(location.pathname)
   const isOnAnekaMain = /^\/admin\/keuangan\/aneka-grafik\/?$/.test(location.pathname)
   const isOnDataTargetPath = /^\/admin\/marketing\/data-target\b/.test(location.pathname)
+  const isOnMedsosPath = /^\/admin\/marketing\/medsos\b/.test(location.pathname)
   const isOnLapkeuMonth = (() => {
     if (!/^\/admin\/keuangan\/laporan\b/.test(location.pathname)) return false
     try {
@@ -236,7 +241,8 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
     } catch { return false }
   })()
   const isOnDataTargetMonth = isOnDataTargetPath && !!(fs.datatarget)
-  if (!isOnPoskasMain && !isOnOmsetMain && !isOnLapkeuMonth && !isOnAnekaMain && !isOnDataTargetMonth && !targetBtn) return null
+  const isOnMedsosMonth = isOnMedsosPath && !!(fs.medsos)
+  if (!isOnPoskasMain && !isOnOmsetMain && !isOnLapkeuMonth && !isOnAnekaMain && !isOnDataTargetMonth && !isOnMedsosMonth && !targetBtn) return null
 
   return (
     <div className="lg:hidden">
@@ -247,13 +253,15 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
           isOnOmsetMain ? 'Tambah Omset' : (
           isOnLapkeuMonth ? 'Tambah Lap Keu' : (
           isOnAnekaMain ? 'Tambah Aneka Grafik' : (
-          isOnDataTargetMonth ? 'Tambah Data Target' : 'Tambah'))))}
+          isOnDataTargetMonth ? 'Tambah Data Target' : (
+          isOnMedsosMonth ? 'Tambah Medsos' : 'Tambah')))))}
         title={
           isOnPoskasMain ? 'Tambah Poskas' : (
           isOnOmsetMain ? 'Tambah Omset' : (
           isOnLapkeuMonth ? 'Tambah Lap Keu' : (
           isOnAnekaMain ? 'Tambah Aneka Grafik' : (
-          isOnDataTargetMonth ? 'Tambah Data Target' : 'Tambah'))))}
+          isOnDataTargetMonth ? 'Tambah Data Target' : (
+          isOnMedsosMonth ? 'Tambah Medsos' : 'Tambah')))))}
         onClick={() => {
           // Prioritaskan navigasi eksplisit sesuai halaman
           if (isOnPoskasMain) {
@@ -262,6 +270,8 @@ const MobileFloatingAdd = ({ fabSignal: fabSignalProp }) => {
             navigate('/admin/keuangan/omset-harian/new')
           } else if (isOnDataTargetMonth) {
             navigate('/admin/marketing/data-target/new')
+          } else if (isOnMedsosMonth) {
+            navigate('/admin/marketing/medsos/form')
           } else {
             // Deteksi lapkeu month secara defensif: berdasarkan path + (query month atau sinyal body)
             const onLapkeuPath = /^\/admin\/keuangan\/laporan\b/.test(location.pathname)
