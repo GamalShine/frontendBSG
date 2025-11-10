@@ -318,10 +318,10 @@ const Sidebar = () => {
       <div className="p-4 border-t border-red-700 flex-shrink-0 sticky bottom-0 z-10 bg-red-800">
         <div className="text-center">
           <p className="text-xs text-white">
-            Bosgil Group © 2024
+            Bosgil Grup © 2025
           </p>
           <p className="text-xs text-white mt-1">
-            v1.0.0
+            Versi 3.1.4
           </p>
         </div>
       </div>
