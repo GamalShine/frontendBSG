@@ -315,34 +315,35 @@ const AdminDashboard = () => {
   return (
     <div className="pt-1 -mx-0 sm:-mx-1">
       {(user?.role === 'admin' || user?.role === 'owner') && (
-            <div ref={containerRef} className="w-full overflow-hidden relative border-x-4 border-red-700 shadow-lg aspect-auto h-[calc(100vh-140px)] sm:h-[420px] lg:h-[640px]">
-              {/* Tombol Fullscreen (pojok kanan atas) */}
-              <div className="absolute top-2 right-1 z-10">
-                <button
-                  type="button"
-                  onClick={toggleFullscreen}
-                  className="w-8 h-8 flex items-center justify-center rounded-md bg-black/40 hover:bg-black/60 text-white backdrop-blur-sm border border-white/20"
-                  aria-label={isFullscreen ? 'Keluar Fullscreen' : 'Masuk Fullscreen'}
-                  title={isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'}
-                >
-                  {isFullscreen ? (
-                    <Minimize className="w-5 h-5" />
-                  ) : (
+            <div
+              ref={containerRef}
+              className={`w-full overflow-hidden relative aspect-auto h-[calc(100vh-140px)] sm:h-[420px] lg:h-[640px] ${isFullscreen ? 'border-0 shadow-none' : 'border-x-4 border-red-700 shadow-lg'}`}
+            >
+              {/* Tampilkan tombol maximize saat TIDAK fullscreen */}
+              {!isFullscreen && (
+                <div className="absolute top-2 right-1 z-10">
+                  <button
+                    type="button"
+                    onClick={toggleFullscreen}
+                    className="w-8 h-8 flex items-center justify-center rounded-md bg-black/40 hover:bg:black/60 hover:bg-black/60 text-white backdrop-blur-sm border border-white/20"
+                    aria-label="Fullscreen"
+                    title="Fullscreen"
+                  >
                     <Expand className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
+                  </button>
+                </div>
+              )}
+              {/* Gunakan kontrol native video */}
               {videoUrl && !videoError ? (
                 <video
                   ref={videoRef}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full ${isFullscreen ? 'object-contain bg-black' : 'object-cover'}`}
                   src={videoUrl}
                   poster={posterUrl || undefined}
                   crossOrigin="anonymous"
                   playsInline
                   preload="metadata"
-                  disablePictureInPicture
-                  controlsList="nofullscreen"
+                  controls
                   onEnded={handleNext}
                   onPlay={() => { if (suppressEventsRef.current) return; setIsPlaying(true) }}
                   onPause={() => { if (suppressEventsRef.current) return; setIsPlaying(false) }}
@@ -357,53 +358,54 @@ const AdminDashboard = () => {
                   {videoError || 'Tidak ada video'}
                 </div>
               )}
+              {/* Tampilkan bar kontrol merah saat TIDAK fullscreen (opsional selain kontrol native) */}
+              {!isFullscreen && (
+                <div className="absolute bottom-0 left-0 right-0 bg-red-700/95 text-white">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        onClick={handlePrev}
+                        className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                        aria-label="Sebelumnya"
+                      >
+                        <SkipBack className="w-6 h-6" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={togglePlay}
+                        className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                        aria-label={isPlaying ? 'Jeda' : 'Putar'}
+                      >
+                        {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNext}
+                        className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                        aria-label="Berikutnya"
+                      >
+                        <SkipForward className="w-6 h-6" />
+                      </button>
+                    </div>
 
-              {/* Kontrol kustom: bar merah */}
-              <div className="absolute bottom-0 left-0 right-0 bg-red-700/95 text-white">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-4">
-                    <button
-                      type="button"
-                      onClick={handlePrev}
-                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
-                      aria-label="Sebelumnya"
-                    >
-                      <SkipBack className="w-6 h-6" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={togglePlay}
-                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
-                      aria-label={isPlaying ? 'Jeda' : 'Putar'}
-                    >
-                      {isPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleNext}
-                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
-                      aria-label="Berikutnya"
-                    >
-                      <SkipForward className="w-6 h-6" />
-                    </button>
-                  </div>
+                    <div className="text-sm opacity-90">
+                      {list.length > 0 ? `${currentIdx + 1} / ${list.length}` : '0 / 0'}
+                    </div>
 
-                  <div className="text-sm opacity-90">
-                    {list.length > 0 ? `${currentIdx + 1} / ${list.length}` : '0 / 0'}
-                  </div>
-
-                  <div className="flex items-center">
-                    <button
-                      type="button"
-                      onClick={toggleMute}
-                      className="p-2 rounded-md hover:bg-red-600 active:scale-95"
-                      aria-label={muted ? 'Unmute' : 'Mute'}
-                    >
-                      {muted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={toggleMute}
+                        className="p-2 rounded-md hover:bg-red-600 active:scale-95"
+                        aria-label={muted ? 'Unmute' : 'Mute'}
+                      >
+                        {muted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
       )}
       {/* Fitur Dashboard (versi website) */}
