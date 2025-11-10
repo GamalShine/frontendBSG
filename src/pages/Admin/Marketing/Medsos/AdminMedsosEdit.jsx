@@ -242,7 +242,7 @@ const AdminMedsosEdit = () => {
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.marketing.medsos}</span>
             <h1 className="text-2xl font-bold">EDIT LAP MEDSOS</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate(-1)}
@@ -304,6 +304,28 @@ const AdminMedsosEdit = () => {
                 hideAlign={true}
                 hideImage={true}
               />
+              {/* Tombol aksi mobile: ikon saja, diletakkan di kanan bawah editor */}
+              <div className="mt-4 flex items-center justify-end gap-3 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-red-600 text-red-700 hover:bg-red-50 active:scale-95 transition"
+                  title="Batal"
+                  aria-label="Batal"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <button
+                  form="medsos-edit-form"
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-red-600 text-white hover:bg-red-700 active:scale-95 transition disabled:opacity-60"
+                  title="Simpan"
+                  aria-label="Simpan"
+                >
+                  {saving ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
           </form>
         )}
