@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronDown, ChevronRight, Users, Search, X, Save, Building2, Briefcase } from 'lucide-react';
 import { adminSdmService } from '@/services/adminSdmService';
 import { MENU_CODES } from '@/config/menuCodes';
+import api from '@/services/api';
 
 const AdminDataTim = () => {
   const navigate = useNavigate();
@@ -46,6 +47,28 @@ const AdminDataTim = () => {
     lama_bekerja: '',
     jabatan_id: ''
   });
+  // Users for Add Tim modal (to pick name and auto-fill email)
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState('');
+
+  useEffect(() => {
+    // Load users once for the add-team modal
+    const loadUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        const res = await api.get('/users');
+        const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+        setUsers(arr);
+      } catch (e) {
+        console.error('Gagal memuat users:', e);
+        setUsers([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    loadUsers();
+  }, []);
   const [editLoading, setEditLoading] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -110,7 +133,8 @@ const AdminDataTim = () => {
     pph21: '',
     // Relasi
     divisi_id: '',
-    jabatan_id: ''
+    jabatan_id: '',
+    user_id: ''
   });
 
   const Row = ({ label, children }) => (
@@ -125,6 +149,74 @@ const AdminDataTim = () => {
     const val = Number(n) || 0;
     return `Rp ${val.toLocaleString('id-ID')}`;
   };
+
+  // Hitung lama bekerja dari tanggal bergabung: output "X bulan Y hari"
+  const calcTenureMonthsDays = (start) => {
+    if (!start) return '-';
+    const startDate = new Date(start);
+    if (isNaN(startDate)) return '-';
+    const now = new Date();
+
+    let months = (now.getFullYear() - startDate.getFullYear()) * 12 + (now.getMonth() - startDate.getMonth());
+
+    const anchor = new Date(startDate);
+    anchor.setMonth(anchor.getMonth() + months);
+    if (now < anchor) {
+      months -= 1;
+      anchor.setMonth(anchor.getMonth() - 1);
+    }
+
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+    const days = Math.max(0, Math.floor((now - anchor) / MS_PER_DAY));
+
+    const safeMonths = Math.max(0, months);
+    return `${safeMonths} bulan ${days} hari`;
+  };
+
+  // Helper: normalisasi boolean (menerima true/false, 1/0, '1'/'0', 'true'/'false')
+  const parseBool = (v) => {
+    if (v === true) return true;
+    if (v === false) return false;
+    if (v === 1 || v === '1') return true;
+    if (v === 0 || v === '0') return false;
+    if (typeof v === 'string') {
+      const s = v.toLowerCase();
+      if (s === 'true' || s === 'ya' || s === 'yes') return true;
+      if (s === 'false' || s === 'tidak' || s === 'no') return false;
+    }
+    return !!v;
+  };
+
+  // Ambil flag training ter-normalisasi, prioritas dari users, fallback ke sdm_data
+  const trainingFlags = useMemo(() => {
+    // Prioritas 1: detail.user bila punya field
+    // Prioritas 2: selected.user (dari hierarchy) bila lengkap
+    // Prioritas 3: fallback ke field di sdm_data
+    const userFromDetail = detail?.user;
+    const userFromSelected = selected?.user;
+
+    const hasUserFields = (u) => u && (
+      u.training_dasar !== undefined ||
+      u.training_skill !== undefined ||
+      u.training_leadership !== undefined ||
+      u.training_lanjutan !== undefined
+    );
+
+    const u = hasUserFields(userFromDetail)
+      ? userFromDetail
+      : (hasUserFields(userFromSelected) ? userFromSelected : null);
+
+    const src = u || detail || {};
+    const sourceLabel = u ? 'users' : 'sdm_data';
+
+    return {
+      dasar: parseBool(u ? u.training_dasar : src.training_dasar),
+      skill: parseBool(u ? u.training_skill : (src.training_skill ?? src.training_skillo)),
+      leadership: parseBool(u ? u.training_leadership : src.training_leadership),
+      lanjutan: parseBool(u ? u.training_lanjutan : src.training_lanjutan),
+      source: sourceLabel
+    };
+  }, [detail, selected]);
 
   const fetchHierarchy = async () => {
     try {
@@ -200,6 +292,19 @@ const AdminDataTim = () => {
         setDetailError(null);
         const res = await adminSdmService.getEmployeeById(selected.id);
         if (!res?.success) throw new Error(res?.message || 'Gagal memuat data');
+        console.log('🔍 Detail data dari API:', res.data);
+        console.log('🔍 User ID di sdm_data:', res.data?.user_id);
+        console.log('🔍 User object:', res.data?.user);
+        if (!res.data?.user) {
+          console.warn('⚠️ User object tidak ada! Karyawan belum terhubung ke tabel users.');
+        } else {
+          console.log('🔍 Training data dari user:', {
+            training_dasar: res.data.user.training_dasar,
+            training_leadership: res.data.user.training_leadership,
+            training_skill: res.data.user.training_skill,
+            training_lanjutan: res.data.user.training_lanjutan
+          });
+        }
         setDetail(res.data);
       } catch (err) {
         setDetailError(err.message || 'Terjadi kesalahan');
@@ -397,7 +502,7 @@ const AdminDataTim = () => {
       {/* Form Pencarian - full-bleed, 1 baris */}
       <div className="px-0 pt-4 mb-2">
         <div className="bg-white rounded-md shadow-sm border border-gray-100">
-          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cari</label>
               <div className="relative">
@@ -436,41 +541,60 @@ const AdminDataTim = () => {
                 ))}
               </select>
             </div>
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => { setSearch(''); setSelectedDivisi(''); setSelectedJabatan(''); }}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-              >
-                Reset
-              </button>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs: Data Tim, Jabatan, Divisi */}
       <div className="px-0 pt-2">
-        <div className="bg-white rounded-md shadow-sm border border-gray-100">
-          <div className="px-6 py-2 flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('dataTim')}
-              className={`px-4 py-2 rounded-full text-sm font-semibold ${activeTab==='dataTim' ? 'bg-red-700 text-white' : 'border border-red-600 text-red-700 hover:bg-red-50'}`}
-            >
-              DATA TIM
-            </button>
-            <button
-              onClick={() => setActiveTab('divisi')}
-              className={`px-4 py-2 rounded-full text-sm font-semibold ${activeTab==='divisi' ? 'bg-red-700 text-white' : 'border border-red-600 text-red-700 hover:bg-red-50'}`}
-            >
-              DIVISI
-            </button>
-            <button
-              onClick={() => setActiveTab('jabatan')}
-              className={`px-4 py-2 rounded-full text-sm font-semibold ${activeTab==='jabatan' ? 'bg-red-700 text-white' : 'border border-red-600 text-red-700 hover:bg-red-50'}`}
-            >
-              JABATAN
-            </button>
+        <div className="bg-white rounded-md shadow-sm">
+          <div className="px-6 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <button
+                onClick={() => setActiveTab('dataTim')}
+                className={`px-3 pb-2 pt-2 text-sm font-semibold border-b-2 rounded-none w-full md:w-auto flex-1 md:flex-none text-center ${activeTab==='dataTim' ? 'text-red-700 border-red-700' : 'text-gray-700 border-transparent hover:text-red-700'}`}
+              >
+                DATA TIM
+              </button>
+              <button
+                onClick={() => setActiveTab('divisi')}
+                className={`px-3 pb-2 pt-2 text-sm font-semibold border-b-2 rounded-none w-full md:w-auto flex-1 md:flex-none text-center ${activeTab==='divisi' ? 'text-red-700 border-red-700' : 'text-gray-700 border-transparent hover:text-red-700'}`}
+              >
+                DIVISI
+              </button>
+              <button
+                onClick={() => setActiveTab('jabatan')}
+                className={`px-3 pb-2 pt-2 text-sm font-semibold border-b-2 rounded-none w-full md:w-auto flex-1 md:flex-none text-center ${activeTab==='jabatan' ? 'text-red-700 border-red-700' : 'text-gray-700 border-transparent hover:text-red-700'}`}
+              >
+                JABATAN
+              </button>
+            </div>
+            <div className="hidden md:flex items-center">
+              {activeTab === 'dataTim' && (
+                <button
+                  onClick={() => { setShowAddTim(true); setSelectedUserId(''); setAddTimForm({ nama: '', email: '', no_hp: '', tanggal_bergabung: '', divisi_id: '', jabatan_id: '', user_id: '' }) }}
+                  className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500/70 focus:ring-offset-1 text-sm"
+                >
+                  + Tim
+                </button>
+              )}
+              {activeTab === 'divisi' && (
+                <button
+                  onClick={() => { setShowAddDivisi(true); setDivisiForm({ nama_divisi: '' }) }}
+                  className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500/70 focus:ring-offset-1 text-sm"
+                >
+                  + Divisi
+                </button>
+              )}
+              {activeTab === 'jabatan' && (
+                <button
+                  onClick={() => { setShowAddJabatan(true); setJabatanForm({ nama_jabatan: '', divisi_id: '' }) }}
+                  className="inline-flex items-center px-3.5 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500/70 focus:ring-offset-1 text-sm"
+                >
+                  + Jabatan
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -479,53 +603,49 @@ const AdminDataTim = () => {
       {activeTab === 'dataTim' && (
       <div className="px-0 pb-8 pt-0">
         <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
-          <div className="px-6 py-3 border-b flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-800">Data Tim</div>
-            <button onClick={() => { setShowAddTim(true); setAddTimForm({ nama: '', email: '', no_hp: '', tanggal_bergabung: '', divisi_id: '', jabatan_id: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">Tambah Tim</button>
-          </div>
           {loading && <div className="p-8 text-center text-gray-500">Memuat data...</div>}
           {error && !loading && <div className="p-8 text-center text-red-600">{error}</div>}
           {!loading && !error && (
-            <div className="space-y-3">
+            <div className="pt-2 pb-3 space-y-3">
               {(filteredHierarchy || []).map(div => {
                 const totalDiv = (div.children || []).reduce((acc, j) => acc + (j.children?.length || 0), 0);
                 const openDiv = !!expandedDivisi[div.id];
                 return (
-                  <div key={div.id} className="rounded-lg overflow-hidden border border-gray-200 bg-white">
+                  <div key={div.id} className="rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 mb-3 mx-3 shadow-sm">
                     <button onClick={() => toggleDivisi(div.id)} className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors">
                       <div className="flex items-center gap-2">
                         {openDiv ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                         <span className="font-semibold tracking-tight">{div.name}</span>
                       </div>
-                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{totalDiv}</span>
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{totalDiv} orang</span>
                     </button>
                     {openDiv && (
-                      <div className="mt-0 px-4 md:px-6 py-4 grid grid-cols-1 gap-3">
+                      <div className="mt-0 px-3 md:px-6 pt-3 pb-2 md:py-4 grid grid-cols-1 gap-2 md:gap-3">
                         {(div.children || []).map(jab => {
                           const openJab = !!expandedJabatan[jab.id];
                           return (
-                            <div key={jab.id} className="bg-white rounded-md shadow-sm border border-gray-100 overflow-hidden">
-                              <div className="px-3 py-2 bg-gray-50 flex items-center justify-between">
+                            <div key={jab.id} className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
+                              <div className="px-2 md:px-4 py-0.5 md:py-2 bg-red-800 text-white flex items-center justify-between">
                                 <button onClick={() => toggleJabatan(jab.id)} className="flex items-center gap-2 text-left">
-                                  {openJab ? <ChevronDown className="h-4 w-4 text-gray-600" /> : <ChevronRight className="h-4 w-4 text-gray-600" />}
-                                  <span className="font-medium text-gray-700 text-sm">{jab.name}</span>
+                                  {openJab ? <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" /> : <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" />}
+                                  <span className="font-semibold text-sm md:text-sm leading-tight tracking-tight">{jab.name}</span>
                                 </button>
-                                <span className="text-xs bg-gray-200 px-2 py-0.5 rounded-full text-gray-700">{jab.children?.length || 0}</span>
+                                <span className="text-[10px] md:text-xs bg-white/20 px-1.5 md:px-2 py-0.5 rounded-full border border-white/30">{jab.children?.length || 0} orang</span>
                               </div>
                               {openJab && (
                                 <div className="divide-y">
                                   {(jab.children || []).map(emp => (
-                                    <div key={emp.id} className="px-3 py-2 flex items-center justify-between text-sm">
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-red-100 text-red-700 flex-shrink-0"><Users className="h-4 w-4" /></span>
+                                    <div key={emp.id} className="px-2 md:px-3 py-0.5 md:py-2 flex items-center justify-between text-[13px] md:text-sm">
+                                      <div className="flex items-center gap-1 md:gap-3 min-w-0">
+                                        <span className="inline-flex h-5 w-5 md:h-7 md:w-7 items-center justify-center rounded-full bg-red-100 text-red-700 flex-shrink-0"><Users className="h-3.5 w-3.5 md:h-4 md:w-4" /></span>
                                         <div className="min-w-0">
-                                          <div className="font-semibold text-gray-900 truncate">{emp.name}</div>
-                                          <div className="text-xs text-gray-500 truncate">{emp?.jabatan?.nama_jabatan} • {emp?.jabatan?.divisi?.nama_divisi}</div>
+                                          <div className="font-semibold text-gray-900 truncate leading-tight">{emp.name}</div>
+                                          <div className="text-[11px] md:text-xs text-gray-500 truncate leading-tight">{emp?.jabatan?.nama_jabatan} • {emp?.jabatan?.divisi?.nama_divisi}</div>
                                         </div>
                                       </div>
-                                      <div className="flex items-center gap-2 flex-shrink-0">
-                                        <button onClick={() => setSelected(emp)} className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs">Detail</button>
-                                        <button onClick={() => setEditTarget(emp)} className="px-2 py-1 text-gray-700 hover:bg-gray-50 rounded text-xs">Edit</button>
+                                      <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+                                        <button onClick={() => setSelected(emp)} className="px-1.5 md:px-2 py-0.5 md:py-1 text-blue-600 hover:bg-blue-50 rounded text-[11px] md:text-xs">Detail</button>
+                                        <button onClick={() => setEditTarget(emp)} className="px-1.5 md:px-2 py-0.5 md:py-1 text-gray-700 hover:bg-gray-50 rounded text-[11px] md:text-xs">Edit</button>
                                       </div>
                                     </div>
                                   ))}
@@ -551,11 +671,7 @@ const AdminDataTim = () => {
       {activeTab === 'jabatan' && (
         <div className="px-0 pb-8 pt-0">
           <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
-            <div className="px-6 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-800">Daftar Jabatan</div>
-              <button onClick={() => { setShowAddJabatan(true); setJabatanForm({ nama_jabatan: '', divisi_id: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">+ Jabatan</button>
-            </div>
-            <div className="divide-y">
+            <div className="pt-2 pb-2 divide-y">
               {(hierarchy || []).map(div => {
                 const open = !!expandedDivForJabatanPanel[div.id];
                 const jabCount = (div.children || []).length;
@@ -592,23 +708,54 @@ const AdminDataTim = () => {
         </div>
       )}
 
+      {/* FAB mobile mengikuti tab aktif: Tambah Tim / Tambah Divisi / + Jabatan */}
+      {!(showAddTim || showAddDivisi || showAddJabatan) && (
+        <button
+          type="button"
+          onClick={() => {
+            if (activeTab === 'dataTim') {
+              setShowAddTim(true);
+              setSelectedUserId('');
+              setAddTimForm({
+                nama: '', tempat_lahir: '', tanggal_lahir: '', no_hp: '', email: '', media_sosial: '',
+                nama_pasangan: '', nama_anak: '', no_hp_pasangan: '', kontak_darurat: '',
+                alamat_sekarang: '', link_map_sekarang: '', alamat_asal: '', link_map_asal: '',
+                nama_orang_tua: '', alamat_orang_tua: '', link_map_orang_tua: '',
+                tanggal_bergabung: '', lama_bekerja: '', training_dasar: false, training_skillo: false, training_leadership: false, training_lanjutan: false,
+                gaji_pokok: '', tunjangan_kinerja: '', tunjangan_posisi: '', uang_makan: '', lembur: '', bonus: '', potongan: '', bpjstk: '', bpjs_kesehatan: '', bpjs_kes_penambahan: '', sp_1_2: '', pinjaman_karyawan: '', pph21: '',
+                divisi_id: '', jabatan_id: '', user_id: ''
+              });
+            } else if (activeTab === 'divisi') {
+              setShowAddDivisi(true);
+              setDivisiForm({ nama_divisi: '' });
+            } else if (activeTab === 'jabatan') {
+              setShowAddJabatan(true);
+              setJabatanForm({ nama_jabatan: '', divisi_id: '' });
+            }
+          }}
+          className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+          aria-label={activeTab === 'dataTim' ? 'Tambah Tim' : activeTab === 'divisi' ? 'Tambah Divisi' : '+ Jabatan'}
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+
       {activeTab === 'divisi' && (
         <div className="px-0 pb-8 pt-0">
           <div className="bg-white rounded-b-md shadow-sm border-x border-b border-gray-100 border-t-0">
-            <div className="px-6 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-800">Daftar Divisi</div>
-              <button onClick={() => { setShowAddDivisi(true); setDivisiForm({ nama_divisi: '' }) }} className="px-3 py-1.5 rounded-full border border-red-600 text-red-700 hover:bg-red-50 text-sm">Tambah Divisi</button>
-            </div>
-            <div className="divide-y">
+            <div className="pt-2 pb-2">
               {(hierarchy || []).map(div => {
                 const jabCount = (div.children || []).length;
                 const empCount = (div.children || []).reduce((acc, j) => acc + ((j.children||[]).length), 0);
                 return (
-                  <div key={div.id} className="px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                    <div className="text-sm font-semibold text-gray-800">{div.name}</div>
-                    <div className="text-xs text-gray-600 flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-full border border-gray-300 bg-white">{jabCount} jabatan</span>
-                      <span className="px-2 py-0.5 rounded-full border border-gray-300 bg-white">{empCount} orang</span>
+                  <div key={div.id} className="rounded-lg overflow-hidden border border-gray-200 bg-white m-3">
+                    <div className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between">
+                      <span className="font-semibold tracking-tight">{div.name}</span>
+                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{empCount} orang</span>
+                    </div>
+                    <div className="bg-white px-6 py-2 border-t border-gray-100 flex items-center gap-2">
+                      <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{jabCount} jabatan</span>
+                      <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{empCount} orang</span>
                     </div>
                   </div>
                 );
@@ -623,16 +770,12 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Divisi (global) */}
       {showAddDivisi && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddDivisi(false)} />
-          <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
-            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
-              <div className="flex items-center gap-3">
-                <Building2 className="w-6 h-6 text-white" />
-                <div>
-                  <h2 className="text-lg font-bold leading-tight">Tambah Divisi</h2>
-                  <p className="text-xs text-red-100">Lengkapi data divisi untuk organisasi</p>
-                </div>
+          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-md max-h-[78dvh] md:max-h-[90vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
+            <div className="px-4 py-1 md:px-6 md:py-2 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
+              <div className="flex items-center">
+                <h2 className="text-lg font-bold leading-tight">Tambah Divisi</h2>
               </div>
               <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setShowAddDivisi(false)} aria-label="Tutup">
                 <X className="w-5 h-5" />
@@ -642,18 +785,18 @@ const AdminDataTim = () => {
               <label className="block text-xs font-medium text-gray-700 mb-1">Nama Divisi</label>
               <input
                 value={divisiForm.nama_divisi}
-                onChange={(e)=> setDivisiForm(v=>({ ...v, nama_divisi: e.target.value }))}
+                onChange={(e)=> setDivisiForm({ nama_divisi: e.target.value })}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Contoh: Operasional"
+                placeholder="Masukkan nama divisi"
               />
             </div>
             <div className="p-0 border-t bg-white">
               <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setShowAddDivisi(false)}>Batal</button>
+                <button className="w-full py-2 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors rounded-lg" onClick={() => setShowAddDivisi(false)}>Batal</button>
                 <button
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
                   disabled={addingDivisi}
-                  onClick={async ()=>{
+                  onClick={async () => {
                     if (!divisiForm.nama_divisi || !String(divisiForm.nama_divisi).trim()) { alert('Nama divisi wajib diisi'); return; }
                     try {
                       setAddingDivisi(true);
@@ -686,16 +829,12 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Jabatan (global) */}
       {showAddJabatan && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddJabatan(false)} />
-          <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
-            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
-              <div className="flex items-center gap-3">
-                <Briefcase className="w-6 h-6 text-white" />
-                <div>
-                  <h2 className="text-lg font-bold leading-tight">Tambah Jabatan</h2>
-                  <p className="text-xs text-red-100">Pilih divisi terlebih dahulu, lalu isi nama jabatan</p>
-                </div>
+          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-md max-h-[78dvh] md:max-h-[90vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
+            <div className="px-4 py-1 md:px-6 md:py-2 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
+              <div className="flex items-center">
+                <h2 className="text-lg font-bold leading-tight">Tambah Jabatan</h2>
               </div>
               <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setShowAddJabatan(false)} aria-label="Tutup">
                 <X className="w-5 h-5" />
@@ -706,40 +845,36 @@ const AdminDataTim = () => {
                 <label className="block text-xs font-medium text-gray-700 mb-1">Divisi</label>
                 <select
                   value={jabatanForm.divisi_id}
-                  onChange={(e)=> setJabatanForm(v=>({ ...v, divisi_id: e.target.value }))}
+                  onChange={(e)=> setJabatanForm(f=>({ ...f, divisi_id: e.target.value }))}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
-                  <option value="">Pilih divisi</option>
-                  {(hierarchy||[]).map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
+                  <option value="">Pilih Divisi</option>
+                  {(hierarchy||[]).map(d => (<option key={d.id} value={d.id}>{d.name}</option>))}
                 </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Nama Jabatan</label>
                 <input
                   value={jabatanForm.nama_jabatan}
-                  onChange={(e)=> setJabatanForm(v=>({ ...v, nama_jabatan: e.target.value }))}
+                  onChange={(e)=> setJabatanForm(f=>({ ...f, nama_jabatan: e.target.value }))}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="Contoh: Supervisor"
+                  placeholder="Masukkan nama jabatan"
                 />
               </div>
             </div>
             <div className="p-0 border-t bg-white">
               <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setShowAddJabatan(false)}>Batal</button>
+                <button className="w-full py-2 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors rounded-lg" onClick={() => setShowAddJabatan(false)}>Batal</button>
                 <button
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+                  className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
                   disabled={addingJabatan}
                   onClick={async ()=>{
-                    if (!jabatanForm.divisi_id) { alert('Silakan pilih divisi'); return; }
+                    if (!jabatanForm.divisi_id) { alert('Pilih divisi terlebih dahulu'); return; }
                     if (!jabatanForm.nama_jabatan || !String(jabatanForm.nama_jabatan).trim()) { alert('Nama jabatan wajib diisi'); return; }
                     try {
                       setAddingJabatan(true);
-                      const res = await adminSdmService.createJabatan({
-                        nama_jabatan: jabatanForm.nama_jabatan,
-                        divisi_id: Number(jabatanForm.divisi_id)
-                      });
+                      const payload = { nama_jabatan: jabatanForm.nama_jabatan, divisi_id: Number(jabatanForm.divisi_id) };
+                      const res = await adminSdmService.createJabatan(payload);
                       if (res?.success) {
                         setShowAddJabatan(false);
                         setJabatanForm({ nama_jabatan: '', divisi_id: '' });
@@ -768,10 +903,10 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Tim (global) */}
       {showAddTim && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddTim(false)} />
-          <div className="relative z-10 w-full max-w-3xl max-h-[85vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
-            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
+          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-3xl max-h-[78dvh] md:max-h-[92vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
+            <div className="px-4 py-1 md:px-6 md:py-2 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
               <div>
                 <h2 className="text-lg font-bold leading-tight">Tambah Tim</h2>
               </div>
@@ -786,8 +921,29 @@ const AdminDataTim = () => {
                 <div className="text-sm font-semibold text-gray-900 mb-3">Informasi Personal</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Nama <span className="text-red-600">*</span></label>
-                    <input value={addTimForm.nama} onChange={(e)=> setAddTimForm(v=>({ ...v, nama: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="Nama lengkap" />
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Nama (ambil dari Users) <span className="text-red-600">*</span></label>
+                    <select
+                      value={selectedUserId}
+                      onChange={(e)=>{
+                        const val = e.target.value;
+                        setSelectedUserId(val);
+                        const u = users.find(us => String(us.id) === String(val));
+                        const nm = u?.nama || u?.name || u?.username || '';
+                        const em = u?.email || '';
+                        setAddTimForm(v=>({ ...v, nama: nm, email: em, user_id: val ? Number(val) : '' }));
+                      }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      disabled={loadingUsers}
+                    >
+                      <option value="">— Pilih User —</option>
+                      {users.map(u => {
+                        const label = `${u.nama || u.name || u.username || `User #${u.id}`} ${u.email ? `- ${u.email}` : ''}`.trim();
+                        return (
+                          <option key={u.id} value={u.id}>{label}</option>
+                        );
+                      })}
+                    </select>
+                    <p className="mt-1 text-[11px] text-gray-500">Pilih user untuk mengisi otomatis nama dan email.</p>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Tempat Lahir</label>
@@ -803,7 +959,7 @@ const AdminDataTim = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
-                    <input type="email" value={addTimForm.email} onChange={(e)=> setAddTimForm(v=>({ ...v, email: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="email@domain.com" />
+                    <input type="email" value={addTimForm.email} onChange={(e)=> setAddTimForm(v=>({ ...v, email: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="email@domain.com (otomatis setelah pilih user)" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Media Sosial</label>
@@ -963,6 +1119,8 @@ const AdminDataTim = () => {
                         jabatan_id: Number(addTimForm.jabatan_id),
                         tanggal_bergabung: addTimForm.tanggal_bergabung || undefined,
                         lama_bekerja: addTimForm.lama_bekerja || undefined,
+                        // Relasi ke users
+                        user_id: selectedUserId ? Number(selectedUserId) : (addTimForm.user_id ? Number(addTimForm.user_id) : undefined),
                         // Training
                         training_dasar: !!addTimForm.training_dasar,
                         training_skillo: !!addTimForm.training_skillo,
@@ -1011,11 +1169,11 @@ const AdminDataTim = () => {
       )}
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSelected(null)} />
-          <div className="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-2xl border flex flex-col max-h-[92vh] overflow-hidden">
+          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-3xl bg-white rounded-2xl shadow-2xl border flex flex-col max-h-[80dvh] md:max-h-[92vh] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between">
+            <div className="px-4 py-2 md:px-6 md:py-4 bg-red-800 text-white flex items-center justify-between">
               <h2 className="text-lg font-semibold">Detail Anggota Tim</h2>
               <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setSelected(null)} aria-label="Tutup">✕</button>
             </div>
@@ -1056,11 +1214,11 @@ const AdminDataTim = () => {
 
                   <div className="px-4 py-3 bg-gray-50 text-sm font-semibold text-gray-700">Informasi Kerja</div>
                   <Row label="Tanggal Bergabung">{detail.tanggal_bergabung ? new Date(detail.tanggal_bergabung).toLocaleDateString('id-ID') : '-'}</Row>
-                  <Row label="Lama Bekerja">{detail.lama_bekerja}</Row>
+                  <Row label="Lama Bekerja">{calcTenureMonthsDays(detail.tanggal_bergabung)}</Row>
                   <Row label="Divisi">{detail?.jabatan?.divisi?.nama_divisi}</Row>
                   <Row label="Jabatan">{detail?.jabatan?.nama_jabatan}</Row>
 
-                  <Row label="Data Training">{`DASAR ${detail.training_dasar ? '✓' : '✗'}, SKILLO ${detail.training_skillo ? '✓' : '✗'}, LEADERSHIP ${detail.training_leadership ? '✓' : '✗'}, LANJUTAN ${detail.training_lanjutan ? '✓' : '✗'}`}</Row>
+                  <Row label="Data Training">{`DASAR ${trainingFlags.dasar ? '✓' : '✗'}, SKILL ${trainingFlags.skill ? '✓' : '✗'}, LEADERSHIP ${trainingFlags.leadership ? '✓' : '✗'}, LANJUTAN ${trainingFlags.lanjutan ? '✓' : '✗'}`}</Row>
 
                 </div>
               )}
@@ -1078,11 +1236,11 @@ const AdminDataTim = () => {
       )}
 
       {editTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
           <div className="absolute inset-0 bg-black/50" onClick={() => setEditTarget(null)} />
-          <div className="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-2xl border flex flex-col max-h-[92vh] overflow-hidden">
+          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-3xl bg-white rounded-2xl shadow-2xl border flex flex-col max-h-[80dvh] md:max-h-[92vh] overflow-hidden">
             {/* Header */}
-            <div className="px-6 py-4 bg-red-800 text-white flex items-center justify-between">
+            <div className="px-4 py-2 md:px-6 md:py-4 bg-red-800 text-white flex items-center justify-between">
               <h2 className="text-lg font-semibold">Edit Anggota Tim</h2>
               <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setEditTarget(null)} aria-label="Tutup">✕</button>
             </div>

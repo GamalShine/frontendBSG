@@ -597,15 +597,7 @@ const AdminDaftarGaji = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Tombol Tambah: disembunyikan di mobile, tetap tampil di desktop */}
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="font-semibold">Tambah</span>
-            </button>
+            {/* Tombol Tambah sementara disembunyikan */}
           </div>
         </div>
       </div>
@@ -650,15 +642,31 @@ const AdminDaftarGaji = () => {
                 {expandedBranch === branch.id && (
                   <div className="bg-red-700">
                     {(branch.departments || []).map((dept) => (
-                      <button
-                        key={dept.id}
-                        type="button"
-                        onClick={() => handleSelectDept(dept.id)}
-                        className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-red-800 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
-                      >
-                        <span className="text-sm font-semibold text-gray-900">{dept.name}</span>
-                        <span className="text-xs text-gray-700">{deptEmployeeCount(dept.id)} orang</span>
-                      </button>
+                      <div key={dept.id} className="">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectDept(dept.id)}
+                          className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-red-800 ${selectedDept === dept.id ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                        >
+                          <span className="text-sm font-semibold text-gray-900">{dept.name}</span>
+                          <span className="text-xs text-gray-700">{deptEmployeeCount(dept.id)} orang</span>
+                        </button>
+                        {selectedDept === dept.id && (
+                          <div className="bg-white text-gray-900 border-t border-gray-200 px-4 py-3">
+                            {loadingSummary ? (
+                              <div className="text-sm text-gray-500 py-2">Memuat data...</div>
+                            ) : (
+                              <div className="space-y-3">
+                                {filteredEmployees.length === 0 ? (
+                                  <div className="text-center text-sm text-gray-500 py-4">Tidak ada karyawan pada jabatan ini</div>
+                                ) : (
+                                  filteredEmployees.map(renderEmployeeRow)
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -742,8 +750,8 @@ const AdminDaftarGaji = () => {
             </div>
           </div>
         )}
-        {/* Daftar karyawan berderet ke bawah */}
-        {selectedDept && !loadingSummary && (
+        {/* Daftar karyawan dipindahkan untuk tampil tepat di bawah tiap kotak jabatan */}
+        {false && selectedDept && !loadingSummary && (
           <div className="mt-3 space-y-3">
             {filteredEmployees.map(renderEmployeeRow)}
           </div>
@@ -888,8 +896,8 @@ const AdminDaftarGaji = () => {
         </div>
       )}
 
-      {/* FAB Tambah (mobile only) - disembunyikan saat modal terbuka */}
-      {!showForm && (
+      {/* FAB Tambah (mobile only) sementara disembunyikan */}
+      {false && !showForm && (
         <button
           type="button"
           onClick={() => setShowForm(true)}
