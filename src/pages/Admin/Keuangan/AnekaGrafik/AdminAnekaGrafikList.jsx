@@ -376,7 +376,7 @@ const AdminAnekaGrafikList = () => {
       </div>
 
       {/* Pencarian - gaya seperti Aneka Surat */}
-      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-2">
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-4 mx-4 md:mx-6">
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
             <div>
