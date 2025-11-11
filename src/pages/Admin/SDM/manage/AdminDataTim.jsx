@@ -53,12 +53,18 @@ const AdminDataTim = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
 
   useEffect(() => {
-    // Load users once for the add-team modal
+    // Load users once untuk modal tambah tim (ambil banyak agar tidak kepotong pagination)
     const loadUsers = async () => {
       try {
         setLoadingUsers(true);
-        const res = await api.get('/users');
-        const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
+        // Ambil hingga 1000 user agar dropdown lengkap
+        const res = await api.get('/users', { params: { page: 1, limit: 1000 } });
+        // Normalisasi berbagai bentuk response backend
+        const arr = Array.isArray(res?.data?.data)
+          ? res.data.data
+          : Array.isArray(res?.data?.rows)
+            ? res.data.rows
+            : (Array.isArray(res?.data) ? res.data : []);
         setUsers(arr);
       } catch (e) {
         console.error('Gagal memuat users:', e);
@@ -246,6 +252,23 @@ const AdminDataTim = () => {
       jabs.forEach(j => { karyawan += (j.children || []).length; });
     });
     return { divisi, jabatan, karyawan };
+  }, [hierarchy]);
+
+  // Set user_id yang sudah dipakai oleh data SDM (agar tidak muncul lagi di dropdown "Pilih User")
+  const assignedUserIds = useMemo(() => {
+    const set = new Set();
+    (hierarchy || []).forEach(d => {
+      (d.children || []).forEach(j => {
+        (j.children || []).forEach(e => {
+          const uid = e?.user_id ?? e?.userId ?? e?.user?.id;
+          if (uid !== undefined && uid !== null && String(uid).trim() !== '') {
+            const n = Number(uid);
+            if (!isNaN(n)) set.add(n);
+          }
+        });
+      });
+    });
+    return set;
   }, [hierarchy]);
 
   // Ambil waktu 'terakhir update' (data terakhir dibuat)
@@ -936,7 +959,7 @@ const AdminDataTim = () => {
                       disabled={loadingUsers}
                     >
                       <option value="">— Pilih User —</option>
-                      {users.map(u => {
+                      {users.filter(u => !assignedUserIds.has(Number(u.id))).map(u => {
                         const label = `${u.nama || u.name || u.username || `User #${u.id}`} ${u.email ? `- ${u.email}` : ''}`.trim();
                         return (
                           <option key={u.id} value={u.id}>{label}</option>

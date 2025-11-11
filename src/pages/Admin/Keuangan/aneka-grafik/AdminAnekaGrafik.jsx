@@ -216,7 +216,7 @@ const AdminAnekaGrafik = () => {
   }
 
   return (<>
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="min-h-screen bg-gray-50 px-4 md:px-6">
       {/* Header Section */}
       <div className="bg-white rounded-lg shadow-sm border mb-6">
         <div className="p-6 border-b border-gray-200">
@@ -257,7 +257,7 @@ const AdminAnekaGrafik = () => {
       </div>
 
       {/* Pencarian (Desktop & Mobile) - gaya seperti Aneka Surat */}
-      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-6">
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 gap-4">
             <div>
