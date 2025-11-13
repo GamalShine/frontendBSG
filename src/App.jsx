@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 import { Toaster, toast } from 'react-hot-toast'
 
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -326,6 +326,14 @@ const LoginWrapper = () => {
   }
   
   return <Login />
+}
+
+// Helper untuk redirect dinamis dengan parameter URL (mis. :id)
+const ParamRedirect = ({ buildTo }) => {
+  const params = useParams()
+  const id = params?.id
+  const to = typeof buildTo === 'function' ? buildTo(id, params) : '/'
+  return <Navigate to={to} replace />
 }
 
 // Protected Route Component with Permission Check
@@ -706,16 +714,16 @@ const ModalSwitch = () => {
               {/* Redirect old marketing paths to new operasional paths */}
               <Route path="/admin/marketing/data-target" element={<Navigate to="/admin/operasional/data-target" replace />} />
               <Route path="/admin/marketing/data-target/new" element={<Navigate to="/admin/operasional/data-target/new" replace />} />
-              <Route path="/admin/marketing/data-target/:id" element={<Navigate to="/admin/operasional/data-target/:id" replace />} />
-              <Route path="/admin/marketing/data-target/:id/edit" element={<Navigate to="/admin/operasional/data-target/:id/edit" replace />} />
+              <Route path="/admin/marketing/data-target/:id" element={<ParamRedirect buildTo={(id)=>`/admin/operasional/data-target/${id}`} />} />
+              <Route path="/admin/marketing/data-target/:id/edit" element={<ParamRedirect buildTo={(id)=>`/admin/operasional/data-target/${id}/edit`} />} />
               <Route path="/admin/marketing/target" element={<Navigate to="/admin/operasional/data-target" replace />} />
               <Route path="/admin/marketing/target/new" element={<Navigate to="/admin/operasional/data-target/new" replace />} />
-              <Route path="/admin/marketing/target/:id" element={<Navigate to="/admin/operasional/data-target/:id" replace />} />
-              <Route path="/admin/marketing/target/:id/edit" element={<Navigate to="/admin/operasional/data-target/:id/edit" replace />} />
+              <Route path="/admin/marketing/target/:id" element={<ParamRedirect buildTo={(id)=>`/admin/operasional/data-target/${id}`} />} />
+              <Route path="/admin/marketing/target/:id/edit" element={<ParamRedirect buildTo={(id)=>`/admin/operasional/data-target/${id}/edit`} />} />
               <Route path="/admin/marketing/target-harian" element={<Navigate to="/admin/operasional/data-target" replace />} />
               <Route path="/admin/marketing/target-harian/new" element={<Navigate to="/admin/operasional/data-target/new" replace />} />
-              <Route path="/admin/marketing/target-harian/:id" element={<Navigate to="/admin/operasional/data-target/:id" replace />} />
-              <Route path="/admin/marketing/target-harian/:id/edit" element={<Navigate to="/admin/operasional/data-target/:id/edit" replace />} />
+              <Route path="/admin/marketing/target-harian/:id" element={<ParamRedirect buildTo={(id)=>`/admin/operasional/data-target/${id}`} />} />
+              <Route path="/admin/marketing/target-harian/:id/edit" element={<ParamRedirect buildTo={(id)=>`/admin/operasional/data-target/${id}/edit`} />} />
 
               {/* Divisi Operasional - Saran */}
               <Route path="/divisi/operasional/saran" element={

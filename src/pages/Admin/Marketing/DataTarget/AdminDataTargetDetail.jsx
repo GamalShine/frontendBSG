@@ -21,6 +21,12 @@ const AdminDataTargetDetail = () => {
     const load = async () => {
       try {
         setLoading(true);
+        // Guard: jika id tidak valid, kembali ke list
+        if (!id || id === 'undefined' || id === 'null') {
+          toast.error('ID tidak valid');
+          navigate('/admin/marketing/data-target');
+          return;
+        }
         const res = await targetHarianService.getById(id);
         if (res?.success && res.data) {
           setData(res.data);
@@ -30,7 +36,7 @@ const AdminDataTargetDetail = () => {
         }
       } catch (e) {
         console.error('Gagal memuat detail taget:', e);
-        toast.error('Gagal memuat detail');
+        toast.error(e?.response?.data?.error || e?.message || 'Gagal memuat detail');
         navigate('/admin/marketing/data-target');
       } finally {
         setLoading(false);
