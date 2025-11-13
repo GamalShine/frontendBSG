@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
+import { Plus, Pencil } from 'lucide-react'
 import api from '../../services/api'
 import { API_CONFIG, API_ENDPOINTS } from '../../config/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -7,18 +8,18 @@ import { MENU_CODES } from '@/config/menuCodes'
 const TabButton = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-      active ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+    className={`w-full text-center px-0 md:px-4 pt-2 pb-2 text-sm font-semibold transition-colors border-b-2 rounded-none ${
+      active ? 'border-red-700 text-red-700' : 'border-transparent text-gray-700 hover:text-red-700'
     }`}
   >
     {children}
   </button>
 )
 
-const SectionCard = ({ title, children, right }) => (
+const SectionCard = ({ title, children, right, titleClassName = '', headerMarginClass = 'mb-0' }) => (
   <div className="bg-white rounded-lg shadow-md p-6">
-    <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+    <div className={`flex items-center justify-between ${headerMarginClass}`}>
+      <h2 className={`text-xl font-semibold text-gray-800 ${titleClassName}`}>{title}</h2>
       {right}
     </div>
     {children}
@@ -536,28 +537,27 @@ const StrukturJobdeskSOP = () => {
       </div>
     </div>
 
-    {/* Subheader: Terakhir diupdate */}
-    <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText || '-'}</div>
+    {/* Subheader dihilangkan sesuai permintaan */}
 
-    <div className="w-full px-0 py-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">BOSGIL GROUP 2025</h1>
-        <div className="flex gap-2">
-          <TabButton active={activeTab === 'struktur'} onClick={() => setActiveTab('struktur')}>Struktur Organisasi</TabButton>
-          <TabButton active={activeTab === 'jobdesk'} onClick={() => setActiveTab('jobdesk')}>Jobdesk</TabButton>
-          {/* Tab SOP dihilangkan untuk semua role */}
+    <div className="w-full px-0 pt-0 pb-6">
+      <div className="mb-0">
+        <div className="grid grid-cols-2 w-full md:inline-flex md:w-auto md:gap-6 md:justify-center">
+          <TabButton active={activeTab === 'struktur'} onClick={() => setActiveTab('struktur')}>STRUKTUR</TabButton>
+          <TabButton active={activeTab === 'jobdesk'} onClick={() => setActiveTab('jobdesk')}>JOBDESK</TabButton>
         </div>
       </div>
 
       {activeTab === 'struktur' && (
         <SectionCard
           title={struktur?.judul || 'Struktur Organisasi'}
+          titleClassName="flex-1 text-center"
+          headerMarginClass="mb-2"
           right={
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => (struktur ? openUpdate() : openCreate())}
-                className="px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+                className="hidden md:inline-flex px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
               >
                 Edit
               </button>
@@ -571,12 +571,12 @@ const StrukturJobdeskSOP = () => {
           {!loading.struktur && !error.struktur && struktur && (
             <div className="mb-5">
               {struktur.deskripsi && (
-                <p className="mt-1 text-sm text-gray-600 whitespace-pre-line">{struktur.deskripsi}</p>
+                <p className="mt-0 text-sm text-gray-600 whitespace-pre-line text-center">{struktur.deskripsi}</p>
               )}
               {struktur.foto && (
                 <div
                   ref={imgWrapRef}
-                  className="mt-3 overflow-hidden rounded-md border"
+                  className="mt-2 -mx-6 overflow-hidden"
                   onMouseMove={handleImgMouseMove}
                   onMouseEnter={handleImgMouseEnter}
                   onMouseLeave={handleImgMouseLeave}
@@ -606,7 +606,7 @@ const StrukturJobdeskSOP = () => {
             <button
               type="button"
               onClick={openUnifiedAdd}
-              className="px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+              className="hidden md:inline-flex px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
             >
               Tambah
             </button>
@@ -704,6 +704,32 @@ const StrukturJobdeskSOP = () => {
       )}
 
       {/* Section SOP dihilangkan untuk semua role */}
+
+    {/* FAB Mobile */}
+    {!(showForm || showAddModal) && (
+      <>
+        {activeTab === 'struktur' && (
+          <button
+            type="button"
+            aria-label="Edit Struktur"
+            onClick={() => (struktur ? openUpdate() : openCreate())}
+            className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+          >
+            <Pencil className="w-6 h-6" />
+          </button>
+        )}
+        {activeTab === 'jobdesk' && canManage && (
+          <button
+            type="button"
+            aria-label="Tambah Jobdesk"
+            onClick={openUnifiedAdd}
+            className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        )}
+      </>
+    )}
     </div>
 
     {/* Modal Form Struktur Organisasi */}

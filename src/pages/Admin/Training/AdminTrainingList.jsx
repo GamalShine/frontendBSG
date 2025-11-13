@@ -19,7 +19,8 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Check
 } from 'lucide-react'
 import Card, { CardHeader, CardBody } from '@/components/UI/Card'
 import Button from '@/components/UI/Button'
@@ -155,8 +156,8 @@ const AdminTrainingList = () => {
     try {
       setLoading(true)
       const params = {
-        page: currentPage,
-        limit: 15,
+        page: 1,
+        limit: 10000,
         search: searchTerm,
         status: statusFilter,
       }
@@ -167,7 +168,7 @@ const AdminTrainingList = () => {
       if (response.success) {
         // Backend returns user data with training fields
         setTrainings(response.data || [])
-        setTotalPages(response.pagination?.totalPages || 1)
+        setTotalPages(1)
       } else {
         console.error('❌ Admin Training response not successful:', response)
         setTrainings([])
@@ -315,8 +316,8 @@ const AdminTrainingList = () => {
     <div className="p-0 bg-gray-50 min-h-screen">
 
       {/* Header Merah + Badge (unified style) */}
-      <div className="bg-red-800 text-white px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-2 md:py-4 flex items-center min-h-[52px] md:min-h-0">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.dataTraining}</span>
             <div>
@@ -327,14 +328,32 @@ const AdminTrainingList = () => {
         </div>
       </div>
 
-      {/* Info bar */}
-      <div className="bg-gray-200 px-4 sm:px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
+      {/* Info bar dihapus sesuai permintaan */}
 
-      {/* Spacing below header */}
-      <div className="my-0"></div>
+      {/* Filters - dipindah ke atas stats cards */}
+      <Card className="rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
+        <CardBody className="px-6 py-4">
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari nama atau email karyawan..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
 
       {/* Stats Cards (match Poskas style) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
@@ -388,62 +407,10 @@ const AdminTrainingList = () => {
         </div>
       </div>
 
-      {/* Filters - always visible, styled like Poskas (tanpa header) */}
-      <Card className="rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
-        <CardBody className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari nama atau email karyawan..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Semua Role</option>
-                <option value="admin">Admin</option>
-                <option value="leader">Leader</option>
-                <option value="divisi">Divisi</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleSearch}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-              >
-                <Search className="h-4 w-4" />
-                <span className="font-semibold">Pencarian</span>
-              </button>
-            </div>
-          </div>
-        </CardBody>
-      </Card>
+      
 
-      {/* Training List - Header box terpisah */}
-      <div className="rounded-t-none shadow-sm border border-gray-100 border-b-0 mt-4 overflow-hidden">
-        <div className="px-6 py-3 bg-red-700 text-white">
-          <div className="flex justify-between items-center">
-            <h3 className="text-base md:text-base font-semibold uppercase tracking-wide text-white">Daftar Data Training Karyawan</h3>
-            <span className="text-base md:text-base font-semibold text-white">Total Karyawan : {stats.totalUsers || 0}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabel pada box terpisah */}
-      <div className="bg-white rounded-b-xl shadow-sm border border-gray-100 border-t-0 mt-0">
+      {/* Tabel utama tanpa header box */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4">
         <div className="px-0 pt-0 pb-4">
           {loading ? (
             <div className="text-center py-8">
@@ -456,96 +423,71 @@ const AdminTrainingList = () => {
               <p className="text-gray-600">Tidak ada data training karyawan ditemukan</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-200">
+            <div className="overflow-x-hidden">
+              <table className="w-full table-fixed divide-y divide-gray-200">
+                <colgroup>
+                  {/* Kolom No: fixed kecil agar konsisten di mobile */}
+                  <col style={{ width: '44px' }} />
+                  {/* Kolom Nama dan Status: auto */}
+                  <col />
+                  <col />
+                  {/* Kolom Edit: fixed agar tombol tidak terpotong */}
+                  <col style={{ width: '56px' }} />
+                </colgroup>
+                <thead className="bg-red-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Nama Karyawan
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Dasar
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Leadership
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Skill
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Lanjutan
-                    </th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-black uppercase tracking-wider">
-                      Aksi
-                    </th>
+                    <th className="px-2 md:px-4 py-3 text-left text-sm font-semibold text-white tracking-wider">No</th>
+                    <th className="px-2 md:px-6 py-3 text-left text-sm font-semibold text-white tracking-wider">Nama</th>
+                    <th className="px-2 md:px-6 py-3 text-left text-sm font-semibold text-white tracking-wider">Training Status</th>
+                    <th className="px-2 md:px-6 py-3 text-left text-sm font-semibold text-white tracking-wider">Edit</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {trainings.map((userTraining) => (
+                  {trainings.map((userTraining, idx) => (
                     <tr
                       key={userTraining.id}
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => { setSelectedUser(userTraining); setDetailOpen(true) }}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <Users className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{userTraining.nama}</div>
-                          </div>
+                      <td className="px-2 md:px-4 py-4 text-sm text-gray-900">{idx + 1}</td>
+                      <td className="px-2 md:px-6 py-4">
+                        {/* Mobile: dua baris */}
+                        <div className="block md:hidden text-sm font-medium text-gray-900 leading-tight">
+                          {(() => {
+                            const parts = (userTraining.nama || '').trim().split(/\s+/)
+                            const first = parts[0] || ''
+                            const rest = parts.slice(1).join(' ')
+                            return (
+                              <>
+                                <div>{first}</div>
+                                {rest && <div>{rest}</div>}
+                              </>
+                            )
+                          })()}
+                        </div>
+                        {/* Desktop: satu baris */}
+                        <div className="hidden md:block text-sm font-medium text-gray-900 truncate max-w-xs lg:max-w-sm xl:max-w-md">
+                          {userTraining.nama}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {userTraining.email}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant="outline">{userTraining.role}</Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={userTraining.training_dasar ? "success" : "secondary"}>
-                          {userTraining.training_dasar ? "Selesai" : "Belum"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={userTraining.training_leadership ? "success" : "secondary"}>
-                          {userTraining.training_leadership ? "Selesai" : "Belum"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={userTraining.training_skill ? "success" : "secondary"}>
-                          {userTraining.training_skill ? "Selesai" : "Belum"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={userTraining.training_lanjutan ? "success" : "secondary"}>
-                          {userTraining.training_lanjutan ? "Selesai" : "Belum"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex items-center space-x-2">
-                          <button
-                            type="button"
-                            className="text-blue-600 hover:text-blue-900"
-                            onClick={(e) => { e.stopPropagation(); openEditModal(userTraining) }}
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(userTraining.id) }}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                      <td className="px-2 md:px-6 py-4">
+                        <div className="flex items-center gap-1.5 md:gap-3">
+                          {[userTraining.training_dasar, userTraining.training_leadership, userTraining.training_skill, userTraining.training_lanjutan].map((done, i) => (
+                            <span key={i} className={`inline-flex items-center justify-center h-4 w-4 md:h-5 md:w-5 rounded-full ${done ? 'bg-red-600' : 'bg-gray-300'}`}>
+                              {done && <Check className="h-3 w-3 md:h-3.5 md:w-3.5 text-white" />}
+                            </span>
+                          ))}
                         </div>
+                      </td>
+                      <td className="px-2 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          type="button"
+                          className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                          onClick={(e) => { e.stopPropagation(); openEditModal(userTraining) }}
+                          title="Edit"
+                        >
+                          <Edit className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -611,7 +553,7 @@ const AdminTrainingList = () => {
 
                 {/* Training status */}
                 {!isEditing ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <span className="text-sm text-gray-600">Training Dasar</span>
                       <Badge variant={selectedUser.training_dasar ? 'success' : 'secondary'}>
@@ -638,7 +580,7 @@ const AdminTrainingList = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
                       <span className="text-sm text-gray-700">Training Dasar</span>
                       <input

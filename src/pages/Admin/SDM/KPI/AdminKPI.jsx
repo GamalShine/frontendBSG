@@ -419,7 +419,7 @@ const AdminKPI = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.kpi}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">KPI SDM</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">RAPORT KERJA</h1>
             </div>
           </div>
         </div>
@@ -444,23 +444,24 @@ const AdminKPI = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="bg-white px-6 py-3 border-b border-gray-200">
-        <div className="flex space-x-2">
-            {['divisi', 'leader', 'individu'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-              className={`px-6 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  activeTab === tab
-                  ? 'bg-red-600 text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-              {tab.charAt(0).toUpperCase() + tab.slice(1).toUpperCase()}
-              </button>
-            ))}
-          </div>
+      <div className="bg-white px-4 md:px-6 pt-1 md:py-3 border-b border-gray-200">
+        <div className="flex md:space-x-2 gap-0">
+          {['divisi', 'leader', 'individu'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`
+                flex-1 text-center pb-2 pt-2 text-sm font-semibold rounded-none border-b-2 transition-colors
+                ${activeTab === tab ? 'border-red-700 text-red-700' : 'border-transparent text-gray-700'}
+                md:flex-none md:px-6 md:py-2 md:rounded-lg md:border md:border-gray-300 md:text-gray-700 md:bg-white md:hover:bg-gray-50
+                ${activeTab === tab ? 'md:bg-red-600 md:text-white md:shadow-md md:border-transparent' : ''}
+              `}
+            >
+              {tab.toUpperCase()}
+            </button>
+          ))}
         </div>
+      </div>
 
         {/* Mobile Accordion (only) */}
         <div className="lg:hidden px-0 py-2 space-y-2">

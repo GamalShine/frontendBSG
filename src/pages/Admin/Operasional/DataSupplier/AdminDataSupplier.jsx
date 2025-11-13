@@ -330,7 +330,7 @@ const AdminDataSupplier = () => {
         {/* Filters and Actions */}
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-6">
           <div className="px-6 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Cari Supplier</label>
                 <div className="relative">
@@ -343,44 +343,6 @@ const AdminDataSupplier = () => {
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
                   />
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Kategori Supplier</label>
-                <select
-                  value={kategoriFilter} 
-                  onChange={(e) => setKategoriFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                >
-                  <option value="all">Semua Kategori</option>
-                  <option value="SUPPLIER OUTLET">Supplier Outlet</option>
-                  <option value="SUPPLIER TOKO TEPUNG & BB">Supplier Toko Tepung & BB</option>
-                  <option value="SUPPLIER PRODUKSI">Supplier Produksi</option>
-                  <option value="SUPPLIER KAMBING">Supplier Kambing</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Divisi</label>
-                <select
-                  value={divisiFilter} 
-                  onChange={(e) => setDivisiFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                >
-                  <option value="all">Semua Divisi</option>
-                  <option value="PRODUKSI">Produksi</option>
-                  <option value="MARKETING">Marketing</option>
-                  <option value="OPERASIONAL">Operasional</option>
-                </select>
-              </div>
-
-              <div className="flex items-end">
-                <button 
-                  onClick={() => { setSearchTerm(''); setKategoriFilter('all'); setDivisiFilter('all'); }} 
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors"
-                >
-                  Reset Filter
-                </button>
               </div>
             </div>
           </div>

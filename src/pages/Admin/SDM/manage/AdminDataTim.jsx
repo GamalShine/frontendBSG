@@ -793,18 +793,16 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Divisi (global) */}
       {showAddDivisi && (
-        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-stretch md:justify-center p-0 md:p-4">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddDivisi(false)} />
-          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-md max-h-[78dvh] md:max-h-[90vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
-            <div className="px-4 py-1 md:px-6 md:py-2 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
+          <div className="relative z-10 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-md max-h-[85vh] md:max-h-[90vh] border flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700">
               <div className="flex items-center">
-                <h2 className="text-lg font-bold leading-tight">Tambah Divisi</h2>
+                <h2 className="text-base md:text-lg font-semibold leading-tight">Tambah Divisi</h2>
               </div>
-              <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setShowAddDivisi(false)} aria-label="Tutup">
-                <X className="w-5 h-5" />
-              </button>
+              <button className="p-1 md:p-2 rounded-md md:hover:bg-white/10 text-gray-500 hover:text-gray-700 md:text-white/90" onClick={() => setShowAddDivisi(false)} aria-label="Tutup">✕</button>
             </div>
-            <div className="px-6 py-5">
+            <div className="px-4 md:px-6 py-5">
               <label className="block text-xs font-medium text-gray-700 mb-1">Nama Divisi</label>
               <input
                 value={divisiForm.nama_divisi}
@@ -813,11 +811,11 @@ const AdminDataTim = () => {
                 placeholder="Masukkan nama divisi"
               />
             </div>
-            <div className="p-0 border-t bg-white">
-              <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-2 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors rounded-lg" onClick={() => setShowAddDivisi(false)}>Batal</button>
+            <div className="p-4 border-t bg-white">
+              <div className="flex items-center justify-end gap-2">
+                <button className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => setShowAddDivisi(false)}>Batal</button>
                 <button
-                  className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   disabled={addingDivisi}
                   onClick={async () => {
                     if (!divisiForm.nama_divisi || !String(divisiForm.nama_divisi).trim()) { alert('Nama divisi wajib diisi'); return; }
@@ -852,18 +850,16 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Jabatan (global) */}
       {showAddJabatan && (
-        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-stretch md:justify-center p-0 md:p-4">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddJabatan(false)} />
-          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-md max-h-[78dvh] md:max-h-[90vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
-            <div className="px-4 py-1 md:px-6 md:py-2 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
+          <div className="relative z-10 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-md max-h-[85vh] md:max-h-[90vh] border flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700">
               <div className="flex items-center">
-                <h2 className="text-lg font-bold leading-tight">Tambah Jabatan</h2>
+                <h2 className="text-base md:text-lg font-semibold leading-tight">Tambah Jabatan</h2>
               </div>
-              <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setShowAddJabatan(false)} aria-label="Tutup">
-                <X className="w-5 h-5" />
-              </button>
+              <button className="p-1 md:p-2 rounded-md md:hover:bg-white/10 text-gray-500 hover:text-gray-700 md:text-white/90" onClick={() => setShowAddJabatan(false)} aria-label="Tutup">✕</button>
             </div>
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-4 md:px-6 py-5 space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Divisi</label>
                 <select
@@ -885,11 +881,11 @@ const AdminDataTim = () => {
                 />
               </div>
             </div>
-            <div className="p-0 border-t bg-white">
-              <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-2 bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors rounded-lg" onClick={() => setShowAddJabatan(false)}>Batal</button>
+            <div className="p-4 border-t bg-white">
+              <div className="flex items-center justify-end gap-2">
+                <button className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => setShowAddJabatan(false)}>Batal</button>
                 <button
-                  className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   disabled={addingJabatan}
                   onClick={async ()=>{
                     if (!jabatanForm.divisi_id) { alert('Pilih divisi terlebih dahulu'); return; }
@@ -926,19 +922,17 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Tim (global) */}
       {showAddTim && (
-        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-center pt-32 md:pt-0">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-stretch md:justify-center p-0 md:p-4">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddTim(false)} />
-          <div className="relative z-10 w-full max-w-[92vw] sm:max-w-[90vw] md:max-w-3xl max-h-[78dvh] md:max-h-[92vh] bg-white rounded-2xl shadow-2xl border flex flex-col overflow-hidden">
-            <div className="px-4 py-1 md:px-6 md:py-2 bg-red-800 text-white flex items-center justify-between border-b border-red-700">
+          <div className="relative z-10 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-3xl max-h-[85vh] md:max-h-[92vh] border flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700">
               <div>
-                <h2 className="text-lg font-bold leading-tight">Tambah Tim</h2>
+                <h2 className="text-base md:text-lg font-semibold leading-tight">Tambah Tim</h2>
               </div>
-              <button className="p-2 rounded-md hover:bg-white/10" onClick={() => setShowAddTim(false)} aria-label="Tutup">
-                <X className="w-5 h-5" />
-              </button>
+              <button className="p-1 md:p-2 rounded-md md:hover:bg-white/10 text-gray-500 hover:text-gray-700 md:text-white/90" onClick={() => setShowAddTim(false)} aria-label="Tutup">✕</button>
             </div>
             {/* Scrollable body */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide space-y-5">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-5 scrollbar-hide space-y-5">
               {/* Personal */}
               <div className="rounded-lg border border-gray-200 bg-white p-4">
                 <div className="text-sm font-semibold text-gray-900 mb-3">Informasi Personal</div>
@@ -1105,11 +1099,11 @@ const AdminDataTim = () => {
 
               
             </div>
-            <div className="p-0 border-t bg-white">
-              <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                <button className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg" onClick={() => setShowAddTim(false)}>Batal</button>
+            <div className="p-4 border-t bg-white">
+              <div className="flex items-center justify-end gap-2">
+                <button className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50" onClick={() => setShowAddTim(false)}>Batal</button>
                 <button
-                  className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   disabled={addingTim}
                   onClick={async ()=>{
                     if (!addTimForm.nama || !String(addTimForm.nama).trim()) { alert('Nama wajib diisi'); return; }

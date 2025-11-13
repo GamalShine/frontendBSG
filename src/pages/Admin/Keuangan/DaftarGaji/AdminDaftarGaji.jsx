@@ -597,7 +597,14 @@ const AdminDaftarGaji = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Tombol Tambah sementara disembunyikan */}
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 hover:text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+            >
+              <Plus className="h-4 w-4 text-red-700" />
+              <span className="hidden sm:inline font-semibold text-red-700 text-base">Tambah</span>
+            </button>
           </div>
         </div>
       </div>
@@ -608,9 +615,9 @@ const AdminDaftarGaji = () => {
       <div className="mt-4">
         {/* Form Pencarian */}
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-2">
-          <div className="px-6 py-2 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="px-6 py-2 md:py-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Daftar Gaji</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1 md:mb-2">Cari Daftar Gaji</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -618,7 +625,7 @@ const AdminDaftarGaji = () => {
                   placeholder="Cari daftar gaji... (nama karyawan / divisi / cabang)"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-3 py-1.5 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="pl-10 pr-3 py-1.5 md:py-3 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -761,7 +768,7 @@ const AdminDaftarGaji = () => {
       {/* Modal Tambah Daftar Gaji */}
       {showForm && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-2 md:p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-end md:items-center justify-stretch md:justify-center z-50 p-0 md:p-4"
         >
           {/* Backdrop click to close */}
           <button
@@ -772,19 +779,19 @@ const AdminDaftarGaji = () => {
             tabIndex={-1}
           />
 
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[92vw] sm:max-w-lg md:max-w-2xl lg:max-w-2xl max-h-[78dvh] md:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative mt-24 md:mt-0">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-2 lg:py-2 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-2xl lg:max-w-2xl max-h-[85vh] md:max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative md:mt-0">
+            {/* Header - mobile mengikuti Aneka Grafik (light), desktop tetap merah */}
+            <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700 sticky top-0 z-10">
               <div>
-                <h3 className="text-xl font-bold leading-tight">Tambah Daftar Gaji</h3>
+                <h3 className="text-base md:text-lg font-semibold leading-tight">Tambah Daftar Gaji</h3>
               </div>
-              <button onClick={() => setShowForm(false)} className="p-1 lg:p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+              <button onClick={() => setShowForm(false)} className="p-1 md:p-2 text-gray-500 hover:text-gray-700 md:text-white/90 md:hover:text-white md:hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
                 ✕
               </button>
             </div>
 
             {/* Body */}
-            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 lg:py-5 scrollbar-hide">
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-6 py-4 lg:py-5 scrollbar-hide">
               <form id="gajiForm" onSubmit={handleSubmit} className="space-y-4">
                 {/* Info Karyawan */}
                 <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -872,13 +879,13 @@ const AdminDaftarGaji = () => {
               </form>
             </div>
 
-            {/* Footer */}
-            <div className="p-0 border-t bg-white">
-              <div className="grid grid-cols-2 gap-2 pl-2 pr-4 py-2">
+            {/* Footer - mobile mengikuti Aneka Grafik */}
+            <div className="p-4 border-t bg-white">
+              <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="w-full py-1 md:py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   Batal
                 </button>
@@ -886,7 +893,7 @@ const AdminDaftarGaji = () => {
                   type="submit"
                   form="gajiForm"
                   disabled={submitting}
-                  className="w-full py-1 md:py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
+                  className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {submitting ? 'Menyimpan...' : 'Simpan'}
                 </button>
@@ -896,8 +903,8 @@ const AdminDaftarGaji = () => {
         </div>
       )}
 
-      {/* FAB Tambah (mobile only) sementara disembunyikan */}
-      {false && !showForm && (
+      {/* FAB Tambah (mobile only) */}
+      {!showForm && (
         <button
           type="button"
           onClick={() => setShowForm(true)}

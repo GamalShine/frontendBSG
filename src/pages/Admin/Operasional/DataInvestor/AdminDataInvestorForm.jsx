@@ -423,24 +423,47 @@ if (!isOpen) return null;
   const buttonText = 'SIMPAN';
 
 return (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 md:p-6">
-    <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[90vh] overflow-y-auto no-scrollbar">
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center md:items-center justify-center z-50 p-0 md:p-4">
+    {/* Backdrop click to close */}
+    <button
+      type="button"
+      aria-hidden="true"
+      onClick={onClose}
+      className="absolute inset-0"
+      tabIndex={-1}
+    />
+
+    {/* Modal Panel */}
+    <div className="bg-white w-full h-full md:h-auto md:max-h-[92vh] md:rounded-2xl shadow-2xl md:max-w-3xl overflow-hidden border border-gray-200 flex flex-col relative">
       {/* Header */}
-      <div className="bg-red-800 text-white p-3 md:p-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center gap-2">
-            {!editData && <User className="w-5 h-5 text-white" />}
-            <h2 className="text-xl font-semibold">{title}</h2>
-          </div>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-red-700 bg-red-800 text-white md:px-6 md:py-4 sticky top-0 z-10">
+        <div className="flex items-center gap-2">
+          {/* Mobile back button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="md:hidden p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            aria-label="Kembali"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-lg md:text-xl font-bold leading-tight">{title}</h1>
         </div>
-        <button onClick={onClose} className="p-2 hover:bg-red-700 rounded-lg transition-colors">
-          <X className="w-6 h-6" />
+        {/* Desktop close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="hidden md:inline-flex p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          aria-label="Tutup"
+        >
+          <X className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="p-6 md:p-6 pb-1">
-        <div className="space-y-3 md:space-y-4">
+      {/* Scrollable body */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 scrollbar-hide">
+        {/* Form */}
+        <form id="investorForm" onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
           {/* NAMA OUTLET */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">NAMA OUTLET <span className="text-red-500">*</span></label>
@@ -709,29 +732,30 @@ return (
             </div>
             <p className="text-xs text-gray-500 mt-1">Total harus 100%. Mengisi salah satu akan otomatis menyesuaikan yang lain.</p>
           </div>
-        </div>
+        </form>
+      </div>
 
-        {/* Footer (non-sticky, same as aset) */}
-        <div className="mt-2 p-0 bg-white">
-          <div className="grid grid-cols-2 gap-2 px-2 py-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
-            >
-              {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
-              <span>{loading ? 'Menyimpan...' : 'Simpan'}</span>
-            </button>
-          </div>
+      {/* Footer (non-scrollable) */}
+      <div className="p-0 border-t bg-white">
+        <div className="grid grid-cols-2 gap-2 px-2 py-2 md:flex md:justify-end md:space-x-4 md:px-6 md:py-6 items-center">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg md:w-auto md:px-6 md:bg-white md:text-gray-600 md:hover:bg-gray-50 md:border md:border-gray-300"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            form="investorForm"
+            disabled={loading}
+            className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2 md:w-auto md:px-6 md:bg-blue-600 md:hover:bg-blue-700"
+          >
+            {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
+            <span>{loading ? 'Menyimpan...' : 'Simpan'}</span>
+          </button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 );
