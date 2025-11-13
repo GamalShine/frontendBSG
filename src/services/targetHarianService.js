@@ -18,8 +18,16 @@ export const targetHarianService = {
   },
   // Detail by ID
   getById: async (id) => {
-    const res = await api.get(`/data-target-harian/${id}`);
-    return res.data; // { success, data }
+    try {
+      const res = await api.get(`/data-target-harian/${id}`);
+      return res.data; // { success, data }
+    } catch (e) {
+      // Jika 404, backend mengembalikan { error: 'Data tidak ditemukan' }
+      if (e?.response) {
+        return e.response.data;
+      }
+      throw e;
+    }
   },
   // Create
   create: async (payload) => {
