@@ -261,7 +261,7 @@ const AdminDataSupplier = () => {
               to="/admin/operasional/data-supplier/form"
               state={{ backgroundLocation: location }}
             >
-              <button className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
+              <button className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
                 <Plus className="h-4 w-4" />
                 <span className="font-semibold">Tambah</span>
               </button>
@@ -276,52 +276,52 @@ const AdminDataSupplier = () => {
       </div>
 
       <div className="px-0 py-4">
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        {/* Statistics Cards (hidden on mobile, visible on md+) */}
+        <div className="hidden md:grid md:grid-cols-4 gap-3 mb-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Building className="h-5 w-5 text-blue-600" />
+              <div className="p-1.5 md:p-2 bg-blue-100 rounded-lg">
+                <Building className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Total Supplier</p>
-                <p className="text-lg font-bold text-gray-900">{stats.total_suppliers || 0}</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{stats.total_suppliers || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <span className="text-green-600 font-bold text-sm">O</span>
+              <div className="p-1.5 md:p-2 bg-green-100 rounded-lg">
+                <span className="text-green-600 font-bold text-xs md:text-sm">O</span>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Supplier Outlet</p>
-                <p className="text-lg font-bold text-gray-900">{stats.outlet_count || 0}</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{stats.outlet_count || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <span className="text-purple-600 font-bold text-sm">P</span>
+              <div className="p-1.5 md:p-2 bg-purple-100 rounded-lg">
+                <span className="text-purple-600 font-bold text-xs md:text-sm">P</span>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Supplier Produksi</p>
-                <p className="text-lg font-bold text-gray-900">{stats.produksi_count || 0}</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{stats.produksi_count || 0}</p>
               </div>
             </div>
           </div>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <span className="text-orange-600 font-bold text-sm">M</span>
+              <div className="p-1.5 md:p-2 bg-orange-100 rounded-lg">
+                <span className="text-orange-600 font-bold text-xs md:text-sm">M</span>
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Supplier Marketing</p>
-                <p className="text-lg font-bold text-gray-900">{stats.marketing_divisi_count || 0}</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{stats.marketing_divisi_count || 0}</p>
               </div>
             </div>
           </div>
@@ -495,6 +495,19 @@ const AdminDataSupplier = () => {
 
         
       </div>
+      {/* FAB Tambah (mobile only) */}
+      <Link
+        to="/admin/operasional/data-supplier/form"
+        state={{ backgroundLocation: location }}
+      >
+        <button
+          type="button"
+          className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+          aria-label="Tambah Supplier"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      </Link>
       {/* Edit Modal */}
       <AdminDataSupplierForm
         isOpen={showForm}

@@ -354,55 +354,35 @@ const AdminTrainingList = () => {
 
       {/* Stats Cards (match Poskas style) */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 my-4">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-green-50 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Training Dasar</p>
-              <p className="text-xl font-bold text-gray-900">{stats.trainingDasarCompleted || 0}</p>
-              <p className="text-[11px] text-gray-500">{stats.trainingDasarPercentage || 0}% selesai</p>
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-gray-500">Training Dasar</p>
+            <p className="text-sm md:text-base font-bold text-gray-900">{stats.trainingDasarPercentage || 0}% selesai</p>
+            <p className="text-[11px] text-gray-500">{stats.trainingDasarCompleted || 0} orang</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-yellow-50 flex items-center justify-center">
-              <BookOpen className="h-5 w-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Training Leadership</p>
-              <p className="text-xl font-bold text-gray-900">{stats.trainingLeadershipCompleted || 0}</p>
-              <p className="text-[11px] text-gray-500">{stats.trainingLeadershipPercentage || 0}% selesai</p>
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-gray-500">Training Leadership</p>
+            <p className="text-sm md:text-base font-bold text-gray-900">{stats.trainingLeadershipPercentage || 0}% selesai</p>
+            <p className="text-[11px] text-gray-500">{stats.trainingLeadershipCompleted || 0} orang</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-purple-50 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Training Skill</p>
-              <p className="text-xl font-bold text-gray-900">{stats.trainingSkillCompleted || 0}</p>
-              <p className="text-[11px] text-gray-500">{stats.trainingSkillPercentage || 0}% selesai</p>
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-gray-500">Training Skill</p>
+            <p className="text-sm md:text-base font-bold text-gray-900">{stats.trainingSkillPercentage || 0}% selesai</p>
+            <p className="text-[11px] text-gray-500">{stats.trainingSkillCompleted || 0} orang</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Users className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">Training Lanjutan</p>
-              <p className="text-xl font-bold text-gray-900">{stats.trainingLanjutanCompleted || 0}</p>
-              <p className="text-[11px] text-gray-500">{stats.trainingLanjutanPercentage || 0}% selesai</p>
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-gray-500">Training Lanjutan</p>
+            <p className="text-sm md:text-base font-bold text-gray-900">{stats.trainingLanjutanPercentage || 0}% selesai</p>
+            <p className="text-[11px] text-gray-500">{stats.trainingLanjutanCompleted || 0} orang</p>
           </div>
         </div>
       </div>
@@ -436,10 +416,10 @@ const AdminTrainingList = () => {
                 </colgroup>
                 <thead className="bg-red-700">
                   <tr>
-                    <th className="px-2 md:px-4 py-3 text-left text-sm font-semibold text-white tracking-wider">No</th>
-                    <th className="px-2 md:px-6 py-3 text-left text-sm font-semibold text-white tracking-wider">Nama</th>
-                    <th className="px-2 md:px-6 py-3 text-left text-sm font-semibold text-white tracking-wider">Training Status</th>
-                    <th className="px-2 md:px-6 py-3 text-left text-sm font-semibold text-white tracking-wider">Edit</th>
+                    <th className="px-3 md:px-4 py-3 text-left text-sm font-semibold text-white tracking-wider">No</th>
+                    <th className="px-3 md:px-4 py-3 text-left text-sm font-semibold text-white tracking-wider">Nama</th>
+                    <th className="px-3 md:px-4 py-3 text-left text-sm font-semibold text-white tracking-wider">Training Status</th>
+                    <th className="px-3 md:px-4 py-3 text-left text-sm font-semibold text-white tracking-wider">Edit</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -449,8 +429,8 @@ const AdminTrainingList = () => {
                       className="hover:bg-gray-50 cursor-pointer"
                       onClick={() => { setSelectedUser(userTraining); setDetailOpen(true) }}
                     >
-                      <td className="px-2 md:px-4 py-4 text-sm text-gray-900">{idx + 1}</td>
-                      <td className="px-2 md:px-6 py-4">
+                      <td className="px-3 md:px-4 py-3 md:py-4 text-sm text-gray-900">{idx + 1}</td>
+                      <td className="px-3 md:px-4 py-3 md:py-4">
                         {/* Mobile: dua baris */}
                         <div className="block md:hidden text-sm font-medium text-gray-900 leading-tight">
                           {(() => {
@@ -470,7 +450,7 @@ const AdminTrainingList = () => {
                           {userTraining.nama}
                         </div>
                       </td>
-                      <td className="px-2 md:px-6 py-4">
+                      <td className="px-3 md:px-4 py-3 md:py-4">
                         <div className="flex items-center gap-1.5 md:gap-3">
                           {[userTraining.training_dasar, userTraining.training_leadership, userTraining.training_skill, userTraining.training_lanjutan].map((done, i) => (
                             <span key={i} className={`inline-flex items-center justify-center h-4 w-4 md:h-5 md:w-5 rounded-full ${done ? 'bg-red-600' : 'bg-gray-300'}`}>
@@ -479,7 +459,7 @@ const AdminTrainingList = () => {
                           ))}
                         </div>
                       </td>
-                      <td className="px-2 md:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-3 md:px-4 py-3 md:py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           type="button"
                           className="inline-flex items-center justify-center h-7 w-7 md:h-8 md:w-8 bg-red-600 text-white rounded-lg hover:bg-red-700"

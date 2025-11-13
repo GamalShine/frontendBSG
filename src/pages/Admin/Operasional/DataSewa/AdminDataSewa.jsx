@@ -464,11 +464,11 @@ const AdminDataSewa = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-red-800 text-white px-4 sm:px-6 py-4">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="bg-red-800 text-white px-4 sm:px-6 h-16 flex items-center">
+        <div className="w-full flex items-center justify-between gap-3">
           <div className="flex items-center gap-4 min-w-0">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.dataSewa}</span>
-            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA SEWA MENYEWA</h1>
+            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA SEWA</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -852,19 +852,15 @@ const AdminDataSewa = () => {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
-              <div className="flex items-center">
-                <div>
-                  <h2 className="text-xl font-bold leading-tight">Tambah Data Sewa</h2>
-                </div>
-              </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-end md:items-center justify-center p-0 md:p-4 z-50">
+          <div className="w-full md:max-w-2xl bg-white rounded-t-2xl md:rounded-2xl shadow-2xl overflow-hidden border border-gray-200 flex flex-col max-h-[85vh]">
+            {/* Header (match Aneka Grafik modal style) */}
+            <div className="px-4 md:px-6 py-3 md:py-4 border-b flex items-center justify-between sticky top-0 z-10 bg-white">
+              <h3 className="font-semibold">Tambah Data Sewa</h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                className="text-gray-500 hover:text-gray-700 p-2 rounded-lg"
                 aria-label="Tutup"
               >
                 ✕
@@ -875,11 +871,7 @@ const AdminDataSewa = () => {
             <form onSubmit={submitCreate} className="flex flex-col flex-1 min-h-0">
               {/* Scrollable body */}
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
-                <div className="rounded-xl border bg-white">
-                  <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
-                    <div className="text-sm font-semibold text-gray-700">Informasi Sewa</div>
-                  </div>
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Keterangan <span className="text-red-500">*</span></label>
                       <select className="border rounded-lg px-3 py-2 w-full" value={formData.keterangan} onChange={e=>setFormData(p=>({...p,keterangan:e.target.value}))}>
@@ -1025,25 +1017,23 @@ const AdminDataSewa = () => {
                           })}
                         </div>
                       )}
-                      <p className="text-[11px] text-gray-500 mt-1">Format didukung: Gambar (JPG, PNG, GIF), PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT, video.</p>
                     </div>
-                  </div>
                 </div>
               </div>
               {/* Footer */}
-              <div className="p-0 border-t bg-white">
-                <div className="grid grid-cols-2 gap-2 px-2 py-2">
+              <div className="p-4 border-t bg-white">
+                <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={() => setShowAddModal(false)}
-                    className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                    className="px-4 py-2 rounded-lg border border-gray-300"
                   >
-                    Tutup
+                    Batal
                   </button>
                   <button
                     type="submit"
                     disabled={uploading}
-                    className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 transition-colors rounded-lg"
+                    className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50"
                   >
                     {uploading ? 'Menyimpan...' : 'Simpan'}
                   </button>

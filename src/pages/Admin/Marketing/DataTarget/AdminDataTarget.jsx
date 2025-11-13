@@ -531,6 +531,17 @@ const AdminDataTarget = () => {
           </div>
         )}
       </div>
+      {/* FAB Tambah (mobile only) saat berada di konten bulan */}
+      {view === 'monthContent' && (
+        <button
+          type="button"
+          onClick={() => navigate('/admin/marketing/data-target/new')}
+          className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+          aria-label="Tambah Data Target"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 };

@@ -338,7 +338,7 @@ const AdminDataInvestor = () => {
           <div className="flex items-center gap-2">
             <button 
               onClick={() => { setEditData(null); setInitialOpenAttachmentModal(false); setShowForm(true); }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span className="font-semibold">Tambah</span>
@@ -549,6 +549,16 @@ const AdminDataInvestor = () => {
         editData={editData}
         initialOpenAttachmentModal={initialOpenAttachmentModal}
       />
+
+      {/* FAB Tambah (mobile only) */}
+      <button
+        type="button"
+        onClick={() => { setEditData(null); setInitialOpenAttachmentModal(false); setShowForm(true); }}
+        className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+        aria-label="Tambah Investor"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Modal Detail - gaya Jadwal Pembayaran */}
       {showDetail && detailData && (

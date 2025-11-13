@@ -525,7 +525,7 @@ const AdminDataTim = () => {
       {/* Form Pencarian - full-bleed, 1 baris */}
       <div className="px-0 pt-4 mb-2">
         <div className="bg-white rounded-md shadow-sm border border-gray-100">
-          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cari</label>
               <div className="relative">
@@ -537,32 +537,6 @@ const AdminDataTim = () => {
                   className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Divisi</label>
-              <select
-                value={selectedDivisi}
-                onChange={(e) => { setSelectedDivisi(e.target.value); setSelectedJabatan(''); }}
-                className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Semua Divisi</option>
-                {divisiOptions.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Jabatan</label>
-              <select
-                value={selectedJabatan}
-                onChange={(e) => setSelectedJabatan(e.target.value)}
-                className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              >
-                <option value="">Semua Jabatan</option>
-                {jabatanOptions.map(j => (
-                  <option key={j.id} value={j.id}>{j.name}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
@@ -953,7 +927,14 @@ const AdminDataTim = () => {
                       disabled={loadingUsers}
                     >
                       <option value="">— Pilih User —</option>
-                      {users.filter(u => !assignedUserIds.has(Number(u.id))).map(u => {
+                      {users
+                        .filter(u => {
+                          const role = String(u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
+                            .toLowerCase()
+                            .trim();
+                          return !assignedUserIds.has(Number(u.id)) && role !== 'owner';
+                        })
+                        .map(u => {
                         const label = `${u.nama || u.name || u.username || `User #${u.id}`} ${u.email ? `- ${u.email}` : ''}`.trim();
                         return (
                           <option key={u.id} value={u.id}>{label}</option>
