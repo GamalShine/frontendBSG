@@ -453,8 +453,9 @@ const AdminKPI = () => {
               className={`
                 flex-1 text-center pb-2 pt-2 text-sm font-semibold rounded-none border-b-2 transition-colors
                 ${activeTab === tab ? 'border-red-700 text-red-700' : 'border-transparent text-gray-700'}
-                md:flex-none md:px-6 md:py-2 md:rounded-lg md:border md:border-gray-300 md:text-gray-700 md:bg-white md:hover:bg-gray-50
-                ${activeTab === tab ? 'md:bg-red-600 md:text-white md:shadow-md md:border-transparent' : ''}
+                md:flex-none md:px-6 md:py-2 md:rounded-lg md:border
+                ${activeTab !== tab ? 'md:border-gray-300 md:text-gray-700 md:bg-white md:hover:bg-gray-50' : ''}
+                ${activeTab === tab ? 'md:bg-red-600 md:text-white md:shadow-md md:border-red-600' : ''}
               `}
             >
               {tab.toUpperCase()}

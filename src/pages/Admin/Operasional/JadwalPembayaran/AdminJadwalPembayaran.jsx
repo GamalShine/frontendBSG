@@ -58,6 +58,7 @@ const AdminJadwalPembayaran = () => {
   const [formData, setFormData] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState({})
   const [expandedKategori, setExpandedKategori] = useState({})
   const [expandedYear, setExpandedYear] = useState({})
   const [expandedMonth, setExpandedMonth] = useState({})
@@ -162,6 +163,46 @@ const AdminJadwalPembayaran = () => {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    setFormErrors({})
+    // Validasi minimal dari backend: nama_item & kategori wajib
+    const errs = {}
+    const k = String(formData.kategori || '')
+    const isSewa = k.startsWith('sewa_')
+    const isAngsuran = k.startsWith('angsuran_')
+    const isPajak = k.startsWith('pajak_')
+    const isAsuransi = k.startsWith('asuransi_')
+    const isService = k.startsWith('service_')
+    const isPbbOutlet = k === 'pbb_outlet'
+    const isPbbPribadi = k === 'pbb_pribadi'
+
+    if (!formData.nama_item) errs.nama_item = 'Nama item wajib'
+    if (!formData.kategori) errs.kategori = 'Kategori wajib'
+
+    // Aturan per kategori (kebutuhan realistis di UI)
+    if (isSewa) {
+      if (k === 'sewa_outlet' && !formData.outlet) errs.outlet = 'Outlet wajib untuk SEWA OUTLET'
+      if (!formData.sewa) errs.sewa = 'Nominal sewa wajib'
+      if (!formData.bulan) errs.bulan = 'Bulan wajib'
+      if (!formData.tahun) errs.tahun = 'Tahun wajib'
+    } else if (isAngsuran) {
+      if (!formData.sewa) errs.sewa = 'Nominal angsuran wajib'
+      if (!formData.bulan) errs.bulan = 'Bulan wajib'
+      if (!formData.tahun) errs.tahun = 'Tahun wajib'
+    } else if (isPajak || isAsuransi || isService) {
+      if (!formData.tanggal_jatuh_tempo) errs.tanggal_jatuh_tempo = 'Tanggal jatuh tempo wajib'
+      if (!formData.tahun) errs.tahun = 'Tahun wajib'
+      // Bulan opsional untuk ketiganya
+    } else if (isPbbOutlet || isPbbPribadi) {
+      if (isPbbOutlet && !formData.outlet) errs.outlet = 'Outlet wajib untuk PBB OUTLET'
+      if (!formData.bulan) errs.bulan = 'Bulan wajib'
+      if (!formData.tahun) errs.tahun = 'Tahun wajib'
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs)
+      setSubmitting(false)
+      return
+    }
     try {
       if (editingId) {
         await jadwalPembayaranService.update(editingId, formData)
@@ -199,7 +240,7 @@ const AdminJadwalPembayaran = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
+            <button onClick={openCreate} className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
             </button>
@@ -337,6 +378,16 @@ const AdminJadwalPembayaran = () => {
         )}
       </div>
 
+      {/* FAB Tambah (mobile only) */}
+      <button
+        type="button"
+        onClick={openCreate}
+        className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+        aria-label="Tambah Jadwal Pembayaran"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
       {/* Modal Detail */}
       {showDetail && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
@@ -448,55 +499,88 @@ const AdminJadwalPembayaran = () => {
             {/* Body */}
             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
               <form id="jadwalForm" onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm mb-1">Nama Item</label>
-                <input value={formData.nama_item} onChange={(e)=>setFormData(v=>({...v,nama_item:e.target.value}))} className="w-full border rounded px-3 py-2" required />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Kategori</label>
-                <select value={formData.kategori} onChange={(e)=>setFormData(v=>({...v,kategori:e.target.value}))} className="w-full border rounded px-3 py-2" required>
-                  <option value="">- Pilih -</option>
-                  {KATEGORI_OPTIONS.map(opt=> (
-                    <option key={opt} value={opt}>{opt.replaceAll('_',' ')}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Tanggal Jatuh Tempo</label>
-                <input type="date" value={formData.tanggal_jatuh_tempo || ''} onChange={(e)=>setFormData(v=>({...v,tanggal_jatuh_tempo:e.target.value}))} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Outlet</label>
-                <input value={formData.outlet} onChange={(e)=>setFormData(v=>({...v,outlet:e.target.value}))} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Sewa</label>
-                <input type="number" step="1000" placeholder="0" value={formData.sewa} onChange={(e)=>setFormData(v=>({...v,sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
-                <div className="text-xs text-gray-500 mt-1">Gunakan angka saja. Contoh: 1500000</div>
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Pemilik Sewa</label>
-                <input value={formData.pemilik_sewa} onChange={(e)=>setFormData(v=>({...v,pemilik_sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">No. Kontak Pemilik</label>
-                <input value={formData.no_kontak_pemilik_sewa} onChange={(e)=>setFormData(v=>({...v,no_kontak_pemilik_sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">No. Rekening</label>
-                <input value={formData.no_rekening} onChange={(e)=>setFormData(v=>({...v,no_rekening:e.target.value}))} className="w-full border rounded px-3 py-2" />
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Bulan</label>
-                <select value={formData.bulan || ''} onChange={(e)=>setFormData(v=>({...v,bulan:e.target.value}))} className="w-full border rounded px-3 py-2">
-                  <option value="">- Pilih -</option>
-                  {BULAN_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm mb-1">Tahun</label>
-                <input type="number" value={formData.tahun} onChange={(e)=>setFormData(v=>({...v,tahun:e.target.value}))} className="w-full border rounded px-3 py-2" />
-              </div>
+                {/* Nama Item */}
+                <div>
+                  <label className="block text-sm mb-1">Nama Item</label>
+                  <input value={formData.nama_item} onChange={(e)=>setFormData(v=>({...v,nama_item:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.nama_item?'border-red-500':''}`} required />
+                  {formErrors.nama_item && <div className="text-xs text-red-600 mt-1">{formErrors.nama_item}</div>}
+                </div>
+                {/* Kategori */}
+                <div>
+                  <label className="block text-sm mb-1">Kategori</label>
+                  <select value={formData.kategori} onChange={(e)=>setFormData(v=>({...v,kategori:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.kategori?'border-red-500':''}`} required>
+                    <option value="">- Pilih -</option>
+                    {KATEGORI_OPTIONS.map(opt=> (
+                      <option key={opt} value={opt}>{opt.replaceAll('_',' ')}</option>
+                    ))}
+                  </select>
+                  {formErrors.kategori && <div className="text-xs text-red-600 mt-1">{formErrors.kategori}</div>}
+                </div>
+
+                {/* Tanggal Jatuh Tempo: tampil untuk pajak/asuransi/service */}
+                {(['pajak_','asuransi_','service_'].some(p=>String(formData.kategori||'').startsWith(p))) && (
+                  <div>
+                    <label className="block text-sm mb-1">Tanggal Jatuh Tempo</label>
+                    <input type="date" value={formData.tanggal_jatuh_tempo || ''} onChange={(e)=>setFormData(v=>({...v,tanggal_jatuh_tempo:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.tanggal_jatuh_tempo?'border-red-500':''}`} />
+                    {formErrors.tanggal_jatuh_tempo && <div className="text-xs text-red-600 mt-1">{formErrors.tanggal_jatuh_tempo}</div>}
+                  </div>
+                )}
+
+                {/* Outlet: tampil untuk sewa_outlet dan pbb_outlet */}
+                {(String(formData.kategori||'') === 'sewa_outlet' || String(formData.kategori||'') === 'pbb_outlet') && (
+                  <div>
+                    <label className="block text-sm mb-1">Outlet</label>
+                    <input value={formData.outlet} onChange={(e)=>setFormData(v=>({...v,outlet:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.outlet?'border-red-500':''}`} />
+                    {formErrors.outlet && <div className="text-xs text-red-600 mt-1">{formErrors.outlet}</div>}
+                  </div>
+                )}
+
+                {/* Nominal (Sewa/Angsuran) */}
+                {(['sewa_','angsuran_'].some(p=>String(formData.kategori||'').startsWith(p))) && (
+                  <div>
+                    <label className="block text-sm mb-1">Nominal</label>
+                    <input type="number" step="1000" placeholder="0" value={formData.sewa} onChange={(e)=>setFormData(v=>({...v,sewa:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.sewa?'border-red-500':''}`} />
+                    <div className="text-xs text-gray-500 mt-1">Gunakan angka saja. Contoh: 1500000</div>
+                    {formErrors.sewa && <div className="text-xs text-red-600 mt-1">{formErrors.sewa}</div>}
+                  </div>
+                )}
+
+                {/* Info pemilik: tampil untuk kategori sewa */}
+                {(String(formData.kategori||'').startsWith('sewa_')) && (
+                  <>
+                    <div>
+                      <label className="block text-sm mb-1">Pemilik Sewa</label>
+                      <input value={formData.pemilik_sewa} onChange={(e)=>setFormData(v=>({...v,pemilik_sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">No. Kontak Pemilik</label>
+                      <input value={formData.no_kontak_pemilik_sewa} onChange={(e)=>setFormData(v=>({...v,no_kontak_pemilik_sewa:e.target.value}))} className="w-full border rounded px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">No. Rekening</label>
+                      <input value={formData.no_rekening} onChange={(e)=>setFormData(v=>({...v,no_rekening:e.target.value}))} className="w-full border rounded px-3 py-2" />
+                    </div>
+                  </>
+                )}
+
+                {/* Bulan: untuk sewa, angsuran, pbb */}
+                {(['sewa_','angsuran_'].some(p=>String(formData.kategori||'').startsWith(p)) || ['pbb_outlet','pbb_pribadi'].includes(String(formData.kategori||''))) && (
+                  <div>
+                    <label className="block text-sm mb-1">Bulan</label>
+                    <select value={formData.bulan || ''} onChange={(e)=>setFormData(v=>({...v,bulan:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.bulan?'border-red-500':''}`}>
+                      <option value="">- Pilih -</option>
+                      {BULAN_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                    {formErrors.bulan && <div className="text-xs text-red-600 mt-1">{formErrors.bulan}</div>}
+                  </div>
+                )}
+
+                {/* Tahun: selalu tampil */}
+                <div>
+                  <label className="block text-sm mb-1">Tahun</label>
+                  <input type="number" value={formData.tahun} onChange={(e)=>setFormData(v=>({...v,tahun:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.tahun?'border-red-500':''}`} />
+                  {formErrors.tahun && <div className="text-xs text-red-600 mt-1">{formErrors.tahun}</div>}
+                </div>
 
               </form>
             </div>

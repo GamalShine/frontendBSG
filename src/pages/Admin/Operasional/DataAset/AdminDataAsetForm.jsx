@@ -199,7 +199,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
       case 'PROPERTI':
         return (
           <>
-            <div className="col-span-2">
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nama Aset <span className="text-red-500">*</span>
               </label>
@@ -218,7 +218,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               )}
             </div>
             
-            <div className="col-span-2">
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 No Sertifikat
               </label>
@@ -232,7 +232,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div className="col-span-2">
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Data PBB
               </label>
@@ -253,7 +253,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
       case 'KENDARAAN_DISTRIBUSI':
         return (
           <>
-            <div className="col-span-2">
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Merk Kendaraan <span className="text-red-500">*</span>
               </label>
@@ -272,7 +272,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               )}
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Plat Nomor
               </label>
@@ -286,7 +286,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Pajak Berlaku
               </label>
@@ -300,7 +300,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 STNK Berlaku
               </label>
@@ -314,7 +314,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Asuransi Pakai
               </label>
@@ -329,7 +329,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               </select>
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Jenis Asuransi
               </label>
@@ -350,7 +350,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
       case 'ELEKTRONIK':
         return (
           <>
-            <div className="col-span-2">
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nama Barang <span className="text-red-500">*</span>
               </label>
@@ -369,7 +369,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               )}
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Merk
               </label>
@@ -383,7 +383,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Model
               </label>
@@ -397,7 +397,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Serial Number
               </label>
@@ -411,7 +411,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               />
             </div>
             
-            <div>
+            <div className="col-span-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Tahun Pembelian
               </label>
@@ -435,16 +435,12 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
-        {/* Header (tetap terlihat saat scroll) */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
-          <div className="flex items-center">
-            <div>
-              <h2 className="text-xl font-bold leading-tight">{editData ? 'Edit Data Aset' : 'Tambah Data Aset Baru'}</h2>
-            </div>
-          </div>
-          <button onClick={handleClose} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-end md:items-center justify-center z-50 p-0 md:p-4">
+      <div className="w-full md:max-w-2xl bg-white rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
+        {/* Header (netral, seperti modal Aneka Grafik) */}
+        <div className="px-4 md:px-6 py-3 md:py-4 border-b flex items-center justify-between sticky top-0 z-10 bg-white">
+          <h2 className="font-semibold">{editData ? 'Edit Data Aset' : 'Tambah Data Aset Baru'}</h2>
+          <button onClick={handleClose} className="text-gray-500 hover:text-gray-700 p-2 rounded-lg" aria-label="Tutup">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -485,7 +481,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
                   <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
                     <div className="text-sm font-semibold text-gray-700">Detail {formData.kategori.replace('_', ' ').replace('_', ' ')}</div>
                   </div>
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 grid grid-cols-1 gap-4">
                     {renderKategoriFields()}
                   </div>
                 </div>
@@ -511,8 +507,8 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
                       </select>
                     </div>
                   </div>
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">
+                  <div className="p-4 grid grid-cols-1 gap-4">
+                    <div className="col-span-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi <span className="text-red-500">*</span></label>
                       <input
                         type="text"
@@ -562,7 +558,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
                       />
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div className="col-span-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Upload Lampiran (foto/dokumen) - bisa lebih dari 1
                       </label>
@@ -629,9 +625,7 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
                           })}
                         </div>
                       )}
-                      <p className="text-[11px] text-gray-500 mt-1">
-                        Format didukung: Gambar (JPG, PNG, GIF), PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT.
-                      </p>
+
                       {/* Existing attachments (edit mode) */}
                       {editData && Array.isArray(formData.lampiran) && (
                         <div className="mt-3">
@@ -690,26 +684,26 @@ const AdminDataAsetForm = ({ isOpen, onClose, onSuccess, editData = null }) => {
               </div>
             </div>
 
-            {/* Footer (non-scrollable) */}
-          <div className="p-0 border-t bg-white">
-            <div className="grid grid-cols-2 gap-2 px-2 pt-3 pb-0">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg flex items-center justify-center"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2"
-              >
-                {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
-                <span>{loading ? 'Menyimpan...' : (editData ? 'Update' : 'Simpan')}</span>
-              </button>
-            </div>
+            {/* Footer (aksi rata kanan seperti Aneka Grafik) */}
+        <div className="p-4 border-t bg-white">
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={handleClose}
+              className="px-4 py-2 rounded-lg border border-gray-300"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
+              <span>{loading ? 'Menyimpan...' : (editData ? 'Update' : 'Simpan')}</span>
+            </button>
           </div>
+        </div>
           </div>
         </form>
       </div>

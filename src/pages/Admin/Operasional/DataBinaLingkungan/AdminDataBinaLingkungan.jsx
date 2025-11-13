@@ -410,14 +410,14 @@ const AdminDataBinaLingkungan = () => {
       {/* Header */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.binaLingkungan}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold bg-white/10 rounded px-2 py-0.5">{MENU_CODES.operasional.binaLingkungan}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">DATA BINA LINGKUNGAN</h1>
+              <h1 className="text-base md:text-2xl font-extrabold tracking-tight whitespace-nowrap">DATA BINA LINGKUNGAN</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={openCreate} className="inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
+            <button onClick={openCreate} className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm">
               <Plus className="h-4 w-4" />
               <span className="font-semibold">Tambah</span>
             </button>
@@ -430,37 +430,26 @@ const AdminDataBinaLingkungan = () => {
 
       <div className="px-0 py-4">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-3 px-0">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="h-5 w-5 text-blue-600" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 px-0">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4">
+            <div className="flex items-center space-x-2 md:space-x-3">
+              <div className="p-1.5 md:p-2 bg-blue-100 rounded-lg">
+                <User className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Total Penerima</p>
-                <p className="text-lg font-bold text-gray-900">{stats.total}</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{stats.total}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Briefcase className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Total Nominal</p>
-                <p className="text-lg font-bold text-gray-900">{formatRupiah(stats.totalNominal)}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <MapPin className="h-5 w-5 text-purple-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4">
+            <div className="flex items-center space-x-2 md:space-x-3">
+              <div className="p-1.5 md:p-2 bg-purple-100 rounded-lg">
+                <MapPin className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-500">Jumlah Lokasi</p>
-                <p className="text-lg font-bold text-gray-900">{stats.lokasiCount}</p>
+                <p className="text-base md:text-lg font-bold text-gray-900">{stats.lokasiCount}</p>
               </div>
             </div>
           </div>
@@ -574,15 +563,15 @@ const AdminDataBinaLingkungan = () => {
       {/* Modal Form (Dialog) */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="p-0 max-w-2xl overflow-hidden scrollbar-hide">
-          <div className="bg-white rounded-2xl w-full max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col">
-            {/* Header merah (sticky) */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-h-[85vh] overflow-hidden border border-gray-200 flex flex-col">
+            {/* Header: putih di mobile, merah di desktop */}
+            <div className="px-4 md:px-6 py-3 md:py-4 border-b sticky top-0 z-10 bg-white md:bg-red-800 md:text-white md:border-red-700 flex items-center justify-between">
               <div className="flex items-center">
                 <div>
-                  <h2 className="text-xl font-bold leading-tight">{editingId ? 'Edit Data Bina Lingkungan' : 'Tambah Data Bina Lingkungan'}</h2>
+                  <h2 className="text-xl font-bold leading-tight">{editingId ? 'Edit Data' : 'Tambah Data'}</h2>
                 </div>
               </div>
-              <button type="button" onClick={() => setShowForm(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">✕</button>
+              <button type="button" onClick={() => setShowForm(false)} className="p-2 rounded-lg transition-colors text-gray-600 hover:text-gray-900 hover:bg-gray-100 md:text-white md:hover:text-white md:hover:bg-white/10" aria-label="Tutup">✕</button>
             </div>
 
             {/* Body scrollable */}
@@ -706,16 +695,26 @@ const AdminDataBinaLingkungan = () => {
                 </div>
               </div>
               {/* Footer */}
-              <div className="p-0 border-t bg-white">
-                <div className="grid grid-cols-2 gap-2 px-2 py-2">
-                  <button type="button" onClick={() => setShowForm(false)} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">Batal</button>
-                  <button type="submit" form="binaLingkunganModalForm" disabled={loading} className="w-full py-2 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg">{loading ? 'Menyimpan...' : 'Simpan'}</button>
+              <div className="p-4 border-t bg-white">
+                <div className="flex items-center justify-end gap-2">
+                  <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Batal</button>
+                  <button type="submit" form="binaLingkunganModalForm" disabled={loading} className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed">{loading ? 'Menyimpan...' : 'Simpan'}</button>
                 </div>
               </div>
             </form>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* FAB Tambah (mobile only) */}
+      <button
+        type="button"
+        onClick={openCreate}
+        className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+        aria-label="Tambah Lingkungan"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Modal Detail (desain konsisten: header merah sticky, body scrollable) */}
       <Dialog open={showDetail} onOpenChange={setShowDetail}>

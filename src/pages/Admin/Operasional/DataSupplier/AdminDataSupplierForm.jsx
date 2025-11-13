@@ -17,7 +17,8 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
     no_hp_supplier: '',
     tanggal_kerjasama: '',
     npwp: '',
-    alamat: ''
+    alamat: '',
+    keterangan: ''
   });
 
   // Determine open state (modal route fallback: open by default)
@@ -32,7 +33,8 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
         no_hp_supplier: editData.no_hp_supplier || '',
         tanggal_kerjasama: editData.tanggal_kerjasama ? String(editData.tanggal_kerjasama).substring(0,10) : '',
         npwp: editData.npwp || '',
-        alamat: editData.alamat || ''
+        alamat: editData.alamat || '',
+        keterangan: editData.keterangan || ''
       });
     }
   }, [editData]);
@@ -84,7 +86,7 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center md:items-center justify-center z-50 p-0 md:p-4">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-end md:items-center justify-center z-50 p-0 md:p-4">
       {/* Backdrop click to close (kept behavior) */}
       <button
         type="button"
@@ -95,7 +97,7 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
       />
 
       {/* Modal Panel */}
-      <div className="bg-white w-full h-full md:h-auto md:max-h-[92vh] md:rounded-2xl shadow-2xl md:max-w-3xl overflow-hidden border border-gray-200 flex flex-col relative">
+      <div className="bg-white w-full md:max-w-3xl rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden border border-gray-200 flex flex-col relative">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white text-gray-900 md:px-6 md:py-4 md:border-red-700 md:bg-red-800 md:text-white sticky top-0 z-10">
           <div className="flex items-center gap-2">
@@ -108,7 +110,7 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-lg md:text-xl font-bold leading-tight">{editData ? 'Edit Supplier' : 'Tambah Supplier Baru'}</h1>
+            <h1 className="text-lg md:text-xl font-bold leading-tight">{editData ? 'Edit Supplier' : 'Tambah Supplier'}</h1>
           </div>
           {/* Desktop close button */}
           <button
@@ -123,13 +125,11 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
 
         {/* Scrollable body */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 md:px-6 md:py-5 scrollbar-hide">
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-gray-700">
-                Informasi Supplier
-              </h2>
-            </CardHeader>
-            <CardBody>
+          <div className="md:border md:rounded-xl md:shadow-sm md:bg-white">
+            <div className="hidden md:block px-4 py-3 border-b bg-gray-50 rounded-t-xl">
+              <h2 className="text-sm font-semibold text-gray-700">Informasi Supplier</h2>
+            </div>
+            <div className="md:p-4">
               <form id="supplierForm" onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -147,7 +147,19 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                           { value: 'SUPPLIER KAMBING', label: 'Supplier Kambing' }
                         ]}
                       />
-                      <p className="mt-1 text-xs text-gray-500">Kategori akan membantu pengelompokan supplier.</p>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Outlet
+                      </label>
+                      <Input
+                        type="text"
+                        value={formData.keterangan}
+                        onChange={(e) => handleInputChange('keterangan', e.target.value)}
+                        placeholder="Outlet"
+                        className="w-full"
+                      />
                     </div>
 
                     <div>
@@ -164,7 +176,6 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                           { value: 'OPERASIONAL', label: 'Operasional' }
                         ]}
                       />
-                      <p className="mt-1 text-xs text-gray-500">Pilih divisi penanggung jawab supplier.</p>
                     </div>
 
                     <div>
@@ -178,7 +189,6 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                         placeholder="Masukkan nama supplier (contoh: PT Contoh Abadi)"
                         className="w-full"
                       />
-                      <p className="mt-1 text-xs text-gray-500">Gunakan nama legal/terdaftar bila ada.</p>
                     </div>
 
                     <div>
@@ -192,7 +202,6 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                         placeholder="Masukkan nomor HP/WA aktif"
                         className="w-full"
                       />
-                      <p className="mt-1 text-xs text-gray-500">Pastikan nomor dapat dihubungi.</p>
                     </div>
 
                     <div>
@@ -205,7 +214,6 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                         onChange={(e) => handleInputChange('tanggal_kerjasama', e.target.value)}
                         className="w-full"
                       />
-                      <p className="mt-1 text-xs text-gray-500">Tanggal pertama kali bekerja sama.</p>
                     </div>
 
                     <div>
@@ -219,7 +227,6 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                         placeholder="Masukkan NPWP (opsional)"
                         className="w-full"
                       />
-                      <p className="mt-1 text-xs text-gray-500">Isi jika tersedia untuk keperluan administrasi.</p>
                     </div>
                   </div>
 
@@ -234,11 +241,10 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    <p className="mt-1 text-xs text-gray-500">Cantumkan alamat operasional/lokasi pengiriman.</p>
                   </div>
                 </form>
-            </CardBody>
-          </Card>
+            </div>
+          </div>
         </div>
 
         {/* Footer (non-scrollable) */}
@@ -255,7 +261,7 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
               type="submit"
               form="supplierForm"
               disabled={saving}
-              className="w-auto px-6 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2 md:w-full md:px-0 md:bg-red-700 md:hover:bg-red-800"
+              className="w-auto px-6 py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2 md:w-full md:px-0 md:bg-red-700 md:hover:bg-red-800"
             >
               {saving ? (
                 <>
@@ -266,9 +272,9 @@ const AdminDataSupplierForm = ({ isOpen, onClose, onSuccess, editData = null }) 
                 <>
                   {/* Desktop: icon + dynamic label */}
                   <Save className="hidden md:block w-4 h-4" />
-                  <span className="hidden md:inline">{editData ? 'Update Supplier' : 'Simpan Supplier'}</span>
-                  {/* Mobile: text only 'Supplier' */}
-                  <span className="md:hidden">Supplier</span>
+                  <span className="hidden md:inline">{editData ? 'Update' : 'Simpan'}</span>
+                  {/* Mobile: dynamic label */}
+                  <span className="md:hidden">{editData ? 'Update' : 'Simpan'}</span>
                 </>
               )}
             </button>

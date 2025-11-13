@@ -423,7 +423,7 @@ if (!isOpen) return null;
   const buttonText = 'SIMPAN';
 
 return (
-  <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center md:items-center justify-center z-50 p-0 md:p-4">
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-end md:items-center justify-center z-50 p-0 md:p-4">
     {/* Backdrop click to close */}
     <button
       type="button"
@@ -434,15 +434,15 @@ return (
     />
 
     {/* Modal Panel */}
-    <div className="bg-white w-full h-full md:h-auto md:max-h-[92vh] md:rounded-2xl shadow-2xl md:max-w-3xl overflow-hidden border border-gray-200 flex flex-col relative">
+    <div className="bg-white w-full md:max-w-3xl rounded-t-2xl md:rounded-2xl shadow-2xl max-h-[85vh] overflow-hidden border border-gray-200 flex flex-col relative">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-red-700 bg-red-800 text-white md:px-6 md:py-4 sticky top-0 z-10">
+      <div className="px-4 md:px-6 py-3 md:py-4 border-b flex items-center justify-between sticky top-0 z-10 bg-white md:border-red-700 md:bg-red-800 md:text-white">
         <div className="flex items-center gap-2">
           {/* Mobile back button */}
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+            className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Kembali"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -581,8 +581,7 @@ return (
                   }}
                   className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
                 />
-                <p className="text-xs text-gray-500">Anda bisa memilih lebih dari 1 file sekaligus (tekan Ctrl/Cmd saat memilih). File akan diunggah saat Anda menekan tombol Simpan.</p>
-                {filesToUpload && filesToUpload.length > 0 && (
+                  {filesToUpload && filesToUpload.length > 0 && (
                   <>
                     <p className="text-xs text-gray-600">{filesToUpload.length} file dipilih.</p>
                     <div className="grid grid-cols-4 gap-2 mt-1">
@@ -641,8 +640,7 @@ return (
                     }}
                     className="block w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-red-700 hover:file:bg-red-100 cursor-pointer"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Anda bisa memilih lebih dari 1 file sekaligus (tekan Ctrl/Cmd saat memilih). File akan diunggah saat Anda menekan tombol Simpan.</p>
-                </div>
+                  </div>
                 {filesToUpload && filesToUpload.length > 0 && (
                   <>
                     <p className="text-xs text-gray-600">{filesToUpload.length} file dipilih untuk diunggah.</p>
@@ -736,12 +734,12 @@ return (
       </div>
 
       {/* Footer (non-scrollable) */}
-      <div className="p-0 border-t bg-white">
-        <div className="grid grid-cols-2 gap-2 px-2 py-2 md:flex md:justify-end md:space-x-4 md:px-6 md:py-6 items-center">
+      <div className="p-4 border-t bg-white">
+        <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg md:w-auto md:px-6 md:bg-white md:text-gray-600 md:hover:bg-gray-50 md:border md:border-gray-300"
+            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
           >
             Batal
           </button>
@@ -749,10 +747,9 @@ return (
             type="submit"
             form="investorForm"
             disabled={loading}
-            className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg flex items-center justify-center gap-2 md:w-auto md:px-6 md:bg-blue-600 md:hover:bg-blue-700"
+            className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save className="w-4 h-4" />}
-            <span>{loading ? 'Menyimpan...' : 'Simpan'}</span>
+            {loading ? 'Menyimpan...' : 'Simpan'}
           </button>
         </div>
       </div>

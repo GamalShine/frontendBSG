@@ -354,18 +354,7 @@ const AdminTimMerahBiru = () => {
                 {currentData.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 sm:px-6 py-4 whitespace-normal md:whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          activeTab === 'merah' ? 'bg-red-100' : 'bg-blue-100'
-                        }`}>
-                          <User className={`h-6 w-6 ${
-                            activeTab === 'merah' ? 'text-red-600' : 'text-blue-600'
-                          }`} />
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{item.nama}</div>
-                        </div>
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{item.nama}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">

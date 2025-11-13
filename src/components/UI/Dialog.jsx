@@ -64,9 +64,9 @@ export const DialogContent = ({ children, className = '', ...props }) => {
         className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
         onClick={() => handleOpenChange(false)}
       />
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
         <div
-          className={`relative bg-white rounded-2xl shadow-2xl border border-gray-200 max-w-xl md:max-w-2xl w-full max-h-[90vh] overflow-y-auto ${className}`}
+          className={`relative bg-white rounded-t-2xl md:rounded-2xl shadow-2xl border border-gray-200 max-w-full md:max-w-2xl w-full max-h-[90vh] overflow-y-auto ${className}`}
           {...props}
         >
           <button
