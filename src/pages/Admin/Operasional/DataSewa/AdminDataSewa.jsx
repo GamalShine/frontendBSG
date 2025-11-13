@@ -7,7 +7,7 @@ import { dataSewaService } from '@/services/dataSewaService'
 import { MENU_CODES } from '@/config/menuCodes'
 import { toast } from 'react-hot-toast'
 import { API_CONFIG } from '@/config/constants'
-import { Edit, Trash2, FileText, Tag, Calendar, ZoomIn, ZoomOut, Download as DownloadIcon, X as CloseIcon } from 'lucide-react'
+import { Edit, Trash2, FileText, Tag, Calendar, ZoomIn, ZoomOut, Download as DownloadIcon, X as CloseIcon, Plus } from 'lucide-react'
 
 const AdminDataSewa = () => {
   const navigate = useNavigate()
@@ -474,7 +474,7 @@ const AdminDataSewa = () => {
             <button
               onClick={openAdd}
               aria-label="Tambah Data Sewa"
-              className="inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
+              className="hidden md:inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 bg-white text-red-700 rounded-lg hover:bg-red-50 transition-colors shadow-sm"
             >
               + <span className="hidden sm:inline font-semibold">Tambah</span>
             </button>
@@ -526,10 +526,10 @@ const AdminDataSewa = () => {
         </div>
       </div>
 
-      {/* Search & Filter */}
+      {/* Search (Kategori dan Reset dihapus) */}
       <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-0 mb-4">
         <div className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Cari Sewa</label>
               <div className="relative">
@@ -541,20 +541,6 @@ const AdminDataSewa = () => {
                   className="w-full pl-3 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Kategori</label>
-              <select value={kategori} onChange={(e)=>setKategori(e.target.value)} className="w-full border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                <option value="all">Semua Kategori</option>
-                {(categories||[]).map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button onClick={resetFilters} className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors">
-                Reset
-              </button>
             </div>
           </div>
         </div>
@@ -710,6 +696,16 @@ const AdminDataSewa = () => {
           ))}
         </div>
       </div>
+
+      {/* FAB Tambah (mobile only) */}
+      <button
+        type="button"
+        onClick={openAdd}
+        className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
+        aria-label="Tambah Data Sewa"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Detail Modal */}
       {showDetailModal && (

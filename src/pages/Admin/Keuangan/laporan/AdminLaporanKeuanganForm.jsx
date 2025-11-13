@@ -612,7 +612,12 @@ const AdminLaporanKeuanganForm = () => {
       tmp = fixStrayStrong(tmp);
       editorRef.current.innerHTML = tmp;
     }
-    const editorContent = formData?.isi_laporan || '';
+    // Serialize editor to placeholder format [IMG:id] so backend stores portable content
+    // Fallback to formData.isi_laporan if editor is not mounted or returns empty (e.g. after changing date)
+    const serialized = getEditorContent();
+    const editorContent = (serialized && serialized.trim() !== '')
+      ? serialized
+      : (formData?.isi_laporan || '');
     if (!editorContent || editorContent.trim() === '') {
       toast.error('Isi laporan tidak boleh kosong');
       return;
@@ -715,10 +720,28 @@ const AdminLaporanKeuanganForm = () => {
         return img;
       });
 
+      // Normalize any residual <img> tags with data-image-id back to placeholders
+      const normalizedIsi = (() => {
+        if (!editorContent) return '';
+        // Replace <img ... data-image-id="123" ...> with [IMG:123]
+        let out = editorContent.replace(/<img[^>]*data-image-id="(\d+)"[^>]*>/gi, (_m, id) => `[IMG:${id}]`);
+        // Normalize <b>/<i> to semantic tags and strip other tags except <br>
+        out = out.replace(/<\s*b\s*>/gi, '<strong>')
+                 .replace(/<\s*\/\s*b\s*>/gi, '</strong>')
+                 .replace(/<\s*i\s*>/gi, '<em>')
+                 .replace(/<\s*\/\s*i\s*>/gi, '</em>')
+                 .replace(/<script.*?>[\s\S]*?<\/script>/gi, '')
+                 .replace(/<\s*p[^>]*>/gi, '')
+                 .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+                 .replace(/<\s*div[^>]*>/gi, '')
+                 .replace(/<\s*\/\s*div\s*>/gi, '');
+        return out;
+      })();
+
       const submitData = {
         judul_laporan: formData.judul_laporan,
         tanggal_laporan: formData.tanggal_laporan,
-        isi_laporan: editorContent,
+        isi_laporan: normalizedIsi,
         images: finalImages
       };
 
