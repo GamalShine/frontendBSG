@@ -912,7 +912,7 @@ const AdminDaftarGaji = () => {
           aria-label="Tambah Data Gaji"
         >
           <Plus className="w-6 h-6" />
-        </button>
+        </button> //asdasdasda
       )}
     </div>
   )
