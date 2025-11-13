@@ -204,10 +204,30 @@ const AdminJadwalPembayaran = () => {
       return
     }
     try {
+      // Normalisasi payload untuk menghindari error 500 di backend:
+      // - Ubah '' menjadi null pada field opsional/ENUM/DATE
+      // - Parse number untuk sewa (DECIMAL) dan tahun (INTEGER)
+      const normalize = (v) => (v === '' || v === undefined ? null : v)
+      const payload = {
+        nama_item: formData.nama_item,
+        kategori: formData.kategori,
+        tanggal_jatuh_tempo: normalize(formData.tanggal_jatuh_tempo),
+        outlet: normalize(formData.outlet),
+        sewa:
+          formData.sewa === '' || formData.sewa === null || formData.sewa === undefined
+            ? null
+            : Number(formData.sewa),
+        pemilik_sewa: normalize(formData.pemilik_sewa),
+        no_kontak_pemilik_sewa: normalize(formData.no_kontak_pemilik_sewa),
+        no_rekening: normalize(formData.no_rekening),
+        bulan: normalize(formData.bulan),
+        tahun: formData.tahun ? Number(formData.tahun) : new Date().getFullYear(),
+      }
+
       if (editingId) {
-        await jadwalPembayaranService.update(editingId, formData)
+        await jadwalPembayaranService.update(editingId, payload)
       } else {
-        await jadwalPembayaranService.create(formData)
+        await jadwalPembayaranService.create(payload)
       }
       setShowForm(false)
       await load()
