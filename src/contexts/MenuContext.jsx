@@ -294,7 +294,7 @@ export const MenuProvider = ({ children }) => {
         break;
         
       case 'admin':
-        // Menu Keuangan untuk Admin
+        // Menu Keuangan untuk Admin (hanya item yang diminta)
         baseMenus.push({
           id: 'keuangan',
           title: 'KEUANGAN',
@@ -312,12 +312,12 @@ export const MenuProvider = ({ children }) => {
               id: 'omset-harian',
               title: 'OMSET HARIAN',
               path: '/admin/keuangan/omset-harian',
-              permissions: ['read', 'create', 'update', 'delete'],
+              permissions: ['read'],
               picKey: 'AdminKeuanganOmsetHarian'
             },
             {
               id: 'lap-keu',
-              title: 'LAPORAN KEUANGAN',
+              title: 'LAP. KEUANGAN',
               path: '/admin/keuangan/laporan',
               permissions: ['read'],
               picKey: 'AdminLaporanKeuangan'
@@ -335,33 +335,17 @@ export const MenuProvider = ({ children }) => {
               path: '/admin/keuangan/daftar-gaji',
               permissions: ['read'],
               picKey: 'AdminDaftarGaji'
-            },
-            {
-              id: 'aneka-surat',
-              title: 'ANEKA SURAT',
-              path: '/admin/keuangan/surat',
-              permissions: ['read'],
-              picKey: 'AdminAnekaSurat'
             }
           ]
         });
         
-        // Menu STRUKTUR & JOBDESK DISSEMBUNYIKAN
-
-        // Menu SDM untuk Admin
+        // Menu SDM untuk Admin (urut sesuai permintaan)
         baseMenus.push({
           id: 'sdm',
           title: 'SDM',
           icon: 'Users2',
           permissions: ['read'],
           children: [
-            {
-              id: 'sop-aturan',
-              title: 'ATURAN & SOP',
-              path: '/admin/sdm/sop-aturan',
-              permissions: ['read'],
-              picKey: 'AdminAturan'
-            },
             {
               id: 'data-tim',
               title: 'DATA TIM',
@@ -371,10 +355,31 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'kpi',
-              title: 'KPI',
-              path: '/admin/sdm/kpi',
+              title: 'RAPORT KERJA',
+              path: '/admin/sdm/raport-kerja',
               permissions: ['read'],
               picKey: 'AdminSdmKpi'
+            },
+            {
+              id: 'struktur-jobdesk',
+              title: 'STRUKTUR & JOBDESK',
+              path: '/admin/sdm/struktur-jobdesk',
+              permissions: ['read'],
+              picKey: 'AdminSdmStrukturJobdesk'
+            },
+            {
+              id: 'sop-aturan',
+              title: 'SOP & ATURAN',
+              path: '/admin/sdm/sop-aturan',
+              permissions: ['read'],
+              picKey: 'AdminAturan'
+            },
+            {
+              id: 'data-training',
+              title: 'DATA TRAINING',
+              path: '/admin/sdm/training',
+              permissions: ['read'],
+              picKey: 'AdminDataTraining'
             },
             {
               id: 'tim-merah-biru',
@@ -382,45 +387,17 @@ export const MenuProvider = ({ children }) => {
               path: '/admin/sdm/tim-merah-biru',
               permissions: ['read'],
               picKey: 'AdminTimMerahBiru'
-            },
-            {
-              id: 'data-training',
-              title: 'DATA TRAINING',
-              path: '/admin/training',
-              permissions: ['read'],
-              picKey: 'AdminDataTraining'
             }
           ]
         });
 
-        // Menu Operasional untuk Admin
+        // Menu Operasional untuk Admin (hanya item yang diminta)
         baseMenus.push({
           id: 'operasional',
           title: 'OPERASIONAL',
           icon: 'Settings',
           permissions: ['read'],
           children: [
-            {
-              id: 'data-aset',
-              title: 'DATA ASET',
-              path: '/admin/operasional/aset',
-              permissions: ['read'],
-              picKey: 'AdminDataAset'
-            },
-            {
-              id: 'data-supplier',
-              title: 'DATA SUPPLIER',
-              path: '/admin/operasional/data-supplier',
-              permissions: ['read'],
-              picKey: 'AdminDataSupplier'
-            },
-            {
-              id: 'data-sewa',
-              title: 'DATA SEWA',
-              path: '/admin/operasional/sewa',
-              permissions: ['read'],
-              picKey: 'AdminDataSewa'
-            },
             {
               id: 'jadwal-pembayaran',
               title: 'JADWAL PEMBAYARAN/PERAWATAN',
@@ -429,18 +406,11 @@ export const MenuProvider = ({ children }) => {
               picKey: 'AdminJadwalPembayaran'
             },
             {
-              id: 'data-investor',
-              title: 'DATA INVESTOR',
-              path: '/admin/operasional/investor',
+              id: 'data-target',
+              title: 'DATA TARGET',
+              path: '/admin/operasional/data-target',
               permissions: ['read'],
-              picKey: 'AdminDataInvestor'
-            },
-            {
-              id: 'data-bina-lingkungan',
-              title: 'DATA BINA LINGKUNGAN',
-              path: '/admin/operasional/bina-lingkungan',
-              permissions: ['read'],
-              picKey: 'AdminDataBinaLingkungan'
+              picKey: 'AdminDataTarget'
             }
           ]
         });
@@ -449,7 +419,7 @@ export const MenuProvider = ({ children }) => {
 
         // Menu personal (TUGAS SAYA APA?, SOP TERKAIT, KPI SAYA, SLIP GAJI SAYA) DISSEMBUNYIKAN
         
-        // Menu Marketing untuk Admin
+        // Menu Marketing untuk Admin (hanya Media Sosial)
         baseMenus.push({
           id: 'marketing',
           title: 'MARKETING',
@@ -457,18 +427,63 @@ export const MenuProvider = ({ children }) => {
           permissions: ['read'],
           children: [
             {
-              id: 'data-target',
-              title: 'DATA TARGET',
-              path: '/admin/marketing/data-target',
-              permissions: ['read'],
-              picKey: 'AdminDataTarget'
-            },
-            {
               id: 'medsos',
               title: 'MEDIA SOSIAL',
               path: '/admin/marketing/medsos',
               permissions: ['read'],
               picKey: 'AdminMarketingMedsos'
+            }
+          ]
+        });
+
+        // Menu LAIN – LAIN untuk Admin
+        baseMenus.push({
+          id: 'lain-lain',
+          title: 'LAIN – LAIN',
+          icon: 'List',
+          permissions: ['read'],
+          children: [
+            {
+              id: 'data-investor',
+              title: 'DATA INVESTOR',
+              path: '/admin/lain-lain/investor',
+              permissions: ['read'],
+              picKey: 'AdminDataInvestor'
+            },
+            {
+              id: 'data-supplier',
+              title: 'DATA SUPPLIER',
+              path: '/admin/lain-lain/data-supplier',
+              permissions: ['read'],
+              picKey: 'AdminDataSupplier'
+            },
+            {
+              id: 'data-bina-lingkungan',
+              title: 'DATA BINA LINGKUNGAN',
+              path: '/admin/lain-lain/bina-lingkungan',
+              permissions: ['read'],
+              picKey: 'AdminDataBinaLingkungan'
+            },
+            {
+              id: 'data-aset',
+              title: 'DATA ASET',
+              path: '/admin/lain-lain/aset',
+              permissions: ['read'],
+              picKey: 'AdminDataAset'
+            },
+            {
+              id: 'data-sewa',
+              title: 'DATA SEWA',
+              path: '/admin/lain-lain/sewa',
+              permissions: ['read'],
+              picKey: 'AdminDataSewa'
+            },
+            {
+              id: 'aneka-surat',
+              title: 'ANEKA SURAT',
+              path: '/admin/lain-lain/surat',
+              permissions: ['read'],
+              picKey: 'AdminAnekaSurat'
             }
           ]
         });
@@ -594,6 +609,7 @@ export const MenuProvider = ({ children }) => {
         'sdm',
         'operasional',
         'marketing',
+        'lain-lain',
         // Item lain (jika ada) akan mengikuti setelah ini
         'settings',
         'video-library'

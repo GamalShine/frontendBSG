@@ -231,15 +231,15 @@ const AdminTimMerahBiru = () => {
   return (
     <div className="min-h-screen">
       {/* Header - mengikuti gaya Omset Harian */}
-      <div className="bg-red-800 text-white px-4 sm:px-6 py-5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="bg-red-800 text-white px-4 sm:px-6 py-2 md:py-4 flex items-center min-h-[52px] md:min-h-0">
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-4 min-w-0">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.timMerahBiru}</span>
+            <span className="text-sm md:text-sm font-semibold bg-white/10 rounded px-2 py-0.5">{MENU_CODES.sdm.timMerahBiru}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TIM MERAH BIRU</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">TIM MERAH / BIRU</h1>
             </div>
           </div>
-          <div className="flex items-center gap-2 mt-2 md:mt-0 flex-wrap w-full md:w-auto justify-start md:justify-end"></div>
+          <div className="hidden md:flex items-center gap-2 md:mt-0 justify-end"></div>
         </div>
       </div>
 
@@ -250,7 +250,7 @@ const AdminTimMerahBiru = () => {
       <div className="p-0">
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 my-4">
           <div className="px-6 py-4">
-            <div className={`grid grid-cols-1 ${activeTab === 'merah' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+            <div className={`grid grid-cols-1 md:grid-cols-1 gap-4`}>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
                 <div className="relative">
@@ -265,53 +265,6 @@ const AdminTimMerahBiru = () => {
                   />
                 </div>
               </div>
-              {activeTab === 'merah' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  >
-                    <option value="all">Semua Status</option>
-                    <option value="SP1">SP1</option>
-                    <option value="SP2">SP2</option>
-                    <option value="SP3">SP3</option>
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Divisi</label>
-                <select
-                  value={divisiFilter}
-                  onChange={(e) => setDivisiFilter(e.target.value)}
-                  className="px-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                >
-                  <option value="all">Semua Divisi</option>
-                  <option value="BSG PUSAT">BSG PUSAT</option>
-                  <option value="BSG BSD">BSG BSD</option>
-                  <option value="SOGIL">SOGIL</option>
-                  <option value="BSG SIDOARJO">BSG SIDOARJO</option>
-                  <option value="BSG BUAH BATU">BSG BUAH BATU</option>
-                  <option value="BSG KARAWACI">BSG KARAWACI</option>
-                </select>
-              </div>
-              <div className="flex items-end h-full">
-                <button
-                  onClick={() => {
-                    setSearchTerm('')
-                    setDivisiFilter('all')
-                    setStatusFilter('all')
-                    setActiveTab('merah')
-                    setCurrentPage(1)
-                    loadTimMerah()
-                  }}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-red-600 text-red-700 hover:bg-red-50 transition-colors w-full md:w-auto"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span className="font-semibold">Reset</span>
-                </button>
-              </div>
             </div>
           </div>
         </div>
@@ -319,24 +272,24 @@ const AdminTimMerahBiru = () => {
       {/* Tabs */}
       <div className="mb-0">
         <div className="bg-red-800 text-white">
-          <div className="flex items-center justify-between px-4 py-3">
-            <nav className="flex space-x-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
+          <div className="flex items-center justify-between px-4 py-0 md:py-3">
+            <nav className="flex w-full md:w-auto justify-between gap-2 overflow-x-hidden md:overflow-x-auto whitespace-nowrap scrollbar-hide">
               <button
                 onClick={() => setActiveTab('merah')}
-                className={`py-2 px-4 font-semibold text-base rounded-md transition-colors ${
+                className={`py-2 px-4 font-semibold text-base rounded-none md:rounded-md transition-colors flex-1 text-center md:flex-none ${
                   activeTab === 'merah'
-                    ? 'bg-white/20 text-white'
-                  : 'text-white/80 hover:text-white hover:bg-white/10'
+                    ? 'text-white border-b-2 border-white md:border-0 md:bg-white/20'
+                    : 'text-white/80 border-b-2 border-transparent md:border-0 md:hover:text-white md:hover:bg-white/10'
                 }`}
               >
                 TIM MERAH
               </button>
               <button
                 onClick={() => setActiveTab('biru')}
-                className={`py-2 px-4 font-semibold text-base rounded-md transition-colors ${
+                className={`py-2 px-4 font-semibold text-base rounded-none md:rounded-md transition-colors flex-1 text-center md:flex-none ${
                   activeTab === 'biru'
-                    ? 'bg-white/20 text-white'
-                  : 'text-white/80 hover:text-white hover:bg-white/10'
+                    ? 'text-white border-b-2 border-white md:border-0 md:bg-white/20'
+                    : 'text-white/80 border-b-2 border-transparent md:border-0 md:hover:text-white md:hover:bg-white/10'
                 }`}
               >
                 TIM BIRU
@@ -346,7 +299,7 @@ const AdminTimMerahBiru = () => {
               type="button"
               onClick={() => setShowForm(true)}
               aria-label="Tambah Data Tim"
-              className={`ml-4 inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors shadow-sm bg-white ${activeTab === 'merah' ? 'text-red-700 hover:bg-red-50' : 'text-blue-700 hover:bg-blue-50'}`}
+              className={`ml-4 hidden md:inline-flex items-center gap-2 px-3 py-2 sm:px-4 sm:py-2 rounded-lg transition-colors shadow-sm bg-white ${activeTab === 'merah' ? 'text-red-700 hover:bg-red-50' : 'text-blue-700 hover:bg-blue-50'}`}
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline font-semibold">Tambah</span>
@@ -553,6 +506,16 @@ const AdminTimMerahBiru = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* FAB Mobile: Tambah (hanya mobile) */}
+      <button
+        type="button"
+        onClick={() => setShowForm(true)}
+        aria-label="Tambah Data Tim"
+        className={`md:hidden fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full shadow-lg text-white flex items-center justify-center ${activeTab === 'merah' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+      >
+        <Plus className="h-6 w-6" />
+      </button>
 
       {/* Modal Edit Tim Merah/Biru */}
       <Dialog open={showEditForm} onOpenChange={setShowEditForm}>

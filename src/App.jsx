@@ -670,8 +670,8 @@ const ModalSwitch = () => {
               {/* Alias */}
               <Route path="/admin/keuangan/gaji" element={<Navigate to="/admin/keuangan/daftar-gaji" replace />} />
 
-              {/* Admin Marketing - Data Target */}
-              <Route path="/admin/marketing/data-target" element={
+              {/* Admin Operasional - Data Target (dipindah dari marketing) */}
+              <Route path="/admin/operasional/data-target" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDataTarget">
                     <Layout>
@@ -680,21 +680,21 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
-              <Route path="/admin/marketing/data-target/new" element={
+              <Route path="/admin/operasional/data-target/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
                   <Layout>
                     <AdminDataTargetForm />
                   </Layout>
                 </ProtectedRoute>
               } />
-              <Route path="/admin/marketing/data-target/:id" element={
+              <Route path="/admin/operasional/data-target/:id" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>
                     <AdminDataTargetDetail />
                   </Layout>
                 </ProtectedRoute>
               } />
-              <Route path="/admin/marketing/data-target/:id/edit" element={
+              <Route path="/admin/operasional/data-target/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
                     <AdminDataTargetEdit />
@@ -703,14 +703,19 @@ const ModalSwitch = () => {
               } />
 
               {/* Backward compatibility redirects */}
-              <Route path="/admin/marketing/target" element={<Navigate to="/admin/marketing/data-target" replace />} />
-              <Route path="/admin/marketing/target/new" element={<Navigate to="/admin/marketing/data-target/new" replace />} />
-              <Route path="/admin/marketing/target/:id" element={<Navigate to="/admin/marketing/data-target/:id" replace />} />
-              <Route path="/admin/marketing/target/:id/edit" element={<Navigate to="/admin/marketing/data-target/:id/edit" replace />} />
-              <Route path="/admin/marketing/target-harian" element={<Navigate to="/admin/marketing/data-target" replace />} />
-              <Route path="/admin/marketing/target-harian/new" element={<Navigate to="/admin/marketing/data-target/new" replace />} />
-              <Route path="/admin/marketing/target-harian/:id" element={<Navigate to="/admin/marketing/data-target/:id" replace />} />
-              <Route path="/admin/marketing/target-harian/:id/edit" element={<Navigate to="/admin/marketing/data-target/:id/edit" replace />} />
+              {/* Redirect old marketing paths to new operasional paths */}
+              <Route path="/admin/marketing/data-target" element={<Navigate to="/admin/operasional/data-target" replace />} />
+              <Route path="/admin/marketing/data-target/new" element={<Navigate to="/admin/operasional/data-target/new" replace />} />
+              <Route path="/admin/marketing/data-target/:id" element={<Navigate to="/admin/operasional/data-target/:id" replace />} />
+              <Route path="/admin/marketing/data-target/:id/edit" element={<Navigate to="/admin/operasional/data-target/:id/edit" replace />} />
+              <Route path="/admin/marketing/target" element={<Navigate to="/admin/operasional/data-target" replace />} />
+              <Route path="/admin/marketing/target/new" element={<Navigate to="/admin/operasional/data-target/new" replace />} />
+              <Route path="/admin/marketing/target/:id" element={<Navigate to="/admin/operasional/data-target/:id" replace />} />
+              <Route path="/admin/marketing/target/:id/edit" element={<Navigate to="/admin/operasional/data-target/:id/edit" replace />} />
+              <Route path="/admin/marketing/target-harian" element={<Navigate to="/admin/operasional/data-target" replace />} />
+              <Route path="/admin/marketing/target-harian/new" element={<Navigate to="/admin/operasional/data-target/new" replace />} />
+              <Route path="/admin/marketing/target-harian/:id" element={<Navigate to="/admin/operasional/data-target/:id" replace />} />
+              <Route path="/admin/marketing/target-harian/:id/edit" element={<Navigate to="/admin/operasional/data-target/:id/edit" replace />} />
 
               {/* Divisi Operasional - Saran */}
               <Route path="/divisi/operasional/saran" element={
@@ -950,6 +955,16 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
+              {/* Lain-Lain alias */}
+              <Route path="/admin/lain-lain/surat" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminAnekaSurat">
+                    <Layout>
+                      <AdminAnekaSurat />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
               
               <Route path="/admin/keuangan/laporan/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
@@ -985,9 +1000,30 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
+
+              {/* Admin Lain-Lain Routes (alias baru untuk operasional items) */}
+              <Route path="/admin/lain-lain/data-supplier" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataSupplier">
+                    <Layout>
+                      <AdminDataSupplier />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
               
               {/* Admin Operasional - Data Sewa */}
               <Route path="/admin/operasional/sewa" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataSewa">
+                    <Layout>
+                      <AdminDataSewa />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+              {/* Lain-Lain alias */}
+              <Route path="/admin/lain-lain/sewa" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDataSewa">
                     <Layout>
@@ -1051,6 +1087,16 @@ const ModalSwitch = () => {
                 </ProtectedRoute>
               } />
               <Route path="/admin/operasional/bina-lingkungan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataBinaLingkungan">
+                    <Layout>
+                      <AdminDataBinaLingkungan />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
+              {/* Lain-Lain alias */}
+              <Route path="/admin/lain-lain/bina-lingkungan" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminDataBinaLingkungan">
                     <Layout>
@@ -1133,12 +1179,15 @@ const ModalSwitch = () => {
               
               {/* Admin SDM Routes */}
               {/* Backward compatibility: redirect old path to new */}
-              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/struktur-jobdesk" replace />} />
-              <Route path="/admin/sdm/struktur-jobdesk-sop" element={<Navigate to="/admin/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/struktur" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/struktur-jobdesk-sop" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
               {/* Legacy path redirect: jabatan -> struktur-jobdesk */}
-              <Route path="/admin/sdm/jabatan" element={<Navigate to="/admin/struktur-jobdesk" replace />} />
+              <Route path="/admin/sdm/jabatan" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
 
-              <Route path="/admin/struktur-jobdesk" element={
+              {/* Backward compatibility: old standalone path to new SDM path */}
+              <Route path="/admin/struktur-jobdesk" element={<Navigate to="/admin/sdm/struktur-jobdesk" replace />} />
+
+              <Route path="/admin/sdm/struktur-jobdesk" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey={["AdminSdmStrukturJobdesk", "AdminSdmStrukturSop"]}>
                     <Layout>
@@ -1231,7 +1280,10 @@ const ModalSwitch = () => {
               } />
               
               {/* Admin KPI Routes */}
-              <Route path="/admin/sdm/kpi" element={
+              {/* Redirect lama ke path baru */}
+              <Route path="/admin/sdm/kpi" element={<Navigate to="/admin/sdm/raport-kerja" replace />} />
+              {/* Path baru: Raport Kerja */}
+              <Route path="/admin/sdm/raport-kerja" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <RequireMenuKey requiredKey="AdminSdmKpi">
                     <Layout>
@@ -1641,6 +1693,15 @@ const ModalSwitch = () => {
                    </RequireMenuKey>
                  </ProtectedRoute>
                } />
+               <Route path="/admin/lain-lain/aset" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataAset">
+                    <Layout>
+                      <AdminDataAset />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
                <Route path="/owner/operasional/aset" element={
                  <ProtectedRoute requiredPermissions={['read']}>
                    <Layout>
@@ -1659,6 +1720,15 @@ const ModalSwitch = () => {
                    </RequireMenuKey>
                  </ProtectedRoute>
                } />
+               <Route path="/admin/lain-lain/investor" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataInvestor">
+                    <Layout>
+                      <AdminDataInvestor />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
                <Route path="/owner/operasional/investor" element={
                  <ProtectedRoute requiredPermissions={['read']}>
                    <Layout>
@@ -2363,6 +2433,16 @@ const ModalSwitch = () => {
                   </RequireMenuKey>
                 </ProtectedRoute>
               } />
+              {/* SDM alias */}
+              <Route path="/admin/sdm/training" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <RequireMenuKey requiredKey="AdminDataTraining">
+                    <Layout>
+                      <AdminTrainingList />
+                    </Layout>
+                  </RequireMenuKey>
+                </ProtectedRoute>
+              } />
               
               <Route path="/admin/training/new" element={
                 <ProtectedRoute requiredPermissions={['create']}>
@@ -2371,8 +2451,22 @@ const ModalSwitch = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+              <Route path="/admin/sdm/training/new" element={
+                <ProtectedRoute requiredPermissions={['create']}>
+                  <Layout>
+                    <AdminTrainingForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
               
               <Route path="/admin/training/:id/edit" element={
+                <ProtectedRoute requiredPermissions={['update']}>
+                  <Layout>
+                    <AdminTrainingForm />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/admin/sdm/training/:id/edit" element={
                 <ProtectedRoute requiredPermissions={['update']}>
                   <Layout>
                     <AdminTrainingForm />

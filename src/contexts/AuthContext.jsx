@@ -52,15 +52,16 @@ export const AuthProvider = ({ children }) => {
             try {
               const isValid = await authService.isTokenValid()
               if (isValid) {
-                // Hanya izinkan admin
-                if ((storedUser?.role || '').toLowerCase() !== 'admin') {
-                  console.warn('⛔ Non-admin session detected. Logging out...')
+                // Izinkan admin & leader
+                const role = (storedUser?.role || '').toLowerCase()
+                if (!(role === 'admin' || role === 'leader')) {
+                  console.warn('⛔ Non-allowed role session detected. Logging out...')
                   await authService.logout()
                   setUser(null)
                 } else {
                   setUser(storedUser)
                   await loadAllowedMenuKeys(storedUser.id)
-                  console.log('✅ Token is valid, admin session restored')
+                  console.log('✅ Token is valid, session restored for role:', role)
                 }
               } else {
                 console.log('❌ Token expired, clearing session')
@@ -78,14 +79,17 @@ export const AuthProvider = ({ children }) => {
               // Try to get current user from server
               const currentUser = await authService.getCurrentUser()
               console.log('👤 Fetched current user:', currentUser)
-              if ((currentUser?.role || '').toLowerCase() !== 'admin') {
-                console.warn('⛔ Non-admin current user. Logging out...')
-                await authService.logout()
-                setUser(null)
-              } else {
-                setUser(currentUser)
-                localStorage.setItem('user', JSON.stringify(currentUser))
-                await loadAllowedMenuKeys(currentUser?.id)
+              {
+                const role = (currentUser?.role || '').toLowerCase()
+                if (!(role === 'admin' || role === 'leader')) {
+                  console.warn('⛔ Non-allowed current user role. Logging out...')
+                  await authService.logout()
+                  setUser(null)
+                } else {
+                  setUser(currentUser)
+                  localStorage.setItem('user', JSON.stringify(currentUser))
+                  await loadAllowedMenuKeys(currentUser?.id)
+                }
               }
             } catch (error) {
               console.warn('❌ Failed to get current user, clearing stored data:', error)
@@ -143,13 +147,16 @@ export const AuthProvider = ({ children }) => {
       }
       
       console.log('👤 Processed user data:', loggedInUser)
-      // Validasi: hanya admin yang boleh login
-      if ((loggedInUser?.role || '').toLowerCase() !== 'admin') {
-        try { await authService.logout() } catch {}
-        setUser(null)
-        const err = new Error('ONLY_ADMIN_ALLOWED')
-        err.code = 'ONLY_ADMIN_ALLOWED'
-        throw err
+      // Validasi: hanya admin & leader yang boleh login
+      {
+        const role = (loggedInUser?.role || '').toLowerCase()
+        if (!(role === 'admin' || role === 'leader')) {
+          try { await authService.logout() } catch {}
+          setUser(null)
+          const err = new Error('ROLE_NOT_ALLOWED')
+          err.code = 'ROLE_NOT_ALLOWED'
+          throw err
+        }
       }
       setUser(loggedInUser)
       try { await loadAllowedMenuKeys(loggedInUser?.id) } catch {}
