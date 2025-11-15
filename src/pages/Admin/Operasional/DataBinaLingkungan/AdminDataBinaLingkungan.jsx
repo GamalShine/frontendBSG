@@ -37,6 +37,8 @@ const AdminDataBinaLingkungan = () => {
   const [items, setItems] = useState([]);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, itemsPerPage: 50, totalItems: 0 });
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterLoading, setFilterLoading] = useState(false);
   const [lokasiFilter, setLokasiFilter] = useState('');
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,12 +69,25 @@ const AdminDataBinaLingkungan = () => {
   const [showDetail, setShowDetail] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
 
-  const params = useMemo(() => ({ page: pagination.currentPage, limit: pagination.itemsPerPage, search, lokasi: lokasiFilter }), [pagination.currentPage, pagination.itemsPerPage, search, lokasiFilter]);
+  const params = useMemo(() => ({ page: pagination.currentPage, limit: pagination.itemsPerPage, search: debouncedSearch, lokasi: lokasiFilter }), [pagination.currentPage, pagination.itemsPerPage, debouncedSearch, lokasiFilter]);
 
   // Tampilkan semua data di satu halaman: set limit besar dan page = 1
   useEffect(() => {
     setPagination(p => ({ ...p, currentPage: 1, itemsPerPage: 100000 }));
   }, []);
+
+  // Debounce pencarian 300ms
+  useEffect(() => {
+    setFilterLoading(true);
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      // reset ke halaman 1 saat ganti kata kunci
+      setPagination(p => ({ ...p, currentPage: 1 }));
+      setFilterLoading(false);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   // Preview helpers
   const detectFileType = (nameOrUrl) => {
@@ -175,6 +190,7 @@ const AdminDataBinaLingkungan = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setFilterLoading(true);
       setError('');
       const { data } = await service.getAll(params);
       if (data?.success) {
@@ -209,6 +225,7 @@ const AdminDataBinaLingkungan = () => {
       setError(err?.response?.data?.message || 'Gagal memuat data');
     } finally {
       setLoading(false);
+      setFilterLoading(false);
     }
   };
 
@@ -237,27 +254,103 @@ const AdminDataBinaLingkungan = () => {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
   };
 
+  const formatUpdatedAt = (val) => {
+    if (!val) return '-';
+    try {
+      return format(new Date(val), 'd MMM yyyy, HH.mm', { locale: id });
+    } catch {
+      return '-';
+    }
+  };
+
+  // Highlight helper untuk menyorot keyword pencarian
+  const highlightText = (value) => {
+    const text = String(value ?? '');
+    const q = String(debouncedSearch || '').trim();
+    if (!q) return text;
+    try {
+      const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(esc, 'ig');
+      const parts = text.split(re);
+      const matches = text.match(re);
+      if (!matches) return text;
+      const nodes = [];
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i]) nodes.push(<span key={`p-${i}`}>{parts[i]}</span>);
+        if (i < matches.length) nodes.push(
+          <mark key={`m-${i}`} className="bg-yellow-200 px-0.5 rounded">{matches[i]}</mark>
+        );
+      }
+      return <>{nodes}</>;
+    } catch (e) {
+      return text;
+    }
+  };
+
   const groupedByLokasi = useMemo(() => {
-    const groups = items.reduce((acc, item) => {
-      const key = item.lokasi || 'Tanpa Lokasi';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    }, {});
+    const normalize = (s) => {
+      // 1) to string + NFC, 2) trim, 3) ganti non-alnum jadi spasi, 4) collapse spaces
+      const base = String(s || '')
+        .normalize('NFC')
+        .trim()
+        .replace(/[^0-9A-Za-z\p{L}\s]+/gu, ' ')
+        .replace(/\s+/g, ' ');
+      return base;
+    };
+    const titleCase = (s) => normalize(s)
+      .toLowerCase()
+      .split(' ')
+      .map(w => w ? w[0].toUpperCase() + w.slice(1) : '')
+      .join(' ');
+
+    const groups = {};
+    const labels = {};
+    for (const item of items) {
+      const raw = normalize(item.lokasi);
+      const key = (raw ? raw.toUpperCase() : 'TANPA LOKASI');
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+      // simpan label tampilan (title case), fallback 'Tanpa Lokasi'
+      if (!labels[key]) labels[key] = raw ? titleCase(raw) : 'Tanpa Lokasi';
+    }
     const orderedKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
-    return { groups, orderedKeys };
+    return { groups, orderedKeys, labels };
   }, [items]);
 
   const stats = useMemo(() => {
     const total = items.length;
     const totalNominal = items.reduce((sum, i) => sum + (Number(i.nominal) || 0), 0);
-    const lokasiCount = new Set(items.map(i => i.lokasi || 'Tanpa Lokasi')).size;
+    const lokasiCount = groupedByLokasi.orderedKeys.length;
     const topLokasi = groupedByLokasi.orderedKeys[0] || '-';
     const topCount = topLokasi !== '-' ? groupedByLokasi.groups[topLokasi]?.length || 0 : 0;
     return { total, totalNominal, lokasiCount, topLokasi, topCount };
   }, [items, groupedByLokasi]);
 
-  const [activeSection, setActiveSection] = useState('');
+  const [expandedLokasi, setExpandedLokasi] = useState({});
+
+  // Auto-expand groups saat mencari: hanya grup yang punya item cocok keyword yang dibuka
+  useEffect(() => {
+    const keyword = (debouncedSearch || '').trim().toLowerCase();
+    const keys = groupedByLokasi?.orderedKeys || [];
+    if (keyword) {
+      const map = {};
+      keys.forEach(k => {
+        const arr = groupedByLokasi.groups[k] || [];
+        const match = arr.some(it => {
+          const nama = String(it.nama || '').toLowerCase();
+          const jabatan = String(it.jabatan || '').toLowerCase();
+          const lokasi = String(it.lokasi || '').toLowerCase();
+          return nama.includes(keyword) || jabatan.includes(keyword) || lokasi.includes(keyword);
+        });
+        if (match) map[k] = true;
+      });
+      setExpandedLokasi(map);
+    } else {
+      // reset collapsed jika keyword kosong
+      setExpandedLokasi({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, groupedByLokasi.orderedKeys?.join('|'), items.length]);
 
   // Last updated text mengikuti pola Indonesia panjang, fallback '-'
   const lastUpdatedText = useMemo(() => {
@@ -460,97 +553,145 @@ const AdminDataBinaLingkungan = () => {
           <div className="px-6 py-4">
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cari</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input type="text" placeholder="Masukkan nama / jabatan / lokasi..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500" />
                 </div>
+                {filterLoading && (
+                  <div className="mt-1 text-[11px] text-gray-500 flex items-center gap-2">
+                    <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-red-600 rounded-full animate-spin" />
+                    Memuat hasil pencarian...
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card List tanpa kategori lokasi */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-2">
-          <div className="px-4 sm:px-6 py-4">
-            {items.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
-                    onClick={() => { setDetailItem(item); setShowDetail(true); }}
-                  >
-                    {/* Header strip ala Data Sewa */}
-                    <div className="flex items-start justify-between px-3 py-3 bg-red-800 -mx-3 -mt-3 mb-0 border-b border-red-700 rounded-t-lg">
-                      <h4 className="text-sm md:text-base font-semibold text-white leading-snug break-words pr-2">{item.nama || '-'}</h4>
-                      <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-full border bg-blue-50 text-blue-700 border-blue-200">{item.jabatan || '—'}</span>
-                    </div>
+        {/* Card List dikelompokkan per lokasi (full-bleed di mobile) */}
+        <div className="mt-2">
+          <div className="px-0 py-0">
+            {groupedByLokasi.orderedKeys.length > 0 ? (
+              groupedByLokasi.orderedKeys.map((lok) => {
+                const arr = groupedByLokasi.groups[lok] || [];
+                const open = !!expandedLokasi[lok];
+                const totalNominal = arr.reduce((s, it) => s + (Number(it.nominal) || 0), 0);
+                return (
+                  <div key={lok} className="mb-2 overflow-hidden rounded-none">
+                    <button
+                      onClick={() => setExpandedLokasi(prev => ({ ...prev, [lok]: !prev[lok] }))}
+                      className="w-full flex items-center justify-between px-4 md:px-6 py-3 bg-red-700 text-white rounded-none"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">{groupedByLokasi.labels[lok] || lok}</span>
+                        <span className="hidden md:inline-flex ml-2 text-xs bg-white/15 px-2 py-0.5 rounded-full">{arr.length} item</span>
+                        <span className="hidden md:inline-flex ml-1 text-xs bg-white/15 px-2 py-0.5 rounded-full">{formatRupiah(totalNominal)}</span>
+                      </div>
+                      {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </button>
+                    {open && (
+                      <div className="pt-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-2 gap-x-0 md:gap-x-3 md:gap-y-3 p-0">
+                          {arr.map((item) => (
+                            <div
+                              key={item.id}
+                              className="bg-white shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
+                              onClick={() => { setDetailItem(item); setShowDetail(true); }}
+                            >
+                              {/* Header strip ala Data Sewa */}
+                              <div className="flex items-start justify-between px-3 py-3 bg-red-800 -mx-3 -mt-3 mb-0 border-b border-red-700">
+                                <h4 className="text-sm md:text-base font-semibold text-white leading-snug break-words pr-2">{item.nama || '-'}</h4>
+                              </div>
 
-                    {/* Meta info seperti Data Sewa (grid label 130px) */}
-                    <div className="mt-2 pt-2 space-y-1.5 text-sm text-gray-700">
-                      <div className="grid grid-cols-[130px,1fr] items-center gap-2 leading-5">
-                        <span className="text-gray-600">Kontak</span>
-                        <span className="text-gray-800">{item.no_hp || '-'}</span>
-                      </div>
-                      <div className="grid grid-cols-[130px,1fr] items-start gap-2 leading-5">
-                        <span className="text-gray-600">Alamat</span>
-                        <span className="text-gray-800 line-clamp-2 leading-snug">{item.alamat || '-'}</span>
-                      </div>
-                      <div className="grid grid-cols-[130px,1fr] items-center gap-2 leading-5">
-                        <span className="text-gray-600">Lokasi</span>
-                        <span className="text-gray-800">{item.lokasi || '-'}</span>
-                      </div>
-                      <div className="grid grid-cols-[130px,1fr] items-center gap-2 leading-5">
-                        <span className="text-gray-600">Nominal</span>
-                        <span className="text-gray-800">{formatRupiah(item.nominal)}</span>
-                      </div>
-                    </div>
-
-                    {/* Lampiran ala Data Sewa: grid kecil dengan thumbnail */}
-                    {(() => {
-                      const arr = lampiranMap[item.id] || [];
-                      if (!arr.length) return null;
-                      return (
-                        <div className="pt-2">
-                          <div className="text-[11px] font-semibold text-gray-700 mb-1">Lampiran</div>
-                          <div className="grid grid-cols-3 gap-2">
-                            {arr.map((f, idx) => {
-                              const fileUrl = `${API_CONFIG.BASE_HOST}/uploads/data-bina-lingkungan/${f.storedName || f.filename || f.stored_name || ''}`;
-                              const name = f.originalName || f.filename || f.storedName || f.stored_name || `file-${idx}`;
-                              const isImage = (f.mimeType || '').startsWith('image/');
-                              return (
-                                <div key={`${name}-${idx}`} className="border rounded-md p-1 flex flex-col gap-1">
-                                  {isImage ? (
-                                    <button type="button" onClick={() => { openPreview(fileUrl, name); }} className="block text-left" title={name}>
-                                      <img src={fileUrl} alt={name} className="w-full h-16 object-cover rounded" />
-                                    </button>
-                                  ) : (
-                                    <button type="button" onClick={() => { openPreview(fileUrl, name); }} className="text-[10px] text-blue-600 truncate text-left hover:underline" title={name}>
-                                      {name}
-                                    </button>
-                                  )}
-                                  <div className="mt-1 truncate" title={name}>{name}</div>
+                              {/* Meta info - mobile style label uppercase dengan ':' */}
+                              <div className="mt-2 pt-2 space-y-2 text-sm text-gray-800">
+                                <div className="grid grid-cols-[110px,12px,1fr] items-start leading-6 gap-x-2">
+                                  <span className="font-semibold text-[12px] tracking-wide text-gray-700 uppercase">Jabatan</span>
+                                  <span>:</span>
+                                  <span className="break-words">{highlightText(item.jabatan || '—')}</span>
                                 </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                                <div className="grid grid-cols-[110px,12px,1fr] items-start leading-6 gap-x-2">
+                                  <span className="font-semibold text-[12px] tracking-wide text-gray-700 uppercase">Nama</span>
+                                  <span>:</span>
+                                  <span className="break-words">{highlightText(item.nama || '—')}</span>
+                                </div>
+                                <div className="grid grid-cols-[110px,12px,1fr] items-start leading-6 gap-x-2">
+                                  <span className="font-semibold text-[12px] tracking-wide text-gray-700 uppercase">No. HP</span>
+                                  <span>:</span>
+                                  <span className="break-words">{highlightText(item.no_hp || '-')}</span>
+                                </div>
+                                <div className="grid grid-cols-[110px,12px,1fr] items-start leading-6 gap-x-2">
+                                  <span className="font-semibold text-[12px] tracking-wide text-gray-700 uppercase">Alamat</span>
+                                  <span>:</span>
+                                  <span className="break-words line-clamp-2 leading-snug">{highlightText(item.alamat || '-')}</span>
+                                </div>
+                                <div className="grid grid-cols-[110px,12px,1fr] items-start leading-6 gap-x-2">
+                                  <span className="font-semibold text-[12px] tracking-wide text-gray-700 uppercase">Nominal</span>
+                                  <span>:</span>
+                                  <span className="break-words">{highlightText(formatRupiah(item.nominal))}</span>
+                                </div>
+                              </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-2 pt-3">
-                      <button onClick={(e) => { e.stopPropagation(); openEdit(item); }} className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200" title="Edit">
-                        <EditIcon className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" title="Hapus">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                              {/* Lampiran */}
+                              {(() => {
+                                const larr = lampiranMap[item.id] || [];
+                                if (!larr.length) return null;
+                                return (
+                                  <div className="pt-2">
+                                    <div className="text-[11px] font-semibold text-gray-700 mb-1">Lampiran</div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      {larr.map((f, idx) => {
+                                        const fileUrl = `${API_CONFIG.BASE_HOST}/uploads/data-bina-lingkungan/${f.storedName || f.filename || f.stored_name || ''}`;
+                                        const name = f.originalName || f.filename || f.storedName || f.stored_name || `file-${idx}`;
+                                        const isImage = (f.mimeType || '').startsWith('image/');
+                                        return (
+                                          <div key={`${name}-${idx}`} className="border rounded-md p-1 flex flex-col gap-1">
+                                            {isImage ? (
+                                              <button type="button" onClick={() => { openPreview(fileUrl, name); }} className="block text-left" title={name}>
+                                                <img src={fileUrl} alt={name} className="w-full h-16 object-cover rounded" />
+                                              </button>
+                                            ) : (
+                                              <button type="button" onClick={() => { openPreview(fileUrl, name); }} className="text:[10px] text-blue-600 truncate text-left hover:underline" title={name}>
+                                                {name}
+                                              </button>
+                                            )}
+                                            <div className="mt-1 truncate" title={name}>{name}</div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Update & Actions (mobile style) */}
+                              <div className="flex items-center justify-between pt-3">
+                                <div className="text-[11px] text-gray-600">Update: {formatUpdatedAt(item.updated_at || item.created_at)}</div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); openEdit(item); }}
+                                    className="w-6 h-6 md:w-8 md:h-8 grid place-items-center p-0 leading-none border border-blue-300 text-blue-600 rounded-sm hover:bg-blue-50 shrink-0"
+                                    title="Edit"
+                                  >
+                                    <EditIcon className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
+                                    className="w-6 h-6 md:w-8 md:h-8 grid place-items-center p-0 leading-none border border-red-300 text-red-600 rounded-sm hover:bg-red-50 shrink-0"
+                                    title="Hapus"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })
             ) : (
               <div className="text-center py-8 text-gray-500">Tidak ada data</div>
             )}
@@ -577,11 +718,9 @@ const AdminDataBinaLingkungan = () => {
             {/* Body scrollable */}
             <form id="binaLingkunganModalForm" onSubmit={onSubmit} className="flex flex-col flex-1 min-h-0">
               <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
-                <div className="rounded-xl border bg-white">
-                  <div className="px-4 py-3 border-b bg-gray-50 rounded-t-xl">
-                    <div className="text-sm font-semibold text-gray-700">Informasi Penerima</div>
-                  </div>
-                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Heading tanpa box/card */}
+                <div className="mb-2 text-sm font-semibold text-gray-700">Informasi Penerima</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Lokasi</label>
                       <input name="lokasi" value={form.lokasi} onChange={onChangeForm} className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent" required />
@@ -692,7 +831,6 @@ const AdminDataBinaLingkungan = () => {
                       )}
                     </div>
                   </div>
-                </div>
               </div>
               {/* Footer */}
               <div className="p-4 border-t bg-white">
@@ -723,14 +861,14 @@ const AdminDataBinaLingkungan = () => {
             {/* Body dengan header sticky di dalam area scroll */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-none px-0 pt-0 scrollbar-hide">
               {/* Header merah sticky */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
+              <div className="flex items-center justify-between px-4 md:px-6 py-2 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
                 <div>
-                  <h2 className="text-xl font-bold leading-tight">Detail Bina Lingkungan</h2>
+                  <h2 className="text-lg md:text-xl font-bold leading-tight">Detail Bina Lingkungan</h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowDetail(false)}
-                  className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-1.5 md:p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
                   aria-label="Tutup"
                 >
                   <CloseIcon className="w-5 h-5" />

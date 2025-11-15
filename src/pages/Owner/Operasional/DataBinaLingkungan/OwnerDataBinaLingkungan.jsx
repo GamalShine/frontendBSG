@@ -39,7 +39,7 @@ const OwnerDataBinaLingkungan = () => {
   const [files, setFiles] = useState([]);
 
   // UI state
-  const [activeSection, setActiveSection] = useState(''); // lokasi accordion
+  const [expandedLokasi, setExpandedLokasi] = useState({}); // multi-open accordion per lokasi
 
   const params = useMemo(() => ({ page: pagination.currentPage, limit: pagination.itemsPerPage, search, lokasi: lokasiFilter }), [pagination.currentPage, pagination.itemsPerPage, search, lokasiFilter]);
 
@@ -145,24 +145,38 @@ const OwnerDataBinaLingkungan = () => {
   };
 
   const groupedByLokasi = useMemo(() => {
-    const groups = items.reduce((acc, item) => {
-      const key = item.lokasi || 'Tanpa Lokasi';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
-      return acc;
-    }, {});
-    // Urutkan kunci by jumlah desc
+    const normalize = (s) => String(s || '')
+      .normalize('NFC')
+      .trim()
+      .replace(/[^0-9A-Za-z\p{L}\s]+/gu, ' ')
+      .replace(/\s+/g, ' ');
+    const titleCase = (s) => normalize(s)
+      .toLowerCase()
+      .split(' ')
+      .map(w => (w ? w[0].toUpperCase() + w.slice(1) : ''))
+      .join(' ');
+
+    const groups = {};
+    const labels = {};
+    for (const item of items) {
+      const raw = normalize(item.lokasi);
+      const key = raw ? raw.toUpperCase() : 'TANPA LOKASI';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(item);
+      if (!labels[key]) labels[key] = raw ? titleCase(raw) : 'Tanpa Lokasi';
+    }
     const orderedKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
-    return { groups, orderedKeys };
+    return { groups, orderedKeys, labels };
   }, [items]);
 
   const stats = useMemo(() => {
     const total = items.length;
     const totalNominal = items.reduce((sum, i) => sum + (Number(i.nominal) || 0), 0);
-    const lokasiCount = new Set(items.map(i => i.lokasi || 'Tanpa Lokasi')).size;
+    const lokasiCount = groupedByLokasi.orderedKeys.length;
     // lokasi teratas
-    const topLokasi = groupedByLokasi.orderedKeys[0] || '-';
-    const topCount = topLokasi !== '-' ? groupedByLokasi.groups[topLokasi]?.length || 0 : 0;
+    const topLokasiKey = groupedByLokasi.orderedKeys[0] || '-';
+    const topCount = topLokasiKey !== '-' ? groupedByLokasi.groups[topLokasiKey]?.length || 0 : 0;
+    const topLokasi = topLokasiKey !== '-' ? (groupedByLokasi.labels[topLokasiKey] || topLokasiKey) : '-';
     return { total, totalNominal, lokasiCount, topLokasi, topCount };
   }, [items, groupedByLokasi]);
 
@@ -297,32 +311,35 @@ const OwnerDataBinaLingkungan = () => {
           </div>
         </div>
 
-        {/* Sections by Lokasi */}
-        <div className="space-y-6">
-          {groupedByLokasi.orderedKeys.map((locKey) => (
-            <div key={locKey} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <button
-                onClick={() => setActiveSection(activeSection === locKey ? '' : locKey)}
-                className="w-full px-6 py-4 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <MapPin className="w-6 h-6" />
-                  <span className="text-lg font-semibold">{locKey}</span>
-                  <span className="bg-red-700 px-2 py-1 rounded-full text-sm">{groupedByLokasi.groups[locKey].length}</span>
-                </div>
-                {activeSection === locKey ? (
-                  <ChevronDown className="w-5 h-5" />
-                ) : (
-                  <ChevronRight className="w-5 h-5" />
-                )}
-              </button>
+        {/* Sections by Lokasi (mobile-first, bisa multi-open) */}
+        <div className="space-y-4">
+          {groupedByLokasi.orderedKeys.map((locKey) => {
+            const open = !!expandedLokasi[locKey];
+            const label = groupedByLokasi.labels[locKey] || locKey;
+            return (
+              <div key={locKey} className="bg-white shadow-sm border overflow-hidden">
+                <button
+                  onClick={() => setExpandedLokasi(prev => ({ ...prev, [locKey]: !prev[locKey] }))}
+                  className="w-full px-4 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-5 h-5" />
+                    <span className="text-base font-semibold">{label}</span>
+                    <span className="bg-red-700/80 px-2 py-0.5 rounded-full text-xs">{groupedByLokasi.groups[locKey].length}</span>
+                  </div>
+                  {open ? (
+                    <ChevronDown className="w-5 h-5" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5" />
+                  )}
+                </button>
 
-              {activeSection === locKey && (
-                <div className="p-6">
-                  {groupedByLokasi.groups[locKey].length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {groupedByLokasi.groups[locKey].map((item) => (
-                        <div key={item.id} className="bg-gray-50 rounded-lg p-4 border hover:shadow-md transition-shadow">
+                {open && (
+                  <div className="p-4">
+                    {groupedByLokasi.groups[locKey].length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {groupedByLokasi.groups[locKey].map((item) => (
+                          <div key={item.id} className="bg-gray-50 rounded-lg p-4 border hover:shadow-md transition-shadow">
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex-1">
                               <h4 className="font-semibold text-gray-900">{item.nama}</h4>
@@ -386,7 +403,7 @@ const OwnerDataBinaLingkungan = () => {
                 </div>
               )}
             </div>
-          ))}
+          );})}
         </div>
 
         {/* Pagination */}

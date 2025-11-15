@@ -583,6 +583,15 @@ const ModalSwitch = () => {
                   </Layout>
                 </ProtectedRoute>
               } />
+
+              {/* Admin Pengajuan (reuse OwnerDaftarPengajuan for now) */}
+              <Route path="/admin/pengajuan" element={
+                <ProtectedRoute requiredPermissions={['read']}>
+                  <Layout>
+                    <OwnerDaftarPengajuan />
+                  </Layout>
+                </ProtectedRoute>
+              } />
               <Route path="/leader/slip-gaji-saya" element={
                 <ProtectedRoute requiredPermissions={['read']}>
                   <Layout>

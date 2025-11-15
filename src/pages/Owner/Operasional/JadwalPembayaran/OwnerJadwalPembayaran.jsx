@@ -10,6 +10,14 @@ const formatCurrency = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(num)
 }
 
+const prettyKategori = (k) => {
+  const key = String(k || '')
+  if (key === 'pajak_kendaraan_pribadi') return 'PAJAK/STNK KENDARAAN PRIBADI'
+  if (key === 'pajak_kendaraan_operasional') return 'PAJAK/STNK KENDARAAN OPERASIONAL'
+  if (key === 'pajak_kendaraan_distribusi') return 'PAJAK/STNK KENDARAAN DISTRIBUSI'
+  return key.replaceAll('_', ' ').toUpperCase()
+}
+
 const OwnerJadwalPembayaran = () => {
   const { user } = useAuth()
   const [data, setData] = useState([])
@@ -96,7 +104,7 @@ const OwnerJadwalPembayaran = () => {
         )}
 
         {!loading && !error && Object.keys(grouped).map((kategori) => {
-          const prettyCat = kategori.replaceAll('_',' ').toUpperCase()
+          const prettyCat = prettyKategori(kategori)
           const catOpen = !!expandedKategori[kategori]
           const years = Object.keys(grouped[kategori] || {}).sort((a,b)=>b-a)
           return (

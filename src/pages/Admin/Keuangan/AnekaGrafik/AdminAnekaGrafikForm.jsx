@@ -165,8 +165,8 @@ const AdminAnekaGrafikForm = ({ isEdit = false, anekaGrafikData = null, onClose,
   };
 
   return (
-    <div className="fixed inset-0 z-[2147483647] flex items-end md:items-center justify-center bg-black/40">
-      <div className="relative z-[2147483647] w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl shadow-lg overflow-hidden">
+    <div className="fixed inset-0 z-[2147483647] flex items-start md:items-center justify-center bg-black/40">
+      <div className="relative z-[2147483647] w-full md:max-w-lg bg-white rounded-b-2xl md:rounded-2xl shadow-lg overflow-hidden">
         {/* Header */}
         <div className="px-4 py-3 border-b flex items-center justify-between">
           <h2 className="text-base md:text-lg font-semibold text-gray-900">

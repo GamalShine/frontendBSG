@@ -480,8 +480,8 @@ const AdminAnekaGrafik = () => {
 
     {/* Modal Tambah Aneka Grafik */}
     {showAddModal && (
-      <div className="fixed inset-0 z-[1000] flex items-end md:items-center justify-center bg-black/40">
-        <div className="w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl shadow-lg overflow-hidden">
+      <div className="fixed inset-0 z-[1000] flex items-start md:items-center justify-center bg-black/40">
+        <div className="w-full md:max-w-lg bg-white rounded-b-2xl md:rounded-2xl shadow-lg overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b flex items-center justify-between">
             <h3 className="font-semibold">Tambah Aneka Grafik</h3>

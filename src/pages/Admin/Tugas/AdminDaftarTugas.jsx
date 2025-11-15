@@ -24,8 +24,10 @@ import toast from 'react-hot-toast'
 import { MENU_CODES } from '@/config/menuCodes'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody, DialogFooter } from '@/components/UI/Dialog'
 import { API_CONFIG } from '@/config/constants'
+import { useAuth } from '../../../contexts/AuthContext'
 
 const AdminDaftarTugas = () => {
+  const { user } = useAuth()
   const [tugas, setTugas] = useState([])
   const [users, setUsers] = useState([])
   const [userLookup, setUserLookup] = useState({}) // { [id]: displayName }
@@ -147,6 +149,11 @@ const AdminDaftarTugas = () => {
 
   const handleConfirmRevisi = async () => {
     if (!revisiItem?.id) return
+    // Hanya penerima tugas yang boleh mengubah status/lampiran sesuai backend
+    if (user?.id !== revisiItem?.penerima_tugas) {
+      toast.error('Hanya penerima tugas yang dapat mengirim revisi (ubah status/lampiran)')
+      return
+    }
     const files = Array.from(revisiFiles || [])
     if (files.length === 0 && !revisiNote.trim()) {
       toast.error('Tambahkan catatan atau pilih minimal satu file revisi')
@@ -165,7 +172,7 @@ const AdminDaftarTugas = () => {
       const existing = Array.isArray(revisiItem?.lampiran) ? revisiItem.lampiran : []
       const merged = uploadedNames.length > 0 ? [...existing, ...uploadedNames] : existing
       const payload = { lampiran: merged, status: 'proses' }
-      if (revisiNote.trim()) payload.catatan_revisi = revisiNote.trim()
+      if (revisiNote.trim()) payload.catatan = revisiNote.trim()
       const upd = await adminTugasService.updateTugasByAdmin(revisiItem.id, payload)
       if (upd?.success || upd?.data) {
         toast.success('Revisi berhasil dikirim')
@@ -213,12 +220,13 @@ const AdminDaftarTugas = () => {
   // Render tombol/aksi berdasarkan status
   const renderAction = (tugasItem) => {
     const s = String(tugasItem?.status || '').toLowerCase()
+    const isPenerima = user?.id === tugasItem?.penerima_tugas
     if (s === 'belum') {
       return (
         <button
-          onClick={(e) => { e.stopPropagation(); openUploadModal(tugasItem) }}
+          onClick={(e) => { e.stopPropagation(); if (!isPenerima) return toast.error('Hanya penerima tugas yang dapat menindak'); openUploadModal(tugasItem) }}
           className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700`}
-          disabled={!!uploadingTaskId}
+          disabled={!!uploadingTaskId || !isPenerima}
         >
           Tindak
         </button>
@@ -242,9 +250,9 @@ const AdminDaftarTugas = () => {
     if (s === 'revisi') {
       return (
         <button
-          onClick={(e) => { e.stopPropagation(); openRevisiModal(tugasItem) }}
+          onClick={(e) => { e.stopPropagation(); if (!isPenerima) return toast.error('Hanya penerima tugas yang dapat mengirim revisi'); openRevisiModal(tugasItem) }}
           className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700`}
-          disabled={!!uploadingTaskId}
+          disabled={!!uploadingTaskId || !isPenerima}
         >
           Revisi
         </button>
@@ -253,9 +261,9 @@ const AdminDaftarTugas = () => {
     // default fallback
     return (
       <button
-        onClick={(e) => { e.stopPropagation(); openUploadModal(tugasItem) }}
+        onClick={(e) => { e.stopPropagation(); if (!isPenerima) return toast.error('Hanya penerima tugas yang dapat menindak'); openUploadModal(tugasItem) }}
         className={`inline-flex items-center px-3 py-1.5 rounded-md transition-colors bg-red-600 text-white hover:bg-red-700`}
-        disabled={!!uploadingTaskId}
+        disabled={!!uploadingTaskId || !isPenerima}
       >
         Tindak
       </button>
@@ -301,6 +309,11 @@ const AdminDaftarTugas = () => {
 
   const handleConfirmUpload = async () => {
     if (!targetTask?.id) return
+    // Hanya penerima tugas yang boleh mengunggah lampiran/ubah status
+    if (user?.id !== targetTask?.penerima_tugas) {
+      toast.error('Hanya penerima tugas yang dapat menindak')
+      return
+    }
     const files = Array.from(selectedFiles || [])
     if (files.length === 0) {
       toast.error('Pilih minimal satu file foto/video')
@@ -308,6 +321,18 @@ const AdminDaftarTugas = () => {
     }
     try {
       setUploadingTaskId(targetTask.id)
+      // Upload files terlebih dahulu untuk mendapatkan nama file
+      const res = await uploadService.uploadMultipleFiles(files, 'document')
+      let uploadedNames = []
+      const candidate = res?.files || res?.data || res
+      if (Array.isArray(candidate)) {
+        uploadedNames = candidate.map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || '')).filter(Boolean)
+      } else if (candidate && typeof candidate === 'object') {
+        const arr = candidate.files || candidate.data || []
+        if (Array.isArray(arr)) {
+          uploadedNames = arr.map((it) => typeof it === 'string' ? it : (it?.filename || it?.name || it?.path || '')).filter(Boolean)
+        }
+      }
 
       // Merge dengan lampiran lama dari state
       const currentItem = tugas.find(t => t.id === targetTask.id)
@@ -385,7 +410,8 @@ const AdminDaftarTugas = () => {
         search: searchTerm,
         status: statusFilter,
         priority: priorityFilter,
-        assignee: assigneeFilter
+        // Selaraskan dengan backend adminTugas: tampilkan tugas yang ditugaskan ke admin atau pihak terkait
+        scope: 'assigned_or_related'
       }
 
   // Upload lampiran langsung dari baris (fitur Tindak di list)
@@ -394,6 +420,12 @@ const AdminDaftarTugas = () => {
     if (files.length === 0) return
     try {
       setUploadingTaskId(taskId)
+      // Cegah pihak terkait mengubah lampiran
+      const currentItem = tugas.find(t => t.id === taskId)
+      if (user?.id !== currentItem?.penerima_tugas) {
+        toast.error('Hanya penerima tugas yang dapat mengunggah lampiran')
+        return
+      }
       const res = await uploadService.uploadMultipleFiles(files, 'document')
       // Normalisasi nama file
       let uploadedNames = []
@@ -408,7 +440,6 @@ const AdminDaftarTugas = () => {
       }
 
       // Ambil item tugas saat ini untuk merge lampiran lama jika tersedia di state
-      const currentItem = tugas.find(t => t.id === taskId)
       const existing = Array.isArray(currentItem?.lampiran) ? currentItem.lampiran : []
       const merged = [...existing, ...uploadedNames]
 
@@ -487,7 +518,7 @@ const AdminDaftarTugas = () => {
 
   const handleStatusUpdate = async (id, newStatus) => {
     try {
-      const response = await tugasService.updateTugas(id, { status: newStatus })
+      const response = await adminTugasService.updateTugasByAdmin(id, { status: newStatus })
       if (response.success || response.data) {
         toast.success('Status tugas berhasil diperbarui')
         loadTugas()

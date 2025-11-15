@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown, ChevronRight, Users, Search, X, Save, Building2, Briefcase } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, ChevronUp, Users, Search, X, Save, Building2, Briefcase } from 'lucide-react';
 import { adminSdmService } from '@/services/adminSdmService';
 import { MENU_CODES } from '@/config/menuCodes';
 import api from '@/services/api';
@@ -13,6 +13,7 @@ const AdminDataTim = () => {
   const [expandedDivisi, setExpandedDivisi] = useState({});
   const [expandedJabatan, setExpandedJabatan] = useState({});
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedDivisi, setSelectedDivisi] = useState('');
   const [selectedJabatan, setSelectedJabatan] = useState('');
   const [selected, setSelected] = useState(null);
@@ -81,6 +82,7 @@ const AdminDataTim = () => {
   // Tabs di bawah form pencarian
   const [activeTab, setActiveTab] = useState('dataTim'); // 'dataTim' | 'jabatan' | 'divisi'
   const [expandedDivForJabatanPanel, setExpandedDivForJabatanPanel] = useState({});
+  const [expandedEmployees, setExpandedEmployees] = useState({});
 
   // Modal Tambah Divisi & Jabatan
   const [showAddDivisi, setShowAddDivisi] = useState(false);
@@ -179,12 +181,82 @@ const AdminDataTim = () => {
     return `${safeMonths} bulan ${days} hari`;
   };
 
-  // Helper: normalisasi boolean (menerima true/false, 1/0, '1'/'0', 'true'/'false')
+  // Render baris karyawan ala tabel 2 kolom (gaya Daftar Gaji)
+  const renderEmployeeRowTim = (emp) => {
+    const empKey = String(emp?.id ?? emp?.user_id ?? emp?.userId ?? emp?.nik ?? emp?.name ?? Math.random());
+    const isOpen = !!expandedEmployees[empKey];
+    const nama = emp?.nama ?? emp?.name ?? '—';
+    const lamaBekerja = calcTenureMonthsDays(emp?.tanggal_bergabung) !== '-' ? calcTenureMonthsDays(emp?.tanggal_bergabung) : (emp?.lama_bekerja || '—');
+
+    const fmtDate = (d) => {
+      if (!d) return '—';
+      try { return new Date(d).toLocaleDateString('id-ID'); } catch { return String(d); }
+    };
+    const fmt = (v) => {
+      if (v === null || v === undefined) return '—';
+      const s = String(v).trim();
+      return s === '' ? '—' : s;
+    };
+    const boolToYa = (v) => (v === true || v === '1' || v === 1 || String(v).toLowerCase() === 'true' || String(v).toLowerCase() === 'ya') ? 'Ya' : 'Tidak';
+    const trainingText = [
+      `Dasar: ${boolToYa(emp?.training_dasar)}`,
+      `Skill: ${boolToYa(emp?.training_skill ?? emp?.training_skillo)}`,
+      `Leadership: ${boolToYa(emp?.training_leadership)}`,
+      `Lanjutan: ${boolToYa(emp?.training_lanjutan)}`,
+    ].join(' | ');
+
+    const rows = [
+      ['NAMA', nama],
+      ['TEMPAT TINGGAL SEKARANG', fmt(emp?.alamat_sekarang ?? emp?.alamat ?? emp?.user?.alamat)],
+      ['LINK GOOGLE MAP', fmt(emp?.link_map_sekarang)],
+      ['ALAMAT DAERAH ASAL', fmt(emp?.alamat_asal)],
+      ['LINK GOOGLE MAP ASAL', fmt(emp?.link_map_asal)],
+      ['NAMA ORANG TUA', fmt(emp?.nama_orang_tua)],
+      ['ALAMAT ORANG TUA', fmt(emp?.alamat_orang_tua)],
+      ['LINK GOOGLE MAP ORANG TUA', fmt(emp?.link_map_orang_tua)],
+      ['BERGABUNG SEJAK', fmtDate(emp?.tanggal_bergabung)],
+      ['LAMA BEKERJA', fmt(lamaBekerja)],
+      ['DATA TRAINING', trainingText],
+      ['NAMA ANAK', fmt(emp?.nama_anak)],
+      ['NO. HP PASANGAN', fmt(emp?.no_hp_pasangan)],
+      ['NAMA & HP KONTAK DARURAT', fmt(emp?.kontak_darurat)],
+      ['RIWAYAT KARYAWAN', fmt(emp?.riwayat_karyawan ?? emp?.riwayat)],
+    ];
+
+    return (
+      <div key={empKey} className="border border-gray-300 rounded-md overflow-hidden">
+        <button
+          type="button"
+          onClick={() => toggleEmployee(empKey)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50"
+        >
+          <div>
+            <div className="text-sm font-semibold text-gray-900">{nama}</div>
+          </div>
+          {isOpen ? (
+            <ChevronUp className="h-4 w-4 text-gray-600" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-600" />
+          )}
+        </button>
+        {isOpen && (
+          <div className="grid grid-cols-2">
+            {rows.map(([label, val]) => (
+              <React.Fragment key={label}>
+                <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">{label}</div>
+                <div className="border-b border-gray-300 p-2 text-sm break-words">{val}</div>
+              </React.Fragment>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Helper: normalisasi boolean untuk berbagai representasi nilai
   const parseBool = (v) => {
-    if (v === true) return true;
-    if (v === false) return false;
-    if (v === 1 || v === '1') return true;
-    if (v === 0 || v === '0') return false;
+    if (v === true || v === '1' || v === 1) return true;
+    if (v === false || v === '0' || v === 0) return false;
     if (typeof v === 'string') {
       const s = v.toLowerCase();
       if (s === 'true' || s === 'ya' || s === 'yes') return true;
@@ -193,7 +265,6 @@ const AdminDataTim = () => {
     return !!v;
   };
 
-  // Ambil flag training ter-normalisasi, prioritas dari users, fallback ke sdm_data
   const trainingFlags = useMemo(() => {
     // Prioritas 1: detail.user bila punya field
     // Prioritas 2: selected.user (dari hierarchy) bila lengkap
@@ -426,8 +497,14 @@ const AdminDataTim = () => {
     return build.filter(j => (seen.has(j.id) ? false : (seen.add(j.id), true)));
   }, [hierarchy, selectedDivisi]);
 
+  // Debounce pencarian 300ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const filteredHierarchy = useMemo(() => {
-    const q = (search || '').toLowerCase();
+    const q = (debouncedSearch || '').toLowerCase();
     const matchText = (div, jab, emp) => {
       if (!q) return true;
       return (
@@ -452,10 +529,65 @@ const AdminDataTim = () => {
         return { ...div, children: jabs };
       })
       .filter(d => d.children && d.children.length > 0);
-  }, [hierarchy, search, selectedDivisi, selectedJabatan]);
+  }, [hierarchy, debouncedSearch, selectedDivisi, selectedJabatan]);
+
+  // Auto-expand grup saat ada keyword: buka divisi & jabatan yang memiliki hasil
+  useEffect(() => {
+    const q = (debouncedSearch || '').trim().toLowerCase();
+    if (!q) {
+      setExpandedDivisi({});
+      setExpandedJabatan({});
+      return;
+    }
+    const nextDiv = {};
+    const nextJab = {};
+    (hierarchy || []).forEach(div => {
+      const jabs = (div.children || []).filter(j => {
+        const hasEmp = (j.children || []).some(emp =>
+          (emp?.name || '').toLowerCase().includes(q) ||
+          (emp?.email || '').toLowerCase().includes(q)
+        );
+        const jabMatch = (j?.name || '').toLowerCase().includes(q);
+        const divMatch = (div?.name || '').toLowerCase().includes(q);
+        const open = hasEmp || jabMatch || divMatch;
+        if (open) nextJab[j.id] = true;
+        return open;
+      });
+      if (jabs.length > 0 || (div?.name || '').toLowerCase().includes(q)) {
+        nextDiv[div.id] = true;
+      }
+    });
+    setExpandedDivisi(nextDiv);
+    setExpandedJabatan(nextJab);
+  }, [debouncedSearch, hierarchy]);
+
+  // Helper highlight
+  const highlightText = (value) => {
+    const text = String(value ?? '');
+    const q = String(debouncedSearch || '').trim();
+    if (!q) return text;
+    try {
+      const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(esc, 'ig');
+      const parts = text.split(re);
+      const matches = text.match(re);
+      if (!matches) return text;
+      const nodes = [];
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i]) nodes.push(<span key={`p-${i}`}>{parts[i]}</span>);
+        if (i < matches.length) nodes.push(
+          <mark key={`m-${i}`} className="bg-yellow-200 px-0.5 rounded">{matches[i]}</mark>
+        );
+      }
+      return <>{nodes}</>;
+    } catch {
+      return text;
+    }
+  };
 
   const toggleDivisi = (id) => setExpandedDivisi(prev => ({ ...prev, [id]: !prev[id] }));
   const toggleJabatan = (id) => setExpandedJabatan(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleEmployee = (empKey) => setExpandedEmployees(prev => ({ ...prev, [empKey]: !prev[empKey] }));
 
   return (
     <div className="p-0 bg-gray-50 min-h-screen">
@@ -617,35 +749,28 @@ const AdminDataTim = () => {
                       <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{totalDiv} orang</span>
                     </button>
                     {openDiv && (
-                      <div className="mt-0 px-3 md:px-6 pt-3 pb-2 md:py-4 grid grid-cols-1 gap-2 md:gap-3">
+                      <div className="bg-red-700">
                         {(div.children || []).map(jab => {
                           const openJab = !!expandedJabatan[jab.id];
                           return (
-                            <div key={jab.id} className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
-                              <div className="px-2 md:px-4 py-0.5 md:py-2 bg-red-800 text-white flex items-center justify-between">
-                                <button onClick={() => toggleJabatan(jab.id)} className="flex items-center gap-2 text-left">
-                                  {openJab ? <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" /> : <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" />}
-                                  <span className="font-semibold text-sm md:text-sm leading-tight tracking-tight">{jab.name}</span>
-                                </button>
-                                <span className="text-[10px] md:text-xs bg-white/20 px-1.5 md:px-2 py-0.5 rounded-full border border-white/30">{jab.children?.length || 0} orang</span>
-                              </div>
+                            <div key={jab.id}>
+                              <button
+                                type="button"
+                                onClick={() => toggleJabatan(jab.id)}
+                                className={`w-full flex items-center justify-between text-left px-4 py-2 border-t border-red-800 ${openJab ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                              >
+                                <span className="text-sm font-semibold text-gray-900">{jab.name}</span>
+                                <span className="text-xs text-gray-700">{(jab.children||[]).length} orang</span>
+                              </button>
                               {openJab && (
-                                <div className="divide-y">
-                                  {(jab.children || []).map(emp => (
-                                    <div key={emp.id} className="px-2 md:px-3 py-0.5 md:py-2 flex items-center justify-between text-[13px] md:text-sm">
-                                      <div className="flex items-center gap-1 md:gap-3 min-w-0">
-                                        <span className="inline-flex h-5 w-5 md:h-7 md:w-7 items-center justify-center rounded-full bg-red-100 text-red-700 flex-shrink-0"><Users className="h-3.5 w-3.5 md:h-4 md:w-4" /></span>
-                                        <div className="min-w-0">
-                                          <div className="font-semibold text-gray-900 truncate leading-tight">{emp.name}</div>
-                                          <div className="text-[11px] md:text-xs text-gray-500 truncate leading-tight">{emp?.jabatan?.nama_jabatan} • {emp?.jabatan?.divisi?.nama_divisi}</div>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-                                        <button onClick={() => setSelected(emp)} className="px-1.5 md:px-2 py-0.5 md:py-1 text-blue-600 hover:bg-blue-50 rounded text-[11px] md:text-xs">Detail</button>
-                                        <button onClick={() => setEditTarget(emp)} className="px-1.5 md:px-2 py-0.5 md:py-1 text-gray-700 hover:bg-gray-50 rounded text-[11px] md:text-xs">Edit</button>
-                                      </div>
-                                    </div>
-                                  ))}
+                                <div className="bg-white text-gray-900 border-t border-gray-200 px-4 py-3">
+                                  <div className="space-y-3">
+                                    {((jab.children || []).length === 0) ? (
+                                      <div className="text-center text-sm text-gray-500 py-4">Tidak ada karyawan pada jabatan ini</div>
+                                    ) : (
+                                      (jab.children || []).map(emp => renderEmployeeRowTim(emp))
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -767,9 +892,9 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Divisi (global) */}
       {showAddDivisi && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-stretch md:justify-center p-0 md:p-4">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-stretch md:justify-center pt-4 md:p-4">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddDivisi(false)} />
-          <div className="relative z-10 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-md max-h-[85vh] md:max-h-[90vh] border flex flex-col overflow-hidden">
+          <div className="relative z-10 bg-white rounded-b-2xl md:rounded-2xl shadow-2xl w-full md:w-[25vw] max-w-none max-h-[85vh] md:max-h-[90vh] border flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700">
               <div className="flex items-center">
                 <h2 className="text-base md:text-lg font-semibold leading-tight">Tambah Divisi</h2>
@@ -824,9 +949,9 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Jabatan (global) */}
       {showAddJabatan && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-stretch md:justify-center p-0 md:p-4">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-stretch md:justify-center pt-4 md:p-4">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddJabatan(false)} />
-          <div className="relative z-10 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-md max-h-[85vh] md:max-h-[90vh] border flex flex-col overflow-hidden">
+          <div className="relative z-10 bg-white rounded-b-2xl md:rounded-2xl shadow-2xl w-full md:w-[25vw] max-w-none max-h-[85vh] md:max-h-[90vh] border flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700">
               <div className="flex items-center">
                 <h2 className="text-base md:text-lg font-semibold leading-tight">Tambah Jabatan</h2>
@@ -896,9 +1021,9 @@ const AdminDataTim = () => {
 
       {/* Modal Tambah Tim (global) */}
       {showAddTim && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-stretch md:justify-center p-0 md:p-4">
+        <div className="fixed inset-0 z-50 flex items-start md:items-center justify-stretch md:justify-center pt-4 md:p-4">
           <button className="absolute inset-0 bg-black/60" aria-hidden="true" onClick={() => setShowAddTim(false)} />
-          <div className="relative z-10 bg-white rounded-t-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-3xl max-h-[85vh] md:max-h-[92vh] border flex flex-col overflow-hidden">
+          <div className="relative z-10 bg-white rounded-b-2xl md:rounded-2xl shadow-2xl w-full md:w-auto max-w-none md:max-w-3xl max-h-[85vh] md:max-h-[92vh] border flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2 md:px-6 md:py-2 border-b bg-white text-gray-900 md:bg-red-800 md:text-white md:border-red-700">
               <div>
                 <h2 className="text-base md:text-lg font-semibold leading-tight">Tambah Tim</h2>
