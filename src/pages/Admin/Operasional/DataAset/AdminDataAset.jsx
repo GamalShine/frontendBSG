@@ -474,19 +474,12 @@ const AdminDataAset = () => {
     </div>
   );
 
+  // Filter hanya berdasarkan nama (sesuai permintaan): gunakan nama_aset atau fallback ke merk/nama_barang
   const filteredData = dataAset.filter(aset => {
-    const matchesSearch = !searchTerm || 
-      aset.nama_aset?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      aset.merk_kendaraan?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      aset.nama_barang?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      aset.lokasi?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      aset.atas_nama?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesKategori = kategoriFilter === 'all' || 
-      (kategoriFilter === 'kendaraan' && ['KENDARAAN_PRIBADI', 'KENDARAAN_OPERASIONAL', 'KENDARAAN_DISTRIBUSI'].includes(aset.kategori)) ||
-      aset.kategori === kategoriFilter.toUpperCase();
-
-    return matchesSearch && matchesKategori;
+    const q = (searchTerm || '').toLowerCase().trim();
+    if (!q) return true;
+    const name = (aset.nama_aset || aset.merk_kendaraan || aset.nama_barang || '').toLowerCase();
+    return name.includes(q);
   });
 
   const groupedData = {
@@ -572,177 +565,34 @@ const AdminDataAset = () => {
       {/* Info bar */}
       <div className="bg-gray-200 px-6 py-2 text-sm text-gray-900">Terakhir diupdate: {lastUpdatedText}</div>
 
-      {/* Stats Cards */}
-      <div className="px-0 py-4">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-          {/* Properti */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Building2 className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Properti</p>
-                <p className="text-lg font-bold text-gray-900">{countProperti}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Kendaraan Pribadi */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CarIcon className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Kendaraan Pribadi</p>
-                <p className="text-lg font-bold text-gray-900">{countKendaraanPribadi}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Kendaraan Operasional */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CarIcon className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Kendaraan Operasional</p>
-                <p className="text-lg font-bold text-gray-900">{countKendaraanOperasional}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Kendaraan Distribusi */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CarIcon className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Kendaraan Distribusi</p>
-                <p className="text-lg font-bold text-gray-900">{countKendaraanDistribusi}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Elektronik */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Monitor className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">Elektronik</p>
-                <p className="text-lg font-bold text-gray-900">{countElektronik}</p>
-              </div>
+      {/* Pencarian Nama Saja */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mt-4 mb-2">
+        <div className="px-6 py-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Cari berdasarkan nama</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e)=>setSearchTerm(e.target.value)}
+                placeholder="Ketik nama aset (atau merk/nama barang)"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Data Sections */}
-        <div className="space-y-3">
-        {/* Properti Section */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
-          <button
-            onClick={() => setActiveSection(activeSection === 'properti' ? '' : 'properti')}
-            className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-lg font-semibold">Properti</span>
-              <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
-                {groupedData.properti.length}
-              </span>
+      {/* Daftar Aset (flat list) */}
+      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
+        <div className="p-4">
+          {filteredData.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
+              {filteredData.map(renderAsetCard)}
             </div>
-            {activeSection === 'properti' ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronRight className="w-5 h-5" />
-            )}
-          </button>
-          
-          {activeSection === 'properti' && (
-            <div className="p-4">
-              {groupedData.properti.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
-                  {groupedData.properti.map(renderAsetCard)}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  Tidak ada data properti
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Kendaraan Section */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
-          <button
-            onClick={() => setActiveSection(activeSection === 'kendaraan' ? '' : 'kendaraan')}
-            className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-lg font-semibold">Kendaraan</span>
-              <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
-                {groupedData.kendaraan.length}
-              </span>
-            </div>
-            {activeSection === 'kendaraan' ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronRight className="w-5 h-5" />
-            )}
-          </button>
-          
-          {activeSection === 'kendaraan' && (
-            <div className="p-4">
-              {groupedData.kendaraan.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
-                  {groupedData.kendaraan.map(renderAsetCard)}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  Tidak ada data kendaraan
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Elektronik Section */}
-        <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
-          <button
-            onClick={() => setActiveSection(activeSection === 'elektronik' ? '' : 'elektronik')}
-            className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-lg font-semibold">Elektronik</span>
-              <span className="bg-red-700 px-2 py-1 rounded-full text-sm">
-                {groupedData.elektronik.length}
-              </span>
-            </div>
-            {activeSection === 'elektronik' ? (
-              <ChevronDown className="w-5 h-5" />
-            ) : (
-              <ChevronRight className="w-5 h-5" />
-            )}
-          </button>
-          
-          {activeSection === 'elektronik' && (
-            <div className="p-4">
-              {groupedData.elektronik.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
-                  {groupedData.elektronik.map(renderAsetCard)}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  Tidak ada data elektronik
-                </div>
-              )}
-            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">Tidak ada data</div>
           )}
         </div>
       </div>

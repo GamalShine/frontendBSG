@@ -149,11 +149,16 @@ const Sidebar = () => {
 
   const hasPicAccess = (menu) => {
     const picKey = menu?.picKey
+    // Sembunyikan sementara beberapa menu berikut
+    const excludeIds = new Set(['daftar-tugas', 'daftar-saran', 'daftar-komplain', 'daftar-pengajuan'])
+    if (excludeIds.has((menu?.id || '').toLowerCase())) return false
     // Item default yang selalu boleh untuk role admin/divisi/tim tanpa picKey
     const defaultWhitelistIds = new Set([
       'dashboard', 'daftar-tugas', 'profile', 'settings',
       // Personal admin menus
-      'tugas-saya', 'sop-terkait', 'aturan', 'kpi-saya', 'slip-gaji-saya'
+      'tugas-saya', 'sop-terkait', 'aturan', 'kpi-saya', 'slip-gaji-saya',
+      // Tampilkan secara default untuk admin sesuai permintaan
+      'daftar-saran', 'daftar-komplain', 'daftar-pengajuan'
     ])
     const whitelistRoles = new Set(['admin', 'divisi', 'tim'])
 
@@ -182,6 +187,9 @@ const Sidebar = () => {
     if ((menu?.id || '').toLowerCase() === 'settings' || (menu?.title || '').toLowerCase() === 'settings') {
       return null
     }
+    // Sembunyikan sementara: Daftar Tugas, Daftar Saran, Daftar Komplain, Daftar Pengajuan
+    const excludeIds = new Set(['daftar-tugas', 'daftar-saran', 'daftar-komplain', 'daftar-pengajuan'])
+    if (excludeIds.has((menu?.id || '').toLowerCase())) return null
     const IconComponent = iconMap[menu.icon] || Home
     const isActive = menu.path ? isMenuActive(menu.path) : false
     const hasChildren = menu.children && menu.children.length > 0
@@ -198,6 +206,8 @@ const Sidebar = () => {
     let visibleChildren = menu.children
     if (hasChildren) {
       visibleChildren = menu.children.filter(child => {
+        // Terapkan pengecualian juga untuk child
+        if (excludeIds.has((child?.id || '').toLowerCase())) return false
         const permOk = checkPermission(child.permissions)
         const picOk = hasPicAccess(child)
         return permOk && picOk

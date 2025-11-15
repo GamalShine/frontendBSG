@@ -295,6 +295,44 @@ export const MenuProvider = ({ children }) => {
         
       case 'admin':
         // Menu Keuangan untuk Admin (hanya item yang diminta)
+        // Tambahkan menu top-level yang diminta: DAFTAR TUGAS dan DAFTAR KOMPLAIN
+        // - DAFTAR TUGAS tidak butuh picKey (masuk default whitelist di Sidebar)
+        baseMenus.push({
+          id: 'daftar-tugas',
+          title: 'DAFTAR TUGAS',
+          path: '/admin/tugas',
+          icon: 'CheckSquare',
+          permissions: ['read']
+        })
+        // - DAFTAR KOMPLAIN menggunakan picKey agar mengikuti permission AdminDaftarKomplain
+        baseMenus.push({
+          id: 'daftar-komplain',
+          title: 'DAFTAR KOMPLAIN',
+          path: '/admin/komplain',
+          icon: 'AlertTriangle',
+          permissions: ['read'],
+          picKey: 'AdminDaftarKomplain'
+        })
+
+        // DAFTAR SARAN (menggunakan PIC AdminDaftarSaran)
+        baseMenus.push({
+          id: 'daftar-saran',
+          title: 'DAFTAR SARAN',
+          path: '/admin/saran',
+          icon: 'MessageCircle',
+          permissions: ['read'],
+          picKey: 'AdminDaftarSaran'
+        })
+
+        // DAFTAR PENGAJUAN (admin)
+        baseMenus.push({
+          id: 'daftar-pengajuan',
+          title: 'DAFTAR PENGAJUAN',
+          path: '/admin/pengajuan',
+          icon: 'Mail',
+          permissions: ['read']
+        })
+
         baseMenus.push({
           id: 'keuangan',
           title: 'KEUANGAN',
@@ -602,6 +640,7 @@ export const MenuProvider = ({ children }) => {
         'struktur-jobdesk',
         'tugas-saya',
         'daftar-komplain',
+        'daftar-pengajuan',
         'sop-terkait',
         'kpi-saya',
         'slip-gaji-saya',

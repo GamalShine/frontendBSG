@@ -37,6 +37,7 @@ const AdminKPI = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [viewPreviewUrl, setViewPreviewUrl] = useState('');
   // Users dropdown state
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -429,12 +430,38 @@ const AdminKPI = () => {
       {!isModalOpen && (
         <button
           onClick={openCreateModal}
-          aria-label="Tambah KPI"
+          aria-label="Tambah Raport"
           className="lg:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-red-600 text-white shadow-lg flex items-center justify-center active:scale-95"
         >
           <span className="text-2xl leading-none">+</span>
         </button>
       )}
+
+  {/* Preview Modal for viewing images */}
+  {viewPreviewUrl && (
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center">
+      <button
+        className="absolute inset-0 bg-black/70"
+        aria-label="Tutup preview"
+        onClick={() => setViewPreviewUrl('')}
+      />
+      <div className="relative z-[2001] max-w-[95vw] max-h-[90vh]">
+        <img
+          src={viewPreviewUrl}
+          alt="Preview"
+          className="w-auto h-auto max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/800x600?text=No+Image'; }}
+        />
+        <button
+          onClick={() => setViewPreviewUrl('')}
+          className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md"
+          aria-label="Tutup"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  )}
 
       {/* Last Update Info */}
       <div className="bg-gray-200 px-6 py-2">
@@ -498,7 +525,8 @@ const AdminKPI = () => {
                               <img
                                 src={getPhotoUrl(item)}
                                 alt={item.name || 'KPI'}
-                                className="w-full h-52 object-cover"
+                                className="w-full h-52 object-cover cursor-zoom-in"
+                                onClick={() => setViewPreviewUrl(getPhotoUrl(item))}
                                 onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/400x300?text=No+Image'; }}
                               />
                               <div className="pl-3 pr-0 py-0.5 flex items-center justify-between text-xs text-gray-600 bg-white">
@@ -542,13 +570,13 @@ const AdminKPI = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center">
                   <BarChart3 className="w-5 h-5 mr-2 text-red-600" />
-                  Daftar KPI
+                  Raport Kerja
                 </h3>
                 <button
                   onClick={openCreateModal}
                   className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors flex items-center"
                 >
-                  <span className="mr-1">+</span> Tambah KPI
+                  <span className="mr-1">+</span> Tambah Raport
                 </button>
               </div>
             </div>
@@ -616,27 +644,20 @@ const AdminKPI = () => {
           <div className="p-4 border-b border-gray-200 bg-gray-50">
             <h3 className="text-lg font-bold text-gray-900 flex items-center">
               <Target className="w-5 h-5 mr-2 text-red-600" />
-              Detail KPI
+              Detail
             </h3>
           </div>
           
           <div className="p-4 h-full">
             {selectedItem ? (
               <div className="h-full flex flex-col">
-                <div className="mb-4">
-                  <h4 className="text-xl font-bold text-gray-900 mb-2">
-                    {typeof selectedItem === 'string' ? selectedItem : selectedItem?.name}
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Kategori: {typeof selectedItem === 'object' ? selectedItem.category : activeTab}
-                  </p>
-                </div>
                 
                 <div className="flex-1 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden border border-gray-200">
                   <img
                     src={getPhotoUrl(selectedItem)}
                     alt={typeof selectedItem === 'string' ? selectedItem : selectedItem?.name || 'KPI Photo'}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-zoom-in"
+                    onClick={() => setViewPreviewUrl(getPhotoUrl(selectedItem))}
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = 'https://placehold.co/400x300?text=No+Image';
@@ -665,14 +686,14 @@ const AdminKPI = () => {
           <div className="w-full md:max-w-lg bg-white rounded-t-2xl md:rounded-2xl shadow-lg overflow-hidden">
             {/* Header */}
             <div className="px-4 py-3 border-b flex items-center justify-between">
-              <h4 className="font-semibold">{modalMode === 'create' ? 'Tambah KPI' : 'Edit KPI'}</h4>
+              <h4 className="font-semibold">{modalMode === 'create' ? 'Tambah Raport' : 'Edit KPI'}</h4>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             {/* Body */}
             <form onSubmit={handleSubmit}>
               <div className="p-4 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama KPI</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
                   <input
                     type="text"
                     name="name"
@@ -741,7 +762,7 @@ const AdminKPI = () => {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Foto KPI</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Foto</label>
                   <input
                     type="file"
                     accept="image/*"

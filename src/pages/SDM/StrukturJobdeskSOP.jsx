@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, ChevronDown, ChevronRight } from 'lucide-react'
+// (Preview modal uses a custom centered overlay below)
 import api from '../../services/api'
 import { API_CONFIG, API_ENDPOINTS } from '../../config/constants'
 import { useAuth } from '../../contexts/AuthContext'
@@ -8,7 +9,7 @@ import { MENU_CODES } from '@/config/menuCodes'
 const TabButton = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`w-full text-center px-0 md:px-4 pt-2 pb-2 text-sm font-semibold transition-colors border-b-2 rounded-none ${
+    className={`w-full text-center px-0 md:px-4 pt-2 pb-1 md:pb-2 text-sm font-semibold transition-colors border-b-2 rounded-none ${
       active ? 'border-red-700 text-red-700' : 'border-transparent text-gray-700 hover:text-red-700'
     }`}
   >
@@ -204,6 +205,7 @@ const StrukturJobdeskSOP = () => {
   const [zoomScale, setZoomScale] = useState(1)
   const [transformOrigin, setTransformOrigin] = useState('center center')
   const imgWrapRef = useRef(null)
+  const [showImgPreview, setShowImgPreview] = useState(false)
 
   const handleImgMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -577,20 +579,15 @@ const StrukturJobdeskSOP = () => {
                 <div
                   ref={imgWrapRef}
                   className="mt-2 -mx-6 overflow-hidden"
-                  onMouseMove={handleImgMouseMove}
-                  onMouseEnter={handleImgMouseEnter}
-                  onMouseLeave={handleImgMouseLeave}
                 >
                   <img
                     src={`${imageBase}${struktur.foto}`}
                     alt={struktur.judul || 'Struktur Organisasi'}
-                    className="w-full select-none"
-                    style={{
-                      transform: `scale(${zoomScale})`,
-                      transformOrigin: transformOrigin,
-                      transition: 'transform 180ms ease-out',
-                    }}
+                    className="w-full select-none cursor-zoom-in"
+                    style={{ transform: 'none' }}
                     draggable={false}
+                    onClick={() => setShowImgPreview(true)}
+                    title="Klik untuk preview"
                   />
                 </div>
               )}
@@ -601,7 +598,7 @@ const StrukturJobdeskSOP = () => {
       )}
 
       {activeTab === 'jobdesk' && (
-        <SectionCard title="Struktur Jobdesk" right={
+        <SectionCard title="" right={
           canManage ? (
             <button
               type="button"
@@ -616,80 +613,59 @@ const StrukturJobdeskSOP = () => {
           {error.jobdesk && <ErrorBox message={error.jobdesk} />}
           {!loading.jobdesk && !error.jobdesk && (
             jobdesk.length > 0 ? (
-              <div className="space-y-3">
+              <div className="pt-2 pb-3 space-y-3 -mx-2 md:mx-0">
                 {jobdesk.map((divisi) => {
                   const isOpen = !!openJobDiv[divisi.id]
                   const deptCount = divisi.departments?.length || 0
+                  const totalPos = (divisi.departments || []).reduce((m, d) => m + (d.positions?.length || 0), 0)
                   return (
-                    <div key={`div-${divisi.id}`} className="border rounded-md bg-white">
+                    <div key={`div-${divisi.id}`} className="rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 mb-3 mx-0 md:mx-3 shadow-sm">
                       <button
                         type="button"
                         onClick={() => setOpenJobDiv((s) => ({ ...s, [divisi.id]: !s[divisi.id] }))}
-                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50"
+                        className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
                       >
-                        <div className="text-left">
-                          <div className="font-semibold text-gray-800 flex items-center gap-2">
-                            {divisi.nama_divisi}
-                            {divisi.status === 1 && <span className="text-xs text-red-500">(nonaktif)</span>}
-                            <span className="ml-2 text-xs bg-gray-100 text-gray-700 rounded px-2 py-0.5">{deptCount} Dept</span>
-                          </div>
-                          {divisi.keterangan && <div className="text-sm text-gray-600">{divisi.keterangan}</div>}
+                        <div className="flex items-center gap-2">
+                          {isOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                          <span className="font-semibold tracking-tight">{divisi.nama_divisi}</span>
                         </div>
-                        <svg className={`h-5 w-5 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd"/></svg>
+                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{deptCount} dept • {totalPos} posisi</span>
                       </button>
                       {isOpen && (
-                        <div className="px-4 pb-4">
-                          {/* Tombol tambah per divisi dihapus - gunakan tombol Tambah global */}
-                          {deptCount > 0 ? (
-                            <div className="space-y-2">
-                              {divisi.departments.map((dept) => {
-                                const open = !!openJobDept[dept.id]
-                                const posCount = dept.positions?.length || 0
-                                return (
-                                  <div key={`dept-${dept.id}`} className="border rounded-md">
-                                    <button
-                                      type="button"
-                                      onClick={() => setOpenJobDept((s) => ({ ...s, [dept.id]: !s[dept.id] }))}
-                                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50"
-                                    >
-                                      <div className="text-left text-gray-700">
-                                        <div className="font-medium flex items-center gap-2">
-                                          {dept.nama_department}
-                                          {dept.status === 1 && <span className="text-xs text-red-500">(nonaktif)</span>}
-                                          <span className="ml-2 text-xs bg-gray-100 text-gray-700 rounded px-2 py-0.5">{posCount} Posisi</span>
-                                        </div>
-                                      </div>
-                                      <svg className={`h-4 w-4 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.06 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd"/></svg>
-                                    </button>
-                                    {open && (
-                                      <div className="px-3 pb-3">
-                                        {/* Tombol tambah per department dihapus - gunakan tombol Tambah global */}
-                                        {posCount > 0 ? (
-                                          <ul className="mt-2 space-y-1 text-sm text-gray-700 list-disc list-inside">
-                                            {dept.positions.map((pos) => {
-                                              const isNonaktif = pos.status === 1
-                                              return (
-                                                <li key={`pos-${pos.id}`} className="flex items-start justify-between gap-2">
-                                                  <span>
-                                                    {pos.nama_position}
-                                                    {isNonaktif && <span className="ml-1 text-red-600 text-xs">(nonaktif)</span>}
-                                                  </span>
-                                                </li>
-                                              )
-                                            })}
-                                          </ul>
-                                        ) : (
-                                          <div className="text-xs text-gray-400 mt-1">Tidak ada posisi.</div>
-                                        )}
-                                      </div>
+                        <div className="mt-0 px-2 md:px-6 pt-3 pb-2 md:py-4 grid grid-cols-1 gap-2 md:gap-3">
+                          {(divisi.departments || []).map((dept) => {
+                            const open = !!openJobDept[dept.id]
+                            const posCount = dept.positions?.length || 0
+                            return (
+                              <div key={`dept-${dept.id}`} className="bg-white rounded-md shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="px-2 md:px-4 py-0.5 md:py-2 bg-red-800 text-white flex items-center justify-between">
+                                  <button type="button" onClick={() => setOpenJobDept((s) => ({ ...s, [dept.id]: !s[dept.id] }))} className="flex items-center gap-2 text-left">
+                                    {open ? <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" /> : <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" />}
+                                    <span className="font-semibold text-sm md:text-sm leading-tight tracking-tight">{dept.nama_department}</span>
+                                  </button>
+                                  <span className="text-[10px] md:text-xs bg-white/20 px-1.5 md:px-2 py-0.5 rounded-full border border-white/30">{posCount} posisi</span>
+                                </div>
+                                {open && (
+                                  <div className="divide-y">
+                                    {posCount > 0 ? (
+                                      (dept.positions || []).map((pos) => {
+                                        const isNonaktif = pos.status === 1
+                                        return (
+                                          <div key={`pos-${pos.id}`} className="px-2 md:px-4 py-1.5 md:py-2 flex items-center justify-between text-[13px] md:text-sm">
+                                            <div className="text-gray-900 font-medium leading-tight">
+                                              {pos.nama_position} {isNonaktif && <span className="ml-1 text-red-200 text-xs">(nonaktif)</span>}
+                                            </div>
+                                          </div>
+                                        )
+                                      })
+                                    ) : (
+                                      <div className="px-2 md:px-4 py-2 text-xs text-gray-500">Tidak ada posisi.</div>
                                     )}
                                   </div>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-500 mt-2">Tidak ada department.</div>
-                          )}
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -731,6 +707,31 @@ const StrukturJobdeskSOP = () => {
       </>
     )}
     </div>
+
+    {/* Preview Gambar Struktur - Custom Centered Overlay (mobile & desktop) */}
+    {showImgPreview && (
+      <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/50" onClick={() => setShowImgPreview(false)} />
+        <div className="relative max-w-[90vw] md:max-w-5xl max-h-[85vh] w-full bg-white rounded-lg shadow-xl overflow-auto">
+          {struktur?.foto ? (
+            <img
+              src={`${imageBase}${struktur.foto}`}
+              alt={struktur?.judul || 'Struktur Organisasi'}
+              className="w-full h-auto object-contain"
+              draggable={false}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setShowImgPreview(false)}
+            className="absolute top-2 right-2 px-2 py-1 rounded bg-black/50 text-white text-sm"
+            aria-label="Tutup"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    )}
 
     {/* Modal Form Struktur Organisasi */}
     {showForm && (

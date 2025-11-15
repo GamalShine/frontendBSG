@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 import { jadwalPembayaranService } from '../../../../services/jadwalPembayaranService'
 import { MENU_CODES } from '../../../../config/menuCodes'
-import { Plus, ChevronDown, ChevronRight, Edit2, Search } from 'lucide-react'
+import { Plus, ChevronDown, ChevronRight, Edit2, Trash2, Search } from 'lucide-react'
 
 const KATEGORI_OPTIONS = [
   'pajak_kendaraan_pribadi',
@@ -35,12 +35,19 @@ const formatCurrency = (val) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(num)
 }
 
-const prettyKategori = (k) => (k || '').replaceAll('_',' ').toUpperCase()
+const prettyKategori = (k) => {
+  const key = String(k || '')
+  if (key === 'pajak_kendaraan_pribadi') return 'PAJAK/STNK KENDARAAN PRIBADI'
+  if (key === 'pajak_kendaraan_operasional') return 'PAJAK/STNK KENDARAAN OPERASIONAL'
+  if (key === 'pajak_kendaraan_distribusi') return 'PAJAK/STNK KENDARAAN DISTRIBUSI'
+  return key.replaceAll('_', ' ').toUpperCase()
+}
 
 const emptyForm = {
   nama_item: '',
   kategori: '',
   tanggal_jatuh_tempo: '',
+  tanggal_hari: '',
   outlet: '',
   sewa: '',
   pemilik_sewa: '',
@@ -63,9 +70,28 @@ const AdminJadwalPembayaran = () => {
   const [expandedYear, setExpandedYear] = useState({})
   const [expandedMonth, setExpandedMonth] = useState({})
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [filterLoading, setFilterLoading] = useState(false)
   const [kategoriFilter, setKategoriFilter] = useState('all')
   const [showDetail, setShowDetail] = useState(false)
   const [detailItem, setDetailItem] = useState(null)
+
+  // Refs untuk baris scroll chips (desktop: bisa geser dengan mouse wheel)
+  const kategoriScrollRef = useRef(null)
+  const bulanScrollRef = useRef(null)
+
+  const wheelToHorizontal = (ref) => (e) => {
+    // Di desktop: alihkan scroll vertikal mouse menjadi horizontal scroll pada row chips
+    try {
+      const isDesktop = window.matchMedia('(min-width: 768px)').matches
+      if (!isDesktop) return
+      // Bila dominan vertikal, alihkan ke horizontal
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault()
+        ref?.current?.scrollBy({ left: e.deltaY, behavior: 'smooth' })
+      }
+    } catch {}
+  }
 
   const load = async () => {
     try {
@@ -80,6 +106,16 @@ const AdminJadwalPembayaran = () => {
   }
 
   useEffect(() => { load() }, [])
+
+  // Debounce pencarian 300ms
+  useEffect(() => {
+    setFilterLoading(true)
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setFilterLoading(false)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [searchTerm])
 
   const lastUpdatedText = useMemo(() => {
     if (!data || data.length === 0) return '-'
@@ -103,8 +139,8 @@ const AdminJadwalPembayaran = () => {
     if (kategoriFilter !== 'all') {
       base = base.filter(row => (row.kategori || '').toLowerCase() === kategoriFilter.toLowerCase())
     }
-    if (!searchTerm) return base
-    const q = searchTerm.toLowerCase()
+    if (!debouncedSearch) return base
+    const q = debouncedSearch.toLowerCase()
     return base.filter(row => (
       (row.nama_item || '').toLowerCase().includes(q) ||
       (row.kategori || '').toLowerCase().includes(q) ||
@@ -114,7 +150,7 @@ const AdminJadwalPembayaran = () => {
       (row.no_rekening || '').toLowerCase().includes(q) ||
       (row.bulan || '').toLowerCase().includes(q)
     ))
-  }, [data, searchTerm, kategoriFilter])
+  }, [data, debouncedSearch, kategoriFilter])
 
   // group -> kategori -> tahun -> bulan
   const grouped = useMemo(() => {
@@ -130,6 +166,59 @@ const AdminJadwalPembayaran = () => {
     }
     return map
   }, [filteredData])
+
+  // Auto-expand kategori/tahun/bulan bila ada keyword: buka hanya grup yang berisi hasil (grouped sudah hasil filter)
+  useEffect(() => {
+    const hasKeyword = (debouncedSearch || '').trim().length > 0
+    if (!hasKeyword) {
+      setExpandedKategori({})
+      setExpandedYear({})
+      setExpandedMonth({})
+      return
+    }
+    const nextCat = {}
+    const nextYear = {}
+    const nextMonth = {}
+    Object.keys(grouped).forEach(cat => {
+      nextCat[cat] = true
+      const yearsObj = grouped[cat] || {}
+      Object.keys(yearsObj).forEach(y => {
+        const yearKey = `${cat}-${y}`
+        nextYear[yearKey] = true
+        const monthsObj = yearsObj[y] || {}
+        Object.keys(monthsObj).forEach(m => {
+          const monthKey = `${yearKey}-${m}`
+          // buka hanya jika ada item
+          if ((monthsObj[m] || []).length > 0) nextMonth[monthKey] = true
+        })
+      })
+    })
+    setExpandedKategori(nextCat)
+    setExpandedYear(nextYear)
+    setExpandedMonth(nextMonth)
+  }, [debouncedSearch, grouped])
+
+  // Helper highlight teks sesuai keyword
+  const highlightText = (val) => {
+    const text = String(val ?? '')
+    const q = String(debouncedSearch || '').trim()
+    if (!q) return text
+    try {
+      const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const re = new RegExp(esc, 'ig')
+      const parts = text.split(re)
+      const matches = text.match(re)
+      if (!matches) return text
+      const nodes = []
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i]) nodes.push(<span key={`p-${i}`}>{parts[i]}</span>)
+        if (i < matches.length) nodes.push(<mark key={`m-${i}`} className="bg-yellow-200 px-0.5 rounded">{matches[i]}</mark>)
+      }
+      return <>{nodes}</>
+    } catch {
+      return text
+    }
+  }
 
   const openCreate = () => {
     setEditingId(null)
@@ -148,6 +237,7 @@ const AdminJadwalPembayaran = () => {
       nama_item: item.nama_item || '',
       kategori: item.kategori || '',
       tanggal_jatuh_tempo: item.tanggal_jatuh_tempo || '',
+      tanggal_hari: item.tanggal_jatuh_tempo ? new Date(item.tanggal_jatuh_tempo).getDate() : '',
       outlet: item.outlet || '',
       sewa: item.sewa || '',
       pemilik_sewa: item.pemilik_sewa || '',
@@ -167,33 +257,23 @@ const AdminJadwalPembayaran = () => {
     // Validasi minimal dari backend: nama_item & kategori wajib
     const errs = {}
     const k = String(formData.kategori || '')
-    const isSewa = k.startsWith('sewa_')
-    const isAngsuran = k.startsWith('angsuran_')
-    const isPajak = k.startsWith('pajak_')
-    const isAsuransi = k.startsWith('asuransi_')
-    const isService = k.startsWith('service_')
-    const isPbbOutlet = k === 'pbb_outlet'
-    const isPbbPribadi = k === 'pbb_pribadi'
+    const isSewaOutlet = k === 'sewa_outlet'
 
     if (!formData.nama_item) errs.nama_item = 'Nama item wajib'
     if (!formData.kategori) errs.kategori = 'Kategori wajib'
 
-    // Aturan per kategori (kebutuhan realistis di UI)
-    if (isSewa) {
-      if (k === 'sewa_outlet' && !formData.outlet) errs.outlet = 'Outlet wajib untuk SEWA OUTLET'
+    // Aturan baru:
+    // - Default (semua kategori) mengikuti pola pajak: tanggal_hari, bulan, tahun wajib
+    // - KECUALI sewa_outlet: outlet, nominal (sewa), bulan, tahun wajib
+    if (isSewaOutlet) {
+      if (!formData.outlet) errs.outlet = 'Outlet wajib untuk SEWA OUTLET'
       if (!formData.sewa) errs.sewa = 'Nominal sewa wajib'
       if (!formData.bulan) errs.bulan = 'Bulan wajib'
       if (!formData.tahun) errs.tahun = 'Tahun wajib'
-    } else if (isAngsuran) {
-      if (!formData.sewa) errs.sewa = 'Nominal angsuran wajib'
-      if (!formData.bulan) errs.bulan = 'Bulan wajib'
-      if (!formData.tahun) errs.tahun = 'Tahun wajib'
-    } else if (isPajak || isAsuransi || isService) {
-      if (!formData.tanggal_jatuh_tempo) errs.tanggal_jatuh_tempo = 'Tanggal jatuh tempo wajib'
-      if (!formData.tahun) errs.tahun = 'Tahun wajib'
-      // Bulan opsional untuk ketiganya
-    } else if (isPbbOutlet || isPbbPribadi) {
-      if (isPbbOutlet && !formData.outlet) errs.outlet = 'Outlet wajib untuk PBB OUTLET'
+    } else {
+      if (!formData.tanggal_hari) errs.tanggal_hari = 'Tanggal (hari) wajib'
+      const dayNum = Number(formData.tanggal_hari)
+      if (formData.tanggal_hari && (isNaN(dayNum) || dayNum < 1 || dayNum > 31)) errs.tanggal_hari = 'Tanggal harus 1-31'
       if (!formData.bulan) errs.bulan = 'Bulan wajib'
       if (!formData.tahun) errs.tahun = 'Tahun wajib'
     }
@@ -208,10 +288,24 @@ const AdminJadwalPembayaran = () => {
       // - Ubah '' menjadi null pada field opsional/ENUM/DATE
       // - Parse number untuk sewa (DECIMAL) dan tahun (INTEGER)
       const normalize = (v) => (v === '' || v === undefined ? null : v)
+      const monthIndex = BULAN_OPTIONS.findIndex(b => String(b).toUpperCase() === String(formData.bulan||'').toUpperCase())
+      let tanggalJatuhTempo = normalize(formData.tanggal_jatuh_tempo)
+      if (!isSewaOutlet) {
+        if (formData.tahun && formData.bulan && formData.tanggal_hari) {
+          const y = Number(formData.tahun)
+          const m = monthIndex >= 0 ? (monthIndex + 1) : 1
+          const d = Math.min(Math.max(Number(formData.tanggal_hari), 1), 31)
+          const mm = String(m).padStart(2, '0')
+          const dd = String(d).padStart(2, '0')
+          tanggalJatuhTempo = `${y}-${mm}-${dd}`
+        } else {
+          tanggalJatuhTempo = null
+        }
+      }
       const payload = {
         nama_item: formData.nama_item,
         kategori: formData.kategori,
-        tanggal_jatuh_tempo: normalize(formData.tanggal_jatuh_tempo),
+        tanggal_jatuh_tempo: tanggalJatuhTempo,
         outlet: normalize(formData.outlet),
         sewa:
           formData.sewa === '' || formData.sewa === null || formData.sewa === undefined
@@ -253,10 +347,10 @@ const AdminJadwalPembayaran = () => {
       {/* Header merah */}
       <div className="bg-red-800 text-white px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.operasional.jadwalPembayaran}</span>
+          <div className="flex items-center gap-3 md:gap-4">
+            <span className="text-[10px] md:text-sm font-semibold bg-white/10 rounded px-2 py-0.5 md:py-1">{MENU_CODES.operasional.jadwalPembayaran}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">JADWAL PEMBAYARAN/PERAWATAN</h1>
+              <h1 className="text-lg md:text-2xl font-extrabold tracking-tight">JADWAL PEMBAYARAN/PERAWATAN</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -278,7 +372,6 @@ const AdminJadwalPembayaran = () => {
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Jadwal</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
@@ -311,10 +404,12 @@ const AdminJadwalPembayaran = () => {
             return (
               <div key={kategori} className="mb-6 border rounded-lg overflow-hidden shadow-sm">
                 <button onClick={() => setExpandedKategori(v=>({...v,[kategori]:!v[kategori]}))} className="w-full flex items-center justify-between px-5 py-4 bg-red-700 text-white">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3 flex-col md:flex-row md:items-center md:gap-3">
                     <span className="font-bold tracking-wide">{prettyCat}</span>
-                    <span className="ml-2 text-xs bg-white/15 px-2 py-0.5 rounded-full">{totalItemsInCat} item</span>
-                    <span className="ml-1 text-xs bg-white/15 px-2 py-0.5 rounded-full">{formatCurrency(totalSewaInCat)}</span>
+                    <div className="hidden md:flex items-center gap-2">
+                      <span className="ml-2 text-xs bg-white/15 px-2 py-0.5 rounded-full">{totalItemsInCat} item</span>
+                      <span className="ml-1 text-xs bg-white/15 px-2 py-0.5 rounded-full">{formatCurrency(totalSewaInCat)}</span>
+                    </div>
                   </div>
                   {catOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </button>
@@ -352,34 +447,123 @@ const AdminJadwalPembayaran = () => {
                                       </span>
                                     </button>
                                     {mOpen && (
-                                      <div className="px-4 pb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {items.map((row) => (
-                                          <div
-                                            key={row.id}
-                                            className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer min-h-[200px]"
-                                            onClick={() => openDetail(row)}
-                                          >
-                                            <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
-                                              <div className="font-semibold text-gray-800">{prettyKategori(row.kategori)}</div>
-                                              <div className="flex items-center gap-2">
-                                                <button onClick={(e) => { e.stopPropagation(); openEdit(row) }} className="inline-flex items-center gap-1 text-red-700 hover:text-red-800 text-sm font-medium">
-                                                  <Edit2 className="h-4 w-4" /> Edit
+                                      <div className="px-4 pb-4">
+                                        {/* Mobile: list sederhana */}
+                                        <div className="block md:hidden divide-y">
+                                          {items.map((row) => (
+                                            <div key={row.id} className="pt-3 pb-2" onClick={() => openDetail(row)}>
+                                              <div className="text-sm font-semibold text-gray-900 mb-2">{row.nama_item || '-'}</div>
+                                              <div className="border border-gray-200 rounded">
+                                                <div className="grid grid-cols-[1fr,1fr] text-sm">
+                                                  <div className="px-3 py-2 border-b border-r text-gray-700">Jatuh Tempo</div>
+                                                  <div className="px-3 py-2 border-b">{row.tanggal_jatuh_tempo ? new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' }) : '-'}</div>
+                                                  <div className="px-3 py-2 border-r text-gray-700">Bulan</div>
+                                                  <div className="px-3 py-2">{row.bulan || '-'}</div>
+                                                </div>
+                                              </div>
+                                              <div className="mt-0 flex items-center justify-end gap-1">
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); openEdit(row) }}
+                                                  className="inline-flex items-center justify-center p-1 rounded text-red-700 hover:text-red-800 hover:bg-red-50"
+                                                  aria-label="Edit"
+                                                >
+                                                  <Edit2 className="h-4 w-4" />
                                                 </button>
-                                                <button onClick={(e) => { e.stopPropagation(); onDelete(row.id) }} className="inline-flex items-center gap-1 text-red-700 hover:text-red-800 text-sm font-medium">
-                                                  Hapus
+                                                <button
+                                                  onClick={(e) => { e.stopPropagation(); onDelete(row.id) }}
+                                                  className="inline-flex items-center justify-center p-1 rounded text-red-700 hover:text-red-800 hover:bg-red-50"
+                                                  aria-label="Hapus"
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
                                                 </button>
                                               </div>
                                             </div>
-                                            <div className="p-4 grid grid-cols-1 gap-2 text-sm text-gray-700">
-                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Sewa</span><span className="font-semibold">{formatCurrency(row.sewa)}</span></div>
-                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Pemilik</span><span>{row.pemilik_sewa || '-'}</span></div>
-                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Kontak</span><span>{row.no_kontak_pemilik_sewa || '-'}</span></div>
-                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Rekening</span><span>{row.no_rekening || '-'}</span></div>
-                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Jatuh Tempo</span><span>{row.tanggal_jatuh_tempo ? new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID') : '-'}</span></div>
-                                              <div className="flex items-center gap-2"><span className="w-28 text-gray-500">Bulan</span><span>{row.bulan || '-'}</span></div>
+                                          ))}
+                                        </div>
+
+                                        {/* Desktop: kartu dengan tabel ringkas, hanya field terisi */}
+                                        <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                          {items.map((row) => (
+                                            <div
+                                              key={row.id}
+                                              className="border rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                              onClick={() => openDetail(row)}
+                                            >
+                                              <div className="p-4">
+                                                <div className="text-sm font-semibold text-gray-900 mb-2 truncate" title={row.nama_item || '-'}>{row.nama_item || '-'}</div>
+                                                <div className="border border-gray-200 rounded">
+                                                  <div className="grid grid-cols-[1fr,1fr] text-sm">
+                                                    {/* Jatuh Tempo */}
+                                                    {(row.tanggal_jatuh_tempo) && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-b border-r text-gray-700">Jatuh Tempo</div>
+                                                        <div className="px-3 py-2 border-b">{new Date(row.tanggal_jatuh_tempo).toLocaleDateString('id-ID', { day:'2-digit', month:'long', year:'numeric' })}</div>
+                                                      </>
+                                                    )}
+                                                    {/* Bulan */}
+                                                    {(row.bulan) && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-b border-r text-gray-700">Bulan</div>
+                                                        <div className="px-3 py-2 border-b">{row.bulan}</div>
+                                                      </>
+                                                    )}
+                                                    {/* Outlet */}
+                                                    {(row.outlet) && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-b border-r text-gray-700">Outlet</div>
+                                                        <div className="px-3 py-2 border-b">{row.outlet}</div>
+                                                      </>
+                                                    )}
+                                                    {/* Sewa/Nominal */}
+                                                    {(row.sewa !== null && row.sewa !== undefined && row.sewa !== '') && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-b border-r text-gray-700">Sewa</div>
+                                                        <div className="px-3 py-2 border-b">{formatCurrency(row.sewa)}</div>
+                                                      </>
+                                                    )}
+                                                    {/* Pemilik */}
+                                                    {(row.pemilik_sewa) && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-b border-r text-gray-700">Pemilik</div>
+                                                        <div className="px-3 py-2 border-b">{row.pemilik_sewa}</div>
+                                                      </>
+                                                    )}
+                                                    {/* Kontak */}
+                                                    {(row.no_kontak_pemilik_sewa) && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-b border-r text-gray-700">Kontak</div>
+                                                        <div className="px-3 py-2 border-b">{row.no_kontak_pemilik_sewa}</div>
+                                                      </>
+                                                    )}
+                                                    {/* Rekening */}
+                                                    {(row.no_rekening) && (
+                                                      <>
+                                                        <div className="px-3 py-2 border-r text-gray-700">Rekening</div>
+                                                        <div className="px-3 py-2">{row.no_rekening}</div>
+                                                      </>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                                <div className="mt-0 flex items-center justify-end gap-1">
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); openEdit(row) }}
+                                                    className="inline-flex items-center justify-center p-1 rounded text-red-700 hover:text-red-800 hover:bg-red-50"
+                                                    aria-label="Edit"
+                                                  >
+                                                    <Edit2 className="h-4 w-4" />
+                                                  </button>
+                                                  <button
+                                                    onClick={(e) => { e.stopPropagation(); onDelete(row.id) }}
+                                                    className="inline-flex items-center justify-center p-1 rounded text-red-700 hover:text-red-800 hover:bg-red-50"
+                                                    aria-label="Hapus"
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </button>
+                                                </div>
+                                              </div>
                                             </div>
-                                          </div>
-                                        ))}
+                                          ))}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -495,7 +679,7 @@ const AdminJadwalPembayaran = () => {
 
       {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/40 flex items-end md:items-center justify-center z-50">
           {/* Backdrop click to close */}
           <button
             type="button"
@@ -505,13 +689,11 @@ const AdminJadwalPembayaran = () => {
             tabIndex={-1}
           />
 
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden border border-gray-200 flex flex-col relative">
+          <div className="w-full max-w-[100vw] md:max-w-2xl lg:max-w-3xl bg-white rounded-none md:rounded-2xl shadow-lg overflow-hidden border border-gray-200 flex flex-col relative">
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-red-700 bg-red-800 text-white sticky top-0 z-10">
-              <div>
-                <h3 className="text-xl font-bold leading-tight">{editingId ? 'Edit' : 'Tambah'} Jadwal Pembayaran</h3>
-              </div>
-              <button onClick={() => setShowForm(false)} className="p-2 text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors" aria-label="Tutup">
+            <div className="relative flex items-center justify-center px-4 py-3 border-b border-gray-200 bg-white text-gray-900 sticky top-0 z-10">
+              <h3 className="text-base md:text-xl font-semibold leading-tight text-center">{editingId ? 'Edit' : 'Tambah'} Jadwal Pembayaran</h3>
+              <button onClick={() => setShowForm(false)} className="absolute right-2 md:right-3 p-2 text-gray-500 hover:text-gray-700 rounded-lg transition-colors" aria-label="Tutup">
                 ✕
               </button>
             </div>
@@ -520,34 +702,79 @@ const AdminJadwalPembayaran = () => {
             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 scrollbar-hide">
               <form id="jadwalForm" onSubmit={onSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Nama Item */}
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm mb-1">Nama Item</label>
                   <input value={formData.nama_item} onChange={(e)=>setFormData(v=>({...v,nama_item:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.nama_item?'border-red-500':''}`} required />
                   {formErrors.nama_item && <div className="text-xs text-red-600 mt-1">{formErrors.nama_item}</div>}
                 </div>
-                {/* Kategori */}
-                <div>
+                {/* Kategori (single row, horizontal scroll) */}
+                <div className="md:col-span-2">
                   <label className="block text-sm mb-1">Kategori</label>
-                  <select value={formData.kategori} onChange={(e)=>setFormData(v=>({...v,kategori:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.kategori?'border-red-500':''}`} required>
-                    <option value="">- Pilih -</option>
-                    {KATEGORI_OPTIONS.map(opt=> (
-                      <option key={opt} value={opt}>{opt.replaceAll('_',' ')}</option>
-                    ))}
-                  </select>
+                  <div ref={kategoriScrollRef} onWheel={wheelToHorizontal(kategoriScrollRef)} className="overflow-x-auto whitespace-nowrap no-scrollbar">
+                    <div className="inline-flex items-center gap-2 pr-2">
+                      {/* Kategori chips */}
+                      {KATEGORI_OPTIONS.map((opt) => {
+                        const active = String(formData.kategori||'') === String(opt)
+                        return (
+                          <button
+                            type="button"
+                            key={opt}
+                            onClick={() => setFormData(v=>({...v,kategori:opt}))}
+                            className={`px-3 py-1.5 text-xs md:text-sm rounded border transition-colors ${active ? 'bg-red-700 text-white border-red-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                            title={prettyKategori(opt)}
+                          >
+                            {prettyKategori(opt)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {/* Error messages */}
                   {formErrors.kategori && <div className="text-xs text-red-600 mt-1">{formErrors.kategori}</div>}
                 </div>
 
-                {/* Tanggal Jatuh Tempo: tampil untuk pajak/asuransi/service */}
-                {(['pajak_','asuransi_','service_'].some(p=>String(formData.kategori||'').startsWith(p))) && (
-                  <div>
+                {/* Tanggal Jatuh Tempo: tampil untuk semua kategori KECUALI sewa_outlet (dipindah ke atas Bulan) */}
+                {(String(formData.kategori||'') !== 'sewa_outlet') && (
+                  <div className="md:col-span-2">
                     <label className="block text-sm mb-1">Tanggal Jatuh Tempo</label>
-                    <input type="date" value={formData.tanggal_jatuh_tempo || ''} onChange={(e)=>setFormData(v=>({...v,tanggal_jatuh_tempo:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.tanggal_jatuh_tempo?'border-red-500':''}`} />
-                    {formErrors.tanggal_jatuh_tempo && <div className="text-xs text-red-600 mt-1">{formErrors.tanggal_jatuh_tempo}</div>}
+                    <input
+                      type="number"
+                      min={1}
+                      max={31}
+                      placeholder="1-31"
+                      value={formData.tanggal_hari}
+                      onChange={(e)=>setFormData(v=>({...v,tanggal_hari:e.target.value}))}
+                      className={`w-full border rounded px-3 py-2 ${formErrors.tanggal_hari?'border-red-500':''}`}
+                    />
+                    {formErrors.tanggal_hari && <div className="text-xs text-red-600 mt-1">{formErrors.tanggal_hari}</div>}
                   </div>
                 )}
 
-                {/* Outlet: tampil untuk sewa_outlet dan pbb_outlet */}
-                {(String(formData.kategori||'') === 'sewa_outlet' || String(formData.kategori||'') === 'pbb_outlet') && (
+                {/* Bulan (chips) diletakkan tepat di bawah Tanggal Jatuh Tempo */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm mb-1">Bulan</label>
+                  <div ref={bulanScrollRef} onWheel={wheelToHorizontal(bulanScrollRef)} className="overflow-x-auto whitespace-nowrap no-scrollbar">
+                    <div className="inline-flex items-center gap-2 pr-2">
+                      {BULAN_OPTIONS.map((b) => {
+                        const active = String(formData.bulan||'') === String(b)
+                        return (
+                          <button
+                            type="button"
+                            key={b}
+                            onClick={() => setFormData(v=>({...v,bulan:b}))}
+                            className={`px-2.5 py-1.5 text-xs md:text-sm rounded border transition-colors ${active ? 'bg-red-700 text-white border-red-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                          >
+                            {b}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  {formErrors.bulan && <div className="text-xs text-red-600 mt-1">{formErrors.bulan}</div>}
+                </div>
+
+                {/* Outlet: tampil hanya untuk sewa_outlet */}
+                {(String(formData.kategori||'') === 'sewa_outlet') && (
                   <div>
                     <label className="block text-sm mb-1">Outlet</label>
                     <input value={formData.outlet} onChange={(e)=>setFormData(v=>({...v,outlet:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.outlet?'border-red-500':''}`} />
@@ -555,8 +782,8 @@ const AdminJadwalPembayaran = () => {
                   </div>
                 )}
 
-                {/* Nominal (Sewa/Angsuran) */}
-                {(['sewa_','angsuran_'].some(p=>String(formData.kategori||'').startsWith(p))) && (
+                {/* Nominal: tampil hanya untuk sewa_outlet */}
+                {(String(formData.kategori||'') === 'sewa_outlet') && (
                   <div>
                     <label className="block text-sm mb-1">Nominal</label>
                     <input type="number" step="1000" placeholder="0" value={formData.sewa} onChange={(e)=>setFormData(v=>({...v,sewa:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.sewa?'border-red-500':''}`} />
@@ -565,8 +792,8 @@ const AdminJadwalPembayaran = () => {
                   </div>
                 )}
 
-                {/* Info pemilik: tampil untuk kategori sewa */}
-                {(String(formData.kategori||'').startsWith('sewa_')) && (
+                {/* Info pemilik: tampil hanya untuk sewa_outlet */}
+                {(String(formData.kategori||'') === 'sewa_outlet') && (
                   <>
                     <div>
                       <label className="block text-sm mb-1">Pemilik Sewa</label>
@@ -583,17 +810,7 @@ const AdminJadwalPembayaran = () => {
                   </>
                 )}
 
-                {/* Bulan: untuk sewa, angsuran, pbb */}
-                {(['sewa_','angsuran_'].some(p=>String(formData.kategori||'').startsWith(p)) || ['pbb_outlet','pbb_pribadi'].includes(String(formData.kategori||''))) && (
-                  <div>
-                    <label className="block text-sm mb-1">Bulan</label>
-                    <select value={formData.bulan || ''} onChange={(e)=>setFormData(v=>({...v,bulan:e.target.value}))} className={`w-full border rounded px-3 py-2 ${formErrors.bulan?'border-red-500':''}`}>
-                      <option value="">- Pilih -</option>
-                      {BULAN_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                    {formErrors.bulan && <div className="text-xs text-red-600 mt-1">{formErrors.bulan}</div>}
-                  </div>
-                )}
+                {/* Bulan dipindah ke atas berdampingan dengan Kategori */}
 
                 {/* Tahun: selalu tampil */}
                 <div>
@@ -606,12 +823,12 @@ const AdminJadwalPembayaran = () => {
             </div>
 
             {/* Footer */}
-            <div className="p-0 border-t bg-white">
-              <div className="grid grid-cols-2 gap-2 px-2 py-2">
+            <div className="p-4 border-t bg-white">
+              <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 transition-colors rounded-lg"
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
                 >
                   Batal
                 </button>
@@ -619,8 +836,7 @@ const AdminJadwalPembayaran = () => {
                   type="submit"
                   form="jadwalForm"
                   disabled={submitting}
-                  className="w-full py-3 bg-red-700 text-white font-semibold hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors rounded-lg"
-                  onClick={(e)=>{ /* allow form submit through default form */ }}
+                  className="px-4 py-2 rounded-lg bg-red-700 text-white hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {submitting ? 'Menyimpan...' : 'Simpan'}
                 </button>

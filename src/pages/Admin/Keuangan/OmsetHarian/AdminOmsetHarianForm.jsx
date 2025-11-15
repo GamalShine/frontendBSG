@@ -193,6 +193,8 @@ const AdminOmsetHarianForm = () => {
     let cleaned = unboldSafe(before);
     cleaned = normalizeBoldHtml(cleaned);
     cleaned = fixStrayStrong(cleaned);
+    // Normalisasi entity &nbsp; menjadi spasi biasa agar tidak tampil sebagai &nbsp;
+    cleaned = cleaned.replace(/&nbsp;/g, ' ');
     if (cleaned !== before) {
       editorRef.current.innerHTML = cleaned;
     }
@@ -552,6 +554,8 @@ const AdminOmsetHarianForm = () => {
     let cleaned = unboldSafe(content);
     cleaned = normalizeBoldHtml(cleaned);
     cleaned = fixStrayStrong(cleaned);
+    // Pastikan &nbsp; diganti spasi biasa saat akan disimpan ke state
+    cleaned = cleaned.replace(/&nbsp;/g, ' ');
     if (editorRef.current && cleaned !== content) {
       editorRef.current.innerHTML = cleaned;
     }

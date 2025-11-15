@@ -496,7 +496,8 @@ const AdminAnekaGrafikList = () => {
                             <img
                               src={getPhotoUrl(item)}
                               alt={item.name || 'Aneka Grafik'}
-                              className="w-full h-52 object-cover"
+                              className="w-full h-52 object-cover cursor-zoom-in"
+                              onClick={() => setPreviewUrl(getPhotoUrl(item))}
                               onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/400x300?text=No+Image'; }}
                             />
                             <div className="pl-3 pr-0 py-0.5 flex items-center justify-between text-xs text-gray-600 bg-white">
@@ -622,21 +623,13 @@ const AdminAnekaGrafikList = () => {
           <div className="p-4 h-full">
             {selectedItem ? (
               <div className="h-full flex flex-col">
-                {/* Sembunyikan nama & kategori di mobile; tampilkan di desktop */}
-                <div className="mb-4 hidden lg:block">
-                  <h4 className="text-xl font-bold text-gray-900 mb-2">
-                    {selectedItem.name}
-                  </h4>
-                  <p className="text-sm text-gray-600">
-                    Kategori: {selectedItem.category || activeTab}
-                  </p>
-                </div>
                 
                 <div className="flex-1 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden border border-gray-200">
                   <img
                     src={getPhotoUrl(selectedItem)}
                     alt={selectedItem.name || 'Aneka Grafik Photo'}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-zoom-in"
+                    onClick={() => setPreviewUrl(getPhotoUrl(selectedItem))}
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = 'https://placehold.co/400x300?text=No+Image';
@@ -667,6 +660,32 @@ const AdminAnekaGrafikList = () => {
           onClose={handleFormClose}
           onSuccess={handleFormSuccess}
         />
+      )}
+
+      {/* Preview Modal */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center">
+          <button
+            className="absolute inset-0 bg-black/70"
+            aria-label="Tutup preview"
+            onClick={() => setPreviewUrl('')}
+          />
+          <div className="relative z-[2001] max-w-[95vw] max-h-[90vh]">
+            <img
+              src={previewUrl}
+              alt="Preview"
+              className="w-auto h-auto max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/800x600?text=No+Image'; }}
+            />
+            <button
+              onClick={() => setPreviewUrl('')}
+              className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center shadow-md"
+              aria-label="Tutup"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
