@@ -426,8 +426,8 @@ const AdminTrainingList = () => {
                   {trainings.map((userTraining, idx) => (
                     <tr
                       key={userTraining.id}
-                      className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => { setSelectedUser(userTraining); setDetailOpen(true) }}
+                      className="hover:bg-gray-50"
+                      onClick={() => { /* modal detail disembunyikan */ }}
                     >
                       <td className="px-3 md:px-4 py-3 md:py-4 text-sm text-gray-900">{idx + 1}</td>
                       <td className="px-3 md:px-4 py-3 md:py-4">
@@ -505,127 +505,18 @@ const AdminTrainingList = () => {
         </div>
       </div>
 
-      {/* Detail Modal */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent>
-          <DialogHeaderUI>
-            <DialogTitleUI>Detail Training Karyawan</DialogTitleUI>
-          </DialogHeaderUI>
-          <DialogBodyUI>
-            {selectedUser ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-base font-semibold text-gray-900">{selectedUser.nama}</p>
-                    <p className="text-sm text-gray-600">{selectedUser.email}</p>
-                  </div>
-                </div>
-
-                {/* Role dipisahkan di atas - tampil sederhana: Role : Keterangan */}
-                <div className="px-0 py-2 border-b border-gray-200">
-                  <p className="text-sm text-gray-700">
-                    Role : <span className="font-medium text-gray-900 uppercase">{selectedUser.role}</span>
-                  </p>
-                </div>
-
-                {/* Training status */}
-                {!isEditing ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-sm text-gray-600">Training Dasar</span>
-                      <Badge variant={selectedUser.training_dasar ? 'success' : 'secondary'}>
-                        {selectedUser.training_dasar ? 'Selesai' : 'Belum'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-sm text-gray-600">Training Leadership</span>
-                      <Badge variant={selectedUser.training_leadership ? 'success' : 'secondary'}>
-                        {selectedUser.training_leadership ? 'Selesai' : 'Belum'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-sm text-gray-600">Training Skill</span>
-                      <Badge variant={selectedUser.training_skill ? 'success' : 'secondary'}>
-                        {selectedUser.training_skill ? 'Selesai' : 'Belum'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span className="text-sm text-gray-600">Training Lanjutan</span>
-                      <Badge variant={selectedUser.training_lanjutan ? 'success' : 'secondary'}>
-                        {selectedUser.training_lanjutan ? 'Selesai' : 'Belum'}
-                      </Badge>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
-                      <span className="text-sm text-gray-700">Training Dasar</span>
-                      <input
-                        type="checkbox"
-                        checked={formTraining.training_dasar}
-                        onChange={(e) => setFormTraining(v => ({ ...v, training_dasar: e.target.checked }))}
-                        className="h-4 w-4"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
-                      <span className="text-sm text-gray-700">Training Leadership</span>
-                      <input
-                        type="checkbox"
-                        checked={formTraining.training_leadership}
-                        onChange={(e) => setFormTraining(v => ({ ...v, training_leadership: e.target.checked }))}
-                        className="h-4 w-4"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
-                      <span className="text-sm text-gray-700">Training Skill</span>
-                      <input
-                        type="checkbox"
-                        checked={formTraining.training_skill}
-                        onChange={(e) => setFormTraining(v => ({ ...v, training_skill: e.target.checked }))}
-                        className="h-4 w-4"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer">
-                      <span className="text-sm text-gray-700">Training Lanjutan</span>
-                      <input
-                        type="checkbox"
-                        checked={formTraining.training_lanjutan}
-                        onChange={(e) => setFormTraining(v => ({ ...v, training_lanjutan: e.target.checked }))}
-                        className="h-4 w-4"
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-600">Tidak ada data.</p>
-            )}
-          </DialogBodyUI>
-          <DialogFooterUI>
-            {!isEditing ? (
-              <>
-                <Button onClick={() => setDetailOpen(false)} variant="outline">Tutup</Button>
-                {selectedUser && (
-                  <Button onClick={() => { setDetailOpen(false); openEditModal(selectedUser); }}>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
-                )}
-              </>
-            ) : (
-              <>
-                <Button onClick={() => setIsEditing(false)} variant="outline">Batal</Button>
-                <Button onClick={handleSaveEdit} disabled={saveLoading} loading={saveLoading}>
-                  Simpan
-                </Button>
-              </>
-            )}
-          </DialogFooterUI>
-        </DialogContent>
-      </Dialog>
+      {/* Detail Modal dinonaktifkan sesuai permintaan */}
+      {false && (
+        <Dialog open={false} onOpenChange={setDetailOpen}>
+          <DialogContent>
+            <DialogHeaderUI>
+              <DialogTitleUI>Detail Training Karyawan</DialogTitleUI>
+            </DialogHeaderUI>
+            <DialogBodyUI />
+            <DialogFooterUI />
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Modal Tambah Training - disembunyikan */}
       {false && (

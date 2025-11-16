@@ -21,7 +21,7 @@ import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { MENU_CODES } from '@/config/menuCodes';
 import { API_CONFIG } from '../../../../config/constants';
 import { normalizeImageUrl } from '../../../../utils/url';
-import RichTextEditor from '../../../../components/UI/RichTextEditor';
+import CKEditorPoskas from '../../../../components/UI/CKEditorPoskas';
 
 const AdminPoskasEdit = () => {
   const { id } = useParams();
@@ -54,10 +54,80 @@ const AdminPoskasEdit = () => {
   const [isItalicActive, setIsItalicActive] = useState(false);
   const [isUnderlineActive, setIsUnderlineActive] = useState(false);
 
-  // Handler untuk RichTextEditor (sinkronkan HTML ke formData)
+  // Handler untuk CKEditorPoskas (sinkronkan HTML ke formData)
   const handleEditorHtmlChange = (e) => {
     const html = e?.target?.value ?? '';
     setFormData(prev => ({ ...prev, isi_poskas: html }));
+  };
+
+  // Helpers agar format simpan sama dengan form tambah
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
+    try {
+      out = out
+        // remove CKEditor image wrappers
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        // replace &nbsp; with plain space, then trim spaces around breaks
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/?\s*>\s*/gi, '<br>')
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        // ensure at most one <br> after [IMG:id]
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        // collapse any accidental double <br> again
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch(_){}
+    return out;
+  };
+
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      const base = API_CONFIG.BASE_URL.replace('/api','');
+      let out = String(url).trim();
+      if (out.startsWith(base)) out = out.slice(base.length);
+      out = out.replace('http://http://','http://');
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch (e) {
+      return String(url);
+    }
+  };
+
+  const convertHtmlToPlaceholders = (html, images) => {
+    if (!html) return '';
+    let out = html;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch(_){}
+    return out;
   };
 
   const updateFormatState = () => {
@@ -890,11 +960,14 @@ const AdminPoskasEdit = () => {
     
     if (!validateForm()) return;
     
-    // Ambil konten dari state yang sudah diserialisasi oleh RichTextEditor
+    // Ambil konten dari state (CKEditorPoskas)
     const editorContent = formData?.isi_poskas || '';
+    const normalized = normalizeBlocks(editorContent);
+    const contentForSave = convertHtmlToPlaceholders(normalized, formData.images || []);
     const finalFormData = {
-      ...formData,
-      isi_poskas: editorContent
+      tanggal_poskas: formData.tanggal_poskas,
+      isi_poskas: contentForSave,
+      images: Array.isArray(formData.images) ? formData.images : []
     };
     
     console.log('🔍 Debug: Form submission started');
@@ -981,18 +1054,12 @@ const AdminPoskasEdit = () => {
           toast.error(response.message || 'Gagal memperbarui laporan');
         }
       } else {
-        // Save without images - use text-only logic
-        console.log('🔍 Debug: Saving without images...');
-        
-                 // Prepare existing images data
-         const allExistingImages = existingImages.filter(img => img && img.id && (img.url || img.uri));
-         console.log('🔍 Debug: All existing images to preserve (text-only):', allExistingImages);
-
-        console.log('🔍 Debug: Sending text-only data to service...');
+        // Save without additional uploads - use content + images from CKEditor
+        console.log('🔍 Debug: Saving without new image uploads (using CKEditor images)...');
         const response = await poskasService.updatePoskas(id, {
           tanggal_poskas: finalFormData.tanggal_poskas,
           isi_poskas: finalFormData.isi_poskas,
-          images: allExistingImages
+          images: finalFormData.images
         });
         
         console.log('🔍 Debug: Service response:', response);
@@ -1335,22 +1402,12 @@ const AdminPoskasEdit = () => {
                 Isi Pos Kas
               </label>
             </div>
-            {/* Toolbar */}
-            {/* Toolbar contentEditable dihapus karena memakai RichTextEditor */}
-            
-            {/* Editor e-learning */}
-            <RichTextEditor
+            {/* Editor CKEditorPoskas */}
+            <CKEditorPoskas
               value={formData.isi_poskas}
-              onChange={handleEditorHtmlChange}
-              onFilesChange={(files) => {
-                // files: array of { file, id }
-                setSelectedImages(files); // uploadNewImagesToServer menerima File atau {file,id}
-                setNewImageIds(files.map(f => f.id));
-              }}
-              placeholder="Tulis laporan pos kas Anda di sini... (minimal 10 karakter)"
-              rows={12}
-              hideAlign={true}
-              hideImage={true}
+              onChangeHTML={handleEditorHtmlChange}
+              onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
+              placeholder="Masukkan isi posisi kas . . . "
             />
             {/* Mobile action bar under editor */}
             <div className="mt-4 lg:hidden flex items-center justify-end gap-3">
