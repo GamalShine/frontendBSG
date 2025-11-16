@@ -6,7 +6,7 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeft, Calendar, FileText, RefreshCw, Save, X } from 'lucide-react';
 import { MENU_CODES } from '@/config/menuCodes';
 import { getEnvironmentConfig } from '../../../../config/environment';
-import RichTextEditor from '../../../../components/UI/RichTextEditor';
+import CKEditorPoskas from '../../../../components/UI/CKEditorPoskas';
 
 const AdminPoskasForm = () => {
   const navigate = useNavigate();
@@ -69,6 +69,84 @@ const AdminPoskasForm = () => {
     };
   }, []);
   
+  // Normalize URL to compare src with images[].url
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      // remove base host and trailing /api for comparison
+      const base = envConfig.BASE_URL.replace('/api','');
+      let out = String(url).trim();
+      if (out.startsWith(base)) out = out.slice(base.length);
+      // collapse duplicate http://http://
+      out = out.replace('http://http://','http://');
+      // ensure upload path starts with /uploads
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch (e) {
+      return String(url);
+    }
+  };
+
+  // Convert <img src=...> in CKEditor HTML to legacy [IMG:id] tokens using formData.images mapping
+  const convertHtmlToPlaceholders = (html, images) => {
+    if (!html) return '';
+    let out = html;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          // if no id found, remove the img but keep a line break
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch (_) {}
+    return out;
+  };
+
+  // Normalize block tags to previous format (remove <p>/<div>, keep <br>)
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
+    try {
+      out = out
+        // remove CKEditor image wrappers
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        // replace &nbsp; with plain space, then trim spaces around breaks
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/?\s*>\s*/gi, '<br>')
+        // collapse multiple breaks
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        // trim leading/trailing breaks
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        // ensure at most one <br> after [IMG:id]
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        // remove <br> lines that only separate to an &nbsp; line
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch (_) {}
+    return out;
+  };
+
   const [formData, setFormData] = useState({
     tanggal_poskas: new Date().toISOString().split('T')[0],
     isi_poskas: '',
@@ -80,16 +158,7 @@ const AdminPoskasForm = () => {
   const [imageIdMap, setImageIdMap] = useState(new Map()); // Map untuk tracking image ID
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
-  // Editor RichTextEditor tidak membutuhkan ref/toolbar state di sini
   
-  // Handler untuk RichTextEditor (sinkronkan HTML ke formData)
-  const handleEditorHtmlChange = (e) => {
-    const html = e?.target?.value ?? '';
-    setFormData(prev => ({ ...prev, isi_poskas: html }));
-  };
-
-  // Editor contentEditable lama dihapus; helper terkait selection/toolbar tidak diperlukan lagi
-
   // Escape plain text to safe HTML
   const escapeHtml = (text) => {
     if (text == null) return '';
@@ -165,16 +234,6 @@ const AdminPoskasForm = () => {
     return out;
   };
 
-  const placeCaretAtEnd = (el) => {
-    if (!el) return;
-    const range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-  };
-
   // Sanitize HTML to enforce LTR by removing dir/style that set RTL or right alignment
   const sanitizeToLTR = (html) => {
     if (!html || typeof html !== 'string') return html || '';
@@ -195,8 +254,6 @@ const AdminPoskasForm = () => {
       loadExistingData();
     }
   }, [isEditMode, id]);
-
-  // Listener selection untuk contentEditable lama dihapus
 
   const loadExistingData = async () => {
     try {
@@ -234,18 +291,8 @@ const AdminPoskasForm = () => {
       navigate('/admin/keuangan/poskas');
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        if (editorRef.current) {
-          const cleaned = sanitizeToLTR(editorRef.current.innerHTML);
-          editorRef.current.innerHTML = cleaned;
-          placeCaretAtEnd(editorRef.current);
-          updateFormatState();
-        }
-      }, 0);
     }
   };
-
-  // Inisialisasi editor contentEditable lama dihapus (menggunakan RichTextEditor)
 
   // Handle text editor changes
   const handleInputChange = (e) => {
@@ -254,75 +301,6 @@ const AdminPoskasForm = () => {
       ...prev,
       [name]: value
     }));
-  };
-
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Ensure Enter creates a clean line break without ZWSP or bold manipulation
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Focus editor helper
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Execute formatting command
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Handle paste event in editor
-  // Handler editor lama dihapus (digantikan RichTextEditor)
-
-  // Get editor content with [IMG:id] placeholders and preserve safe formatting
-  // Serializer editor lama dihapus (digantikan RichTextEditor)
-
-  // Ensure editor has minimum content
-  // Helper editor lama dihapus (digantikan RichTextEditor)
-
-  // Handle image selection
-  const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files);
-    // Tidak ada batasan jumlah/ukuran/tipe file
-    const validFiles = files;
-
-    // Generate ID untuk setiap gambar
-    const imagesWithIds = validFiles.map(file => ({
-      file,
-      id: Date.now() + Math.floor(Math.random() * 1000)
-    }));
-
-    setSelectedImages(prev => [...prev, ...imagesWithIds]);
-
-    // Store mapping file -> ID
-    validFiles.forEach((file, index) => {
-      setImageIdMap(prev => new Map(prev.set(file, imagesWithIds[index].id)));
-    });
-
-    // Create preview URLs
-    validFiles.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreviewUrls(prev => [...prev, e.target.result]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // Remove image
-  const removeImage = (index) => {
-    const removedImage = selectedImages[index];
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
-    
-    // Remove dari imageIdMap
-    if (removedImage && removedImage.file) {
-      setImageIdMap(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(removedImage.file);
-        return newMap;
-      });
-    }
   };
 
   // Validate form data
@@ -348,72 +326,18 @@ const AdminPoskasForm = () => {
     return true;
   };
 
-  // Upload images to server first
-  const uploadImagesToServer = async (images) => {
-    if (images.length === 0) return [];
-
-    console.log('📁 Starting POSKAS image upload...');
-    console.log('📁 Number of images:', images.length);
-
-    const formData = new FormData();
-    
-    images.forEach((imageData, index) => {
-      console.log(`📁 Processing image ${index + 1}:`, {
-        name: imageData.file.name,
-        size: imageData.file.size,
-        id: imageData.id
-      });
-      
-      formData.append('images', imageData.file);
-    });
-
-    try {
-      console.log('📤 Sending upload request to: /upload/poskas');
-      
-      const response = await fetch(`${envConfig.BASE_URL}/upload/poskas`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: formData
-      });
-
-      console.log('📥 Response status:', response.status);
-      
-      if (!response.ok) {
-        console.error('❌ Response not OK:', response.status, response.statusText);
-        const errorText = await response.text();
-        console.error('❌ Error response body:', errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      console.log('📥 Response data:', JSON.stringify(result, null, 2));
-
-      if (result.success) {
-        console.log('✅ POSKAS image upload successful!');
-        console.log('✅ Uploaded files:', result.data);
-        return result.data;
-      } else {
-        console.error('❌ Upload failed:', result.message);
-        toast.error(result.message || 'Gagal mengupload gambar');
-        return [];
-      }
-    } catch (error) {
-      console.error('❌ Error uploading POSKAS images:', error);
-      toast.error(`Gagal mengupload gambar: ${error.message}`);
-      return [];
-    }
-  };
-
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     console.log('🔍 Debug: Form submission started');
     
-    // Ambil konten dari state (RichTextEditor mengisi formData.isi_poskas)
+    // Ambil konten dari state (CKEditorPoskas mengisi formData.isi_poskas)
     const editorContent = formData.isi_poskas || '';
+    // Bersihkan block wrapper CKEditor agar sesuai format lama
+    const normalized = normalizeBlocks(editorContent);
+    // Konversi ke format lama untuk penyimpanan: ganti <img> -> [IMG:id]
+    const contentForSave = convertHtmlToPlaceholders(normalized, formData.images || []);
     console.log('🔍 Debug: Editor content:', editorContent);
     
     // Double check validation
@@ -441,7 +365,7 @@ const AdminPoskasForm = () => {
         // Update existing poskas
         const response = await poskasService.updatePoskas(id, {
           tanggal_poskas: formData.tanggal_poskas,
-          isi_poskas: editorContent,
+          isi_poskas: contentForSave,
           images: formData.images
         });
         
@@ -452,65 +376,17 @@ const AdminPoskasForm = () => {
           toast.error(response.message || 'Gagal memperbarui laporan');
         }
       } else {
-        // Create new poskas (existing logic)
-        // Upload images to server first
-        console.log('📁 Starting image upload process...');
-        const uploadedFiles = await uploadImagesToServer(selectedImages);
-        
-        // Update images array with server URLs
-        const imagesWithServerUrls = selectedImages.map((img, index) => {
-          const uploadedFile = uploadedFiles[index];
-          
-          if (uploadedFile) {
-            console.log(`🖼️ Image ${index + 1}:`, {
-              originalId: img.id,
-              serverUrl: uploadedFile.url,
-              serverPath: uploadedFile.path
-            });
-            
-            return {
-              uri: `file://temp/${img.id}.jpg`, // Simulasi URI untuk mobile
-              id: img.id,
-              // Gunakan nama file dari server bila tersedia
-              name: uploadedFile.filename || (uploadedFile.path ? uploadedFile.path.split('/').pop() : `poskas_${img.id}.jpg`),
-              // Jika relatif, prefix dengan BASE_URL tanpa /api karena static route '/uploads'
-              url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
-                ? uploadedFile.url
-                : `${envConfig.BASE_URL.replace('/api','')}${uploadedFile.url}`,
-              serverPath: uploadedFile.serverPath || uploadedFile.path // Prefer serverPath if available
-            };
-          } else {
-            // Fallback jika upload gagal
-            return {
-              uri: `file://temp/${img.id}.jpg`,
-              id: img.id,
-              name: `poskas_${img.id}.jpg`,
-              url: `${envConfig.BASE_URL.replace('/api','')}/uploads/poskas/temp_${img.id}.jpg`,
-              serverPath: `poskas/temp_${img.id}.jpg`
-            };
-          }
-        });
-
-        // Buat data sesuai format backend yang sudah ada
+        // Create new poskas (CKEditor sudah mengupload gambar saat paste/upload)
         const finalFormData = {
           tanggal_poskas: formData.tanggal_poskas,
-          isi_poskas: editorContent,
-          images: imagesWithServerUrls // Kirim sebagai array object, bukan JSON string
+          isi_poskas: contentForSave,
+          images: Array.isArray(formData.images) ? formData.images : []
         };
         
-        console.log('🔍 Debug: Final form data:', finalFormData);
-        console.log('🔍 Debug: Selected images:', selectedImages);
-        console.log('🔍 Debug: User info:', user);
-        console.log('🔍 Debug: Images JSON string:', JSON.stringify(imagesWithServerUrls));
-        console.log('🔍 Debug: Images length:', imagesWithServerUrls.length);
+        console.log('🔍 Debug: Final form data (CKE):', finalFormData);
+        console.log('🔍 Debug: Images length (CKE):', finalFormData.images.length);
         
-        // Gunakan service yang sudah ada (tanpa FormData)
         const response = await poskasService.createPoskas(finalFormData);
-        
-        console.log('🔍 Debug: Service response:', response);
-        console.log('🔍 Debug: Data sent to service:', finalFormData);
-        console.log('🔍 Debug: Images field type:', typeof finalFormData.images);
-        console.log('🔍 Debug: Images field value:', finalFormData.images);
         
         if (response.success) {
           toast.success('Laporan pos kas berhasil disimpan');
@@ -636,18 +512,17 @@ const AdminPoskasForm = () => {
             </div>
 
             <div className="space-y-4">
-              <RichTextEditor
+              <CKEditorPoskas
                 value={formData.isi_poskas}
-                onChange={handleEditorHtmlChange}
-                onFilesChange={(files) => {
-                  // files: array of { file, id }
-                  setSelectedImages(files.map(f => ({ file: f.file, id: f.id })));
+                onChangeHTML={(e) => {
+                  const html = e?.target?.value ?? '';
+                  setFormData(prev => ({ ...prev, isi_poskas: html }));
+                }}
+                onImagesChange={(images) => {
+                  // images: array of { uri, id, name, url, serverPath }
+                  setFormData(prev => ({ ...prev, images }));
                 }}
                 placeholder="Masukkan isi posisi kas . . . "
-                rows={12}
-                showUploadList={false}
-                hideAlign={true}
-                hideImage={true}
               />
                </div>
               </div>

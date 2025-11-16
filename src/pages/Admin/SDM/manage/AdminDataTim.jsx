@@ -186,6 +186,8 @@ const AdminDataTim = () => {
     const empKey = String(emp?.id ?? emp?.user_id ?? emp?.userId ?? emp?.nik ?? emp?.name ?? Math.random());
     const isOpen = !!expandedEmployees[empKey];
     const nama = emp?.nama ?? emp?.name ?? '—';
+    const divisi = emp?.jabatan?.divisi?.nama_divisi ?? emp?.divisi_nama ?? '—';
+    const posisi = emp?.jabatan?.nama_jabatan ?? emp?.jabatan_nama ?? '—';
     const lamaBekerja = calcTenureMonthsDays(emp?.tanggal_bergabung) !== '-' ? calcTenureMonthsDays(emp?.tanggal_bergabung) : (emp?.lama_bekerja || '—');
 
     const fmtDate = (d) => {
@@ -205,8 +207,27 @@ const AdminDataTim = () => {
       `Lanjutan: ${boolToYa(emp?.training_lanjutan)}`,
     ].join(' | ');
 
+    const tempatTglLahir = (() => {
+      const t = fmt(emp?.tempat_lahir);
+      const d = fmtDate(emp?.tanggal_lahir);
+      if (t === '—' && d === '—') return '—';
+      if (t === '—') return d;
+      if (d === '—') return t;
+      return `${t}, ${d}`;
+    })();
+
     const rows = [
       ['NAMA', nama],
+      ['DIVISI', divisi],
+      ['POSISI', posisi],
+      ['TEMPAT TANGGAL LAHIR', tempatTglLahir],
+      ['NO. HP', fmt(emp?.no_hp ?? emp?.user?.no_hp)],
+      ['EMAIL', fmt(emp?.email ?? emp?.user?.email)],
+      ['MEDIA SOSIAL', fmt(emp?.media_sosial)],
+      ['NAMA PASANGAN', fmt(emp?.nama_pasangan)],
+      ['NAMA ANAK', fmt(emp?.nama_anak)],
+      ['NO. HP PASANGAN', fmt(emp?.no_hp_pasangan)],
+      ['NAMA & HP KONTAK DARURAT', fmt(emp?.kontak_darurat)],
       ['TEMPAT TINGGAL SEKARANG', fmt(emp?.alamat_sekarang ?? emp?.alamat ?? emp?.user?.alamat)],
       ['LINK GOOGLE MAP', fmt(emp?.link_map_sekarang)],
       ['ALAMAT DAERAH ASAL', fmt(emp?.alamat_asal)],
@@ -217,9 +238,6 @@ const AdminDataTim = () => {
       ['BERGABUNG SEJAK', fmtDate(emp?.tanggal_bergabung)],
       ['LAMA BEKERJA', fmt(lamaBekerja)],
       ['DATA TRAINING', trainingText],
-      ['NAMA ANAK', fmt(emp?.nama_anak)],
-      ['NO. HP PASANGAN', fmt(emp?.no_hp_pasangan)],
-      ['NAMA & HP KONTAK DARURAT', fmt(emp?.kontak_darurat)],
       ['RIWAYAT KARYAWAN', fmt(emp?.riwayat_karyawan ?? emp?.riwayat)],
     ];
 
@@ -740,13 +758,15 @@ const AdminDataTim = () => {
                 const totalDiv = (div.children || []).reduce((acc, j) => acc + (j.children?.length || 0), 0);
                 const openDiv = !!expandedDivisi[div.id];
                 return (
-                  <div key={div.id} className="rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 mb-3 mx-3 shadow-sm">
-                    <button onClick={() => toggleDivisi(div.id)} className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors">
-                      <div className="flex items-center gap-2">
-                        {openDiv ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                        <span className="font-semibold tracking-tight">{div.name}</span>
-                      </div>
-                      <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{totalDiv} orang</span>
+                  <div key={div.id} className="rounded-md overflow-hidden bg-red-700 text-white border border-red-700 mt-3 mb-3 mx-3">
+                    <button
+                      onClick={() => toggleDivisi(div.id)}
+                      className="w-full h-10 md:h-11 flex items-center justify-between px-4 py-0 bg-red-700 text-white"
+                    >
+                      <span className="font-semibold leading-none">{div.name}</span>
+                      <span className="text-sm opacity-90 leading-none flex items-center">
+                        {totalDiv} orang {openDiv ? <ChevronUp className="inline h-4 w-4 ml-2"/> : <ChevronDown className="inline h-4 w-4 ml-2"/>}
+                      </span>
                     </button>
                     {openDiv && (
                       <div className="bg-red-700">
