@@ -301,28 +301,6 @@ const AdminOmsetHarianForm = () => {
         editorRef.current.innerHTML = formData.isi_omset;
         // Sanitize once after load so existing content is normalized (including bold tags)
         sanitizeEditorHtml();
-        // Pastikan setiap <img> berdiri di baris sendiri: tambah satu <br> sebelum dan sesudah bila belum ada
-        try {
-          const imgs = editorRef.current.querySelectorAll('img');
-          imgs.forEach(img => {
-            // AFTER: jika setelah img bukan <br>, sisipkan satu <br>
-            let next = img.nextSibling;
-            if (!(next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'BR')) {
-              const brAfter = document.createElement('br');
-              img.parentNode.insertBefore(brAfter, img.nextSibling);
-            }
-            // BEFORE: jika sebelum img bukan <br> atau boundary block, sisipkan satu <br>
-            let prev = img.previousSibling;
-            const prevIsBr = prev && prev.nodeType === Node.ELEMENT_NODE && prev.tagName === 'BR';
-            // Sisipkan <br> sebelum jika belum ada, termasuk saat img berada di awal container
-            if (!prevIsBr) {
-              const brBefore = document.createElement('br');
-              img.parentNode.insertBefore(brBefore, img);
-            }
-          });
-          // Collapse <br> bertumpuk menjadi satu
-          editorRef.current.innerHTML = editorRef.current.innerHTML.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
-        } catch(_) {}
         
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -568,8 +546,9 @@ const AdminOmsetHarianForm = () => {
               id: image.id
             });
             
-            // Tambahkan <br> sebelum dan sesudah <img> agar gambar berada pada baris sendiri dan ada jarak yang jelas
-            const imageHtmlTag = `<br><img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" /><br>`;
+            // Tambahkan satu <br> setelah <img> agar baris setelah gambar turun rapi.
+            // CKEditor sanitizer akan menghapus <br> yang berada sebelum gambar, jadi kita fokus pada <br> setelah gambar.
+            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" /><br>`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
             
             // Check if this placeholder exists in content
@@ -593,6 +572,17 @@ const AdminOmsetHarianForm = () => {
         
         // Convert line breaks to <br> tags for editor
         editorContent = editorContent.replace(/\n/g, '<br>');
+        // Tidy up excessive <br> and spacing around images for edit view only
+        try {
+          // Remove any <br> directly before an <img>
+          editorContent = editorContent.replace(/(?:<br\s*\/?>\s*)+(<img[^>]*>)/gi, '$1');
+          // Ensure exactly one <br> after each <img>
+          editorContent = editorContent.replace(/(<img[^>]*>)(\s*(?:<br\s*\/?>\s*)+)/gi, '$1<br>');
+          // Collapse 3+ breaks into at most 2
+          editorContent = editorContent.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
+          // Trim leading/trailing breaks
+          editorContent = editorContent.replace(/^(?:\s*<br>)+/i, '').replace(/(?:<br>\s*)+$/i, '');
+        } catch(_) {}
         console.log('🔍 Final editor content:', editorContent);
         
         setFormData({
@@ -1066,6 +1056,7 @@ const handleEditorMouseUp = () => {
               }}
               placeholder="Masukkan isi omset harian . . . "
               uploadPath="/upload/omset-harian"
+              imageAlign="left"
             />
             {/* Mobile action bar under editor */}
             <div className="mt-4 lg:hidden flex items-center justify-end gap-3">

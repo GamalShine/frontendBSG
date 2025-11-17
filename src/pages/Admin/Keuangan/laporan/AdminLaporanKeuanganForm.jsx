@@ -192,8 +192,6 @@ const AdminLaporanKeuanganForm = () => {
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
-      // Pastikan efek inisialisasi editor akan berjalan ulang untuk setiap ID
-      setHasInitializedContent(false);
       loadLaporanKeuangan();
     } else {
       // Set default date only for new reports
@@ -201,7 +199,6 @@ const AdminLaporanKeuanganForm = () => {
         ...prev,
         tanggal_laporan: new Date().toISOString().split('T')[0]
       }));
-      setHasInitializedContent(false);
     }
   }, [id]);
 
@@ -215,28 +212,6 @@ const AdminLaporanKeuanganForm = () => {
         editorRef.current.innerHTML = formData.isi_laporan;
         try { placeCaretAtEnd(editorRef.current); } catch {}
         updateFormatState();
-
-        // Pastikan setiap <img> berdiri di baris sendiri: tambah satu <br> setelahnya, dan sebelum jika diperlukan
-        try {
-          const imgs = editorRef.current.querySelectorAll('img');
-          imgs.forEach(img => {
-            // AFTER: jika setelah img bukan <br>, sisipkan satu <br>
-            let next = img.nextSibling;
-            if (!(next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'BR')) {
-              const brAfter = document.createElement('br');
-              img.parentNode.insertBefore(brAfter, img.nextSibling);
-            }
-            // BEFORE: jika sebelum img bukan <br> atau boundary block, sisipkan satu <br>
-            let prev = img.previousSibling;
-            const prevIsBr = prev && prev.nodeType === Node.ELEMENT_NODE && prev.tagName === 'BR';
-            if (!prevIsBr && prev) {
-              const brBefore = document.createElement('br');
-              img.parentNode.insertBefore(brBefore, img);
-            }
-          });
-          // Collapse <br> bertumpuk menjadi satu
-          editorRef.current.innerHTML = editorRef.current.innerHTML.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
-        } catch(_) {}
 
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -470,6 +445,17 @@ const AdminLaporanKeuanganForm = () => {
 
         // Convert line breaks to <br> tags for editor
         editorContent = editorContent.replace(/\n/g, '<br>');
+        // Tidy up excessive <br> and spacing around images for edit view only
+        try {
+          // Remove any <br> directly before an <img>
+          editorContent = editorContent.replace(/(?:<br\s*\/?>\s*)+(<img[^>]*>)/gi, '$1');
+          // Ensure exactly one <br> after each <img>
+          editorContent = editorContent.replace(/(<img[^>]*>)(\s*(?:<br\s*\/?>\s*)+)/gi, '$1<br>');
+          // Collapse 3+ breaks into at most 2
+          editorContent = editorContent.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
+          // Trim leading/trailing breaks
+          editorContent = editorContent.replace(/^(?:\s*<br>)+/i, '').replace(/(?:<br>\s*)+$/i, '');
+        } catch(_) {}
         console.log('🔍 Final editor content:', editorContent);
 
         // Process tanggal_laporan
@@ -483,8 +469,6 @@ const AdminLaporanKeuanganForm = () => {
           isDate: originalTanggal instanceof Date
         });
 
-        // Reset flag agar normalisasi DOM (penambahan <br> sebelum/sesudah <img>) dieksekusi setiap kali data baru dimuat
-        setHasInitializedContent(false);
         setFormData({
           judul_laporan: laporanData.judul_laporan || '',
           tanggal_laporan: processedTanggal,
@@ -933,6 +917,7 @@ const AdminLaporanKeuanganForm = () => {
                   onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
                   placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
                   uploadPath="/upload/laporan-keuangan"
+                  imageAlign="left"
                 />
                 {/* Mobile action bar under editor */}
                 <div className="mt-4 lg:hidden flex items-center justify-end gap-3">
