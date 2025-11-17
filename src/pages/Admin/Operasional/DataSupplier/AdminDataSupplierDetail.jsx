@@ -201,7 +201,7 @@ const AdminDataSupplierDetail = () => {
               
               {supplier.keterangan && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Keterangan</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Outlet</label>
                   <div className="flex items-start gap-2">
                     <FileText className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
                     <p className="text-lg text-gray-900">{supplier.keterangan}</p>

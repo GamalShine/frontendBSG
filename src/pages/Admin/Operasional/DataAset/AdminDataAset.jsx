@@ -44,6 +44,7 @@ const AdminDataAset = () => {
   const [editData, setEditData] = useState(null);
   const [showDetail, setShowDetail] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
+  const [expandedJenis, setExpandedJenis] = useState({});
   // Preview lampiran (in-page)
   const [preview, setPreview] = useState({ open: false, url: '', name: '', type: 'other' });
   const [previewText, setPreviewText] = useState('');
@@ -257,20 +258,20 @@ const AdminDataAset = () => {
             {getKategoriLabel(aset.kategori)}
           </span>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); setEditData(aset); setShowForm(true); }}
-            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200"
+            className="w-8 h-8 inline-flex items-center justify-center border border-blue-300 text-blue-600 rounded-sm hover:bg-blue-50 md:rounded-lg p-0 leading-none"
             title="Edit"
           >
-            <Edit className="w-4 h-4" />
+            <Edit className="w-4 h-4 block" />
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); handleDelete(aset.id); }}
-            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200" 
+            className="w-8 h-8 inline-flex items-center justify-center border border-red-300 text-red-600 rounded-sm hover:bg-red-50 md:rounded-lg p-0 leading-none" 
             title="Hapus"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-4 h-4 block" />
           </button>
         </div>
       </div>
@@ -448,22 +449,7 @@ const AdminDataAset = () => {
                         {file.originalname || file.filename}
                       </button>
                     )}
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        if (!window.confirm('Hapus lampiran ini?')) return
-                        try {
-                          await dataAsetService.deleteLampiran(aset.id, idx)
-                          toast.success('Lampiran dihapus')
-                          await fetchDataAset()
-                        } catch (err) {
-                          toast.error('Gagal menghapus lampiran')
-                        }
-                      }}
-                      className="text-[10px] text-red-600 hover:underline text-left"
-                    >
-                      Hapus
-                    </button>
+                    {/* Tombol hapus dihilangkan di card list sesuai permintaan */}
                   </div>
                 )
               })}
@@ -481,6 +467,21 @@ const AdminDataAset = () => {
     const name = (aset.nama_aset || aset.merk_kendaraan || aset.nama_barang || '').toLowerCase();
     return name.includes(q);
   });
+
+  // Auto expand groups when searching
+  useEffect(() => {
+    const hasKeyword = (searchTerm || '').trim().length > 0;
+    if (hasKeyword) {
+      const next = {};
+      const rawKeys = ['PROPERTI','KENDARAAN_PRIBADI','KENDARAAN_OPERASIONAL','KENDARAAN_DISTRIBUSI','ELEKTRONIK'];
+      rawKeys.forEach(k => {
+        if (filteredData.some(it => it.kategori === k)) next[k] = true;
+      });
+      setExpandedJenis(next);
+    } else {
+      setExpandedJenis({});
+    }
+  }, [searchTerm, filteredData.length]);
 
   const groupedData = {
     properti: filteredData.filter(aset => aset.kategori === 'PROPERTI'),
@@ -584,17 +585,42 @@ const AdminDataAset = () => {
         </div>
       </div>
 
-      {/* Daftar Aset (flat list) */}
-      <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
-        <div className="p-4">
-          {filteredData.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
-              {filteredData.map(renderAsetCard)}
+      {/* Daftar Aset dikelompokkan per kategori/jenis */}
+      <div className="mt-2">
+        {(() => {
+          const order = ['PROPERTI','KENDARAAN_PRIBADI','KENDARAAN_OPERASIONAL','KENDARAAN_DISTRIBUSI','ELEKTRONIK'];
+          const groups = order.map(k => ({ key: k, items: filteredData.filter(aset => aset.kategori === k) }));
+          const nonEmpty = groups.filter(g => g.items.length > 0);
+          if (!nonEmpty.length) return (
+            <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-6 text-center text-gray-500">Tidak ada data</div>
             </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">Tidak ada data</div>
-          )}
-        </div>
+          );
+          return nonEmpty.map(g => {
+            const open = !!expandedJenis[g.key];
+            return (
+              <div key={g.key} className="mb-2 overflow-hidden rounded-none border border-gray-200 bg-white">
+                <button
+                  onClick={() => setExpandedJenis(prev => ({ ...prev, [g.key]: !prev[g.key] }))}
+                  className="w-full flex items-center justify-between px-4 md:px-6 py-3 bg-red-700 text-white"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{getKategoriLabel(g.key)}</span>
+                    <span className="hidden md:inline-flex ml-2 text-xs bg-white/15 px-2 py-0.5 rounded-full">{g.items.length} item</span>
+                  </div>
+                  {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                </button>
+                {open && (
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-2">
+                      {g.items.map(renderAsetCard)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          });
+        })()}
       </div>
 
 

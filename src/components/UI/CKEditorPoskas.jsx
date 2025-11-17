@@ -31,15 +31,38 @@ class PoskasUploadAdapter {
       throw new Error(`Upload gagal (${res.status}): ${t}`)
     }
 
-    const json = await res.json()
-    if (!json?.success || !Array.isArray(json?.data) || json.data.length === 0) {
+    const json = await res.json().catch(() => null)
+    if (!json) {
+      throw new Error('Upload berhasil namun respons tidak dapat dibaca sebagai JSON')
+    }
+
+    // Toleransi berbagai bentuk respons backend
+    // Preferensi: { success: true, data: [ { url, path, filename } ] }
+    // Fallbacks yang didukung: { files: [ ... ] } atau { url, path } atau { data: { url, path } }
+    let info = null
+    if (json?.success && Array.isArray(json?.data) && json.data.length > 0) {
+      info = json.data[0]
+    } else if (Array.isArray(json?.files) && json.files.length > 0) {
+      info = json.files[0]
+    } else if (json?.data && typeof json.data === 'object') {
+      info = json.data
+    } else if (json?.url || json?.path) {
+      info = json
+    }
+
+    if (!info) {
+      console.error('CKE Upload: response payload tidak dikenali:', json)
       throw new Error('Format respons upload tidak valid')
     }
 
-    const info = json.data[0]
-    // Use backend base (BASE_URL without trailing '/api') to prefix relative /uploads URL
-    const backendBase = (this.uploadUrl || '').replace(/\/?upload\/poskas$/,'').replace(/\/api$/,'') || ''
-    const fullUrl = /^(https?:)?\/\//i.test(info.url) ? info.url : `${backendBase}${info.url}`
+    // Use backend base (BASE_URL without trailing '/api' or '/upload/<segment>') to prefix relative /uploads URL
+    const backendBase = (this.uploadUrl || '')
+      .replace(/\/upload\/[^/]+$/,'')
+      .replace(/\/api$/,'') || ''
+    const urlField = info.url || info.fileUrl || info.location || ''
+    const pathField = info.path || info.filepath || info.serverPath || ''
+    const rel = urlField || pathField || ''
+    const fullUrl = /^(https?:)?\/\//i.test(rel) ? rel : `${backendBase}${rel.startsWith('/') ? '' : '/'}${rel}`
 
     // Push metadata ke parent agar bisa disertakan saat submit
     if (typeof this.onUploaded === 'function') {
@@ -47,9 +70,9 @@ class PoskasUploadAdapter {
       this.onUploaded({
         uri: `file://temp/${id}.jpg`,
         id,
-        name: info.filename || (info.path ? info.path.split('/').pop() : (file.name || `poskas_${id}.jpg`)),
+        name: info.filename || info.originalName || (pathField ? String(pathField).split('/').pop() : (file.name || `poskas_${id}.jpg`)),
         url: fullUrl,
-        serverPath: info.path
+        serverPath: pathField || rel
       })
     }
 
@@ -63,9 +86,14 @@ class PoskasUploadAdapter {
   }
 }
 
-const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ketik atau paste konten di sini...' }) => {
+const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ketik atau paste konten di sini...', uploadPath, uploadUrl: uploadUrlProp }) => {
   const env = getEnvironmentConfig()
-  const uploadUrl = `${env.BASE_URL}/upload/poskas`
+  // Support custom upload path or full upload URL. Fallback to Poskas default.
+  const base = env.BASE_URL
+  const resolvedUploadUrl = uploadUrlProp
+    ? uploadUrlProp
+    : (uploadPath ? `${base}${uploadPath.startsWith('/') ? '' : '/'}${uploadPath}` : `${base}/upload/poskas`)
+  const uploadUrl = resolvedUploadUrl
   const token = localStorage.getItem('token') || ''
 
   // Kumpulkan list images di level komponen lalu bubbling ke parent
@@ -74,6 +102,32 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
     imagesRef.current = [...imagesRef.current, img]
     if (onImagesChange) onImagesChange(imagesRef.current)
   }
+
+  // Ensure all images are centered by default within CKEditor content
+  React.useEffect(() => {
+    const styleId = 'cke-center-images-style'
+    let styleEl = document.getElementById(styleId)
+    if (!styleEl) {
+      styleEl = document.createElement('style')
+      styleEl.id = styleId
+      styleEl.textContent = `
+        /* Center all images inside CKEditor content */
+        .ck-content img {
+          display: block !important;
+          margin: 10px auto !important;
+          height: auto !important;
+          max-width: 100% !important;
+        }
+        /* If CKEditor wraps images in figure, ensure center */
+        .ck-content figure.image {
+          margin: 10px auto !important;
+          text-align: center !important;
+        }
+      `
+      document.head.appendChild(styleEl)
+    }
+    return () => {}
+  }, [])
 
   const editorConfig = useMemo(() => ({
     placeholder,
@@ -87,21 +141,26 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
       'undo','redo','|','bold','italic','underline'
     ],
     image: {
-      toolbar: [ 'imageStyle:alignLeft', 'imageStyle:alignCenter', 'imageStyle:alignRight', '|', 'imageTextAlternative' ],
-      styles: [ 'alignLeft', 'alignCenter', 'alignRight' ]
+      // Hilangkan opsi align agar user tidak bisa mengubah alignment gambar
+      toolbar: [ 'imageTextAlternative' ],
+      styles: []
     }
   }), [placeholder, token, uploadUrl])
 
-  // Inject global CSS to keep CKEditor content left-aligned, including images
+  // Inject global CSS: paragraphs left, images centered
   useEffect(() => {
     const style = document.createElement('style')
     style.setAttribute('data-cke-poskas-style', 'true')
     style.textContent = `
       .ck-content { text-align: left !important; }
       .ck-content p { text-align: left !important; }
-      .ck-content figure.image { margin-left: 0 !important; margin-right: auto !important; }
-      .ck-content .image.image-style-align-center, .ck-content .image.image-style-align-right { margin-left: 0 !important; margin-right: auto !important; }
-      .ck-content img { display: block; margin: 10px 0 !important; }
+      /* Center all images and image wrappers */
+      .ck-content figure.image { margin: 10px auto !important; text-align: center !important; }
+      .ck-content img { display: block; margin: 10px auto !important; }
+      /* Neutralize any alignment classes */
+      .ck-content .image.image-style-align-center,
+      .ck-content .image.image-style-align-right,
+      .ck-content .image.image-style-align-left { margin: 10px auto !important; text-align: center !important; }
     `
     document.head.appendChild(style)
     return () => {
@@ -141,15 +200,18 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
         if (/text-align\s*:\s*(center|right)/i.test(style)) p.removeAttribute('style')
       })
       // ensure images are block-level with margins handled by our global CSS,
-      // and remove a single preceding <br> before each image to avoid extra spacing in edit view
+      // and enforce a single <br> AFTER each image so teks sesudah gambar turun baris.
       Array.from(doc.querySelectorAll('img')).forEach(img => {
         img.removeAttribute('style')
-        // remove whitespace text nodes around
+        // Ensure a <br> immediately after the image (but not duplicated)
+        let next = img.nextSibling
+        // Skip whitespace
         const isWs = (n) => n && n.nodeType === 3 && !/\S/.test(n.nodeValue || '')
-        // remove preceding BR if exists (ignore whitespace)
-        let prev = img.previousSibling
-        while (isWs(prev)) prev = prev.previousSibling
-        if (prev && prev.nodeName === 'BR') prev.parentNode.removeChild(prev)
+        while (isWs(next)) next = next.nextSibling
+        if (!(next && next.nodeName === 'BR')) {
+          const brAfter = doc.createElement('br')
+          if (img.parentNode) img.parentNode.insertBefore(brAfter, img.nextSibling)
+        }
       })
       // also remove leading BRs at top of content
       while (doc.body.firstChild && doc.body.firstChild.nodeName === 'BR') {

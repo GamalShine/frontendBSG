@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import RichTextEditor from '../../../../components/UI/RichTextEditor';
+import CKEditorPoskas from '../../../../components/UI/CKEditorPoskas';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { laporanKeuanganService } from '../../../../services/laporanKeuanganService';
@@ -50,6 +50,70 @@ const AdminLaporanKeuanganForm = () => {
   const handleEditorHtmlChange = (e) => {
     const html = e?.target?.value ?? '';
     setFormData(prev => ({ ...prev, isi_laporan: html }));
+  };
+
+  // Utilities to match Poskas/Omset behavior
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      const base = envConfig.BASE_URL.replace('/api','');
+      let out = String(url).trim();
+      if (out.startsWith(base)) out = out.slice(base.length);
+      out = out.replace('http://http://','http://');
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch (e) {
+      return String(url);
+    }
+  };
+  const convertHtmlToPlaceholders = (html, images) => {
+    if (!html) return '';
+    let out = html;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch (_) {}
+    return out;
+  };
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
+    try {
+      out = out
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch(_) {}
+    return out;
   };
 
   // Formatting active states
@@ -128,6 +192,8 @@ const AdminLaporanKeuanganForm = () => {
   useEffect(() => {
     if (id) {
       setIsEditMode(true);
+      // Pastikan efek inisialisasi editor akan berjalan ulang untuk setiap ID
+      setHasInitializedContent(false);
       loadLaporanKeuangan();
     } else {
       // Set default date only for new reports
@@ -135,6 +201,7 @@ const AdminLaporanKeuanganForm = () => {
         ...prev,
         tanggal_laporan: new Date().toISOString().split('T')[0]
       }));
+      setHasInitializedContent(false);
     }
   }, [id]);
 
@@ -148,6 +215,28 @@ const AdminLaporanKeuanganForm = () => {
         editorRef.current.innerHTML = formData.isi_laporan;
         try { placeCaretAtEnd(editorRef.current); } catch {}
         updateFormatState();
+
+        // Pastikan setiap <img> berdiri di baris sendiri: tambah satu <br> setelahnya, dan sebelum jika diperlukan
+        try {
+          const imgs = editorRef.current.querySelectorAll('img');
+          imgs.forEach(img => {
+            // AFTER: jika setelah img bukan <br>, sisipkan satu <br>
+            let next = img.nextSibling;
+            if (!(next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'BR')) {
+              const brAfter = document.createElement('br');
+              img.parentNode.insertBefore(brAfter, img.nextSibling);
+            }
+            // BEFORE: jika sebelum img bukan <br> atau boundary block, sisipkan satu <br>
+            let prev = img.previousSibling;
+            const prevIsBr = prev && prev.nodeType === Node.ELEMENT_NODE && prev.tagName === 'BR';
+            if (!prevIsBr && prev) {
+              const brBefore = document.createElement('br');
+              img.parentNode.insertBefore(brBefore, img);
+            }
+          });
+          // Collapse <br> bertumpuk menjadi satu
+          editorRef.current.innerHTML = editorRef.current.innerHTML.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
+        } catch(_) {}
 
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -362,7 +451,8 @@ const AdminLaporanKeuanganForm = () => {
               id: image.id
             });
 
-            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
+            // Tambahkan satu <br> setelah <img> agar baris setelah gambar rapi (match Poskas/Omset)
+            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" /><br>`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
 
             // Check if this placeholder exists in content
@@ -393,6 +483,8 @@ const AdminLaporanKeuanganForm = () => {
           isDate: originalTanggal instanceof Date
         });
 
+        // Reset flag agar normalisasi DOM (penambahan <br> sebelum/sesudah <img>) dieksekusi setiap kali data baru dimuat
+        setHasInitializedContent(false);
         setFormData({
           judul_laporan: laporanData.judul_laporan || '',
           tanggal_laporan: processedTanggal,
@@ -604,20 +696,10 @@ const AdminLaporanKeuanganForm = () => {
       return;
     }
 
-    // Sanitize editor before serialize
-    if (editorRef.current) {
-      let tmp = removeZeroWidth(editorRef.current.innerHTML || '');
-      tmp = unboldSafe(tmp);
-      tmp = normalizeBoldHtml(tmp);
-      tmp = fixStrayStrong(tmp);
-      editorRef.current.innerHTML = tmp;
-    }
-    // Serialize editor to placeholder format [IMG:id] so backend stores portable content
-    // Fallback to formData.isi_laporan if editor is not mounted or returns empty (e.g. after changing date)
-    const serialized = getEditorContent();
-    const editorContent = (serialized && serialized.trim() !== '')
-      ? serialized
-      : (formData?.isi_laporan || '');
+    // Ambil konten dari CKEditorPoskas lalu normalisasi dan konversi seperti Poskas/Omset
+    const editorContentRaw = formData?.isi_laporan || '';
+    const normalized = normalizeBlocks(editorContentRaw);
+    const editorContent = convertHtmlToPlaceholders(normalized, formData.images || []);
     if (!editorContent || editorContent.trim() === '') {
       toast.error('Isi laporan tidak boleh kosong');
       return;
@@ -631,94 +713,8 @@ const AdminLaporanKeuanganForm = () => {
     setIsSubmitting(true);
 
     try {
-      let imagesWithServerUrls = [];
-
-      if (isEditMode) {
-        // In edit mode, preserve existing images
-        console.log('🔍 Debug: Edit mode - preserving existing images');
-        imagesWithServerUrls = formData.images || [];
-
-        // Upload new images if any
-        if (selectedImages.length > 0) {
-          console.log('🔍 Debug: Uploading new images in edit mode');
-          const uploadedFiles = await uploadImagesToServer(selectedImages);
-
-          // Add new uploaded images to existing ones
-          const newImages = selectedImages.map((img, index) => {
-            const uploadedFile = uploadedFiles[index];
-
-            if (uploadedFile) {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `laporan_${img.id}.jpg`,
-                // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
-                url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
-                  ? uploadedFile.url
-                  : `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-                serverPath: uploadedFile.url
-              };
-            } else {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `laporan_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/laporan-keuangan/temp_${img.id}.jpg`,
-                serverPath: `uploads/laporan-keuangan/temp_${img.id}.jpg`
-              };
-            }
-          });
-
-          imagesWithServerUrls = [...imagesWithServerUrls, ...newImages];
-        }
-      } else {
-        // In create mode, upload all selected images
-        if (selectedImages.length > 0) {
-          console.log('🔍 Debug: Uploading images in create mode');
-          const uploadedFiles = await uploadImagesToServer(selectedImages);
-
-          imagesWithServerUrls = selectedImages.map((img, index) => {
-            const uploadedFile = uploadedFiles[index];
-
-            if (uploadedFile) {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `laporan_${img.id}.jpg`,
-                // If backend returns absolute URL, use it as-is. If relative, prefix with BASE_URL.
-                url: uploadedFile.url && /^https?:\/\//i.test(uploadedFile.url)
-                  ? uploadedFile.url
-                  : `${envConfig.BASE_URL.replace('/api', '')}${uploadedFile.url}`,
-                serverPath: uploadedFile.url
-              };
-            } else {
-              return {
-                uri: `file://temp/${img.id}.jpg`,
-                id: img.id,
-                name: `laporan_${img.id}.jpg`,
-                url: `${envConfig.BASE_URL.replace('/api', '')}/uploads/laporan-keuangan/temp_${img.id}.jpg`,
-                serverPath: `uploads/laporan-keuangan/temp_${img.id}.jpg`
-              };
-            }
-          });
-        }
-      }
-
-      // Ensure all image URLs are properly formatted
-      const finalImages = imagesWithServerUrls.map(img => {
-        if (img && img.url) {
-          let fixedUrl = img.url;
-
-          // Fix double http:// issue
-          if (fixedUrl.startsWith('http://http://')) {
-            fixedUrl = fixedUrl.replace('http://http://', 'http://');
-            console.log(`🔍 Fixed double http:// in submit: ${img.url} -> ${fixedUrl}`);
-          }
-
-          return { ...img, url: fixedUrl };
-        }
-        return img;
-      });
+      // Gunakan images dari CKEditor (sudah terupload otomatis via upload adapter)
+      const finalImages = Array.isArray(formData.images) ? formData.images : [];
 
       // Normalize any residual <img> tags with data-image-id back to placeholders
       const normalizedIsi = (() => {
@@ -741,7 +737,7 @@ const AdminLaporanKeuanganForm = () => {
       const submitData = {
         judul_laporan: formData.judul_laporan,
         tanggal_laporan: formData.tanggal_laporan,
-        isi_laporan: normalizedIsi,
+        isi_laporan: editorContent,
         images: finalImages
       };
 
@@ -931,17 +927,12 @@ const AdminLaporanKeuanganForm = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Isi Laporan *
                 </label>
-                <RichTextEditor
+                <CKEditorPoskas
                   value={formData.isi_laporan}
-                  onChange={handleEditorHtmlChange}
-                  onFilesChange={(files) => {
-                    // files: array of { file, id }
-                    setSelectedImages(files);
-                  }}
+                  onChangeHTML={handleEditorHtmlChange}
+                  onImagesChange={(images) => setFormData(prev => ({ ...prev, images }))}
                   placeholder="Tulis isi laporan keuangan di sini... (Anda bisa paste gambar langsung dari clipboard)"
-                  rows={12}
-                  hideAlign={true}
-                  hideImage={true}
+                  uploadPath="/upload/laporan-keuangan"
                 />
                 {/* Mobile action bar under editor */}
                 <div className="mt-4 lg:hidden flex items-center justify-end gap-3">
