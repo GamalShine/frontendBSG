@@ -10,6 +10,7 @@ class PoskasUploadAdapter {
     this.token = options.token
     this.uploadUrl = options.uploadUrl
     this.onUploaded = options.onUploaded // callback to push image meta to parent
+    this._abortController = new AbortController()
   }
 
   // Starts the upload process.
@@ -23,7 +24,8 @@ class PoskasUploadAdapter {
       headers: {
         'Authorization': `Bearer ${this.token}`
       },
-      body: form
+      body: form,
+      signal: this._abortController.signal
     })
 
     if (!res.ok) {
@@ -82,11 +84,15 @@ class PoskasUploadAdapter {
 
   // Aborts the upload process.
   abort() {
-    // No special abort support
+    try {
+      if (this._abortController) {
+        this._abortController.abort()
+      }
+    } catch (_) { /* noop */ }
   }
 }
 
-const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ketik atau paste konten di sini...', uploadPath, uploadUrl: uploadUrlProp }) => {
+const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ketik atau paste konten di sini...', uploadPath, uploadUrl: uploadUrlProp, imageAlign = 'left' }) => {
   const env = getEnvironmentConfig()
   // Support custom upload path or full upload URL. Fallback to Poskas default.
   const base = env.BASE_URL
@@ -103,32 +109,6 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
     if (onImagesChange) onImagesChange(imagesRef.current)
   }
 
-  // Ensure all images are centered by default within CKEditor content
-  React.useEffect(() => {
-    const styleId = 'cke-center-images-style'
-    let styleEl = document.getElementById(styleId)
-    if (!styleEl) {
-      styleEl = document.createElement('style')
-      styleEl.id = styleId
-      styleEl.textContent = `
-        /* Center all images inside CKEditor content */
-        .ck-content img {
-          display: block !important;
-          margin: 10px auto !important;
-          height: auto !important;
-          max-width: 100% !important;
-        }
-        /* If CKEditor wraps images in figure, ensure center */
-        .ck-content figure.image {
-          margin: 10px auto !important;
-          text-align: center !important;
-        }
-      `
-      document.head.appendChild(styleEl)
-    }
-    return () => {}
-  }, [])
-
   const editorConfig = useMemo(() => ({
     placeholder,
     extraPlugins: [ function (editor) {
@@ -136,37 +116,45 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
         return new PoskasUploadAdapter(loader, { token, uploadUrl, onUploaded: pushImage })
       }
     }],
-    // minimal toolbar yang umum dipakai
+    // minimal toolbar yang aman untuk build Classic default
     toolbar: [
-      'undo','redo','|','bold','italic','underline'
+      'undo','redo','|','bold','italic'
     ],
-    image: {
-      // Hilangkan opsi align agar user tidak bisa mengubah alignment gambar
-      toolbar: [ 'imageTextAlternative' ],
-      styles: []
-    }
+    // Remove image toolbar items to avoid plugin-unavailable issues in default Classic build
   }), [placeholder, token, uploadUrl])
 
-  // Inject global CSS: paragraphs left, images centered
+  // Inject global CSS to keep paragraphs left-aligned and force images alignment by prop
   useEffect(() => {
     const style = document.createElement('style')
     style.setAttribute('data-cke-poskas-style', 'true')
+    const align = (imageAlign || 'left').toLowerCase()
+    const isCenter = align === 'center'
+    const marginRule = isCenter ? '10px auto' : '10px 0'
+    const figureMargin = isCenter ? '10px auto' : '10px 0'
+    const inlineImgDisplay = isCenter ? 'inline-block' : 'block'
+    const inlineTextAlign = isCenter ? 'center' : 'left'
     style.textContent = `
       .ck-content { text-align: left !important; }
       .ck-content p { text-align: left !important; }
-      /* Center all images and image wrappers */
-      .ck-content figure.image { margin: 10px auto !important; text-align: center !important; }
-      .ck-content img { display: block; margin: 10px auto !important; }
-      /* Neutralize any alignment classes */
+      /* Force image wrapper alignment */
+      .ck-content figure.image { margin: ${figureMargin} !important; float: none !important; }
       .ck-content .image.image-style-align-center,
       .ck-content .image.image-style-align-right,
-      .ck-content .image.image-style-align-left { margin: 10px auto !important; text-align: center !important; }
+      .ck-content .image.image-style-align-left {
+        margin: ${figureMargin} !important;
+        float: none !important;
+      }
+      /* CKEditor inline image variant -> force to act like block */
+      .ck-content .image-inline { display: block !important; text-align: ${inlineTextAlign} !important; float: none !important; }
+      .ck-content .image-inline img { display: ${inlineImgDisplay} !important; margin: ${marginRule} !important; float: none !important; }
+      /* Always force raw <img> blocks */
+      .ck-content img { display: block !important; margin: ${marginRule} !important; float: none !important; }
     `
     document.head.appendChild(style)
     return () => {
       if (style && style.parentNode) style.parentNode.removeChild(style)
     }
-  }, [])
+  }, [imageAlign])
 
   // sanitizer to remove figure/figcaption and alignment classes/styles
   const sanitizeCkeOutput = (html) => {
@@ -200,18 +188,15 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
         if (/text-align\s*:\s*(center|right)/i.test(style)) p.removeAttribute('style')
       })
       // ensure images are block-level with margins handled by our global CSS,
-      // and enforce a single <br> AFTER each image so teks sesudah gambar turun baris.
+      // and remove a single preceding <br> before each image to avoid extra spacing in edit view
       Array.from(doc.querySelectorAll('img')).forEach(img => {
         img.removeAttribute('style')
-        // Ensure a <br> immediately after the image (but not duplicated)
-        let next = img.nextSibling
-        // Skip whitespace
+        // remove whitespace text nodes around
         const isWs = (n) => n && n.nodeType === 3 && !/\S/.test(n.nodeValue || '')
-        while (isWs(next)) next = next.nextSibling
-        if (!(next && next.nodeName === 'BR')) {
-          const brAfter = doc.createElement('br')
-          if (img.parentNode) img.parentNode.insertBefore(brAfter, img.nextSibling)
-        }
+        // remove preceding BR if exists (ignore whitespace)
+        let prev = img.previousSibling
+        while (isWs(prev)) prev = prev.previousSibling
+        if (prev && prev.nodeName === 'BR') prev.parentNode.removeChild(prev)
       })
       // also remove leading BRs at top of content
       while (doc.body.firstChild && doc.body.firstChild.nodeName === 'BR') {
@@ -237,17 +222,10 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
         data={value || ''}
         config={editorConfig}
         onReady={(editor) => {
-          // Normalize initial data to avoid centered images/paragraphs
-          const current = editor.getData()
-          const cleaned = sanitizeCkeOutput(current)
-          if (cleaned !== current) {
-            editor.setData(cleaned)
-            if (onChangeHTML) onChangeHTML({ target: { value: cleaned } })
-          }
+          if (onChangeHTML) onChangeHTML({ target: { value: editor.getData() } })
         }}
         onChange={(event, editor) => {
-          let data = editor.getData()
-          data = sanitizeCkeOutput(data)
+          const data = editor.getData()
           if (onChangeHTML) onChangeHTML({ target: { value: data } })
         }}
       />

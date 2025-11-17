@@ -27,7 +27,7 @@ import Badge from '@/components/UI/Badge'
 import toast from 'react-hot-toast'
 import { MENU_CODES } from '@/config/menuCodes'
 
-const OwnerTrainingList = () => {
+const OwnerTrainingList = () => {``
   const { user } = useAuth()
   const [trainings, setTrainings] = useState([])
   const [loading, setLoading] = useState(false)
