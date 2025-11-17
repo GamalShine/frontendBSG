@@ -2,12 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { omsetHarianService } from '../../../../services/omsetHarianService';
-import api from '../../../../services/api';
 import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../../../../components/UI/LoadingSpinner';
 import { getEnvironmentConfig } from '../../../../config/environment';
 import { normalizeImageUrl } from '../../../../utils/url';
-import RichTextEditor from '../../../../components/UI/RichTextEditor';
+import CKEditorPoskas from '../../../../components/UI/CKEditorPoskas';
 import { ArrowLeft, Calendar, FileText,  Image as ImageIcon, Upload, X, Save, RefreshCw 
 } from 'lucide-react';
 
@@ -40,6 +39,72 @@ const AdminOmsetHarianForm = () => {
   const handleEditorHtmlChange = (e) => {
     const html = e?.target?.value ?? '';
     setFormData(prev => ({ ...prev, isi_omset: html }));
+  };
+
+  // Utilities adopt from Poskas form: normalize image URLs and convert <img> to [IMG:id]
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      const base = envConfig.BASE_URL.replace('/api','');
+      let out = String(url).trim();
+      if (out.startsWith(base)) out = out.slice(base.length);
+      out = out.replace('http://http://','http://');
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch (e) {
+      return String(url);
+    }
+  };
+
+  const convertHtmlToPlaceholders = (html, images) => {
+    if (!html) return '';
+    let out = html;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch (_) {}
+    return out;
+  };
+
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
+    try {
+      out = out
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch(_) {}
+    return out;
   };
 
   const updateFormatState = () => {
@@ -236,6 +301,28 @@ const AdminOmsetHarianForm = () => {
         editorRef.current.innerHTML = formData.isi_omset;
         // Sanitize once after load so existing content is normalized (including bold tags)
         sanitizeEditorHtml();
+        // Pastikan setiap <img> berdiri di baris sendiri: tambah satu <br> sebelum dan sesudah bila belum ada
+        try {
+          const imgs = editorRef.current.querySelectorAll('img');
+          imgs.forEach(img => {
+            // AFTER: jika setelah img bukan <br>, sisipkan satu <br>
+            let next = img.nextSibling;
+            if (!(next && next.nodeType === Node.ELEMENT_NODE && next.tagName === 'BR')) {
+              const brAfter = document.createElement('br');
+              img.parentNode.insertBefore(brAfter, img.nextSibling);
+            }
+            // BEFORE: jika sebelum img bukan <br> atau boundary block, sisipkan satu <br>
+            let prev = img.previousSibling;
+            const prevIsBr = prev && prev.nodeType === Node.ELEMENT_NODE && prev.tagName === 'BR';
+            // Sisipkan <br> sebelum jika belum ada, termasuk saat img berada di awal container
+            if (!prevIsBr) {
+              const brBefore = document.createElement('br');
+              img.parentNode.insertBefore(brBefore, img);
+            }
+          });
+          // Collapse <br> bertumpuk menjadi satu
+          editorRef.current.innerHTML = editorRef.current.innerHTML.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
+        } catch(_) {}
         
         // Check if images are present in the editor
         const imagesInEditor = editorRef.current.querySelectorAll('img');
@@ -481,7 +568,8 @@ const AdminOmsetHarianForm = () => {
               id: image.id
             });
             
-            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
+            // Tambahkan <br> sebelum dan sesudah <img> agar gambar berada pada baris sendiri dan ada jarak yang jelas
+            const imageHtmlTag = `<br><img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" /><br>`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
             
             // Check if this placeholder exists in content
@@ -489,11 +577,12 @@ const AdminOmsetHarianForm = () => {
             console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
             
             if (matches) {
+              // Pastikan placeholder diganti ke <img><br> sehingga baris selanjutnya turun
               editorContent = editorContent.replace(placeholderRegex, imageHtmlTag);
               console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
             } else {
               console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
-              // If no placeholder found, append image at the end
+              // If no placeholder found, append image at the end with trailing <br>
               editorContent += imageHtmlTag;
               console.log(`➕ Appended image ${image.id} to content since no placeholder found`);
             }
@@ -854,62 +943,20 @@ const handleEditorMouseUp = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validasi sebelum proses upload & submit
     if (!validateIsiOmset()) return;
     setIsSubmitting(true);
     try {
-      // 1) Pastikan gambar baru diupload ke server terlebih dahulu
-      const uploadNewImages = async () => {
-        if (!selectedImages || selectedImages.length === 0) return [];
-        const fd = new FormData();
-        selectedImages.forEach((item) => {
-          if (item?.file) fd.append('images', item.file);
-        });
-
-        try {
-          const res = await api.post('/upload/omset-harian', fd, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          if (res?.data?.success && Array.isArray(res.data.data)) {
-            const uploaded = res.data.data; // array sejajar dengan selectedImages
-            // Petakan kembali dengan id lokal agar cocok dengan [IMG:id]
-            return uploaded.map((f, idx) => ({
-              id: selectedImages[idx]?.id,
-              name: f.originalName || selectedImages[idx]?.file?.name || `omset_${Date.now()}_${idx}.jpg`,
-              url: f.url,
-              serverPath: f.path
-            })).filter(img => img.id);
-          }
-          toast.error('Upload gambar gagal');
-          return [];
-        } catch (err) {
-          console.error('❌ Upload OMSET HARIAN gagal:', err);
-          toast.error('Gagal mengupload gambar');
-          return [];
-        }
-      };
-
-      const newImages = await uploadNewImages();
-
-      // 2) Kumpulkan seluruh images: existing + yang baru diupload
-      const allImages = [
-        ...((formData.images && Array.isArray(formData.images)) ? formData.images : []),
-        ...newImages
-      ];
-
-      // 3) Ambil konten dari RichTextEditor (sudah diserialisasi: img -> [IMG:id], normalisasi <strong>/<br>)
-      const isiContent = formData?.isi_omset || '';
-
-      // 4) Hanya simpan gambar yang benar-benar dipakai di editor
-      const usedIdMatches = [...isiContent.matchAll(/\[IMG:(\d+)\]/g)];
-      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
-      const filteredImages = allImages.filter((img) => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
+      // Ambil konten dari CKEditorPoskas
+      const editorContent = formData?.isi_omset || '';
+      const normalized = normalizeBlocks(editorContent);
+      const contentForSave = convertHtmlToPlaceholders(normalized, formData.images || []);
 
       const payload = {
         tanggal_omset: formData.tanggal_omset,
-        isi_omset: isiContent,
-        images: filteredImages
+        isi_omset: contentForSave,
+        images: Array.isArray(formData.images) ? formData.images : []
       };
+
       if (isEditMode) {
         await omsetHarianService.updateOmsetHarian(id, payload);
       } else {
@@ -1010,17 +1057,15 @@ const handleEditorMouseUp = () => {
               </label>
             </div>
 
-            <RichTextEditor
+            <CKEditorPoskas
               value={formData.isi_omset}
-              onChange={handleEditorHtmlChange}
-              onFilesChange={(files) => {
-                // files: array of { file, id }
-                setSelectedImages(files);
+              onChangeHTML={handleEditorHtmlChange}
+              onImagesChange={(images) => {
+                // images: array of { uri, id, name, url, serverPath }
+                setFormData(prev => ({ ...prev, images }));
               }}
               placeholder="Masukkan isi omset harian . . . "
-              rows={12}
-              hideAlign={true}
-              hideImage={true}
+              uploadPath="/upload/omset-harian"
             />
             {/* Mobile action bar under editor */}
             <div className="mt-4 lg:hidden flex items-center justify-end gap-3">
