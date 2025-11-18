@@ -677,13 +677,14 @@ const AdminDataTim = () => {
         <div className="bg-white rounded-md shadow-sm border border-gray-100">
           <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-1 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cari</label>
+              <label className="sr-only">Cari</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari nama / jabatan / divisi"
+                  aria-label="Cari nama / jabatan / divisi"
                   className="pl-10 pr-3 py-2 w-full border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
               </div>

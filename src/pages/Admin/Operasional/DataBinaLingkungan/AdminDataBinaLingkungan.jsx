@@ -577,7 +577,7 @@ const AdminDataBinaLingkungan = () => {
                 const open = !!expandedLokasi[lok];
                 const totalNominal = arr.reduce((s, it) => s + (Number(it.nominal) || 0), 0);
                 return (
-                  <div key={lok} className="mb-2 overflow-hidden rounded-none">
+                  <div key={lok} className="mb-4 overflow-hidden rounded-none">
                     <button
                       onClick={() => setExpandedLokasi(prev => ({ ...prev, [lok]: !prev[lok] }))}
                       className="w-full flex items-center justify-between px-4 md:px-6 py-3 bg-red-700 text-white rounded-none"
@@ -590,12 +590,12 @@ const AdminDataBinaLingkungan = () => {
                       {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </button>
                     {open && (
-                      <div className="pt-2">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-2 gap-x-0 md:gap-x-3 md:gap-y-3 p-0">
+                      <div className="pt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-2 md:gap-x-4 md:gap-y-5 p-0">
                           {arr.map((item) => (
                             <div
                               key={item.id}
-                              className="bg-white shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
+                              className="bg-white shadow-sm border border-gray-200 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer rounded-md overflow-hidden"
                               onClick={() => { setDetailItem(item); setShowDetail(true); }}
                             >
                               {/* Header strip ala Data Sewa */}

@@ -2,17 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { targetHarianService } from '@/services/targetHarianService';
-import api from '@/services/api';
 import { X, Save, RefreshCw, Calendar, FileText } from 'lucide-react';
 import { MENU_CODES } from '@/config/menuCodes';
-import RichTextEditor from '@/components/UI/RichTextEditor';
+import CKEditorPoskas from '@/components/UI/CKEditorPoskas';
 
 const AdminDataTargetForm = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ tanggal_target: new Date().toISOString().slice(0,10), isi_target: '' });
-  const [images, setImages] = useState([]); // Hasil upload via paste lama (fallback)
-  const [selectedImages, setSelectedImages] = useState([]); // Files dari RichTextEditor (belum terupload)
+  const [form, setForm] = useState({ tanggal_target: new Date().toISOString().slice(0,10), isi_target: '', images: [] });
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -31,43 +28,79 @@ const AdminDataTargetForm = () => {
     return true;
   };
 
+  // Utils normalize and convert like Poskas/Omset
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      let out = String(url).trim();
+      out = out.replace('http://http://','http://').replace('https://https://','https://');
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch { return String(url||''); }
+  };
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
+    try {
+      out = out
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch(_) {}
+    return out;
+  };
+  const convertHtmlToPlaceholders = (html, images) => {
+    if (!html) return '';
+    let out = html;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch(_) {}
+    return out;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     try {
       setSaving(true);
-      // Upload gambar baru dari editor jika ada
-      let uploadedEditorImages = [];
-      if (selectedImages && selectedImages.length) {
-        const fd = new FormData();
-        selectedImages.forEach((item) => { if (item?.file) fd.append('images', item.file); });
-        try {
-          const res = await api.post('/upload/target', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-          if (res?.data?.success && Array.isArray(res.data.data)) {
-            uploadedEditorImages = res.data.data.map((f, idx) => ({
-              id: selectedImages[idx]?.id,
-              name: f.originalName || selectedImages[idx]?.file?.name || `target_${Date.now()}_${idx}.jpg`,
-              url: f.url || f.path,
-              serverPath: f.path || f.url,
-            }));
-          }
-        } catch (err) {
-          console.error('Upload editor images gagal:', err);
-          toast.error('Upload gambar gagal');
-        }
-      }
-
-      // Gabungkan dengan gambar hasil paste lama (jika ada)
-      const allImages = [...uploadedEditorImages, ...(images || [])];
-      // Kirim hanya gambar yang dipakai di konten editor berdasarkan placeholder [IMG:id]
-      const usedIdMatches = [...String(form.isi_target||'').matchAll(/\[IMG:(\d+)\]/g)];
-      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
-      const filteredImages = allImages.filter((img) => (typeof img.id !== 'undefined') ? usedIds.has(parseInt(img.id, 10)) : true);
+      // Ambil konten dari CKEditor dan konversi
+      const normalized = normalizeBlocks(form.isi_target || '');
+      const contentForSave = convertHtmlToPlaceholders(normalized, form.images || []);
 
       const payload = {
         tanggal_target: form.tanggal_target,
-        isi_target: form.isi_target,
-        images: filteredImages.length ? filteredImages : null,
+        isi_target: contentForSave,
+        images: Array.isArray(form.images) ? form.images : null,
       };
       const res = await targetHarianService.create(payload);
       if (res?.success) {
@@ -199,15 +232,13 @@ const AdminDataTargetForm = () => {
               </div>
               <label className="text-lg font-semibold text-gray-900">Isi Target</label>
             </div>
-            {/* Gunakan RichTextEditor seperti di Medsos */}
-            <RichTextEditor
+            <CKEditorPoskas
               value={form.isi_target}
-              onChange={(e) => setForm((f) => ({ ...f, isi_target: e?.target?.value ?? '' }))}
-              onFilesChange={(files) => setSelectedImages(files)}
+              onChangeHTML={(e) => setForm((f) => ({ ...f, isi_target: e?.target?.value ?? '' }))}
+              onImagesChange={(images) => setForm((f) => ({ ...f, images }))}
               placeholder="Tulis isi taget harian..."
-              rows={12}
-              hideAlign={true}
-              hideImage={true}
+              uploadPath="/upload/target"
+              imageAlign="left"
             />
             {/* Preview/grid gambar disembunyikan sesuai permintaan */}
             {/* Action buttons (icon-only) under editor, mobile only */}

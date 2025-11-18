@@ -56,7 +56,7 @@ import { targetHarianService } from '@/services/targetHarianService';
 import { X, Save, RefreshCw, Calendar, FileText } from 'lucide-react';
 import api from '@/services/api';
 import { MENU_CODES } from '@/config/menuCodes';
-import RichTextEditor from '@/components/UI/RichTextEditor';
+import CKEditorPoskas from '@/components/UI/CKEditorPoskas';
 import { getEnvironmentConfig } from '@/config/environment';
 
 const AdminDataTargetEdit = () => {
@@ -65,8 +65,7 @@ const AdminDataTargetEdit = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ tanggal_target: '', isi_target: '' });
-  const [images, setImages] = useState([]); // legacy pasted images
-  const [selectedImages, setSelectedImages] = useState([]); // files from RichTextEditor (not yet uploaded)
+  const [images, setImages] = useState([]); // CKEditor images list (existing + newly uploaded by adapter)
   const [editorInitialHtml, setEditorInitialHtml] = useState('');
   const env = getEnvironmentConfig();
 
@@ -117,8 +116,15 @@ const AdminDataTargetEdit = () => {
               const id = Number(g1);
               const src = byId.get(id);
               if (!src) return '';
-              return `<img data-image-id="${id}" src="${src}" style="max-width:100%;height:auto;border-radius:0.5rem;margin:10px 0;box-shadow:0 2px 4px rgba(0,0,0,0.1)" />`;
+              return `<img data-image-id="${id}" src="${src}" style="max-width:100%;height:auto;border-radius:0.5rem;margin:10px 0;box-shadow:0 2px 4px rgba(0,0,0,0.1)" /><br>`;
             });
+            // Rapihkan <br> berlebih seperti halaman lain
+            html = html
+              .replace(/(?:<br\s*\/?>\s*)+(<img[^>]*>)/gi, '$1')
+              .replace(/(<img[^>]*>)(\s*(?:<br\s*\/?>\s*)+)/gi, '$1<br>')
+              .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+              .replace(/^(?:\s*<br>)+/i, '')
+              .replace(/(?:<br>\s*)+$/i, '');
             setEditorInitialHtml(html);
           } catch {
             setEditorInitialHtml(String(it.isi_target || ''));
@@ -153,40 +159,79 @@ const AdminDataTargetEdit = () => {
     return true;
   };
 
+  // Utils: normalize & convert like Omset/Laporan
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      let out = String(url).trim();
+      out = out.replace('http://http://','http://').replace('https://https://','https://');
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch { return String(url||''); }
+  };
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
+    try {
+      out = out
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch(_) {}
+    return out;
+  };
+  const convertHtmlToPlaceholders = (html, imagesList) => {
+    if (!html) return '';
+    let out = html;
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(imagesList) ? imagesList : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch(_) {}
+    return out;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
     try {
       setSaving(true);
-      // Upload gambar baru dari editor jika ada
-      let uploadedEditorImages = [];
-      if (selectedImages && selectedImages.length) {
-        const fd = new FormData();
-        selectedImages.forEach((item) => { if (item?.file) fd.append('images', item.file); });
-        try {
-          const resUp = await api.post('/upload/target', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-          if (resUp?.data?.success && Array.isArray(resUp.data.data)) {
-            uploadedEditorImages = resUp.data.data.map((f, idx) => ({
-              id: selectedImages[idx]?.id,
-              name: f.originalName || selectedImages[idx]?.file?.name || `target_${Date.now()}_${idx}.jpg`,
-              url: f.url || f.path,
-              serverPath: f.path || f.url,
-            }));
-          }
-        } catch (err) {
-          console.error('Upload editor images gagal:', err);
-          toast.error('Upload gambar gagal');
-        }
-      }
-      const allImages = [...uploadedEditorImages, ...(images || [])];
-      const usedIdMatches = [...String(form.isi_target||'').matchAll(/\[IMG:(\d+)\]/g)];
-      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
-      const filteredImages = allImages.filter((img) => (typeof img.id !== 'undefined') ? usedIds.has(parseInt(img.id, 10)) : true);
+      // Ambil konten dari CKEditor dan konversi
+      const normalized = normalizeBlocks(form.isi_target || '');
+      const contentForSave = convertHtmlToPlaceholders(normalized, images || []);
 
       const payload = {
         tanggal_target: form.tanggal_target,
-        isi_target: form.isi_target,
-        images: filteredImages.length ? filteredImages : null,
+        isi_target: contentForSave,
+        images: Array.isArray(images) ? images : null,
       };
       const res = await targetHarianService.update(id, payload);
       if (res?.success) {
@@ -269,14 +314,13 @@ const AdminDataTargetEdit = () => {
                   </div>
                   <label className="text-lg font-semibold text-gray-900">Isi Target</label>
                 </div>
-                <RichTextEditor
+                <CKEditorPoskas
                   value={editorInitialHtml}
-                  onChange={(e) => setForm((f) => ({ ...f, isi_target: e?.target?.value ?? '' }))}
-                  onFilesChange={(files) => setSelectedImages(files)}
+                  onChangeHTML={(e) => setForm((f) => ({ ...f, isi_target: e?.target?.value ?? '' }))}
+                  onImagesChange={(imgs) => setImages(imgs)}
                   placeholder="Tulis isi taget harian..."
-                  rows={12}
-                  hideAlign={true}
-                  hideImage={true}
+                  uploadPath="/upload/target"
+                  imageAlign="left"
                 />
                 {/* Preview/grid gambar disembunyikan sesuai permintaan */}
                 {/* Action buttons (icon-only) under editor, mobile only */}

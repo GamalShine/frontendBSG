@@ -613,13 +613,13 @@ const StrukturJobdeskSOP = () => {
           {error.jobdesk && <ErrorBox message={error.jobdesk} />}
           {!loading.jobdesk && !error.jobdesk && (
             jobdesk.length > 0 ? (
-              <div className="pt-2 pb-3 space-y-3 -mx-2 md:mx-0">
+              <div className="pt-2 pb-3 space-y-3 mx-0">
                 {jobdesk.map((divisi) => {
                   const isOpen = !!openJobDiv[divisi.id]
                   const deptCount = divisi.departments?.length || 0
                   const totalPos = (divisi.departments || []).reduce((m, d) => m + (d.positions?.length || 0), 0)
                   return (
-                    <div key={`div-${divisi.id}`} className="rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 mb-3 mx-0 md:mx-3 shadow-sm">
+                    <div key={`div-${divisi.id}`} className="rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 mb-3 mx-0 md:mx-0 w-full shadow-sm">
                       <button
                         type="button"
                         onClick={() => setOpenJobDiv((s) => ({ ...s, [divisi.id]: !s[divisi.id] }))}
