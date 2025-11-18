@@ -523,12 +523,10 @@ const AdminDataBinaLingkungan = () => {
 
       <div className="px-0 py-4">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 px-0">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-3 px-0">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4">
             <div className="flex items-center space-x-2 md:space-x-3">
-              <div className="p-1.5 md:p-2 bg-blue-100 rounded-lg">
-                <User className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
-              </div>
+              <div className="hidden" />
               <div>
                 <p className="text-xs font-medium text-gray-500">Total Penerima</p>
                 <p className="text-base md:text-lg font-bold text-gray-900">{stats.total}</p>
@@ -537,9 +535,7 @@ const AdminDataBinaLingkungan = () => {
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 md:p-4">
             <div className="flex items-center space-x-2 md:space-x-3">
-              <div className="p-1.5 md:p-2 bg-purple-100 rounded-lg">
-                <MapPin className="h-4 w-4 md:h-5 md:w-5 text-purple-600" />
-              </div>
+              <div className="hidden" />
               <div>
                 <p className="text-xs font-medium text-gray-500">Jumlah Lokasi</p>
                 <p className="text-base md:text-lg font-bold text-gray-900">{stats.lokasiCount}</p>
@@ -591,7 +587,7 @@ const AdminDataBinaLingkungan = () => {
                     </button>
                     {open && (
                       <div className="pt-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-2 md:gap-x-4 md:gap-y-5 p-0">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-y-4 gap-x-2 md:gap-x-4 md:gap-y-5 p-0">
                           {arr.map((item) => (
                             <div
                               key={item.id}

@@ -308,7 +308,6 @@ const AdminDataSupplier = () => {
           <div className="px-6 py-4">
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Cari Supplier</label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input

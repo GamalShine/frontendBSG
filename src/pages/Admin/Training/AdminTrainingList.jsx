@@ -335,7 +335,6 @@ const AdminTrainingList = () => {
         <CardBody className="px-6 py-4">
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Cari</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input

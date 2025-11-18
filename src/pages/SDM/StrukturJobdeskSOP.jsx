@@ -541,11 +541,33 @@ const StrukturJobdeskSOP = () => {
 
     {/* Subheader dihilangkan sesuai permintaan */}
 
-    <div className="w-full px-0 pt-0 pb-6">
-      <div className="mb-0">
-        <div className="grid grid-cols-2 w-full md:inline-flex md:w-auto md:gap-6 md:justify-center">
-          <TabButton active={activeTab === 'struktur'} onClick={() => setActiveTab('struktur')}>STRUKTUR</TabButton>
-          <TabButton active={activeTab === 'jobdesk'} onClick={() => setActiveTab('jobdesk')}>JOBDESK</TabButton>
+    <div className="w-full px-0 pt-0 pb-6 mt-2 md:mt-4">
+      <div className="mb-2 md:mb-4">
+        <div className="flex items-center justify-between">
+          <div className="grid grid-cols-2 w-full md:inline-flex md:w-auto md:gap-6 md:justify-center">
+            <TabButton active={activeTab === 'struktur'} onClick={() => setActiveTab('struktur')}>STRUKTUR</TabButton>
+            <TabButton active={activeTab === 'jobdesk'} onClick={() => setActiveTab('jobdesk')}>JOBDESK</TabButton>
+          </div>
+          {canManage && (
+            activeTab === 'jobdesk' ? (
+              <button
+                type="button"
+                onClick={openUnifiedAdd}
+                className="hidden md:inline-flex px-3 py-1.5 mr-3 md:mr-6 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+              >
+                + Tambah
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => (struktur ? openUpdate() : openCreate())}
+                className="hidden md:inline-flex px-3 py-1.5 mr-3 md:mr-6 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
+              >
+                <Pencil className="w-4 h-4 mr-1.5" />
+                Edit
+              </button>
+            )
+          )}
         </div>
       </div>
 
@@ -554,17 +576,6 @@ const StrukturJobdeskSOP = () => {
           title={struktur?.judul || 'Struktur Organisasi'}
           titleClassName="flex-1 text-center"
           headerMarginClass="mb-2"
-          right={
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => (struktur ? openUpdate() : openCreate())}
-                className="hidden md:inline-flex px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
-              >
-                Edit
-              </button>
-            </div>
-          }
         >
           {loading.struktur && <Loading />}
           {error.struktur && <ErrorBox message={error.struktur} />}
@@ -598,28 +609,18 @@ const StrukturJobdeskSOP = () => {
       )}
 
       {activeTab === 'jobdesk' && (
-        <SectionCard title="" right={
-          canManage ? (
-            <button
-              type="button"
-              onClick={openUnifiedAdd}
-              className="hidden md:inline-flex px-3 py-1.5 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700"
-            >
-              Tambah
-            </button>
-          ) : null
-        }>
+        <SectionCard title="">
           {loading.jobdesk && <Loading />}
           {error.jobdesk && <ErrorBox message={error.jobdesk} />}
           {!loading.jobdesk && !error.jobdesk && (
             jobdesk.length > 0 ? (
-              <div className="pt-2 pb-3 space-y-3 mx-0">
+              <div className="pt-0 pb-3 space-y-3 -mx-4 md:mx-0 -mt-2">
                 {jobdesk.map((divisi) => {
                   const isOpen = !!openJobDiv[divisi.id]
                   const deptCount = divisi.departments?.length || 0
                   const totalPos = (divisi.departments || []).reduce((m, d) => m + (d.positions?.length || 0), 0)
                   return (
-                    <div key={`div-${divisi.id}`} className="rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 mb-3 mx-0 md:mx-0 w-full shadow-sm">
+                    <div key={`div-${divisi.id}`} className="rounded-none md:rounded-lg overflow-hidden border border-gray-200 bg-white mt-3 first:mt-0 mb-3 mx-0 md:mx-0 w-full shadow-sm">
                       <button
                         type="button"
                         onClick={() => setOpenJobDiv((s) => ({ ...s, [divisi.id]: !s[divisi.id] }))}
@@ -629,7 +630,7 @@ const StrukturJobdeskSOP = () => {
                           {isOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                           <span className="font-semibold tracking-tight">{divisi.nama_divisi}</span>
                         </div>
-                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{deptCount} dept • {totalPos} posisi</span>
+                        <span className="hidden md:inline-flex text-xs bg-white/20 px-2 py-0.5 rounded-full border border-white/30">{deptCount} dept • {totalPos} posisi</span>
                       </button>
                       {isOpen && (
                         <div className="mt-0 px-2 md:px-6 pt-3 pb-2 md:py-4 grid grid-cols-1 gap-2 md:gap-3">
@@ -643,7 +644,7 @@ const StrukturJobdeskSOP = () => {
                                     {open ? <ChevronDown className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" /> : <ChevronRight className="h-3.5 w-3.5 md:h-4 md:w-4 text-white/90" />}
                                     <span className="font-semibold text-sm md:text-sm leading-tight tracking-tight">{dept.nama_department}</span>
                                   </button>
-                                  <span className="text-[10px] md:text-xs bg-white/20 px-1.5 md:px-2 py-0.5 rounded-full border border-white/30">{posCount} posisi</span>
+                                  <span className="hidden md:inline text-[10px] md:text-xs bg-white/20 px-1.5 md:px-2 py-0.5 rounded-full border border-white/30">{posCount} posisi</span>
                                 </div>
                                 {open && (
                                   <div className="divide-y">

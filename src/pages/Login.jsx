@@ -96,7 +96,7 @@ const Login = () => {
 
             {/* Field Username */}
             <label className="block text-xs font-medium text-gray-600 mb-2">Usernam atau email*</label>
-            <div className="w-full rounded-xl bg-gray-100/90 border border-gray-200 px-3 md:px-4 h-10 md:h-12 grid grid-cols-[auto,1fr,auto] items-center gap-2 md:gap-3">
+            <div className="w-full rounded-xl bg-gray-100/90 border border-gray-200 pl-3 md:pl-4 pr-3 md:pr-4 h-10 md:h-12 flex items-center gap-2 md:gap-3">
               <User className="h-5 w-5 text-red-600 shrink-0" aria-hidden="true" />
               <input
                 type="text"
@@ -104,11 +104,11 @@ const Login = () => {
                 value={formData.username}
                 onChange={handleChange}
                 placeholder="Username"
-                className="flex-1 h-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-[15px] md:text-base"
+                className="flex-1 h-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-[15px] md:text-base leading-none py-0"
                 required
               />
               {/* spacer agar kolom aksi setara dengan tombol mata di Password */}
-              <span className="justify-self-end inline-block w-6 h-6" aria-hidden="true" />
+              <span className="inline-block w-6 h-6" aria-hidden="true" />
             </div>
 
             {/* Field Password */}
@@ -121,7 +121,7 @@ const Login = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Password"
-                className="flex-1 h-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-[15px] md:text-base"
+                className="flex-1 h-full bg-transparent outline-none text-gray-900 placeholder-gray-400 text-[15px] md:text-base leading-none py-0"
                 required
               />
               <button
