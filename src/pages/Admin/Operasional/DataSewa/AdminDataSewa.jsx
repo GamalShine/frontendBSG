@@ -488,35 +488,29 @@ const AdminDataSewa = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="px-0 py-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-0">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+      <div className="px-0 py-3 md:py-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 mb-0">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <FileText className="h-5 w-5 text-blue-600" />
-              </div>
+              <div className="hidden" />
               <div>
                 <p className="text-xs font-medium text-gray-500">Total Sewa</p>
                 <p className="text-lg font-bold text-gray-900">{stats.total}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <Tag className="h-5 w-5 text-green-600" />
-              </div>
+              <div className="hidden" />
               <div>
                 <p className="text-xs font-medium text-gray-500">Jumlah Kategori</p>
                 <p className="text-lg font-bold text-gray-900">{stats.kategoriCount}</p>
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 md:p-4">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Calendar className="h-5 w-5 text-purple-600" />
-              </div>
+              <div className="hidden" />
               <div>
                 <p className="text-xs font-medium text-gray-500">Berakhir Bulan Ini</p>
                 <p className="text-lg font-bold text-gray-900">{stats.endingThisMonth}</p>
@@ -531,7 +525,6 @@ const AdminDataSewa = () => {
         <div className="px-6 py-4">
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Cari Sewa</label>
               <div className="relative">
                 <input
                   type="text"
@@ -559,7 +552,7 @@ const AdminDataSewa = () => {
             <div key={kategoriKey} className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 overflow-hidden mt-2">
               <button
                 onClick={() => toggleCategory(kategoriKey)}
-                className="w-full px-6 py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
+                className="w-full px-3 py-2 md:px-6 md:py-3 bg-red-800 text-white flex items-center justify-between hover:bg-red-900 transition-colors"
               >
                 <div className="flex items-center space-x-3">
                   <span className="text-lg font-semibold">{kategoriKey}</span>
@@ -577,10 +570,10 @@ const AdminDataSewa = () => {
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openDetail(item) } }}
-                        className="bg-white rounded-xl shadow-sm border border-gray-100 p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
+                        className="bg-white rounded-xl shadow-sm border border-gray-100 p-2 md:p-3 hover:shadow-md transition-shadow text-xs cursor-pointer"
                       >
                         {/* Header: Nama + Badge Kategori */}
-                        <div className="flex items-start justify-between px-3 py-2 bg-gray-50 -mx-3 -mt-3 mb-0 border-b border-gray-100 cursor-pointer" onClick={(e)=>{ e.stopPropagation(); openDetail(item) }}>
+                        <div className="flex items-start justify-between px-2 py-2 md:px-3 md:py-2 bg-gray-50 -mx-2 md:-mx-3 -mt-2 md:-mt-3 mb-0 border-b border-gray-100 cursor-pointer" onClick={(e)=>{ e.stopPropagation(); openDetail(item) }}>
                           <h3 className="text-sm md:text-base font-semibold text-gray-900 leading-snug break-words pr-2">{item.nama_aset || '-'}</h3>
                           <span className="inline-flex px-2 py-1 text-[10px] font-semibold rounded-full border bg-red-50 text-red-700 border-red-200">
                             {item.kategori_sewa || 'LAINNYA'}
@@ -652,7 +645,7 @@ const AdminDataSewa = () => {
                                           className="block text-left"
                                           title={String(name)}
                                         >
-                                          <img src={url} alt={item.nama_aset || 'lampiran'} className="w-full h-16 object-cover rounded" />
+                                          <img src={url} alt={item.nama_aset || 'lampiran'} className="w-full h-14 md:h-16 object-cover rounded" />
                                         </button>
                                       ) : (
                                         <button

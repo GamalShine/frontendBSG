@@ -616,8 +616,7 @@ const AdminDaftarGaji = () => {
         {/* Form Pencarian */}
         <div className="bg-white rounded-none md:rounded-xl shadow-sm border border-gray-100 mb-2">
           <div className="px-6 py-2 md:py-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1 md:mb-2">Cari Daftar Gaji</label>
+            <div className="md:col-span-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -629,7 +628,6 @@ const AdminDaftarGaji = () => {
                 />
               </div>
             </div>
-            <div className="flex items-end"></div>
           </div>
         </div>
 

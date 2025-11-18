@@ -640,9 +640,7 @@ const AdminDataTim = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="text-xl font-extrabold text-gray-900 lg:hidden">{stats.karyawan}</div>
-              <span className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">
-                <Users className="h-5 w-5" />
-              </span>
+              <span className="hidden" />
             </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
@@ -652,9 +650,7 @@ const AdminDataTim = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="text-xl font-extrabold text-gray-900 lg:hidden">{stats.divisi}</div>
-              <span className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                <Building2 className="h-5 w-5" />
-              </span>
+              <span className="hidden" />
             </div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center justify-between">
@@ -664,9 +660,7 @@ const AdminDataTim = () => {
             </div>
             <div className="flex items-center gap-2">
               <div className="text-xl font-extrabold text-gray-900 lg:hidden">{stats.jabatan}</div>
-              <span className="hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                <Briefcase className="h-5 w-5" />
-              </span>
+              <span className="hidden" />
             </div>
           </div>
         </div>

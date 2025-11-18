@@ -150,7 +150,7 @@ const AdminSopAturan = () => {
                   } catch { setDivisions([]); }
                   setShowSopAddModal(true);
                 }}
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white text-red-700 border border-red-600 rounded-lg hover:bg-red-50"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white text-red-700 border border-red-600 rounded-lg hover:bg-red-50 md:font-semibold"
               >
                 <Plus className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Tambah</span>
@@ -326,7 +326,7 @@ const AdminSopAturan = () => {
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white text-red-700 border border-red-600 rounded-lg hover:bg-red-50"
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-white text-red-700 border border-red-600 rounded-lg hover:bg-red-50 md:font-semibold"
               >
                 <Plus className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline">Tambah</span>
