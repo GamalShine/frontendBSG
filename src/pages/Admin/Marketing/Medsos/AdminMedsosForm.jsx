@@ -5,7 +5,7 @@ import Button from '@/components/UI/Button';
 import { mediaSosialService } from '@/services/mediaSosialService';
 import { toast } from 'react-hot-toast';
 import { getEnvironmentConfig } from '@/config/environment';
-import RichTextEditor from '@/components/UI/RichTextEditor';
+import CKEditorPoskas from '@/components/UI/CKEditorPoskas';
 import { MENU_CODES } from '@/config/menuCodes';
 import { X, Save, RefreshCw, Calendar, FileText } from 'lucide-react';
 
@@ -34,71 +34,67 @@ const AdminMedsosForm = () => {
 
   const env = getEnvironmentConfig();
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ tanggal_laporan: defaultDate, isi_laporan: '' });
-  const [selectedImages, setSelectedImages] = useState([]); // { file, id }
+  const [form, setForm] = useState({ tanggal_laporan: defaultDate, isi_laporan: '', images: [] });
 
-  // Helpers: sanitizer & normalizer
-  const removeZeroWidth = (html) => (html || '').replace(/[\u200B-\u200D\uFEFF]/g, '');
-  const sanitizeToLTR = (html) => {
-    if (!html || typeof html !== 'string') return html || '';
-    const removedBidi = html.replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
-    return removedBidi
-      .replace(/\sdir="[^"]*"/gi, '')
-      .replace(/\sdir='[^']*'/gi, '')
-      .replace(/\sstyle="[^"]*(direction\s*:\s*(rtl|ltr))[^"]*"/gi, (m) => m.replace(/direction\s*:\s*(rtl|ltr)\s*;?/gi, ''))
-      .replace(/\sstyle="[^"]*(text-align\s*:\s*(right|left|center|justify))[^"]*"/gi, (m) => m.replace(/text-align\s*:\s*(right|left|center|justify)\s*;?/gi, ''))
-      .replace(/\sstyle="\s*"/gi, '')
-      .replace(/\sstyle='\s*'/gi, '');
-  };
-  const normalizeBoldHtml = (html) => {
-    if (!html) return html;
-    let out = html;
-    // standardize b -> strong
-    out = out.replace(/<\/?b>/gi, (m) => m.includes('</') ? '</strong>' : '<strong>');
-    // remove <strong><br></strong> and empty <strong></strong>
-    out = out.replace(/<strong>\s*(?:<br\s*\/?\s*>)+\s*<\/strong>/gi, '<br>');
-    out = out.replace(/<strong>\s*<\/strong>/gi, '');
-    // collapse nested <strong>
+  // Utils normalize & convert placeholder (disederhanakan seperti Omset/Laporan)
+  const normalizeBlocks = (html) => {
+    if (!html) return '';
+    let out = String(html);
     try {
-      let prev;
-      do {
-        prev = out;
-        out = out.replace(/<strong>\s*<strong>/gi, '<strong>')
-                 .replace(/<\/strong>\s*<\/strong>/gi, '</strong>');
-      } while (out !== prev);
-    } catch {}
-    // unwrap placeholder-only bold
-    out = out.replace(/<strong>\s*(\[IMG:\d+\])\s*<\/strong>/gi, '$1');
-    // split strong across <br>
-    out = out.replace(/<strong>([\s\S]*?)<br\s*\/?>([\s\S]*?)<\/strong>/gi, (m, a, b) => {
-      const left = a.trim() ? `<strong>${a}</strong>` : '';
-      const right = b.trim() ? `<strong>${b}</strong>` : '';
-      return `${left}<br>${right}`;
-    });
-    // split strong around placeholders
-    out = out.replace(/<strong>([^]*?)\[IMG:(\d+)\]([^]*?)<\/strong>/gi, (m, left, id, right) => {
-      const L = left.trim() ? `<strong>${left}</strong>` : '';
-      const R = right.trim() ? `<strong>${right}</strong>` : '';
-      return `${L}[IMG:${id}]${R}`;
-    });
+      out = out
+        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
+        .replace(/<\s*figure[^>]*>/gi, '')
+        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+        .replace(/<\s*p[^>]*>/gi, '')
+        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+        .replace(/<\s*div[^>]*>/gi, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
+        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
+        .replace(/^(?:\s*<br>)+/i, '')
+        .replace(/(?:<br>\s*)+$/i, '')
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
+        .replace(/<br>\s*<br>/gi, '<br>');
+    } catch(_) {}
     return out;
   };
-  const fixStrayStrong = (html) => {
-    if (!html) return html;
+  const normalizeUrl = (url) => {
+    if (!url) return '';
+    try {
+      let out = String(url).trim();
+      out = out.replace('http://http://','http://').replace('https://https://','https://');
+      out = out.replace('/api/uploads/','/uploads/');
+      return out;
+    } catch { return String(url||''); }
+  };
+  const convertHtmlToPlaceholders = (html, images) => {
+    if (!html) return '';
     let out = html;
-    out = out.replace(/^(\s*<\/strong>)+/i, '');
-    out = out.replace(/(<strong>\s*)+$/i, '');
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(out, 'text/html');
+      const imgs = Array.from(doc.querySelectorAll('img'));
+      imgs.forEach(img => {
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const token = doc.createTextNode(id ? `[IMG:${id}]` : '');
+        if (token.textContent) {
+          img.parentNode.replaceChild(token, img);
+        } else {
+          const br = doc.createElement('br');
+          img.parentNode.replaceChild(br, img);
+        }
+      });
+      out = doc.body.innerHTML;
+    } catch(_) {}
     return out;
   };
-  const unboldSafe = (html) => {
-    if (!html) return html;
-    let out = html;
-    // convert spans that force normal weight to break strong scope
-    out = out.replace(/<span[^>]*style="[^"]*font-weight\s*:\s*normal[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, (_m, inner) => `</strong>${inner}<strong>`);
-    out = fixStrayStrong(out);
-    return out;
-  };
-  const escapeHtml = (str) => (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   const handleEditorHtmlChange = (e) => {
     const html = e?.target?.value ?? '';
@@ -136,7 +132,7 @@ const AdminMedsosForm = () => {
 
   // Paste/upload ditangani oleh RichTextEditor melalui onFilesChange
 
-  // RichTextEditor sudah menyimpan konten ter-serialisasi di form.isi_laporan
+  // CKEditorPoskas menyimpan konten HTML mentah; normalisasi dilakukan saat submit
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -152,46 +148,14 @@ const AdminMedsosForm = () => {
         setSaving(false);
         return;
       }
-      // Upload gambar baru terlebih dahulu
-      const uploadNewImages = async () => {
-        if (!selectedImages || selectedImages.length === 0) return [];
-        const fd = new FormData();
-        selectedImages.forEach((item) => { if (item?.file) fd.append('images', item.file); });
-        try {
-          const res = await fetch(`${env.API_BASE_URL}/upload/media-sosial`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-            body: fd,
-          });
-          if (!res.ok) throw new Error('Upload gagal');
-          const json = await res.json();
-          if (json?.success && Array.isArray(json.data)) {
-            return json.data.map((f, idx) => ({
-              id: selectedImages[idx]?.id,
-              name: f.originalName || selectedImages[idx]?.file?.name || `medsos_${Date.now()}_${idx}.jpg`,
-              url: f.url || f.path,
-              serverPath: f.path || f.url,
-            })).filter(x => x.id);
-          }
-          toast.error('Upload gambar gagal');
-          return [];
-        } catch (err) {
-          console.error('Upload medsos gagal:', err);
-          toast.error('Gagal mengupload gambar');
-          return [];
-        }
-      };
-      const newImages = await uploadNewImages();
-      const allImages = [...newImages];
-      // Filter hanya gambar yang dipakai di konten (berdasarkan [IMG:id])
-      const usedIdMatches = [...isi.matchAll(/\[IMG:(\d+)\]/g)];
-      const usedIds = new Set(usedIdMatches.map((m) => parseInt(m[1], 10)));
-      const filteredImages = allImages.filter((img) => img && typeof img.id !== 'undefined' && usedIds.has(parseInt(img.id, 10)));
+      // Normalisasi & konversi placeholder
+      const normalized = normalizeBlocks(isi);
+      const contentForSave = convertHtmlToPlaceholders(normalized, form.images || []);
 
       await mediaSosialService.create({
         tanggal_laporan: form.tanggal_laporan,
-        isi_laporan: isi,
-        images: filteredImages,
+        isi_laporan: contentForSave,
+        images: Array.isArray(form.images) ? form.images : [],
       });
       toast.success('Laporan medsos berhasil ditambahkan');
       navigate('/admin/marketing/medsos');
@@ -272,14 +236,13 @@ const AdminMedsosForm = () => {
             </div>
 
             <div className="space-y-4">
-              <RichTextEditor
+              <CKEditorPoskas
                 value={form.isi_laporan}
-                onChange={handleEditorHtmlChange}
-                onFilesChange={(files) => setSelectedImages(files)}
+                onChangeHTML={handleEditorHtmlChange}
+                onImagesChange={(images) => setForm(prev => ({ ...prev, images }))}
                 placeholder="Masukkan isi laporan media sosial..."
-                rows={12}
-                hideAlign={true}
-                hideImage={true}
+                uploadPath="/upload/media-sosial"
+                imageAlign="left"
               />
               {/* Tombol aksi mobile: ikon saja, di kanan bawah editor */}
               <div className="mt-4 flex items-center justify-end gap-3 md:hidden">
