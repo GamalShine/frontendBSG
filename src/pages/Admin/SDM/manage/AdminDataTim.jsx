@@ -486,6 +486,7 @@ const AdminDataTim = () => {
           link_map_orang_tua: d.link_map_orang_tua || '',
           tanggal_bergabung: d.tanggal_bergabung ? String(d.tanggal_bergabung).slice(0,10) : '',
           lama_bekerja: d.lama_bekerja || '',
+          divisi_id: d.jabatan?.divisi?.id || d.divisi_id || '',
           jabatan_id: d.jabatan?.id || '',
           // Gaji & Potongan (0/0.00 jadi kosong)
           gaji_pokok: zeroToEmpty(d.gaji_pokok),
@@ -524,6 +525,7 @@ const AdminDataTim = () => {
           link_map_orang_tua: editTarget?.link_map_orang_tua || '',
           tanggal_bergabung: editTarget?.tanggal_bergabung ? String(editTarget.tanggal_bergabung).slice(0,10) : '',
           lama_bekerja: editTarget?.lama_bekerja || '',
+          divisi_id: editTarget?.jabatan?.divisi?.id || editTarget?.divisi_id || '',
           jabatan_id: editTarget?.jabatan?.id || '',
           // Gaji & Potongan (fallback) 0/0.00 jadi kosong
           gaji_pokok: zeroToEmpty(editTarget?.gaji_pokok),
