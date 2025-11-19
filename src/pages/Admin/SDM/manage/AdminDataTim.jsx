@@ -1,9 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronDown, ChevronRight, ChevronUp, Users, Search, X, Save, Building2, Briefcase } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, ChevronUp, Users, Search, X, Save, Building2, Briefcase, Edit3 } from 'lucide-react';
 import { adminSdmService } from '@/services/adminSdmService';
 import { MENU_CODES } from '@/config/menuCodes';
 import api from '@/services/api';
+
+// Helper: ubah nilai 0 atau "0.00" menjadi string kosong untuk tampilan input
+const zeroToEmpty = (v) => {
+  if (v === null || v === undefined) return '';
+  const s = String(v).trim();
+  if (s === '' ) return '';
+  const n = Number(s.replace(/[^\d.-]/g, ''));
+  if (!isNaN(n) && n === 0) return '';
+  return s;
+};
 
 const AdminDataTim = () => {
   const navigate = useNavigate();
@@ -199,12 +209,12 @@ const AdminDataTim = () => {
       const s = String(v).trim();
       return s === '' ? '—' : s;
     };
-    const boolToYa = (v) => (v === true || v === '1' || v === 1 || String(v).toLowerCase() === 'true' || String(v).toLowerCase() === 'ya') ? 'Ya' : 'Tidak';
+    const boolToSymbol = (v) => (parseBool(v) ? '✓' : '✗');
     const trainingText = [
-      `Dasar: ${boolToYa(emp?.training_dasar)}`,
-      `Skill: ${boolToYa(emp?.training_skill ?? emp?.training_skillo)}`,
-      `Leadership: ${boolToYa(emp?.training_leadership)}`,
-      `Lanjutan: ${boolToYa(emp?.training_lanjutan)}`,
+      `Dasar: ${boolToSymbol(emp?.training_dasar)}`,
+      `Skill: ${boolToSymbol(emp?.training_skill ?? emp?.training_skillo)}`,
+      `Leadership: ${boolToSymbol(emp?.training_leadership)}`,
+      `Lanjutan: ${boolToSymbol(emp?.training_lanjutan)}`,
     ].join(' | ');
 
     const tempatTglLahir = (() => {
@@ -258,14 +268,26 @@ const AdminDataTim = () => {
           )}
         </button>
         {isOpen && (
-          <div className="grid grid-cols-2">
-            {rows.map(([label, val]) => (
-              <React.Fragment key={label}>
-                <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">{label}</div>
-                <div className="border-b border-gray-300 p-2 text-sm break-words">{val}</div>
-              </React.Fragment>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2">
+              {rows.map(([label, val]) => (
+                <React.Fragment key={label}>
+                  <div className="border-b border-r border-gray-300 p-2 text-sm font-semibold">{label}</div>
+                  <div className="border-b border-gray-300 p-2 text-sm break-words">{val}</div>
+                </React.Fragment>
+              ))}
+            </div>
+            {/* Tombol Edit di bawah kotak riwayat karyawan */}
+            <div className="px-3 py-3 bg-white border-t border-gray-200">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center w-full px-3 md:px-6 py-0.5 md:py-2 rounded-none bg-red-600 text-white hover:bg-red-700 shadow-sm text-sm md:text-sm"
+                onClick={() => setEditTarget(emp)}
+              >
+                <Edit3 className="w-4 h-4 mr-2" /> Edit
+              </button>
+            </div>
+          </>
         )}
       </div>
     );
@@ -462,10 +484,23 @@ const AdminDataTim = () => {
           nama_orang_tua: d.nama_orang_tua || '',
           alamat_orang_tua: d.alamat_orang_tua || '',
           link_map_orang_tua: d.link_map_orang_tua || '',
-          // Kerja
           tanggal_bergabung: d.tanggal_bergabung ? String(d.tanggal_bergabung).slice(0,10) : '',
           lama_bekerja: d.lama_bekerja || '',
-          jabatan_id: d?.jabatan?.id || ''
+          jabatan_id: d.jabatan?.id || '',
+          // Gaji & Potongan (0/0.00 jadi kosong)
+          gaji_pokok: zeroToEmpty(d.gaji_pokok),
+          tunjangan_kinerja: zeroToEmpty(d.tunjangan_kinerja),
+          tunjangan_posisi: zeroToEmpty(d.tunjangan_posisi),
+          uang_makan: zeroToEmpty(d.uang_makan),
+          lembur: zeroToEmpty(d.lembur),
+          bonus: zeroToEmpty(d.bonus),
+          potongan: zeroToEmpty(d.potongan),
+          bpjstk: zeroToEmpty(d.bpjstk),
+          bpjs_kesehatan: zeroToEmpty(d.bpjs_kesehatan),
+          bpjs_kes_penambahan: zeroToEmpty(d.bpjs_kes_penambahan),
+          sp_1_2: zeroToEmpty(d.sp_1_2),
+          pinjaman_karyawan: zeroToEmpty(d.pinjaman_karyawan),
+          pph21: zeroToEmpty(d.pph21)
         });
       } catch (e) {
         console.error(e);
@@ -489,7 +524,21 @@ const AdminDataTim = () => {
           link_map_orang_tua: editTarget?.link_map_orang_tua || '',
           tanggal_bergabung: editTarget?.tanggal_bergabung ? String(editTarget.tanggal_bergabung).slice(0,10) : '',
           lama_bekerja: editTarget?.lama_bekerja || '',
-          jabatan_id: editTarget?.jabatan?.id || ''
+          jabatan_id: editTarget?.jabatan?.id || '',
+          // Gaji & Potongan (fallback) 0/0.00 jadi kosong
+          gaji_pokok: zeroToEmpty(editTarget?.gaji_pokok),
+          tunjangan_kinerja: zeroToEmpty(editTarget?.tunjangan_kinerja),
+          tunjangan_posisi: zeroToEmpty(editTarget?.tunjangan_posisi),
+          uang_makan: zeroToEmpty(editTarget?.uang_makan),
+          lembur: zeroToEmpty(editTarget?.lembur),
+          bonus: zeroToEmpty(editTarget?.bonus),
+          potongan: zeroToEmpty(editTarget?.potongan),
+          bpjstk: zeroToEmpty(editTarget?.bpjstk),
+          bpjs_kesehatan: zeroToEmpty(editTarget?.bpjs_kesehatan),
+          bpjs_kes_penambahan: zeroToEmpty(editTarget?.bpjs_kes_penambahan),
+          sp_1_2: zeroToEmpty(editTarget?.sp_1_2),
+          pinjaman_karyawan: zeroToEmpty(editTarget?.pinjaman_karyawan),
+          pph21: zeroToEmpty(editTarget?.pph21)
         });
       } finally {
         setEditLoading(false);
@@ -894,6 +943,7 @@ const AdminDataTim = () => {
                       <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{jabCount} jabatan</span>
                       <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{empCount} orang</span>
                     </div>
+
                   </div>
                 );
               })}
@@ -1212,7 +1262,7 @@ const AdminDataTim = () => {
                   ].map(i => (
                     <div key={i.key}>
                       <label className="block text-xs font-medium text-gray-700 mb-1">{i.label}</label>
-                      <input value={addTimForm[i.key]} onChange={(e)=> setAddTimForm(v=>({ ...v, [i.key]: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" inputMode="numeric" placeholder="0" />
+                      <input value={addTimForm[i.key]} onChange={(e)=> setAddTimForm(v=>({ ...v, [i.key]: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" inputMode="numeric" placeholder="" />
                     </div>
                   ))}
                 </div>
@@ -1494,8 +1544,13 @@ const AdminDataTim = () => {
                         <input type="date" value={editForm.tanggal_bergabung} onChange={(e) => setEditForm(f => ({ ...f, tanggal_bergabung: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Lama Bekerja</label>
-                        <input value={editForm.lama_bekerja} onChange={(e) => setEditForm(f => ({ ...f, lama_bekerja: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent" placeholder="mis. 24 bulan" />
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Divisi</label>
+                        <select value={editForm.divisi_id} onChange={(e) => setEditForm(f => ({ ...f, divisi_id: e.target.value }))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                          <option value="">Pilih Divisi</option>
+                          {(hierarchy || []).map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Jabatan</label>
@@ -1505,6 +1560,47 @@ const AdminDataTim = () => {
                             <option key={j.id} value={j.id}>{j.name}</option>
                           ))}
                         </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Lama Bekerja</label>
+                      <input
+                        value={calcTenureMonthsDays(editForm.tanggal_bergabung)}
+                        readOnly
+                        className="w-full border border-gray-200 bg-gray-50 text-gray-700 rounded-md px-3 py-2 text-sm"
+                        title="Otomatis dihitung dari Tanggal Bergabung"
+                      />
+                    </div>
+
+                    {/* Gaji & Potongan (Edit) */}
+                    <div className="rounded-lg border border-gray-200 bg-white p-4">
+                      <div className="text-sm font-semibold text-gray-900 mb-3">Gaji & Potongan</div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {[
+                          { key: 'gaji_pokok', label: 'Gaji Pokok (Rp)' },
+                          { key: 'tunjangan_kinerja', label: 'Tunjangan Kinerja (Rp)' },
+                          { key: 'tunjangan_posisi', label: 'Tunjangan Posisi (Rp)' },
+                          { key: 'uang_makan', label: 'Uang Makan (Rp)' },
+                          { key: 'lembur', label: 'Lembur (Rp)' },
+                          { key: 'bonus', label: 'Bonus (Rp)' },
+                          { key: 'potongan', label: 'Potongan (Rp)' },
+                          { key: 'bpjstk', label: 'BPJSTK (Rp)' },
+                          { key: 'bpjs_kesehatan', label: 'BPJS Kesehatan (Rp)' },
+                          { key: 'bpjs_kes_penambahan', label: 'BPJS Kes Penambahan (Rp)' },
+                          { key: 'sp_1_2', label: 'SP 1/2 (Rp)' },
+                          { key: 'pinjaman_karyawan', label: 'Pinjaman Karyawan (Rp)' },
+                          { key: 'pph21', label: 'PPH21 (Rp)' }
+                        ].map(i => (
+                          <div key={i.key}>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">{i.label}</label>
+                            <input
+                              value={editForm[i.key] ?? ''}
+                              onChange={(e) => setEditForm(f => ({ ...f, [i.key]: e.target.value }))}
+                              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                              placeholder="0"
+                            />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -1524,6 +1620,10 @@ const AdminDataTim = () => {
                     try {
                       setSavingEdit(true);
                       const payload = { ...editForm };
+                      // Hitung ulang lama_bekerja berdasarkan tanggal_bergabung (read-only di UI)
+                      try {
+                        payload.lama_bekerja = calcTenureMonthsDays(editForm.tanggal_bergabung);
+                      } catch {}
                       const res = await adminSdmService.updateEmployee(editTarget.id, payload);
                       if (res?.success === false) throw new Error(res?.message || 'Gagal menyimpan');
                       // Refresh data
