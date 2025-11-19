@@ -41,6 +41,21 @@ const AdminKPI = () => {
   // Users dropdown state
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  // Filtered users for dropdown based on selected category
+  const filteredUsers = React.useMemo(() => {
+    try {
+      const list = Array.isArray(users) ? users : []
+      const getRoleStr = (u) => String(u?.role || u?.roles?.[0]?.name || u?.user_role || u?.level || u?.jabatan || u?.posisi || '').toLowerCase()
+      if (String(formData.category || '').toLowerCase() === 'leader') {
+        // Hanya tampilkan user dengan role leader
+        return list.filter(u => getRoleStr(u).includes('leader'))
+      }
+      // Default: tampilkan semua non-owner (sudah difilter di fetchUsers, tapi amankan di sini juga)
+      return list.filter(u => getRoleStr(u) !== 'owner')
+    } catch {
+      return []
+    }
+  }, [users, formData.category])
   // Divisions dropdown state
   const [divisions, setDivisions] = useState([]);
   const [loadingDivisions, setLoadingDivisions] = useState(false);
@@ -124,9 +139,14 @@ const AdminKPI = () => {
   const fetchUsers = useCallback(async () => {
     try {
       setLoadingUsers(true);
-      const res = await api.get('/users');
+      // Ambil semua user aktif (non-paginated) dan filter owner di frontend
+      const res = await api.get('/users/all', { params: { status: 'active' } });
       const arr = Array.isArray(res?.data?.data) ? res.data.data : (Array.isArray(res?.data) ? res.data : []);
-      setUsers(arr);
+      const cleaned = arr.filter(u => {
+        const role = (u?.role || u?.roles?.[0]?.name || u?.user_role || u?.level || u?.jabatan || u?.posisi || '')
+        return String(role).toLowerCase() !== 'owner'
+      });
+      setUsers(cleaned);
     } catch (e) {
       console.error('Gagal memuat daftar user:', e);
       setUsers([]);
@@ -197,7 +217,7 @@ const AdminKPI = () => {
 
     // Jika value sudah absolute URL
     if (typeof item === 'string') {
-      return 'https://placehold.co/400x300?text=KPI+Photo';
+      return 'https://placehold.co/400x300?text=Raport+Photo';
     }
 
     const raw = item.photo_url;
@@ -343,25 +363,25 @@ const AdminKPI = () => {
         }
         response = await kpiService.createKPI(sanitized, photoFile);
         if (response.success) {
-          toast.success('KPI berhasil dibuat!');
+          toast.success('Raport berhasil dibuat!');
           fetchKPIData(); // Refresh data
           closeModal();
         } else {
-          toast.error(response.message || 'Gagal membuat KPI');
+          toast.error(response.message || 'Gagal membuat raport');
         }
       } else {
         response = await kpiService.updateKPI(formData.id, sanitized, photoFile);
         if (response.success) {
-          toast.success('KPI berhasil diupdate!');
+          toast.success('Raport berhasil diupdate!');
           fetchKPIData(); // Refresh data
           closeModal();
         } else {
-          toast.error(response.message || 'Gagal mengupdate KPI');
+          toast.error(response.message || 'Gagal mengupdate raport');
         }
       }
     } catch (error) {
       console.error('Error saving KPI:', error);
-      const msg = error?.response?.data?.message || error?.message || 'Terjadi kesalahan saat menyimpan KPI';
+      const msg = error?.response?.data?.message || error?.message || 'Terjadi kesalahan saat menyimpan raport';
       toast.error(msg);
     } finally {
       setIsSaving(false);
@@ -371,7 +391,7 @@ const AdminKPI = () => {
   const handleDelete = async (item, e) => {
     e.stopPropagation();
     
-    if (!window.confirm('Apakah Anda yakin ingin menghapus KPI ini?')) {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus raport ini?')) {
       return;
     }
     
@@ -380,17 +400,17 @@ const AdminKPI = () => {
     try {
       const response = await kpiService.deleteKPI(item.id);
       if (response.success) {
-        toast.success('KPI berhasil dihapus!');
+        toast.success('Raport berhasil dihapus!');
         fetchKPIData(); // Refresh data
         if (selectedItem === item) {
           setSelectedItem(null);
         }
       } else {
-        toast.error(response.message || 'Gagal menghapus KPI');
+        toast.error(response.message || 'Gagal menghapus raport');
       }
     } catch (error) {
       console.error('Error deleting KPI:', error);
-      toast.error('Terjadi kesalahan saat menghapus KPI');
+      toast.error('Terjadi kesalahan saat menghapus raport');
     } finally {
       setDeletingId(null);
     }
@@ -420,7 +440,7 @@ const AdminKPI = () => {
           <div className="flex items-center gap-4">
             <span className="text-sm font-semibold bg-white/10 rounded px-2 py-1">{MENU_CODES.sdm.kpi}</span>
             <div>
-              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">RAPORT KERJA</h1>
+              <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">RAPORT KARYAWAN</h1>
             </div>
           </div>
         </div>
@@ -570,7 +590,7 @@ const AdminKPI = () => {
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900 flex items-center">
                   <BarChart3 className="w-5 h-5 mr-2 text-red-600" />
-                  Raport Kerja
+                  Raport Karyawan
                 </h3>
                 <button
                   onClick={openCreateModal}
@@ -671,7 +691,7 @@ const AdminKPI = () => {
                   <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-red-100 to-red-200 rounded-full flex items-center justify-center">
                     <Award className="w-12 h-12 text-red-600" />
                   </div>
-                  <h4 className="text-xl font-bold text-gray-800 mb-2">Pilih KPI</h4>
+                  <h4 className="text-xl font-bold text-gray-800 mb-2">Pilih Raport</h4>
                   <p className="text-gray-500 text-sm">Klik item di sebelah kiri untuk melihat detail foto</p>
                 </div>
               </div>
@@ -747,7 +767,7 @@ const AdminKPI = () => {
                       required
                     >
                       <option value="">— Pilih User —</option>
-                      {users.map(u => {
+                      {filteredUsers.map(u => {
                         const role = (u.role || u.roles?.[0]?.name || u.user_role || u.level || u.jabatan || u.posisi || '')
                         const roleStr = role ? ` - ${String(role)}` : ''
                         const label = `${u.nama || u.username || `User #${u.id}`}${roleStr}`

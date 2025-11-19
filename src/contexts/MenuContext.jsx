@@ -150,7 +150,7 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'kpi',
-              title: 'KPI',
+              title: 'RAPORT KARYAWAN',
               path: '/owner/sdm/kpi',
               permissions: ['read']
             },
@@ -393,7 +393,7 @@ export const MenuProvider = ({ children }) => {
             },
             {
               id: 'kpi',
-              title: 'RAPORT KERJA',
+              title: 'RAPORT KARYAWAN',
               path: '/admin/sdm/raport-kerja',
               permissions: ['read'],
               picKey: 'AdminSdmKpi'
@@ -555,8 +555,8 @@ export const MenuProvider = ({ children }) => {
           { id: 'leader-sop-aturan', title: 'ATURAN & SOP', path: '/leader/sdm/sop-aturan', icon: 'FileText', permissions: ['read'] },
           { id: 'leader-jobdesk-saya', title: 'JOBDESK SAYA APA?', path: '/leader/sdm/jobdesk-saya', icon: 'ClipboardList', permissions: ['read'] },
           { id: 'leader-tugas-saya', title: 'TUGAS SAYA APA?', path: '/leader/tugas-saya', icon: 'CheckSquare', permissions: ['read'] },
-          { id: 'leader-kpi-saya', title: 'KPI SAYA', path: '/leader/sdm/kpi-saya', icon: 'TrendingUp', permissions: ['read'] },
-          { id: 'leader-kpi-tim', title: 'KPI TIM SAYA', path: '/leader/sdm/kpi-tim', icon: 'BarChart2', permissions: ['read'] },
+          { id: 'leader-kpi-saya', title: 'RAPORT SAYA', path: '/leader/sdm/kpi-saya', icon: 'TrendingUp', permissions: ['read'] },
+          { id: 'leader-kpi-tim', title: 'RAPORT TIM SAYA', path: '/leader/sdm/kpi-tim', icon: 'BarChart2', permissions: ['read'] },
           { id: 'leader-tim-merah-biru', title: 'TIM MERAH DAN BIRU', path: '/leader/tugas/tim', icon: 'Users', permissions: ['read'] },
           { id: 'leader-daftar-pengajuan', title: 'DAFTAR PENGAJUAN', path: '/leader/pengajuan', icon: 'Inbox', permissions: ['read'] },
           { id: 'leader-slip-gaji', title: 'SLIP GAJI SAYA', path: '/leader/slip-gaji-saya', icon: 'FileText', permissions: ['read'] },
