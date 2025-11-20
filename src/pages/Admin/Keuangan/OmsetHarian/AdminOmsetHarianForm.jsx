@@ -62,8 +62,27 @@ const AdminOmsetHarianForm = () => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(out, 'text/html');
-      const imgs = Array.from(doc.querySelectorAll('img'));
-      imgs.forEach(img => {
+      // 1) Proses figure: figcaption di atas, placeholder [IMG:id] di bawah
+      const figures = Array.from(doc.querySelectorAll('figure'));
+      figures.forEach(fig => {
+        const img = fig.querySelector('img');
+        if (!img) return;
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const replacement = id ? doc.createTextNode(`[IMG:${id}]`) : doc.createElement('br');
+        const caption = fig.querySelector('figcaption') || null;
+        while (fig.firstChild) fig.removeChild(fig.firstChild);
+        if (caption) fig.appendChild(caption);
+        fig.appendChild(replacement);
+      });
+      // 2) Proses img di luar figure
+      const imgsOutside = Array.from(doc.querySelectorAll('img')).filter(img => !img.closest('figure'));
+      imgsOutside.forEach(img => {
         const src = img.getAttribute('src') || '';
         const nsrc = normalizeUrl(src);
         const match = (Array.isArray(images) ? images : []).find(it => {
@@ -88,21 +107,23 @@ const AdminOmsetHarianForm = () => {
     if (!html) return '';
     let out = String(html);
     try {
-      out = out
-        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
-        .replace(/<\s*figure[^>]*>/gi, '')
-        .replace(/<\s*\/\s*figure\s*>/gi, '')
-        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
-        .replace(/<\s*p[^>]*>/gi, '')
-        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
-        .replace(/<\s*div[^>]*>/gi, '')
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
-        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
-        .replace(/^(?:\s*<br>)+/i, '')
-        .replace(/(?:<br>\s*)+$/i, '')
-        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
-        .replace(/<br>\s*<br>/gi, '<br>');
+      if (isEditMode) {
+        // Mode Edit: jangan mengubah <br> sama sekali; hanya normalize &nbsp;
+        out = out.replace(/&nbsp;/gi, ' ');
+      } else {
+        out = out
+          // pertahankan figure/figcaption
+          .replace(/<\s*\/\s*p\s*>/gi, '<br>')
+          .replace(/<\s*p[^>]*>/gi, '')
+          .replace(/<\s*\/\s*div\s*>/gi, '<br>')
+          .replace(/<\s*div[^>]*>/gi, '')
+          .replace(/&nbsp;/gi, ' ')
+          .replace(/\s*<br\s*\/?\s*>\s*/gi, '<br>')
+          .replace(/^(?:\s*<br>)+/i, '')
+          .replace(/(?:<br>\s*)+$/i, '')
+          // pastikan max satu <br> sesudah placeholder gambar
+          .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>');
+      }
     } catch(_) {}
     return out;
   };
@@ -354,10 +375,7 @@ const AdminOmsetHarianForm = () => {
                 
                 // Append image to editor
                 editorRef.current.appendChild(img);
-                
-                // Add a line break after image
-                const br = document.createElement('br');
-                editorRef.current.appendChild(br);
+                // Mode Edit: jangan tambahkan <br> otomatis setelah gambar
                 
                 console.log(`✅ Image ${index + 1} appended to editor`);
               }
@@ -377,6 +395,25 @@ const AdminOmsetHarianForm = () => {
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
+      /* Caption di atas gambar & 1 foto 1 baris */
+      [contenteditable="true"] figure.image {
+        display: flex !important;
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        margin: 10px 0 !important;
+        width: max-content !important;
+        max-width: 100% !important;
+      }
+      [contenteditable="true"] figure.image figcaption {
+        margin: 0 0 6px 0 !important;
+        color: #6b7280 !important;
+        font-size: 0.875rem !important;
+        line-height: 1.25rem !important;
+        text-align: left !important;
+        display: block !important;
+        max-width: 100% !important;
+        word-break: break-word !important;
+      }
       [contenteditable="true"] img {
         max-width: 100% !important;
         height: auto !important;
@@ -546,9 +583,8 @@ const AdminOmsetHarianForm = () => {
               id: image.id
             });
             
-            // Tambahkan satu <br> setelah <img> agar baris setelah gambar turun rapi.
-            // CKEditor sanitizer akan menghapus <br> yang berada sebelum gambar, jadi kita fokus pada <br> setelah gambar.
-            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" /><br>`;
+            // Mode Edit: jangan tambahkan <br> otomatis setelah <img>
+            const imageHtmlTag = `<img src="${imageUrl}" alt="Gambar ${index + 1}" class="max-w-full h-auto my-2 rounded-lg shadow-sm" data-image-id="${image.id}" />`;
             const placeholderRegex = new RegExp(`\\[IMG:${image.id}\\]`, 'g');
             
             // Check if this placeholder exists in content
@@ -556,33 +592,29 @@ const AdminOmsetHarianForm = () => {
             console.log(`🔍 Placeholder [IMG:${image.id}] matches:`, matches);
             
             if (matches) {
-              // Pastikan placeholder diganti ke <img><br> sehingga baris selanjutnya turun
+              // Ganti placeholder ke <img> apa adanya di mode edit
               editorContent = editorContent.replace(placeholderRegex, imageHtmlTag);
               console.log(`✅ Replaced [IMG:${image.id}] with image tag`);
             } else {
-              console.log(`❌ Placeholder [IMG:${image.id}] not found in content`);
-              // If no placeholder found, append image at the end with trailing <br>
-              editorContent += imageHtmlTag;
-              console.log(`➕ Appended image ${image.id} to content since no placeholder found`);
+              console.log(`❌ Placeholder [IMG:${image.id}] not found in content; skip append to avoid reordering`);
+              // Jangan append gambar agar tidak mengubah urutan/posisi konten yang tersimpan
             }
           });
         } else {
           console.log('⚠️ No processed images to render in editor');
         }
         
-        // Convert line breaks to <br> tags for editor
-        editorContent = editorContent.replace(/\n/g, '<br>');
-        // Tidy up excessive <br> and spacing around images for edit view only
-        try {
-          // Remove any <br> directly before an <img>
-          editorContent = editorContent.replace(/(?:<br\s*\/?>\s*)+(<img[^>]*>)/gi, '$1');
-          // Ensure exactly one <br> after each <img>
-          editorContent = editorContent.replace(/(<img[^>]*>)(\s*(?:<br\s*\/?>\s*)+)/gi, '$1<br>');
-          // Collapse 3+ breaks into at most 2
-          editorContent = editorContent.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
-          // Trim leading/trailing breaks
-          editorContent = editorContent.replace(/^(?:\s*<br>)+/i, '').replace(/(?:<br>\s*)+$/i, '');
-        } catch(_) {}
+        if (!isEditMode) {
+          // Convert line breaks to <br> tags for editor (tampilan tambah saja)
+          editorContent = editorContent.replace(/\n/g, '<br>');
+          // Rapikan hanya untuk mode tambah
+          try {
+            editorContent = editorContent.replace(/(?:<br\s*\/?>\s*)+(<img[^>]*>)/gi, '$1');
+            editorContent = editorContent.replace(/(<img[^>]*>)(\s*(?:<br\s*\/?>\s*)+)/gi, '$1<br>');
+            editorContent = editorContent.replace(/(?:<br>\s*){3,}/gi, '<br><br>');
+            editorContent = editorContent.replace(/^(?:\s*<br>)+/i, '').replace(/(?:<br>\s*)+$/i, '');
+          } catch(_) {}
+        }
         console.log('🔍 Final editor content:', editorContent);
         
         setFormData({
