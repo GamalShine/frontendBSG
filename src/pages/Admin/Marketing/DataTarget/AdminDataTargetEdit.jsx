@@ -174,20 +174,16 @@ const AdminDataTargetEdit = () => {
     let out = String(html);
     try {
       out = out
-        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
-        .replace(/<\s*figure[^>]*>/gi, '')
-        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        // pertahankan figure/figcaption
         .replace(/<\s*\/\s*p\s*>/gi, '<br>')
         .replace(/<\s*p[^>]*>/gi, '')
         .replace(/<\s*\/\s*div\s*>/gi, '<br>')
         .replace(/<\s*div[^>]*>/gi, '')
         .replace(/&nbsp;/gi, ' ')
         .replace(/\s*<br\s*\/\?\s*>\s*/gi, '<br>')
-        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
         .replace(/^(?:\s*<br>)+/i, '')
         .replace(/(?:<br>\s*)+$/i, '')
-        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
-        .replace(/<br>\s*<br>/gi, '<br>');
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>');
     } catch(_) {}
     return out;
   };
@@ -197,8 +193,27 @@ const AdminDataTargetEdit = () => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(out, 'text/html');
-      const imgs = Array.from(doc.querySelectorAll('img'));
-      imgs.forEach(img => {
+      // 1) Tangani figure: tempatkan figcaption di atas placeholder [IMG:id]
+      const figures = Array.from(doc.querySelectorAll('figure'));
+      figures.forEach(fig => {
+        const img = fig.querySelector('img');
+        if (!img) return;
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(imagesList) ? imagesList : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const replacement = id ? doc.createTextNode(`[IMG:${id}]`) : doc.createElement('br');
+        const caption = fig.querySelector('figcaption') || null;
+        while (fig.firstChild) fig.removeChild(fig.firstChild);
+        if (caption) fig.appendChild(caption);
+        fig.appendChild(replacement);
+      });
+      // 2) Tangani img di luar figure seperti biasa
+      const imgsOutside = Array.from(doc.querySelectorAll('img')).filter(img => !img.closest('figure'));
+      imgsOutside.forEach(img => {
         const src = img.getAttribute('src') || '';
         const nsrc = normalizeUrl(src);
         const match = (Array.isArray(imagesList) ? imagesList : []).find(it => {

@@ -94,8 +94,29 @@ const AdminPoskasForm = () => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(out, 'text/html');
-      const imgs = Array.from(doc.querySelectorAll('img'));
-      imgs.forEach(img => {
+      // 1) Tangani figure: pastikan <figcaption> berada di atas placeholder gambar
+      const figures = Array.from(doc.querySelectorAll('figure'));
+      figures.forEach(fig => {
+        const img = fig.querySelector('img');
+        if (!img) return;
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const replacement = id ? doc.createTextNode(`[IMG:${id}]`) : doc.createElement('br');
+        const caption = fig.querySelector('figcaption') || null;
+        // kosongkan isi figure, lalu susun: caption (jika ada) di atas, kemudian placeholder
+        while (fig.firstChild) fig.removeChild(fig.firstChild);
+        if (caption) fig.appendChild(caption);
+        fig.appendChild(replacement);
+      });
+
+      // 2) Tangani img DI LUAR figure seperti biasa
+      const imgsOutside = Array.from(doc.querySelectorAll('img')).filter(img => !img.closest('figure'));
+      imgsOutside.forEach(img => {
         const src = img.getAttribute('src') || '';
         const nsrc = normalizeUrl(src);
         const match = (Array.isArray(images) ? images : []).find(it => {
@@ -107,7 +128,6 @@ const AdminPoskasForm = () => {
         if (token.textContent) {
           img.parentNode.replaceChild(token, img);
         } else {
-          // if no id found, remove the img but keep a line break
           const br = doc.createElement('br');
           img.parentNode.replaceChild(br, img);
         }
@@ -123,10 +143,7 @@ const AdminPoskasForm = () => {
     let out = String(html);
     try {
       out = out
-        // remove CKEditor image wrappers
-        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
-        .replace(/<\s*figure[^>]*>/gi, '')
-        .replace(/<\s*\/\s*figure\s*>/gi, '')
+        // pertahankan figure/figcaption agar caption ikut tersimpan
         .replace(/<\s*\/\s*p\s*>/gi, '<br>')
         .replace(/<\s*p[^>]*>/gi, '')
         .replace(/<\s*\/\s*div\s*>/gi, '<br>')
@@ -134,15 +151,11 @@ const AdminPoskasForm = () => {
         // replace &nbsp; with plain space, then trim spaces around breaks
         .replace(/&nbsp;/gi, ' ')
         .replace(/\s*<br\s*\/?\s*>\s*/gi, '<br>')
-        // collapse multiple breaks
-        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
         // trim leading/trailing breaks
         .replace(/^(?:\s*<br>)+/i, '')
         .replace(/(?:<br>\s*)+$/i, '')
         // ensure at most one <br> after [IMG:id]
-        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
-        // remove <br> lines that only separate to an &nbsp; line
-        .replace(/<br>\s*<br>/gi, '<br>');
+        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>');
     } catch (_) {}
     return out;
   };

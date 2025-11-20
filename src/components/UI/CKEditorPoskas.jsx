@@ -120,7 +120,13 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
     toolbar: [
       'undo','redo','|','bold','italic'
     ],
-    // Remove image toolbar items to avoid plugin-unavailable issues in default Classic build
+    // Konfigurasi image toolbar: hanya tampilkan toggle caption.
+    // Ini otomatis menyembunyikan opsi inline/side/centered image dan Alt (imageTextAlternative).
+    image: {
+      toolbar: [ 'toggleImageCaption' ],
+      // Pastikan tidak ada style alignment/inline yang muncul di UI
+      styles: []
+    }
   }), [placeholder, token, uploadUrl])
 
   // Inject global CSS to keep paragraphs left-aligned and force images alignment by prop
@@ -136,8 +142,25 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
     style.textContent = `
       .ck-content { text-align: left !important; }
       .ck-content p { text-align: left !important; }
-      /* Force image wrapper alignment */
-      .ck-content figure.image { margin: ${figureMargin} !important; float: none !important; }
+      /* Force image wrapper alignment and place caption ABOVE image */
+      .ck-content figure.image { 
+        margin: ${figureMargin} !important; 
+        float: none !important; 
+        /* Jadikan block-level dengan flex agar satu foto satu baris */
+        display: flex !important; 
+        flex-direction: column-reverse !important; 
+        align-items: stretch !important;
+        /* Lebar mengikuti konten (gambar), tidak melebihi editor */
+        width: max-content !important;
+        max-width: 100% !important;
+      }
+      .ck-content figure.image figcaption { 
+        margin: 0 0 6px 0 !important; 
+        color: #6b7280 !important; 
+        font-size: 0.875rem !important; 
+        line-height: 1.25rem !important;
+        text-align: left !important;
+      }
       .ck-content .image.image-style-align-center,
       .ck-content .image.image-style-align-right,
       .ck-content .image.image-style-align-left {
@@ -146,9 +169,9 @@ const CKEditorPoskas = ({ value, onChangeHTML, onImagesChange, placeholder = 'Ke
       }
       /* CKEditor inline image variant -> force to act like block */
       .ck-content .image-inline { display: block !important; text-align: ${inlineTextAlign} !important; float: none !important; }
-      .ck-content .image-inline img { display: ${inlineImgDisplay} !important; margin: ${marginRule} !important; float: none !important; }
+      .ck-content .image-inline img { display: ${inlineImgDisplay} !important; margin: ${marginRule} !important; float: none !important; max-width: 100% !important; height: auto !important; }
       /* Always force raw <img> blocks */
-      .ck-content img { display: block !important; margin: ${marginRule} !important; float: none !important; }
+      .ck-content img { display: block !important; margin: ${marginRule} !important; float: none !important; max-width: 100% !important; height: auto !important; }
     `
     document.head.appendChild(style)
     return () => {

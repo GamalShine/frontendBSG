@@ -65,26 +65,10 @@ const AdminPoskasEdit = () => {
     if (!html) return '';
     let out = String(html);
     try {
-      out = out
-        // remove CKEditor image wrappers
-        .replace(/<\s*figcaption[^>]*>[\s\S]*?<\s*\/\s*figcaption\s*>/gi, '')
-        .replace(/<\s*figure[^>]*>/gi, '')
-        .replace(/<\s*\/\s*figure\s*>/gi, '')
-        .replace(/<\s*\/\s*p\s*>/gi, '<br>')
-        .replace(/<\s*p[^>]*>/gi, '')
-        .replace(/<\s*\/\s*div\s*>/gi, '<br>')
-        .replace(/<\s*div[^>]*>/gi, '')
-        // replace &nbsp; with plain space, then trim spaces around breaks
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/\s*<br\s*\/?\s*>\s*/gi, '<br>')
-        .replace(/(?:<br>\s*){3,}/gi, '<br><br>')
-        .replace(/^(?:\s*<br>)+/i, '')
-        .replace(/(?:<br>\s*)+$/i, '')
-        // ensure at most one <br> after [IMG:id]
-        .replace(/(\[IMG:\d+\])(?:<br>\s*){2,}/gi, '$1<br>')
-        // collapse any accidental double <br> again
-        .replace(/<br>\s*<br>/gi, '<br>');
-    } catch(_){}
+      // Jangan lakukan konversi p/div ke <br> dan jangan normalisasi <br> sama sekali.
+      // Hanya bersihkan &nbsp; agar tidak mengubah jumlah baris.
+      out = out.replace(/&nbsp;/gi, ' ');
+    } catch(_){ }
     return out;
   };
 
@@ -108,8 +92,29 @@ const AdminPoskasEdit = () => {
     try {
       const parser = new DOMParser();
       const doc = parser.parseFromString(out, 'text/html');
-      const imgs = Array.from(doc.querySelectorAll('img'));
-      imgs.forEach(img => {
+      // 1) Tangani figure: letakkan figcaption di atas placeholder gambar
+      const figures = Array.from(doc.querySelectorAll('figure'));
+      figures.forEach(fig => {
+        const img = fig.querySelector('img');
+        if (!img) return;
+        const src = img.getAttribute('src') || '';
+        const nsrc = normalizeUrl(src);
+        const match = (Array.isArray(images) ? images : []).find(it => {
+          const iurl = normalizeUrl(it?.url || '');
+          return iurl && (iurl === nsrc || src.endsWith(iurl));
+        });
+        const id = match?.id;
+        const replacement = id ? doc.createTextNode(`[IMG:${id}]`) : doc.createElement('br');
+        const caption = fig.querySelector('figcaption') || null;
+        // kosongkan isi figure lalu susun: caption (jika ada) di atas, kemudian placeholder
+        while (fig.firstChild) fig.removeChild(fig.firstChild);
+        if (caption) fig.appendChild(caption);
+        fig.appendChild(replacement);
+      });
+
+      // 2) Tangani img di luar figure seperti biasa
+      const imgsOutside = Array.from(doc.querySelectorAll('img')).filter(img => !img.closest('figure'));
+      imgsOutside.forEach(img => {
         const src = img.getAttribute('src') || '';
         const nsrc = normalizeUrl(src);
         const match = (Array.isArray(images) ? images : []).find(it => {
@@ -252,6 +257,28 @@ const AdminPoskasEdit = () => {
         unicode-bidi: isolate !important;
         text-align: left !important;
       }
+      /* Tampilkan caption DI ATAS gambar untuk struktur figure.image */
+      [contenteditable="true"] figure.image {
+        /* Kolom terbalik agar caption di atas gambar; block-level agar 1 foto 1 baris */
+        display: flex !important;
+        flex-direction: column-reverse !important;
+        align-items: stretch !important;
+        margin: 10px 0 !important;
+        /* Figure mengikut lebar konten (gambar), bukan full baris */
+        width: auto !important;
+        max-width: 100% !important;
+      }
+      [contenteditable="true"] figure.image figcaption {
+        margin: 0 0 6px 0 !important;
+        color: #6b7280 !important;
+        font-size: 0.875rem !important;
+        line-height: 1.25rem !important;
+        text-align: left !important;
+        /* Pastikan caption mengikuti lebar figure/gambar dan wrap rapi */
+        display: block !important;
+        max-width: 100% !important;
+        word-break: break-word !important;
+      }
       [contenteditable="true"] img {
         max-width: 100% !important;
         height: auto !important;
@@ -393,10 +420,7 @@ const AdminPoskasEdit = () => {
                 // Insert image into editor
                 editorRef.current.appendChild(img);
                 console.log(`➕ Inserted image ${index + 1} into editor`);
-                
-                // Add line break after image
-                const br = document.createElement('br');
-                editorRef.current.appendChild(br);
+                // Jangan tambahkan <br> otomatis setelah gambar agar jumlah <br> tetap sesuai konten tersimpan
               }
             });
           } else {
@@ -724,10 +748,8 @@ const AdminPoskasEdit = () => {
   const handleEditorBlur = () => {
     const content = editorRef.current ? editorRef.current.innerHTML : '';
     let clean = removeZeroWidth(content);
+    // Hanya sanitasi LTR, jangan ubah struktur <br> apapun
     clean = sanitizeToLTR(clean);
-    clean = unboldSafe(clean);
-    clean = normalizeBoldHtml(clean);
-    clean = fixStrayB(clean);
     if (editorRef.current) editorRef.current.innerHTML = clean;
     lastContentRef.current = clean;
     setFormData(prev => ({ ...prev, isi_poskas: clean }));
@@ -784,10 +806,7 @@ const AdminPoskasEdit = () => {
               range.insertNode(img);
               range.collapse(false);
               
-              // Add a line break after the image
-              const br = document.createElement('br');
-              range.insertNode(br);
-              range.collapse(false);
+              // Jangan sisipkan <br> otomatis setelah gambar yang di-paste
               
               // Trigger editor change event
               const event = new Event('input', { bubbles: true });
@@ -960,10 +979,9 @@ const AdminPoskasEdit = () => {
     
     if (!validateForm()) return;
     
-    // Ambil konten dari state (CKEditorPoskas)
+    // Ambil konten dari state (CKEditorPoskas) apa adanya tanpa normalisasi agar <br> tidak berubah
     const editorContent = formData?.isi_poskas || '';
-    const normalized = normalizeBlocks(editorContent);
-    const contentForSave = convertHtmlToPlaceholders(normalized, formData.images || []);
+    const contentForSave = convertHtmlToPlaceholders(editorContent, formData.images || []);
     const finalFormData = {
       tanggal_poskas: formData.tanggal_poskas,
       isi_poskas: contentForSave,
